@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center_horizontal"
+    android:background="#121212"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Wallpaper Changer"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        android:layout_marginBottom="32dp"
+        android:layout_marginTop="100dp"/>
+
+    <TextView
+        android:id="@+id/tvSelectedFolder"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No folder selected"
+        android:textAlignment="center"
+        android:layout_marginBottom="16dp"
+        android:textSize="16sp"
+        android:padding="12dp"
+        android:background="#2C2C2C"
+        android:textColor="@android:color/white"
+        android:minLines="2" />
+
+    <Button
+        android:id="@+id/btnSelectFolder"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select Wallpaper Folder"
+        android:layout_marginBottom="16dp"
+        android:backgroundTint="#512DA8"
+        android:textColor="@android:color/white" />
+
+    <Button
+        android:id="@+id/btnSelectDefault"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select default wallpaper"
+        android:layout_marginBottom="16dp"
+        android:backgroundTint="#512DA8"
+        android:textColor="@android:color/white"/>
+
+    <com.google.android.material.switchmaterial.SwitchMaterial
+        android:id="@+id/switchRevertToDefault"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Revert to default wallpaper "
+        android:textColor="@android:color/white"
+        android:layout_marginBottom="16dp"
+        android:padding="4dp"/>
+
+    <!-- This button is the manual trigger to refresh the image cache.
+         Essential if the user adds/removes files from the folder externally
+         while the service is running, so the app can detect the changes.       -->
+    <Button
+        android:id="@+id/btnRefreshCache"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Refresh Image List"
+        android:layout_marginBottom="32dp"
+        android:backgroundTint="#00796B" />
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        android:text="Service status is UNKNOWN"
+        android:textColor="@android:color/white"
+        android:textSize="18sp" />
+
+    <Button
+        android:id="@+id/btnStartService"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Start Wallpaper Service"
+        android:layout_marginBottom="8dp"
+        android:backgroundTint="#512DA8"
+        android:textColor="@android:color/white" />
+
+    <Button
+        android:id="@+id/btnStopService"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Stop Wallpaper Service"
+        android:backgroundTint="#512DA8"
+        android:textColor="@android:color/white" />
+
+    <Button
+        android:id="@+id/btnGoToSettings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Go to Settings"
+        android:layout_marginTop="16dp"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+</LinearLayout>
