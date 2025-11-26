@@ -1,11 +1,11 @@
 <div align="center">
   <img src="app/src/main/ic_launcher-playstore.png" width="300" alt="App Icon"/>
   
-  <h1>Wallpaper Changer for Nothing Phone (1)</h1>
+  <h1>Wallpaper Changer for Nothing OS</h1>
 
   <p align="center">
     <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
-    <img src="https://img.shields.io/badge/Status-v0.1.0%20Alpha-blue.svg" alt="Status">
+    <img src="https://img.shields.io/badge/Status-v0.1.2%20Alpha-blue.svg" alt="Status">
   </p>
 
   <p>
@@ -25,7 +25,7 @@ I love my Nothing Phone (1), but I missed a feature many other OS have: **changi
 
 There weren’t many solutions on the Play Store and the ones I found were either outdated, unreliable, or just didn’t have the "changing on unlock" feature. As a Computer Science student, I decided to build my own solution that prioritizes **performance and user comfort/control**.
 
-**While optimized for Nothing OS as it has been tested on Nothing Phone (1), this app works on any device running Android 12+.**
+**While optimized for Nothing OS as it has been tested on Nothing Phone (1), this app works on any device running Android 13+.**
 
 ---
 
@@ -41,8 +41,8 @@ There weren’t many solutions on the Play Store and the ones I found were eithe
 
 ## 📸 Screenshots
 
-| Home Dashboard | Quick Settings Tile |
-|:---:|:---:|
+|              Home Dashboard              |        Quick Settings Tile         |
+|:----------------------------------------:|:----------------------------------:|
 | ![Home UI](readme_images/mainScreen.png) | ![QS Tile](readme_images/tile.png) |
 
 ---
@@ -50,7 +50,7 @@ There weren’t many solutions on the Play Store and the ones I found were eithe
 ## 🚀 Installation
 
 ### For Users
-1.  Go to the [Releases Page]([LINK_TO_YOUR_RELEASES_PAGE]).
+1.  Go to the [Releases Page](https://github.com/NineCSdev/nothing-wallpaper-changer/releases).
 2.  Download the latest `.apk` file.
 3.  Install on your Android device (You may need to allow "Install from Unknown Sources").
 4.  **Grant Permissions:** Allow "Notifications" (required to keep the service alive in the background).

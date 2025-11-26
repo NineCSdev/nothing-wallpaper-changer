@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "com.ninecsdev.wallpaperchanger"
-        minSdk = 32
+        minSdk = 33
         targetSdk = 35 // Warning because i have 36 sdk version installed in the computer
         versionCode = 1
         versionName = "0.1-alpha"

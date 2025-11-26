@@ -1,1 +1,5 @@
 /build
+*.apk
+*.dm
+output-metadata.json
+app/release/
