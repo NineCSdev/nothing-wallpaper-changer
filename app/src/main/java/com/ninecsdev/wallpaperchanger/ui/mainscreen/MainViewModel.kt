@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
+import com.ninecsdev.wallpaperchanger.model.DelayLabel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +28,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private data class UiInputs(
         val collections: List<com.ninecsdev.wallpaperchanger.model.WallpaperCollection>,
         val defaultWallpaperUri: Uri?,
-        val revertToDefaultOnStop: Boolean
+        val revertToDefaultOnStop: Boolean,
+        val delayLabel: DelayLabel
     )
 
     private val repository = WallpaperRepository
@@ -43,17 +45,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _showLists = MutableStateFlow(false)
 
     private val uiInputs = combine(
-        repository.getAllCollections(),
-        repository.defaultWallpaperUriFlow,
-        repository.revertToDefaultFlow,
+        combine(
+            repository.getAllCollections(),
+            repository.defaultWallpaperUriFlow,
+            repository.revertToDefaultFlow,
+            repository.delayLabelFlow
+        ) { collections, defaultWallpaperUri, revertToDefaultOnStop, delayLabel ->
+            UiInputs(
+                collections = collections,
+                defaultWallpaperUri = defaultWallpaperUri,
+                revertToDefaultOnStop = revertToDefaultOnStop,
+                delayLabel = delayLabel
+            )
+        },
         repository.serviceEvent.onStart { emit(Unit) },
         _serviceRefresh
-    ) { collections, defaultWallpaperUri, revertToDefaultOnStop, _, _ ->
-        UiInputs(
-            collections = collections,
-            defaultWallpaperUri = defaultWallpaperUri,
-            revertToDefaultOnStop = revertToDefaultOnStop
-        )
+    ) { inputs, _, _ ->
+        inputs
     }
 
     val uiState: StateFlow<MainUiState> = combine(
@@ -62,9 +70,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ) { inputs, showLists ->
 
         val collections = inputs.collections
-        val defaultWallpaperUri = inputs.defaultWallpaperUri
-        val revertToDefaultOnStop = inputs.revertToDefaultOnStop
-
         val active = collections.find { it.isActive }
         val previews = if (active != null) {
             repository.getImagesForCollectionOnce(active.id)
@@ -77,8 +82,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             activeCollection = active,
             previewImages = previews.take(3),
             activeCollectionSize = previews.size,
-            defaultWallpaperUri = defaultWallpaperUri,
-            revertToDefaultOnStop = revertToDefaultOnStop,
+            defaultWallpaperUri = inputs.defaultWallpaperUri,
+            revertToDefaultOnStop = inputs.revertToDefaultOnStop,
+            delayLabel = inputs.delayLabel,
             isShowingLists = showLists
         )
     }.stateIn(
@@ -101,6 +107,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setRevertToDefault(isChecked: Boolean) {
         repository.setRevertToDefault(isChecked)
+    }
+
+    fun setDelayLabel(label: DelayLabel) {
+        repository.setDelayLabel(label)
     }
 
     fun internalizeAndSaveDefaultWallpaper(uri: Uri) {

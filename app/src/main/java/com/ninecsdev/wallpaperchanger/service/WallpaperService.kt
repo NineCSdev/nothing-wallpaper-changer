@@ -11,6 +11,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.BitmapFactory
+import android.os.Bundle
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
@@ -38,6 +39,7 @@ class WallpaperService : Service() {
 
     private var screenOffReceiver: BroadcastReceiver? = null
     private var systemEventReceiver: BroadcastReceiver? = null
+    private var nothingFocusModeReceiver: BroadcastReceiver? = null
     // SupervisorJob ensures one failing task doesn't kill the whole service scope
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
@@ -47,6 +49,134 @@ class WallpaperService : Service() {
         /** In-memory flag that resets on process death (reboots). */
         @Volatile var isAlive = false
             private set
+
+        /**
+         * Nothing OS Focus Mode broadcast actions. Nothing OS (Phone 1 / Phone 2) fires one of
+         * these when the user enables or disables Focus Mode via Quick Settings or the
+         * Digital Wellbeing settings screen.
+         *
+         * The `com.nothing.wellbeing` action is used on Nothing OS 1.x/2.x (Phone 1).
+         * The `com.nothing.settings` variant is seen on some Nothing OS 2.5+ builds.
+         * Both carry a boolean extra [EXTRA_NOTHING_FOCUS_MODE_ENABLED] (true = active).
+         */
+        const val ACTION_NOTHING_FOCUS_MODE_CHANGED =
+            "com.nothing.wellbeing.action.FOCUS_MODE_STATE_CHANGED"
+        const val ACTION_NOTHING_FOCUS_MODE_CHANGED_ALT =
+            "com.nothing.settings.action.FOCUS_MODE_STATE_CHANGED"
+        const val ACTION_NOTHING_FOCUS_MODE_CHANGED_V2 =
+            "com.nothing.wellbeing.action.FOCUS_MODE_CHANGED"
+        const val ACTION_NOTHING_FOCUS_MODE_CHANGED_V3 =
+            "com.nothing.settings.action.FOCUS_MODE_CHANGED"
+        const val ACTION_GOOGLE_FOCUS_MODE_CHANGED =
+            "com.google.android.apps.wellbeing.action.FOCUS_MODE_CHANGED"
+        const val ACTION_GOOGLE_FOCUS_MODE_STATE_CHANGED =
+            "com.google.android.apps.wellbeing.action.FOCUS_MODE_STATE_CHANGED"
+        const val EXTRA_NOTHING_FOCUS_MODE_ENABLED = "enabled"
+
+        private val FOCUS_MODE_ACTIONS = listOf(
+            ACTION_NOTHING_FOCUS_MODE_CHANGED,
+            ACTION_NOTHING_FOCUS_MODE_CHANGED_ALT,
+            ACTION_NOTHING_FOCUS_MODE_CHANGED_V2,
+            ACTION_NOTHING_FOCUS_MODE_CHANGED_V3,
+            ACTION_GOOGLE_FOCUS_MODE_CHANGED,
+            ACTION_GOOGLE_FOCUS_MODE_STATE_CHANGED
+        )
+
+        private val EXTRA_NOTHING_FOCUS_MODE_CANDIDATES = listOf(
+            EXTRA_NOTHING_FOCUS_MODE_ENABLED,
+            "isEnabled",
+            "focus_mode_enabled",
+            "focusModeEnabled",
+            "is_focus_mode_enabled",
+            "focus_enabled",
+            "focus_mode_state",
+            "focus_state",
+            "focusModeState",
+            "mode",
+            "state",
+            "status"
+        )
+    }
+
+    private fun parseBooleanLike(value: Any?): Boolean? {
+        return when (value) {
+            is Boolean -> value
+            is Int -> value != 0
+            is Long -> value != 0L
+            is String -> {
+                val normalized = value.trim().lowercase()
+                when {
+                    normalized.isBlank() -> null
+                    normalized == "1" ||
+                        normalized == "true" ||
+                        normalized == "on" ||
+                        normalized == "enabled" ||
+                        normalized == "active" ||
+                        normalized.contains("focus") ||
+                        normalized.contains("dnd") ||
+                        normalized.contains("zen") -> true
+                    normalized == "0" ||
+                        normalized == "false" ||
+                        normalized == "off" ||
+                        normalized == "disabled" ||
+                        normalized == "inactive" ||
+                        normalized == "none" ||
+                        normalized.contains("disable") ||
+                        normalized.contains("inactive") -> false
+                    else -> null
+                }
+            }
+            else -> null
+        }
+    }
+
+    private fun readTypedExtra(extras: Bundle, key: String): Any? {
+        if (!extras.containsKey(key)) return null
+
+        // Use typed reads to avoid deprecated raw Bundle.get(key).
+        try {
+            extras.getString(key)?.let { return it }
+        } catch (_: Exception) {
+        }
+        try {
+            return extras.getBoolean(key)
+        } catch (_: Exception) {
+        }
+        try {
+            return extras.getInt(key)
+        } catch (_: Exception) {
+        }
+        try {
+            return extras.getLong(key)
+        } catch (_: Exception) {
+        }
+
+        return null
+    }
+
+    private fun extractNothingFocusEnabled(intent: Intent): Boolean? {
+        val extras = intent.extras ?: return null
+
+        for (key in EXTRA_NOTHING_FOCUS_MODE_CANDIDATES) {
+            val rawValue = readTypedExtra(extras, key) ?: continue
+            val parsed = parseBooleanLike(rawValue)
+            if (parsed != null) return parsed
+        }
+
+        // OEM payloads can rename keys; scan likely focus/state keys as a fallback.
+        for (key in extras.keySet()) {
+            val normalized = key.lowercase()
+            if (!normalized.contains("focus") &&
+                !normalized.contains("enabled") &&
+                !normalized.contains("state") &&
+                !normalized.contains("status")) {
+                continue
+            }
+            val parsed = parseBooleanLike(readTypedExtra(extras, key))
+            if (parsed != null) return parsed
+        }
+
+        return null
     }
 
     private suspend fun applyDefaultWallpaper() {
@@ -83,6 +213,32 @@ class WallpaperService : Service() {
 
         screenOffReceiver = ScreenOffReceiver()
         registerReceiver(screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF), RECEIVER_EXPORTED)
+
+        // Listen for Nothing OS Focus Mode state changes so that isDndActive() has an accurate
+        // in-memory flag the moment Focus Mode is toggled — before the next screen-off event.
+        nothingFocusModeReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                val active = extractNothingFocusEnabled(intent)
+                    ?: WallpaperRepository.getDndDiagnosticSnapshot(failSafeWhenUnknown = true).let { diagnostic ->
+                        Log.w(
+                            tag,
+                            "Nothing Focus broadcast payload not recognized (action=${intent.action}, " +
+                                "keys=${intent.extras?.keySet()?.joinToString() ?: "none"}). " +
+                                "Inferred active=${diagnostic.active} from system state " +
+                                "(branch=${diagnostic.branch}, details=${diagnostic.details})."
+                        )
+                        diagnostic.active
+                    }
+
+                Log.d(tag, "Nothing OS Focus Mode broadcast received: enabled=$active (action=${intent.action})")
+                WallpaperRepository.setNothingFocusModeActive(active)
+            }
+        }
+        val nothingFocusFilter = IntentFilter().apply {
+            FOCUS_MODE_ACTIONS.forEach { addAction(it) }
+        }
+        Log.d(tag, "Registered Focus Mode actions: ${FOCUS_MODE_ACTIONS.joinToString()}")
+        registerReceiver(nothingFocusModeReceiver, nothingFocusFilter, RECEIVER_EXPORTED)
 
         systemEventReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -214,6 +370,7 @@ class WallpaperService : Service() {
 
         screenOffReceiver?.let { unregisterReceiver(it) }
         systemEventReceiver?.let { unregisterReceiver(it) }
+        nothingFocusModeReceiver?.let { unregisterReceiver(it) }
 
         WallpaperRepository.clearMagazine()
         serviceScope.cancel()

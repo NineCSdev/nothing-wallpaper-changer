@@ -1,6 +1,7 @@
 package com.ninecsdev.wallpaperchanger.ui.mainscreen
 
 import android.net.Uri
+import com.ninecsdev.wallpaperchanger.model.DelayLabel
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
@@ -21,6 +22,9 @@ data class MainUiState(
     // Default wallpaper data
     val defaultWallpaperUri: Uri? = null,
     val revertToDefaultOnStop: Boolean = true,
+
+    // Service Settings
+    val delayLabel: DelayLabel = DelayLabel.SHORT,
 
     // Top-level navigation (will be overhauled with Jetpack Navigation)
     val isShowingLists: Boolean = false

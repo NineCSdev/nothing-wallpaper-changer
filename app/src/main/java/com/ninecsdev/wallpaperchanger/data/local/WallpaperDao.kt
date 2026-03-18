@@ -35,12 +35,13 @@ interface WallpaperDao {
     /**
      * Updates the name and default crop rule of a collection.
      */
-    @Query("UPDATE collections SET name = :newName, defaultCropRule = :newRule, rotationFrequency = :newFrequency WHERE id = :collectionId")
+    @Query("UPDATE collections SET name = :newName, defaultCropRule = :newRule, rotationFrequency = :newFrequency, skipOnDnd = :newSkipOnDnd WHERE id = :collectionId")
     suspend fun updateCollection(
         collectionId: Long,
         newName: String,
         newRule: CropRule,
-        newFrequency: RotationFrequency
+        newFrequency: RotationFrequency,
+        newSkipOnDnd: Boolean
     )
 
     @Query("SELECT * FROM collections WHERE isActive = 1 LIMIT 1")

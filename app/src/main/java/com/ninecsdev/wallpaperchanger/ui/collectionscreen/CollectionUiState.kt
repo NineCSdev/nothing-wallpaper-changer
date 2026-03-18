@@ -13,7 +13,6 @@ data class CollectionUiState(
     val previewStates: Map<Long, CollectionPreviewState> = emptyMap(),
     val serviceState: ServiceState = ServiceState.Loading,
     val sortOrder: CollectionSortOrder = CollectionSortOrder.LAST_USED,
-    val isPickerMode: Boolean = false,
     val isShowingCreateModal: Boolean = false,
     val editingCollection: WallpaperCollection? = null,
     val isProcessing: Boolean = false

@@ -38,12 +38,13 @@ class ScreenOffReceiver : BroadcastReceiver() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // 250ms delay for Nothing Phone (1) animation
-                delay(250) //TODO: let the user choose the delay
+                // Apply user-selected animation delay
+                val selectedDelay = WallpaperRepository.getDelayLabel().milliseconds
+                delay(selectedDelay)
 
                 // Safety check: if the user woke the screen during the delay abort
                 if (powerManager.isInteractive) {
-                    Log.w(tag, "Screen woke up. Aborting.")
+                    Log.w(tag, "Screen woke up during ${selectedDelay}ms delay. Aborting.")
                     return@launch
                 }
 
@@ -51,6 +52,24 @@ class ScreenOffReceiver : BroadcastReceiver() {
                 if (activeCollection == null) {
                     Log.w(tag, "No active collection found. Skipping wallpaper change.")
                     return@launch
+                }
+
+                // Strict mode: gate rotation on actual DND interruption filter only.
+                if (activeCollection.skipOnDnd) {
+                    val dndCheck = WallpaperRepository.getStrictDndDiagnosticSnapshot()
+                    if (dndCheck.active) {
+                        Log.d(
+                            tag,
+                            "DND mode active. Skipping wallpaper change for collection '${activeCollection.name}' " +
+                                "(branch=${dndCheck.branch}, details=${dndCheck.details})."
+                        )
+                        return@launch
+                    }
+                    Log.d(
+                        tag,
+                        "DND not active before rotate check " +
+                            "(branch=${dndCheck.branch}, details=${dndCheck.details})."
+                    )
                 }
 
                 if (!activeCollection.shouldRotateAt()) {

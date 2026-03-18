@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,6 +47,7 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.ui.components.CropRuleSelector
 import com.ninecsdev.wallpaperchanger.ui.components.NothingTextField
 import com.ninecsdev.wallpaperchanger.ui.components.ProcessingOverlay
+import com.ninecsdev.wallpaperchanger.ui.components.RotationFrequencySelector
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -61,7 +60,7 @@ fun EditCollectionCard(
     collection: WallpaperCollection,
     isProcessing: Boolean = false,
     onDismiss: () -> Unit,
-    onEdit: (String, CropRule, RotationFrequency) -> Unit,
+    onEdit: (String, CropRule, RotationFrequency, Boolean) -> Unit,
     onDelete: () -> Unit,
     onSetActive: () -> Unit,
     onSyncClick: () -> Unit
@@ -69,6 +68,7 @@ fun EditCollectionCard(
     var nameText by remember { mutableStateOf(collection.name) }
     var selectedRule by remember { mutableStateOf(collection.defaultCropRule) }
     var selectedRotationFrequency by remember { mutableStateOf(collection.rotationFrequency) }
+    var skipOnDnd by remember { mutableStateOf(collection.skipOnDnd) }
 
     Dialog(
         onDismissRequest = if (isProcessing) ({}) else onDismiss,
@@ -113,6 +113,13 @@ fun EditCollectionCard(
                         onFrequencySelected = { selectedRotationFrequency = it }
                     )
 
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    FollowFocusSelector(
+                        followFocus = skipOnDnd,
+                        onToggle = { skipOnDnd = it }
+                    )
+
                     Spacer(modifier = Modifier.height(24.dp))
 
                     ManagementButtons(onDelete = onDelete)
@@ -123,10 +130,11 @@ fun EditCollectionCard(
                         isActive = collection.isActive,
                         isChanged = nameText != collection.name ||
                             selectedRule != collection.defaultCropRule ||
-                            selectedRotationFrequency != collection.rotationFrequency,
+                            selectedRotationFrequency != collection.rotationFrequency ||
+                            skipOnDnd != collection.skipOnDnd,
                         onSetActive = onSetActive,
                         onSave = {
-                            onEdit(nameText, selectedRule, selectedRotationFrequency)
+                            onEdit(nameText, selectedRule, selectedRotationFrequency, skipOnDnd)
                             onDismiss()
                         },
                         onDismiss = onDismiss
@@ -141,72 +149,6 @@ fun EditCollectionCard(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun RotationFrequencySelector(
-    selectedFrequency: RotationFrequency,
-    onFrequencySelected: (RotationFrequency) -> Unit
-) {
-    Text(
-        text = "ROTATION FREQUENCY",
-        style = MaterialTheme.typography.labelSmall,
-        color = NothingWhite.copy(alpha = 0.7f),
-        letterSpacing = 1.sp,
-        fontWeight = FontWeight.Bold
-    )
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        TimerOptionButton(
-            label = "PER LOCK",
-            selected = selectedFrequency == RotationFrequency.PER_LOCK,
-            onClick = { onFrequencySelected(RotationFrequency.PER_LOCK) },
-            modifier = Modifier.weight(1f)
-        )
-        TimerOptionButton(
-            label = "EVERY 1H",
-            selected = selectedFrequency == RotationFrequency.HOURLY,
-            onClick = { onFrequencySelected(RotationFrequency.HOURLY) },
-            modifier = Modifier.weight(1f)
-        )
-        TimerOptionButton(
-            label = "DAILY",
-            selected = selectedFrequency == RotationFrequency.PER_DAY,
-            onClick = { onFrequencySelected(RotationFrequency.PER_DAY) },
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun TimerOptionButton(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite),
-        border = BorderStroke(1.dp, NothingWhite.copy(alpha = if (selected) 0.8f else 0.3f)),
-        contentPadding = PaddingValues(horizontal = 4.dp)
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = NothingWhite.copy(alpha = if (selected) 1f else 0.7f),
-            maxLines = 1,
-            textAlign = TextAlign.Center
-        )
     }
 }
 
@@ -331,7 +273,7 @@ fun EditCollectionCardPreview() {
                 type = CollectionType.FOLDER
             ),
             onDismiss = {},
-            onEdit = { _, _, _ -> },
+            onEdit = { _, _, _, _ -> },
             onDelete = {},
             onSetActive = {},
             onSyncClick = {}
@@ -351,7 +293,7 @@ fun EditCollectionCardManualPreview() {
                     type = CollectionType.MANUAL
                 ),
                 onDismiss = {},
-                onEdit = { _, _, _ -> },
+                onEdit = { _, _, _, _ -> },
                 onDelete = {},
                 onSetActive = {},
                 onSyncClick = {}
@@ -372,7 +314,7 @@ fun EditCollectionCardActivePreview() {
                 isActive = true
             ),
             onDismiss = {},
-            onEdit = { _, _, _ -> },
+            onEdit = { _, _, _, _ -> },
             onDelete = {},
             onSetActive = {},
             onSyncClick = {}
@@ -393,7 +335,7 @@ fun EditCollectionCardSyncingPreview() {
                 ),
                 isProcessing = true,
                 onDismiss = {},
-                onEdit = { _, _, _ -> },
+                onEdit = { _, _, _, _ -> },
                 onDelete = {},
                 onSetActive = {},
                 onSyncClick = {}

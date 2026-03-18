@@ -42,11 +42,13 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.CropRule
+import com.ninecsdev.wallpaperchanger.model.RotationFrequency
 import com.ninecsdev.wallpaperchanger.ui.components.CropRuleSelector
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButton
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButtonVariant
 import com.ninecsdev.wallpaperchanger.ui.components.NothingTextField
 import com.ninecsdev.wallpaperchanger.ui.components.ProcessingOverlay
+import com.ninecsdev.wallpaperchanger.ui.components.RotationFrequencySelector
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
@@ -61,10 +63,12 @@ fun CreateListCard(
     onDismiss: () -> Unit,
     onFolderSelect: () -> Unit,
     onPhotosSelect: () -> Unit,
-    onCreateClick: (String, CropRule) -> Unit
+    onCreateClick: (String, CropRule, RotationFrequency, Boolean) -> Unit
 ) {
     var listName by remember { mutableStateOf("") }
     var selectedRule by remember { mutableStateOf(CropRule.CENTER) }
+    var selectedRotationFrequency by remember { mutableStateOf(RotationFrequency.PER_LOCK) }
+    var followFocus by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = if (isProcessing) ({}) else onDismiss,
@@ -124,11 +128,23 @@ fun CreateListCard(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    RotationFrequencySelector(
+                        selectedFrequency = selectedRotationFrequency,
+                        onFrequencySelected = { selectedRotationFrequency = it }
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    FollowFocusSelector(
+                        followFocus = followFocus,
+                        onToggle = { newValue -> followFocus = newValue }
+                    )
+
                     CreateCardActions(
                         onDismiss = onDismiss,
                         isProcessing = isProcessing,
                         enabled = listName.isNotBlank() && (hasPendingFolder || hasPendingPhotos),
-                        onCreate = { onCreateClick(listName, selectedRule) }
+                        onCreate = { onCreateClick(listName, selectedRule, selectedRotationFrequency, followFocus) }
                     )
                 }
 
@@ -230,25 +246,9 @@ fun CreateListCardPreview() {
             onDismiss = {},
             onFolderSelect = {},
             onPhotosSelect = {},
-            onCreateClick = { _, _ -> },
+            onCreateClick = { _, _, _, _ -> },
             hasPendingFolder = true,
             hasPendingPhotos = false
-        )
-    }
-}
-
-@Preview(name = "Processing", showBackground = true, backgroundColor = 0xFF000000)
-@Composable
-fun CreateListCardProcessingPreview() {
-    MaterialTheme {
-        CreateListCard(
-            onDismiss = {},
-            onFolderSelect = {},
-            onPhotosSelect = {},
-            onCreateClick = { _, _ -> },
-            isProcessing = true,
-            hasPendingFolder = false,
-            hasPendingPhotos = true
         )
     }
 }

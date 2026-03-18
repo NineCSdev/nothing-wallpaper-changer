@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "a79a85af5a01e03c3f2e26ae4c238ae0",
+    "identityHash": "748259175332b3e723b81e82144247d6",
     "entities": [
       {
         "tableName": "collections",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `isActive` INTEGER NOT NULL, `rootUri` TEXT, `defaultCropRule` TEXT NOT NULL, `rotationFrequency` TEXT NOT NULL, `lastWallpaperChangeAt` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `lastUsedAt` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `isActive` INTEGER NOT NULL, `rootUri` TEXT, `defaultCropRule` TEXT NOT NULL, `rotationFrequency` TEXT NOT NULL, `skipOnDnd` INTEGER NOT NULL, `lastWallpaperChangeAt` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `lastUsedAt` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -47,6 +47,12 @@
             "fieldPath": "rotationFrequency",
             "columnName": "rotationFrequency",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "skipOnDnd",
+            "columnName": "skipOnDnd",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -149,7 +155,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a79a85af5a01e03c3f2e26ae4c238ae0')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '748259175332b3e723b81e82144247d6')"
     ]
   }
 }

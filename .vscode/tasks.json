@@ -1,0 +1,70 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Android: ADB Pair (Wireless)",
+      "type": "shell",
+      "command": "adb",
+      "args": [
+        "pair",
+        "${input:adbPairAddress}"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: ADB Connect (Wireless)",
+      "type": "shell",
+      "command": "adb",
+      "args": [
+        "connect",
+        "${input:adbConnectAddress}"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: Install Debug APK",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "./gradlew",
+        ":app:installDebug"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: Launch Debug App",
+      "type": "shell",
+      "command": "adb",
+      "args": [
+        "shell",
+        "am",
+        "start",
+        "-n",
+        "com.ninecsdev.wallpaperchanger.debug/com.ninecsdev.wallpaperchanger.ui.MainActivity"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: Install + Launch (Debug)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Android: Install Debug APK",
+        "Android: Launch Debug App"
+      ],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "adbPairAddress",
+      "type": "promptString",
+      "description": "ADB pair address (example: 192.168.1.50:37123)"
+    },
+    {
+      "id": "adbConnectAddress",
+      "type": "promptString",
+      "description": "ADB connect address (example: 192.168.1.50:45851)"
+    }
+  ]
+}

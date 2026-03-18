@@ -1,10 +1,14 @@
 package com.ninecsdev.wallpaperchanger.data
 
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.PowerManager
 import android.provider.DocumentsContract
+import android.provider.Settings
+import android.service.notification.Condition
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDatabase
 import com.ninecsdev.wallpaperchanger.data.local.AppPreferences
@@ -13,6 +17,7 @@ import com.ninecsdev.wallpaperchanger.logic.BufferManager
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.model.CollectionType
 import com.ninecsdev.wallpaperchanger.model.CropRule
+import com.ninecsdev.wallpaperchanger.model.DelayLabel
 import com.ninecsdev.wallpaperchanger.model.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
@@ -35,8 +40,31 @@ import kotlinx.coroutines.withContext
 object WallpaperRepository {
     private const val TAG = "WallpaperRepository"
 
+    data class DndCheckDiagnostic(
+        val active: Boolean,
+        val branch: String,
+        val details: String
+    )
+
     private  lateinit var appContext: Context
     private lateinit var dao: WallpaperDao
+
+    /**
+     * In-memory cache of Nothing OS Focus Mode state, updated in real-time by
+     * [WallpaperService] when the Nothing OS focus mode broadcast is received.
+     * Resets to false on process death. Checked as a fast path in [isDndActive].
+     *
+     * Uses [java.util.concurrent.atomic.AtomicBoolean] so that concurrent broadcast deliveries
+     * (e.g. both action variants arriving in quick succession) are thread-safe without locking.
+     */
+    private val _nothingFocusModeActive = java.util.concurrent.atomic.AtomicBoolean(false)
+    val nothingFocusModeActive: Boolean get() = _nothingFocusModeActive.get()
+
+    /** Called by the Nothing OS Focus Mode broadcast receiver in [WallpaperService]. */
+    fun setNothingFocusModeActive(active: Boolean) {
+        _nothingFocusModeActive.set(active)
+        Log.d(TAG, "Nothing OS Focus Mode cache updated: active=$active")
+    }
 
     private val _serviceEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val serviceEvent: SharedFlow<Unit> = _serviceEvent.asSharedFlow()
@@ -50,6 +78,9 @@ object WallpaperRepository {
     private val _revertToDefaultFlow = MutableStateFlow(true)
     val revertToDefaultFlow: StateFlow<Boolean> = _revertToDefaultFlow.asStateFlow()
 
+    private val _delayLabelFlow = MutableStateFlow(DelayLabel.SHORT)
+    val delayLabelFlow: StateFlow<DelayLabel> = _delayLabelFlow.asStateFlow()
+
     fun initialize(context: Context) {
         if (!::appContext.isInitialized) {
             appContext = context.applicationContext
@@ -57,6 +88,7 @@ object WallpaperRepository {
 
             _defaultWallpaperUriFlow.value = AppPreferences.getDefaultWallpaperUri(appContext)
             _revertToDefaultFlow.value = AppPreferences.shouldRevertToDefault(appContext)
+            _delayLabelFlow.value = AppPreferences.getDelayLabel(appContext)
             _serviceStateFlow.value = ServiceState.Stopped
         }
     }
@@ -74,13 +106,20 @@ object WallpaperRepository {
         return dao.getAllCollections()
     }
 
+    @Suppress("unused")
     fun getImagesForCollection(collectionId: Long): Flow<List<WallpaperImage>> {
         return dao.getImagesForCollection(collectionId)
     }
 
     // Collection Management
 
-    suspend fun importFolderAsCollection(name: String, treeUri: Uri, rule: CropRule) {
+    suspend fun importFolderAsCollection(
+        name: String, 
+        treeUri: Uri, 
+        rule: CropRule, 
+        frequency: RotationFrequency,
+        skipOnDnd: Boolean
+    ) {
         withContext(Dispatchers.IO) {
             val isFirst = dao.getActiveCollection() == null
 
@@ -90,7 +129,9 @@ object WallpaperRepository {
                     type = CollectionType.FOLDER,
                     rootUri = treeUri,
                     isActive = isFirst,
-                    defaultCropRule = rule
+                    defaultCropRule = rule,
+                    rotationFrequency = frequency,
+                    skipOnDnd = skipOnDnd
                 )
             )
 
@@ -102,7 +143,13 @@ object WallpaperRepository {
         }
     }
 
-    suspend fun createManualCollection(name: String, uris: List<Uri>, rule: CropRule) {
+    suspend fun createManualCollection(
+        name: String, 
+        uris: List<Uri>, 
+        rule: CropRule, 
+        frequency: RotationFrequency,
+        skipOnDnd: Boolean
+    ) {
         withContext(Dispatchers.IO) {
             val isFirst = dao.getActiveCollection() == null
 
@@ -112,7 +159,9 @@ object WallpaperRepository {
                     type = CollectionType.MANUAL,
                     rootUri = null,
                     isActive = isFirst,
-                    defaultCropRule = rule
+                    defaultCropRule = rule,
+                    rotationFrequency = frequency,
+                    skipOnDnd = skipOnDnd
                 )
             )
 
@@ -167,10 +216,11 @@ object WallpaperRepository {
         id: Long,
         newName: String,
         newRule: CropRule,
-        newFrequency: RotationFrequency
+        newFrequency: RotationFrequency,
+        newSkipOnDnd: Boolean
     ) {
         withContext(Dispatchers.IO) {
-            dao.updateCollection(id, newName, newRule, newFrequency)
+            dao.updateCollection(id, newName, newRule, newFrequency, newSkipOnDnd)
             if (dao.getActiveCollection()?.id == id) {
                 refillDiskBuffer()
             }
@@ -394,6 +444,7 @@ object WallpaperRepository {
         _defaultWallpaperUriFlow.value = uri
     }
 
+    @Suppress("unused")
     fun setServiceRunning(isRunning: Boolean) {
         if (isRunning) {
             markServiceRunning()
@@ -404,7 +455,298 @@ object WallpaperRepository {
 
     fun isServiceRunning(): Boolean { return AppPreferences.isServiceRunning(appContext) }
     fun shouldStartOnBoot(): Boolean = AppPreferences.shouldStartOnBoot(appContext)
+    @Suppress("unused")
     fun setStartOnBoot(enabled: Boolean) = AppPreferences.setStartOnBoot(appContext, enabled)
+
+    fun getDelayLabel(): DelayLabel = AppPreferences.getDelayLabel(appContext)
+    fun setDelayLabel(label: DelayLabel) {
+        AppPreferences.setDelayLabel(appContext, label)
+        _delayLabelFlow.value = label
+        notifyServiceStateChanged()
+    }
+
+    @Suppress("unused")
+    fun shouldSkipOnDnd(): Boolean = AppPreferences.shouldSkipOnDnd(appContext)
+    @Suppress("unused")
+    fun setSkipOnDnd(skip: Boolean) = AppPreferences.setSkipOnDnd(appContext, skip)
+
+    /**
+     * Checks if Do Not Disturb, Focus Mode, or Bedtime Mode is currently active.
+     */
+    fun isDndActive(failSafeWhenUnknown: Boolean = false): Boolean {
+        val diagnostic = getDndDiagnosticSnapshot(failSafeWhenUnknown)
+        Log.d(
+            TAG,
+            "DND check result: active=${diagnostic.active}, branch=${diagnostic.branch}, details=${diagnostic.details}"
+        )
+        return diagnostic.active
+    }
+
+    fun getStrictDndDiagnosticSnapshot(): DndCheckDiagnostic {
+        val nm = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        val hasPolicyAccess = nm?.isNotificationPolicyAccessGranted == true
+        val filter = nm?.currentInterruptionFilter ?: NotificationManager.INTERRUPTION_FILTER_ALL
+
+        return if (filter != NotificationManager.INTERRUPTION_FILTER_ALL &&
+            filter != NotificationManager.INTERRUPTION_FILTER_UNKNOWN) {
+            DndCheckDiagnostic(
+                active = true,
+                branch = "strict_interruption_filter",
+                details = "hasPolicyAccess=$hasPolicyAccess, filter=$filter"
+            )
+        } else {
+            DndCheckDiagnostic(
+                active = false,
+                branch = "strict_no_dnd",
+                details = "hasPolicyAccess=$hasPolicyAccess, filter=$filter"
+            )
+        }
+    }
+
+    fun getDndDiagnosticSnapshot(failSafeWhenUnknown: Boolean = false): DndCheckDiagnostic {
+        // 0. Fast path: Nothing OS Focus Mode was signalled via broadcast.
+        if (nothingFocusModeActive) {
+            return DndCheckDiagnostic(
+                active = true,
+                branch = "nothing_focus_broadcast_cache",
+                details = "nothingFocusModeActive=true"
+            )
+        }
+
+        val nm = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        val hasPolicyAccess = nm?.isNotificationPolicyAccessGranted == true
+        
+        // 1. Check system interruption filter (DND)
+        val filter = nm?.currentInterruptionFilter ?: NotificationManager.INTERRUPTION_FILTER_ALL
+        if (filter != NotificationManager.INTERRUPTION_FILTER_ALL && filter != NotificationManager.INTERRUPTION_FILTER_UNKNOWN) {
+            return DndCheckDiagnostic(
+                active = true,
+                branch = "interruption_filter",
+                details = "filter=$filter"
+            )
+        }
+
+        // 1.5 Focus-specific check: some OEMs keep interruption filter as ALL while
+        // a Focus/Wellbeing automatic Zen rule is active.
+        if (hasPolicyAccess) {
+            val activeRuleDetails = getActiveZenRuleDetails(nm)
+            if (activeRuleDetails != null) {
+                return DndCheckDiagnostic(
+                    active = true,
+                    branch = "automatic_zen_rule",
+                    details = activeRuleDetails
+                )
+            }
+        }
+
+        // 2. Fallback: Check Zen/Focus/Bedtime keys directly.
+        // Read each key independently because some secure settings can throw on certain OEM builds.
+        val resolver = appContext.contentResolver
+
+        fun readGlobal(name: String, default: Int = 0): Int? {
+            return try {
+                Settings.Global.getInt(resolver, name, default)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        fun readSecure(name: String, default: Int = 0): Int? {
+            return try {
+                Settings.Secure.getInt(resolver, name, default)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        fun readSystem(name: String, default: Int = 0): Int? {
+            return try {
+                Settings.System.getInt(resolver, name, default)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        fun readGlobalString(name: String): String? {
+            return try {
+                Settings.Global.getString(resolver, name)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        fun readSecureString(name: String): String? {
+            return try {
+                Settings.Secure.getString(resolver, name)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        fun readSystemString(name: String): String? {
+            return try {
+                Settings.System.getString(resolver, name)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        fun isTruthy(raw: String?): Boolean {
+            val value = raw?.trim()?.lowercase() ?: return false
+            if (value.isBlank()) return false
+            return value == "1" ||
+                value == "true" ||
+                value == "on" ||
+                value == "enabled" ||
+                value == "active" ||
+                value.contains("focus") && !value.contains("off") ||
+                value.contains("active") ||
+                value.contains("enabled")
+        }
+
+        // Global Zen Mode (0=Off, 1=Priority, 2=Total Silence, 3=Alarms)
+        val zenMode = readGlobal("zen_mode", 0) ?: 0
+        if (zenMode != 0) {
+            return DndCheckDiagnostic(true, "global_zen_mode", "zen_mode=$zenMode")
+        }
+
+        // Digital Wellbeing Focus Mode keys
+        val secureFocusEnabled = readSecure("focus_mode_enabled", 0) ?: 0
+        if (secureFocusEnabled != 0) {
+            return DndCheckDiagnostic(true, "secure_focus_mode_enabled", "focus_mode_enabled=$secureFocusEnabled")
+        }
+        val focusSessionId = readSecure("focus_mode_session_id", -1) ?: -1
+        if (focusSessionId != -1) {
+            return DndCheckDiagnostic(true, "secure_focus_mode_session_id", "focus_mode_session_id=$focusSessionId")
+        }
+        val focusSessionStatus = readSecure("focus_mode_session_status", 0) ?: 0
+        if (focusSessionStatus != 0) {
+            return DndCheckDiagnostic(true, "secure_focus_mode_session_status", "focus_mode_session_status=$focusSessionStatus")
+        }
+
+        // Bedtime Mode keys
+        val bedtimeGlobal = readGlobal("bedtime_mode_enabled", 0) ?: 0
+        if (bedtimeGlobal != 0) {
+            return DndCheckDiagnostic(true, "global_bedtime_mode_enabled", "bedtime_mode_enabled=$bedtimeGlobal")
+        }
+        val bedtimeSecure = readSecure("bedtime_mode_enabled", 0) ?: 0
+        if (bedtimeSecure != 0) {
+            return DndCheckDiagnostic(true, "secure_bedtime_mode_enabled", "bedtime_mode_enabled=$bedtimeSecure")
+        }
+
+        // OEM/custom ROM variants
+        val wellbeingFocusEnabled = readSecure("wellbeing_focus_mode_enabled", 0) ?: 0
+        if (wellbeingFocusEnabled != 0) {
+            return DndCheckDiagnostic(true, "secure_wellbeing_focus_mode_enabled", "wellbeing_focus_mode_enabled=$wellbeingFocusEnabled")
+        }
+        val systemFocusEnabled = readSystem("focus_mode_enabled", 0) ?: 0
+        if (systemFocusEnabled != 0) {
+            return DndCheckDiagnostic(true, "system_focus_mode_enabled", "focus_mode_enabled=$systemFocusEnabled")
+        }
+        val ntFocusEnabled = readSecure("nt_focus_mode_enabled", 0) ?: 0
+        if (ntFocusEnabled != 0) {
+            return DndCheckDiagnostic(true, "secure_nt_focus_mode_enabled", "nt_focus_mode_enabled=$ntFocusEnabled")
+        }
+        val secureFocusState = readSecure("focus_mode_state", 0) ?: 0
+        if (secureFocusState != 0) {
+            return DndCheckDiagnostic(true, "secure_focus_mode_state", "focus_mode_state=$secureFocusState")
+        }
+
+        val focusKeys = listOf(
+            "focus_mode_enabled",
+            "focus_mode_state",
+            "focus_mode_on",
+            "focus_mode_active",
+            "focus_mode_activated",
+            "focus_mode_session_status",
+            "wellbeing_focus_mode_enabled",
+            "digital_wellbeing_focus_mode_enabled",
+            "nt_focus_mode_enabled",
+            "nt_focus_mode_state"
+        )
+        for (key in focusKeys) {
+            val globalValue = readGlobalString(key)
+            if (isTruthy(globalValue)) {
+                return DndCheckDiagnostic(true, "global_focus_string_key", "$key=$globalValue")
+            }
+            val secureValue = readSecureString(key)
+            if (isTruthy(secureValue)) {
+                return DndCheckDiagnostic(true, "secure_focus_string_key", "$key=$secureValue")
+            }
+            val systemValue = readSystemString(key)
+            if (isTruthy(systemValue)) {
+                return DndCheckDiagnostic(true, "system_focus_string_key", "$key=$systemValue")
+            }
+        }
+
+        if (failSafeWhenUnknown && !hasPolicyAccess && filter == NotificationManager.INTERRUPTION_FILTER_UNKNOWN) {
+            Log.w(TAG, "Notification policy access not granted and interruption filter unknown. Failing safe: treating DND/Focus as active.")
+            return DndCheckDiagnostic(
+                active = true,
+                branch = "failsafe_unknown_filter",
+                details = "hasPolicyAccess=${false}, filter=${0}"
+            )
+        }
+
+        val zenRuleSummary = if (hasPolicyAccess) {
+            try {
+                "zenRules=${nm.automaticZenRules.size}"
+            } catch (_: Exception) {
+                "zenRules=unavailable"
+            }
+        } else {
+            "zenRules=skipped"
+        }
+
+        return DndCheckDiagnostic(
+            active = false,
+            branch = "no_signal",
+            details = "hasPolicyAccess=$hasPolicyAccess, filter=$filter, $zenRuleSummary, failSafeWhenUnknown=$failSafeWhenUnknown"
+        )
+    }
+
+    private fun getActiveZenRuleDetails(notificationManager: NotificationManager): String? {
+        return try {
+            val rules = notificationManager.automaticZenRules
+            if (rules.isEmpty()) return null
+
+            for ((id, rule) in rules) {
+                val name = rule.name?.lowercase().orEmpty()
+                val owner = rule.owner?.toString()?.lowercase().orEmpty()
+                val looksLikeFocusRule =
+                    name.contains("focus") ||
+                        name.contains("wellbeing") ||
+                        name.contains("nothing") ||
+                        owner.contains("wellbeing") ||
+                        owner.contains("digitalwellbeing") ||
+                        owner.contains("nothing") ||
+                        owner.contains("focus")
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                    val state = notificationManager.getAutomaticZenRuleState(id)
+                    if (state == Condition.STATE_TRUE) {
+                        return "id=$id, state=TRUE, enabled=${rule.isEnabled}, filter=${rule.interruptionFilter}, name=$name, owner=$owner"
+                    }
+
+                    // Some OEMs report UNKNOWN while the rule is still the active driving signal.
+                    if (state == Condition.STATE_UNKNOWN && rule.isEnabled && looksLikeFocusRule) {
+                        return "id=$id, state=UNKNOWN, enabled=${rule.isEnabled}, filter=${rule.interruptionFilter}, name=$name, owner=$owner"
+                    }
+                } else {
+                    // Older Android: fallback to enabled rule metadata, without focus-name gating.
+                    if (rule.isEnabled &&
+                        rule.interruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL) {
+                        return "id=$id, state=LEGACY, enabled=${rule.isEnabled}, filter=${rule.interruptionFilter}, name=$name, owner=$owner"
+                    }
+                }
+            }
+            null
+        } catch (_: SecurityException) {
+            null
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     // File System Utilities
     // TODO: Move the file system utility to a separate class in the future.

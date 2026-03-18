@@ -27,6 +27,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.model.DelayLabel
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -44,7 +45,8 @@ fun MainScreen(
     onSelectFolderClick: () -> Unit,
     onOpenCollectionsClick: () -> Unit,
     onToggleRevert: (Boolean) -> Unit,
-    onSelectDefaultClick: () -> Unit
+    onSelectDefaultClick: () -> Unit,
+    onDelaySelected: (DelayLabel) -> Unit
 ) {
     Scaffold(
         containerColor = NothingBlack,
@@ -72,18 +74,6 @@ fun MainScreen(
                         state = uiState.serviceState,
                         modifier = Modifier.weight(1f)
                     )
-                    /* TODO: Wire and uncomment settings icon when the screen is ready
-                    IconButton(
-                        onClick = { },
-                        modifier = Modifier.offset(y = (-20).dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = "Collections",
-                            modifier = Modifier.size(32.dp),
-                            tint = NothingWhite
-                        )
-                    }*/
 
                     IconButton(
                         onClick = onOpenCollectionsClick,
@@ -115,6 +105,16 @@ fun MainScreen(
                     onToggleRevert = onToggleRevert,
                     onSelectDefaultClick = onSelectDefaultClick
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                ServiceSettingsCard(
+                    delayLabel = uiState.delayLabel,
+                    onDelaySelected = onDelaySelected
+                )
+
+                // Add extra padding at bottom to avoid being covered by buttons
+                Spacer(modifier = Modifier.height(120.dp))
             }
 
             Box(
@@ -150,28 +150,8 @@ fun MainScreenRunningPreview() {
                 onSelectFolderClick = {},
                 onOpenCollectionsClick = {},
                 onToggleRevert = {},
-                onSelectDefaultClick = {}
-            )
-        }
-    }
-}
-
-@Preview(showSystemUi = true, name = "Main Screen - Setup Needed", backgroundColor = 0xFF000000)
-@Composable
-fun MainScreenEmptyPreview() {
-    MaterialTheme {
-        CompositionLocalProvider(LocalContentColor provides NothingWhite) {
-            MainScreen(
-                uiState = MainUiState(
-                    serviceState = ServiceState.DisabledNoCollection,
-                    activeCollection = null
-                ),
-                onStartClick = {},
-                onStopClick = {},
-                onSelectFolderClick = {},
-                onOpenCollectionsClick = {},
-                onToggleRevert = {},
-                onSelectDefaultClick = {}
+                onSelectDefaultClick = {},
+                onDelaySelected = {}
             )
         }
     }

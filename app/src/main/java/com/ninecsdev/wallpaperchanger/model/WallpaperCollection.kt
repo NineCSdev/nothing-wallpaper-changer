@@ -22,6 +22,7 @@ data class WallpaperCollection(
     val rootUri: Uri? = null,
     val defaultCropRule: CropRule = CropRule.CENTER,
     val rotationFrequency: RotationFrequency = RotationFrequency.PER_LOCK,
+    val skipOnDnd: Boolean = false,
     val lastWallpaperChangeAt: Long = 0L,
     val createdAt: Long = System.currentTimeMillis(),
     val lastUsedAt: Long = System.currentTimeMillis()
@@ -46,3 +47,4 @@ fun WallpaperCollection.shouldRotateAt(
         }
     }
 }
+

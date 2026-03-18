@@ -18,6 +18,8 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
     WallpaperCollection::class,
     WallpaperImage::class],
     version = 2,
+    // When changing the schema, increment the version number
+    // and add: autoMigrations = [AutoMigration(from = 1, to = 2)]
     exportSchema = true
 )
 @TypeConverters(Converters::class)
