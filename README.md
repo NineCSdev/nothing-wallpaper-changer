@@ -105,7 +105,7 @@ This is optional. Disabling battery optimization helps the app restart reliably 
 </details>
 
 <details>
-<summary><b>The app stopped working / doesn't restart after reboot</b></summary>
+<summary><b>The app stopped working or does not restart after reboot</b></summary>
 
 While in Nothing OS this shouldn't happen, other phone manufacturers (Xiaomi, Samsung, Huawei, etc.) aggressively kill background apps. Check [dontkillmyapp.com](https://dontkillmyapp.com) for device-specific instructions.
 </details>
@@ -147,9 +147,9 @@ gradlew.bat assembleDebug      # Windows
 
 ## Architecture
 
-The app follows a clean layered architecture: **data** (Room + repository), **logic** (image pipeline), **model** (entities & enums), **service** (foreground service + receivers), and **ui** (single-activity Compose with MVVM).
+The app uses a **single-activity Jetpack Compose UI**, **Room** for collections and images, a centralized **WallpaperRepository** singleton for orchestration, and a **foreground service** that listens for screen-off events.
 
-> For the full project structure and design decisions, see [docs/ARCHITECTURE.md](/docs/ARCHITECTURE.md).
+The current implementation is intentionally practical rather than fully modernized: it still uses manual singleton initialization, `AndroidViewModel`, and `SharedPreferences` for lightweight flags. Navigation is now handled by Navigation Compose. The current architecture is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), alongside the next refactor targets.
 
 ### How It Works
 
@@ -199,7 +199,7 @@ This is my first native Android project, built while actively learning about bac
 
 ## Status
 
-**v0.2-alpha** — Core rotation engine, collection management, disk-buffered image pipeline, and Quick Settings tile are functional. The app is under active development.
+**v0.2.1-beta** ships the complete local rotation loop: collection management, timed rotation modes, disk-buffered wallpaper preparation, battery-aware pause/resume behavior, Quick Settings integration, boot recovery, and fallback wallpaper restore. Recent main-branch updates also moved screen flow to Navigation Compose and improved UI state management. The next major milestone is architectural cleanup around dependency injection and preferences storage.
 
 ---
 

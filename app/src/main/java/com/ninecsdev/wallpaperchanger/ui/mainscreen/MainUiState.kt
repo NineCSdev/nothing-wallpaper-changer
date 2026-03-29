@@ -6,8 +6,8 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 
 /**
- * Snapshot of the Main Dashboard screen.
- * Built reactively via combine() in MainViewModel.
+ * Snapshot of the Main screen state.
+ * Owned entirely by [MainViewModel].
  */
 data class MainUiState(
     // Service & System State
@@ -20,10 +20,7 @@ data class MainUiState(
 
     // Default wallpaper data
     val defaultWallpaperUri: Uri? = null,
-    val revertToDefaultOnStop: Boolean = true,
-
-    // Top-level navigation (will be overhauled with Jetpack Navigation)
-    val isShowingLists: Boolean = false
+    val revertToDefaultOnStop: Boolean = true
 ) {
     val isStartEnabled: Boolean
         get() = serviceState is ServiceState.Stopped

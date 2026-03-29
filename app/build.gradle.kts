@@ -73,6 +73,7 @@ dependencies {
     implementation(libs.androidx.activity.ktx)
 
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.navigation.compose)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     implementation(libs.androidx.room.runtime)

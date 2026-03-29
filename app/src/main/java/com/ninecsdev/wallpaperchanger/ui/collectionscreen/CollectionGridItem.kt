@@ -37,9 +37,8 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /**
- * Data state for the Grid Item.
- * Decoupling this allows for better performance in LazyVerticalGrids.
- */
+ * Data state for the Grid Item for performance
+ **/
 data class CollectionPreviewState(
     val previewUris: List<Uri> = emptyList(),
     val totalCount: Int = 0
@@ -165,6 +164,7 @@ private fun ThumbnailSlot(
         modifier = modifier
             .padding(1.dp)
             .clip(shape)
+            .background(NothingGray)
     ) {
         if (uri != null) {
             AsyncImage(
@@ -173,10 +173,6 @@ private fun ThumbnailSlot(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
-        } else {
-            Box(modifier = Modifier
-                .fillMaxSize()
-                .background(Color.DarkGray))
         }
     }
 }
@@ -185,7 +181,9 @@ private fun ThumbnailSlot(
 @Composable
 fun CollectionGridItemMoreThan4Preview() {
     MaterialTheme {
-        Box(modifier = Modifier.padding(24.dp).width(160.dp)) {
+        Box(modifier = Modifier
+            .padding(24.dp)
+            .width(160.dp)) {
             CollectionGridItem(
                 collection = WallpaperCollection(name = "AMOLED", type = CollectionType.FOLDER),
                 state = CollectionPreviewState(previewUris = emptyList(),totalCount = 12),
@@ -199,7 +197,9 @@ fun CollectionGridItemMoreThan4Preview() {
 @Composable
 fun CollectionGridItemLessOr4Preview() {
     MaterialTheme {
-        Box(modifier = Modifier.padding(24.dp).width(160.dp)) {
+        Box(modifier = Modifier
+            .padding(24.dp)
+            .width(160.dp)) {
             CollectionGridItem(
                 collection = WallpaperCollection(name = "AMOLED", type = CollectionType.FOLDER),
                 state = CollectionPreviewState(previewUris = emptyList(),totalCount = 4),

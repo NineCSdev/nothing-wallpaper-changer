@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.model.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.CollectionType
+import com.ninecsdev.wallpaperchanger.model.CropRule
+import com.ninecsdev.wallpaperchanger.model.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.ui.components.StatusLed
@@ -44,6 +46,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 /**
  * Screen for displaying all the user's collections in a
  * 2-column grid with a collection creation button at the bottom.
+ * Owns and renders the CreateListCard and EditCollectionCard modals.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,105 +56,131 @@ fun CollectionListScreen(
     onCollectionClick: (Long) -> Unit,
     onSortOrderChange: (CollectionSortOrder) -> Unit,
     onAddClick: () -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    // Create modal callbacks
+    onDismissCreateModal: () -> Unit,
+    onFolderSelect: () -> Unit,
+    onPhotosSelect: () -> Unit,
+    onCreateCollection: (name: String, rule: CropRule) -> Unit,
+    // Edit modal callbacks
+    onDismissEditModal: () -> Unit,
+    onEditCollection: (newName: String, rule: CropRule, freq: RotationFrequency) -> Unit,
+    onSetActiveCollection: () -> Unit,
+    onDeleteCollection: () -> Unit,
+    onSyncCollection: () -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "MY LISTS",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = NothingWhite
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "MY LISTS",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 2.sp
                         )
-                    }
-                },
-                actions = {
-                    val (ledColor, _) = getVisualsForState(uiState.serviceState)
-                    StatusLed(
-                        color = ledColor,
-                        isPulsing = uiState.serviceState is ServiceState.Loading,
-                        modifier = Modifier.padding(end = 16.dp)
-                    )
-                    /* TODO: Wire settings icon an uncomment when the screen is ready
-                    IconButton(
-                        onClick = {  },
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = "Collections",
-                            modifier = Modifier.size(32.dp),
-                            tint = NothingWhite
-                        )
-                    }*/
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = NothingBlack,
-                    titleContentColor = NothingWhite
-                )
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onAddClick,
-                containerColor = NothingWhite,
-                contentColor = NothingBlack,
-                shape = MaterialTheme.shapes.large
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add List")
-            }
-        },
-        containerColor = NothingBlack
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 4.dp)
-            ) {
-                SortDropdown(
-                    selected = uiState.sortOrder,
-                    onSelected = onSortOrderChange
-                )
-            }
-
-            if (uiState.allCollections.isEmpty()) {
-                EmptyCollectionsView()
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(32.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(uiState.allCollections, key = { it.id }) { collection ->
-                        // Trigger preview loading when the item becomes visible
-                        LaunchedEffect(collection.id) {
-                            onRequestPreview(collection.id)
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = NothingWhite
+                            )
                         }
-
-                        CollectionGridItem(
-                            collection = collection,
-                            state = uiState.previewStates[collection.id] ?: CollectionPreviewState(),
-                            onClick = { onCollectionClick(collection.id) }
+                    },
+                    actions = {
+                        val (ledColor, _) = getVisualsForState(uiState.serviceState)
+                        StatusLed(
+                            color = ledColor,
+                            isPulsing = uiState.serviceState is ServiceState.Loading,
+                            modifier = Modifier.padding(end = 16.dp)
                         )
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = NothingBlack,
+                        titleContentColor = NothingWhite
+                    )
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = onAddClick,
+                    containerColor = NothingWhite,
+                    contentColor = NothingBlack,
+                    shape = MaterialTheme.shapes.large
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add List")
+                }
+            },
+            containerColor = NothingBlack
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 4.dp)
+                ) {
+                    SortDropdown(
+                        selected = uiState.sortOrder,
+                        onSelected = onSortOrderChange
+                    )
+                }
+
+                if (uiState.allCollections.isEmpty()) {
+                    EmptyCollectionsView()
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(32.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(uiState.allCollections, key = { it.id }) { collection ->
+                            LaunchedEffect(collection.id) {
+                                onRequestPreview(collection.id)
+                            }
+
+                            CollectionGridItem(
+                                collection = collection,
+                                state = uiState.previewStates[collection.id] ?: CollectionPreviewState(),
+                                onClick = { onCollectionClick(collection.id) }
+                            )
+                        }
                     }
                 }
             }
+        }
+
+        // Cards that appear on top of the screen
+        if (uiState.isShowingCreateModal) {
+            CreateListCard(
+                isProcessing = uiState.isProcessing,
+                hasPendingFolder = uiState.hasPendingFolder,
+                hasPendingPhotos = uiState.hasPendingPhotos,
+                onDismiss = onDismissCreateModal,
+                onFolderSelect = onFolderSelect,
+                onPhotosSelect = onPhotosSelect,
+                onCreateClick = onCreateCollection
+            )
+        }
+
+        uiState.editingCollection?.let { collection ->
+            EditCollectionCard(
+                collection = collection,
+                isProcessing = uiState.isProcessing,
+                onDismiss = onDismissEditModal,
+                onEdit = onEditCollection,
+                onSetActive = onSetActiveCollection,
+                onDelete = onDeleteCollection,
+                onSyncClick = onSyncCollection
+            )
         }
     }
 }
@@ -203,7 +232,16 @@ fun CollectionListScreenPopulatedPreview() {
             onCollectionClick = {},
             onSortOrderChange = {},
             onAddClick = {},
-            onBackClick = {}
+            onBackClick = {},
+            onDismissCreateModal = {},
+            onFolderSelect = {},
+            onPhotosSelect = {},
+            onCreateCollection = { _, _ -> },
+            onDismissEditModal = {},
+            onEditCollection = { _, _, _ -> },
+            onSetActiveCollection = {},
+            onDeleteCollection = {},
+            onSyncCollection = {}
         )
     }
 }
@@ -218,7 +256,16 @@ fun CollectionListScreenEmptyPreview() {
             onCollectionClick = {},
             onSortOrderChange = {},
             onAddClick = {},
-            onBackClick = {}
+            onBackClick = {},
+            onDismissCreateModal = {},
+            onFolderSelect = {},
+            onPhotosSelect = {},
+            onCreateCollection = { _, _ -> },
+            onDismissEditModal = {},
+            onEditCollection = { _, _, _ -> },
+            onSetActiveCollection = {},
+            onDeleteCollection = {},
+            onSyncCollection = {}
         )
     }
 }

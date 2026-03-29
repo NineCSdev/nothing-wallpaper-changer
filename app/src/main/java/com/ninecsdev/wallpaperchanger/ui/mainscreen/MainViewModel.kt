@@ -6,84 +6,70 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
+import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel for the Main Dashboard screen.
- * Builds [MainUiState] reactively by combining independent flows:
- *   1. Collections (Room) - active collection + previews
- *   2. Default wallpaper URI preference
- *   3. Revert-on-stop preference
- *   4. Service events - service state changes
+ * ViewModel for the Main screen.
+ * Owns [MainUiState] and handles service state refreshes.
  */
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    private data class UiInputs(
-        val collections: List<com.ninecsdev.wallpaperchanger.model.WallpaperCollection>,
-        val defaultWallpaperUri: Uri?,
-        val revertToDefaultOnStop: Boolean
-    )
-
     private val repository = WallpaperRepository
 
-    /**
-     * Internal trigger that forces a re-computation of the service state.
-     * Merged with the repository's serviceEvent so both external (service)
-     * and internal (user tap) triggers feed the same pipeline.
-     */
     private val _serviceRefresh = MutableStateFlow(0L)
 
-    /** Lightweight navigation flag — only field the VM mutates directly. */
-    private val _showLists = MutableStateFlow(false)
-
-    private val uiInputs = combine(
-        repository.getAllCollections(),
+    // For performance reasons the state flow has been separated into 3 flows
+    // depending on how much they update that are then combine
+    private val baseStateFlow = combine(
         repository.defaultWallpaperUriFlow,
         repository.revertToDefaultFlow,
         repository.serviceEvent.onStart { emit(Unit) },
         _serviceRefresh
-    ) { collections, defaultWallpaperUri, revertToDefaultOnStop, _, _ ->
-        UiInputs(
-            collections = collections,
-            defaultWallpaperUri = defaultWallpaperUri,
-            revertToDefaultOnStop = revertToDefaultOnStop
-        )
+    ) { defaultUri, revert, _, _ ->
+        Triple(defaultUri, revert, repository.getServiceState())
     }
+    private val activeCollectionFlow = repository.getAllCollections()
+        .map { it.find { coll -> coll.isActive } }
+        .distinctUntilChangedBy { it?.id }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val previewsFlow: Flow<List<WallpaperImage>> = activeCollectionFlow
+        .flatMapLatest { active ->
+            if (active != null) {
+                repository.getImagesForCollection(active.id)
+            } else {
+                flowOf(emptyList())
+            }
+        }
 
     val uiState: StateFlow<MainUiState> = combine(
-        uiInputs,
-        _showLists
-    ) { inputs, showLists ->
-
-        val collections = inputs.collections
-        val defaultWallpaperUri = inputs.defaultWallpaperUri
-        val revertToDefaultOnStop = inputs.revertToDefaultOnStop
-
-        val active = collections.find { it.isActive }
-        val previews = if (active != null) {
-            repository.getImagesForCollectionOnce(active.id)
-        } else {
-            emptyList()
-        }
-        
+        baseStateFlow,
+        activeCollectionFlow,
+        previewsFlow
+    ) { (defaultUri, revert, serviceState), active, previews ->
         MainUiState(
-            serviceState = repository.getServiceState(),
+            serviceState = serviceState,
             activeCollection = active,
             previewImages = previews.take(3),
             activeCollectionSize = previews.size,
-            defaultWallpaperUri = defaultWallpaperUri,
-            revertToDefaultOnStop = revertToDefaultOnStop,
-            isShowingLists = showLists
+            defaultWallpaperUri = defaultUri,
+            revertToDefaultOnStop = revert
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
+        started = SharingStarted.Eagerly,
         initialValue = MainUiState()
     )
 
@@ -93,10 +79,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.setActiveCollection(collectionId)
         }
-    }
-
-    fun setShowLists(show: Boolean) {
-        _showLists.value = show
     }
 
     fun setRevertToDefault(isChecked: Boolean) {
@@ -112,11 +94,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Called by MainActivity when start/stop intents are fired
-     * to provide instant visual feedback.
-     * Also useful for onResume() to catch external state changes.
-     */
     fun refreshServiceState() {
         _serviceRefresh.value = System.nanoTime()
     }

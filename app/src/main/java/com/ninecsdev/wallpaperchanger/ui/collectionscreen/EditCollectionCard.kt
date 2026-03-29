@@ -252,8 +252,9 @@ private fun EditCardHeader(
 @Composable
 private fun ManagementButtons(onDelete: () -> Unit) {
     Column {
+        /* TODO: Uncomment when the feature is added, Open Image Grid Screen remember to modify the alpha on colors
         OutlinedButton(
-            onClick = { /* TODO: Open Image Grid Screen remember to modify the alpha on colors */ },
+            onClick = { },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite.copy(alpha = 0.1f)),
@@ -265,6 +266,7 @@ private fun ManagementButtons(onDelete: () -> Unit) {
         }
 
         Spacer(modifier = Modifier.height(12.dp))
+         */
 
         Button(
             onClick = onDelete,

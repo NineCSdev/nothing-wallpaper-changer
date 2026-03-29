@@ -5,7 +5,7 @@ import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 
 /**
- * Snapshot of the Collection List screen.
+ * Snapshot of the Collection List screen state.
  * Owned entirely by [CollectionViewModel].
  */
 data class CollectionUiState(
@@ -15,6 +15,8 @@ data class CollectionUiState(
     val sortOrder: CollectionSortOrder = CollectionSortOrder.LAST_USED,
     val isPickerMode: Boolean = false,
     val isShowingCreateModal: Boolean = false,
+    val hasPendingFolder: Boolean = false,
+    val hasPendingPhotos: Boolean = false,
     val editingCollection: WallpaperCollection? = null,
     val isProcessing: Boolean = false
 )

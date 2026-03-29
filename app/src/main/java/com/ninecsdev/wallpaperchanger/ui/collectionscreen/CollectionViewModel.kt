@@ -62,6 +62,8 @@ class CollectionViewModel(application: Application) : AndroidViewModel(applicati
             sortOrder = sort,
             isPickerMode = modal.isPickerMode,
             isShowingCreateModal = modal.isShowingCreateModal,
+            hasPendingFolder = modal.hasPendingFolder,
+            hasPendingPhotos = modal.hasPendingPhotos,
             editingCollection = modal.editingCollection,
             isProcessing = modal.isProcessing
         )
@@ -76,11 +78,13 @@ class CollectionViewModel(application: Application) : AndroidViewModel(applicati
     fun setPendingFolderUri(uri: Uri) {
         pendingFolderUri = uri
         pendingPhotosUris = emptyList()
+        _screenState.update { it.copy(hasPendingFolder = true, hasPendingPhotos = false) }
     }
 
     fun setPendingPhotos(uris: List<Uri>) {
         pendingPhotosUris = uris
         pendingFolderUri = null
+        _screenState.update { it.copy(hasPendingFolder = false, hasPendingPhotos = true) }
     }
 
     fun hasPendingFolder(): Boolean = pendingFolderUri != null
@@ -171,7 +175,10 @@ class CollectionViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun toggleCreateModal(show: Boolean) {
-        _screenState.update { it.copy(isShowingCreateModal = show) }
+        _screenState.update {
+            if (show) it.copy(isShowingCreateModal = true)
+            else it.copy(isShowingCreateModal = false, hasPendingFolder = false, hasPendingPhotos = false)
+        }
     }
 
     fun openEditModal(collection: WallpaperCollection) {
@@ -191,6 +198,8 @@ class CollectionViewModel(application: Application) : AndroidViewModel(applicati
 private data class ScreenModalState(
     val isPickerMode: Boolean = false,
     val isShowingCreateModal: Boolean = false,
+    val hasPendingFolder: Boolean = false,
+    val hasPendingPhotos: Boolean = false,
     val editingCollection: WallpaperCollection? = null,
     val isProcessing: Boolean = false
 )
