@@ -5,4 +5,9 @@
     <string name="status_disabled_power">Service disabled (Power Save Mode)</string>
     <string name="status_disabled_folder">Service disabled (No folder selected)</string>
     <string name="status_loading">Loading…</string>
+    <string name="notification_channel_name">Wallpaper Service Status</string>
+    <string name="notification_initializing">INITIALIZING…</string>
+    <string name="notification_cycling">Cycling: %1$s</string>
+    <string name="notification_active_collection_fallback">ACTIVE</string>
+    <string name="notification_paused_power_save">Paused (Power Save)</string>
 </resources>

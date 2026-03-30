@@ -1,9 +1,6 @@
 package com.ninecsdev.wallpaperchanger.service
 
 import android.app.ForegroundServiceStartNotAllowedException
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.Service
 import android.app.WallpaperManager
 import android.content.BroadcastReceiver
@@ -15,9 +12,8 @@ import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
-import androidx.core.app.NotificationCompat
-import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
+import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,8 +29,7 @@ import kotlinx.coroutines.withContext
 class WallpaperService : Service() {
 
     private val tag = "WallpaperService"
-    private val channelId = "WallpaperServiceChannel"
-    private val notificationId = 1
+    private lateinit var notificationHelper: NotificationHelper
 
     private var screenOffReceiver: BroadcastReceiver? = null
     private var systemEventReceiver: BroadcastReceiver? = null
@@ -79,7 +74,8 @@ class WallpaperService : Service() {
         isAlive = true
         Log.d(tag, "Service Created")
         WallpaperRepository.initialize(this)
-        createNotificationChannel()
+        notificationHelper = NotificationHelper(this)
+        notificationHelper.createChannel()
 
         screenOffReceiver = ScreenOffReceiver()
         registerReceiver(screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF), RECEIVER_EXPORTED)
@@ -116,7 +112,10 @@ class WallpaperService : Service() {
         }
 
         try {
-            startForeground(notificationId, createNotification("INITIALIZING..."))
+            startForeground(
+                NotificationHelper.NOTIFICATION_ID,
+                notificationHelper.buildInitializingNotification()
+            )
         } catch (e: Exception) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
                 e is ForegroundServiceStartNotAllowedException) {
@@ -134,14 +133,14 @@ class WallpaperService : Service() {
             val state = WallpaperRepository.getServiceState()
 
             if (state !is ServiceState.DisabledNoCollection){
-                WallpaperRepository.loadMagazine()
-                WallpaperRepository.refillDiskBuffer()
+                RotationEngine.loadMagazine()
+                RotationEngine.refillDiskBuffer()
 
                 WallpaperRepository.markServiceRunning()
                 notifyUi()
 
-                val activeName = WallpaperRepository.getActiveCollectionOnce()?.name ?: "ACTIVE"
-                updateNotification("Cycling: $activeName")
+                val activeName = WallpaperRepository.getActiveCollectionOnce()?.name
+                notificationHelper.showCycling(activeName)
             }else{
                 Log.w(tag, "Abort startup: No collection found.")
                 WallpaperRepository.markServiceStopped()
@@ -185,7 +184,7 @@ class WallpaperService : Service() {
             }
         }
 
-        updateNotification("Paused (Power Save)")
+        notificationHelper.showPausedPowerSave()
         notifyUi()
     }
 
@@ -201,8 +200,8 @@ class WallpaperService : Service() {
         registerReceiver(screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF), RECEIVER_EXPORTED)
 
         serviceScope.launch {
-            val activeName = WallpaperRepository.getActiveCollectionOnce()?.name ?: "ACTIVE"
-            updateNotification("Cycling: $activeName")
+            val activeName = WallpaperRepository.getActiveCollectionOnce()?.name
+            notificationHelper.showCycling(activeName)
         }
         notifyUi()
     }
@@ -215,49 +214,14 @@ class WallpaperService : Service() {
         screenOffReceiver?.let { unregisterReceiver(it) }
         systemEventReceiver?.let { unregisterReceiver(it) }
 
-        WallpaperRepository.clearMagazine()
+        RotationEngine.clearMagazine()
         serviceScope.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     private fun notifyUi() = WallpaperRepository.notifyServiceStateChanged()
 
-    // Notification management TODO: Move to separate class in the future.
 
-    /**
-     * Notification builder.
-     */
-    private fun createNotification(contentText: String): Notification {
-        return NotificationCompat.Builder(this, channelId)
-            .setContentText(contentText)
-            .setSmallIcon(R.drawable.ic_notification_icon)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setCategory(Notification.CATEGORY_SERVICE)
-            .setVisibility(NotificationCompat.VISIBILITY_SECRET)
-            .setShowWhen(false)
-            .setSilent(true)
-            .build()
-    }
-
-    private fun updateNotification(text: String) {
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.notify(notificationId, createNotification(text))
-    }
-
-    private fun createNotificationChannel() {
-        val channel = NotificationChannel(
-            channelId, 
-            "Wallpaper Service Status", 
-            NotificationManager.IMPORTANCE_LOW
-        ).apply {
-            setShowBadge(false)
-            enableLights(false)
-            enableVibration(false)
-            lockscreenVisibility = Notification.VISIBILITY_SECRET
-        }
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(channel)
-    }
 
     override fun onBind(intent: Intent): IBinder? = null
 }

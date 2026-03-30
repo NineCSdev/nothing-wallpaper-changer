@@ -9,7 +9,7 @@ import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDatabase
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperDao
-import com.ninecsdev.wallpaperchanger.logic.BufferManager
+import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.model.CollectionType
 import com.ninecsdev.wallpaperchanger.model.CropRule
@@ -33,7 +33,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * The Coordinator of the Data Layer.
- * Orchestrates Room Database, System States, and the Exhaustive Rotation Engine.
+ * Orchestrates Room Database, System States, and Preferences.
  */
 object WallpaperRepository {
     private const val TAG = "WallpaperRepository"
@@ -58,6 +58,7 @@ object WallpaperRepository {
         if (!::appContext.isInitialized) {
             appContext = context.applicationContext
             dao = AppDatabase.getDatabase(appContext).wallpaperDao()
+            RotationEngine.initialize(dao)
             _serviceStateFlow.value = ServiceState.Stopped
 
             scope.launch {
@@ -141,9 +142,9 @@ object WallpaperRepository {
                 Log.d(TAG, "Auto-syncing folder collection: ${collection.name}")
                 syncCollection(collectionId)
             }
-            clearMagazine()
-            loadMagazine()
-            refillDiskBuffer()
+            RotationEngine.clearMagazine()
+            RotationEngine.loadMagazine()
+            RotationEngine.refillDiskBuffer()
         }
     }
 
@@ -178,7 +179,7 @@ object WallpaperRepository {
         withContext(Dispatchers.IO) {
             dao.updateCollection(id, newName, newRule, newFrequency)
             if (dao.getActiveCollection()?.id == id) {
-                refillDiskBuffer()
+                RotationEngine.refillDiskBuffer()
             }
         }
     }
@@ -192,7 +193,7 @@ object WallpaperRepository {
     suspend fun deleteCollection(collection: WallpaperCollection) {
         withContext(Dispatchers.IO) {
             if (collection.isActive) {
-                clearMagazine()
+                RotationEngine.clearMagazine()
                 markServiceStopped()
             }
 
@@ -240,7 +241,7 @@ object WallpaperRepository {
                     Log.d(TAG, "Sync complete: ${freshImages.size} on disk, $added new images added.")
 
                     if (collection.isActive) {
-                        loadMagazine()
+                        RotationEngine.loadMagazine()
                         Log.i(TAG, "Active collection synced. Magazine reloaded.")
                     }
                 } catch (e: Exception) {
@@ -250,93 +251,6 @@ object WallpaperRepository {
         }
     }
 
-    // Rotation Logic and vals
-    // TODO: Move the rotation logic to a separate class in the future.
-    private val imageMagazine = mutableListOf<WallpaperImage>()
-    private var currentPointer = -1
-
-    /**
-     * Loads and shuffles the images from the active collection into RAM.
-     */
-    suspend fun loadMagazine() {
-        withContext(Dispatchers.IO) {
-            val active = getActiveCollectionOnce() ?: return@withContext
-            val images = getImagesForCollectionOnce(collectionId = active.id)
-
-            synchronized(imageMagazine) {
-                imageMagazine.clear()
-                imageMagazine.addAll(images.shuffled())
-                currentPointer = -1
-            }
-            Log.d(TAG, "Magazine loaded: ${imageMagazine.size} items.")
-        }
-    }
-
-    /**
-     * Processes the next wallpapers while only showing each once before shuffling.
-     * It self-heals if an image fails to load.
-     * Uses an iterative approach to avoid stack overflow from recursion.
-     */
-    suspend fun refillDiskBuffer(): Boolean = withContext(Dispatchers.IO) {
-        if (imageMagazine.isEmpty()) loadMagazine()
-
-        val activeCollection = getActiveCollectionOnce() ?: return@withContext false
-        var result: Boolean? = null
-
-        while (result == null) {
-            val nextImage = synchronized(imageMagazine) {
-                if (imageMagazine.isEmpty()) {
-                    result = false
-                    null
-                } else {
-                    currentPointer++
-
-                    if (currentPointer >= imageMagazine.size) {
-                        Log.d(TAG, "Cycle complete. Reshuffling for new sequence.")
-                        imageMagazine.shuffle()
-                        currentPointer = 0
-                    }
-
-                    imageMagazine[currentPointer]
-                }
-            } ?: continue
-
-            val success = BufferManager.prepareNextWallpaper(
-                nextImage,
-                activeCollection.defaultCropRule
-            )
-
-            if (success) {
-                result = true
-                continue
-            }
-
-            Log.w(TAG, "Failed to load ${nextImage.uri}. Removing from rotation.")
-            ImageInternalizer.deleteInternalFile(nextImage.editedUri?.path)
-            dao.deleteImageById(nextImage.id)
-
-            synchronized(imageMagazine) {
-                imageMagazine.remove(nextImage)
-                if (imageMagazine.isEmpty()) {
-                    currentPointer = -1
-                } else if (currentPointer >= imageMagazine.size) {
-                    currentPointer = imageMagazine.lastIndex
-                }
-            }
-        }
-
-        result ?: false
-    }
-
-    /**
-     * Helper to clear RAM when service stops
-     */
-    fun clearMagazine() {
-        synchronized(imageMagazine) {
-            imageMagazine.clear()
-            currentPointer = -1
-        }
-    }
 
     // Service status & Preferences
 

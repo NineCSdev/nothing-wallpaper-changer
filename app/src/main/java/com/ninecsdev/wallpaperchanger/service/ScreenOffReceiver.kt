@@ -8,6 +8,7 @@ import android.os.PowerManager
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.logic.BufferManager
+import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.model.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.shouldRotateAt
 import kotlinx.coroutines.CoroutineScope
@@ -67,7 +68,7 @@ class ScreenOffReceiver : BroadcastReceiver() {
                 val applied = applyBufferToLockScreen(context)
                 if (applied) {
                     WallpaperRepository.markWallpaperChanged(activeCollection.id)
-                    WallpaperRepository.refillDiskBuffer()
+                    RotationEngine.refillDiskBuffer()
                 }
             } catch (e: Exception) {
                 Log.e(tag, "Error during wallpaper change", e)
