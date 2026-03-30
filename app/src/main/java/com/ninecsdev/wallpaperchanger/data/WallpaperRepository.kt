@@ -341,10 +341,18 @@ object WallpaperRepository {
     // Service status & Preferences
 
     private fun updateServiceState(state: ServiceState) {
-        if (_serviceStateFlow.value != state) {
-            _serviceStateFlow.value = state
-        }
+        if (_serviceStateFlow.value == state) return
+
+        _serviceStateFlow.value = state
         notifyServiceStateChanged()
+    }
+
+    private fun persistServiceRunningState(isRunning: Boolean) {
+        scope.launch { AppDataStore.setServiceRunning(appContext, isRunning) }
+    }
+
+    private fun resolveStoppedVisualState(isPowerSave: Boolean): ServiceState {
+        return if (isPowerSave) ServiceState.DisabledPowerSave else ServiceState.Stopped
     }
 
     fun markServiceLoading() {
@@ -352,38 +360,49 @@ object WallpaperRepository {
     }
 
     fun markServiceRunning() {
-        scope.launch { AppDataStore.setServiceRunning(appContext, true) }
+        persistServiceRunningState(true)
         updateServiceState(ServiceState.Running)
     }
 
     fun markServicePaused() {
-        scope.launch { AppDataStore.setServiceRunning(appContext, true) }
+        persistServiceRunningState(true)
         updateServiceState(ServiceState.Paused)
     }
 
     fun markServiceStopped() {
-        scope.launch { AppDataStore.setServiceRunning(appContext, false) }
+        persistServiceRunningState(false)
         updateServiceState(ServiceState.Stopped)
     }
 
     suspend fun getServiceState(): ServiceState {
         val powerManager = appContext.getSystemService(Context.POWER_SERVICE) as? PowerManager
         val isPowerSave = powerManager?.isPowerSaveMode ?: false
-        val activeCollection = getActiveCollectionOnce()
+        if (getActiveCollectionOnce() == null) return ServiceState.DisabledNoCollection
+
         val currentState = _serviceStateFlow.value
-        val isRunning = AppDataStore.isServiceRunning(appContext)
+        val isPersistedRunning = AppDataStore.isServiceRunning(appContext)
+        val isServiceAlive = WallpaperService.isAlive
+        val isServiceMarkedActive = isServiceAlive || isPersistedRunning
+        val stoppedState = resolveStoppedVisualState(isPowerSave)
 
         return when {
-            activeCollection == null -> ServiceState.DisabledNoCollection
             currentState is ServiceState.Loading -> ServiceState.Loading
-            currentState is ServiceState.Paused -> ServiceState.Paused
-            isRunning && WallpaperService.isAlive -> ServiceState.Running
-            isRunning -> {
-                markServiceStopped()
-                ServiceState.Stopped
+            currentState is ServiceState.Running || currentState is ServiceState.Paused -> {
+                if (isServiceMarkedActive) {
+                    currentState
+                } else {
+                    persistServiceRunningState(false)
+                    stoppedState
+                }
             }
-            isPowerSave -> ServiceState.DisabledPowerSave
-            else -> ServiceState.Stopped
+            currentState is ServiceState.Stopped -> {
+                if (isPersistedRunning && !isServiceAlive) {
+                    persistServiceRunningState(false)
+                }
+                stoppedState
+            }
+            isServiceMarkedActive -> ServiceState.Running
+            else -> stoppedState
         }
     }
 

@@ -111,7 +111,6 @@ class MainActivity : ComponentActivity() {
             action = WallpaperService.ACTION_STOP_SERVICE
         }
         startService(intent)
-        mainViewModel.refreshServiceState()
     }
 
     /**
@@ -131,7 +130,6 @@ class MainActivity : ComponentActivity() {
 
         val intent = Intent(this, WallpaperService::class.java)
         startForegroundService(intent)
-        mainViewModel.refreshServiceState()
     }
 
     override fun onResume() {
