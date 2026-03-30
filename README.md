@@ -149,7 +149,7 @@ gradlew.bat assembleDebug      # Windows
 
 The app uses a **single-activity Jetpack Compose UI**, **Room** for collections and images, a centralized **WallpaperRepository** singleton for orchestration, and a **foreground service** that listens for screen-off events.
 
-The current implementation is intentionally practical rather than fully modernized: it still uses manual singleton initialization, `AndroidViewModel`, and `SharedPreferences` for lightweight flags. Navigation is now handled by Navigation Compose. The current architecture is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), alongside the next refactor targets.
+The current implementation is intentionally practical rather than fully modernized: it still uses manual singleton initialization and `AndroidViewModel`. Lightweight app flags are persisted with Preferences DataStore (including one-time migration from legacy SharedPreferences). Navigation is handled by Navigation Compose. The current architecture is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), alongside the next refactor targets.
 
 ### How It Works
 
@@ -170,6 +170,7 @@ The current implementation is intentionally practical rather than fully moderniz
 | UI            | Jetpack Compose + Material 3        |
 | Image loading | Coil 2.7                            |
 | Database      | Room 2.7 (KSP)                      |
+| Preferences   | Jetpack Preferences DataStore       |
 | Async         | Kotlin Coroutines + `SupervisorJob` |
 | Lifecycle     | ViewModel + StateFlow / SharedFlow  |
 | Min SDK       | 33 (Android 13)                     |
@@ -199,7 +200,7 @@ This is my first native Android project, built while actively learning about bac
 
 ## Status
 
-**v0.2.1-beta** ships the complete local rotation loop: collection management, timed rotation modes, disk-buffered wallpaper preparation, battery-aware pause/resume behavior, Quick Settings integration, boot recovery, and fallback wallpaper restore. Recent main-branch updates also moved screen flow to Navigation Compose and improved UI state management. The next major milestone is architectural cleanup around dependency injection and preferences storage.
+**v0.2.1-beta** ships the complete local rotation loop: collection management, timed rotation modes, disk-buffered wallpaper preparation, battery-aware pause/resume behavior, Quick Settings integration, boot recovery, and fallback wallpaper restore. Recent main-branch updates also moved screen flow to Navigation Compose, improved UI state management, and migrated lightweight flags to DataStore. The next major milestone is architectural cleanup around dependency injection and singleton ownership.
 
 ---
 

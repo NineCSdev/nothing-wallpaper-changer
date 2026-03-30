@@ -7,7 +7,7 @@ import android.os.PowerManager
 import android.provider.DocumentsContract
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDatabase
-import com.ninecsdev.wallpaperchanger.data.local.AppPreferences
+import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperDao
 import com.ninecsdev.wallpaperchanger.logic.BufferManager
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
@@ -18,7 +18,9 @@ import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.service.WallpaperService
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -35,8 +38,9 @@ import kotlinx.coroutines.withContext
 object WallpaperRepository {
     private const val TAG = "WallpaperRepository"
 
-    private  lateinit var appContext: Context
+    private lateinit var appContext: Context
     private lateinit var dao: WallpaperDao
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _serviceEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val serviceEvent: SharedFlow<Unit> = _serviceEvent.asSharedFlow()
@@ -54,10 +58,12 @@ object WallpaperRepository {
         if (!::appContext.isInitialized) {
             appContext = context.applicationContext
             dao = AppDatabase.getDatabase(appContext).wallpaperDao()
-
-            _defaultWallpaperUriFlow.value = AppPreferences.getDefaultWallpaperUri(appContext)
-            _revertToDefaultFlow.value = AppPreferences.shouldRevertToDefault(appContext)
             _serviceStateFlow.value = ServiceState.Stopped
+
+            scope.launch {
+                _defaultWallpaperUriFlow.value = AppDataStore.getDefaultWallpaperUri(appContext)
+                _revertToDefaultFlow.value = AppDataStore.shouldRevertToDefault(appContext)
+            }
         }
     }
 
@@ -346,17 +352,17 @@ object WallpaperRepository {
     }
 
     fun markServiceRunning() {
-        AppPreferences.setServiceRunning(appContext, true)
+        scope.launch { AppDataStore.setServiceRunning(appContext, true) }
         updateServiceState(ServiceState.Running)
     }
 
     fun markServicePaused() {
-        AppPreferences.setServiceRunning(appContext, true)
+        scope.launch { AppDataStore.setServiceRunning(appContext, true) }
         updateServiceState(ServiceState.Paused)
     }
 
     fun markServiceStopped() {
-        AppPreferences.setServiceRunning(appContext, false)
+        scope.launch { AppDataStore.setServiceRunning(appContext, false) }
         updateServiceState(ServiceState.Stopped)
     }
 
@@ -365,13 +371,14 @@ object WallpaperRepository {
         val isPowerSave = powerManager?.isPowerSaveMode ?: false
         val activeCollection = getActiveCollectionOnce()
         val currentState = _serviceStateFlow.value
+        val isRunning = AppDataStore.isServiceRunning(appContext)
 
         return when {
             activeCollection == null -> ServiceState.DisabledNoCollection
             currentState is ServiceState.Loading -> ServiceState.Loading
             currentState is ServiceState.Paused -> ServiceState.Paused
-            AppPreferences.isServiceRunning(appContext) && WallpaperService.isAlive -> ServiceState.Running
-            AppPreferences.isServiceRunning(appContext) -> {
+            isRunning && WallpaperService.isAlive -> ServiceState.Running
+            isRunning -> {
                 markServiceStopped()
                 ServiceState.Stopped
             }
@@ -380,18 +387,18 @@ object WallpaperRepository {
         }
     }
 
-    fun getDefaultWallpaperUri(): Uri? = AppPreferences.getDefaultWallpaperUri(appContext)
-    fun shouldRevertToDefault(): Boolean = AppPreferences.shouldRevertToDefault(appContext)
+    suspend fun getDefaultWallpaperUri(): Uri? = AppDataStore.getDefaultWallpaperUri(appContext)
+    suspend fun shouldRevertToDefault(): Boolean = AppDataStore.shouldRevertToDefault(appContext)
 
     // Passthroughs to Preferences
     fun setRevertToDefault(revert: Boolean) {
-        AppPreferences.setRevertToDefault(appContext, revert)
         _revertToDefaultFlow.value = revert
+        scope.launch { AppDataStore.setRevertToDefault(appContext, revert) }
     }
 
     fun saveDefaultWallpaperUri(uri: Uri) {
-        AppPreferences.saveDefaultWallpaperUri(appContext, uri)
         _defaultWallpaperUriFlow.value = uri
+        scope.launch { AppDataStore.saveDefaultWallpaperUri(appContext, uri) }
     }
 
     fun setServiceRunning(isRunning: Boolean) {
@@ -402,9 +409,11 @@ object WallpaperRepository {
         }
     }
 
-    fun isServiceRunning(): Boolean { return AppPreferences.isServiceRunning(appContext) }
-    fun shouldStartOnBoot(): Boolean = AppPreferences.shouldStartOnBoot(appContext)
-    fun setStartOnBoot(enabled: Boolean) = AppPreferences.setStartOnBoot(appContext, enabled)
+    suspend fun isServiceRunning(): Boolean = AppDataStore.isServiceRunning(appContext)
+    suspend fun shouldStartOnBoot(): Boolean = AppDataStore.shouldStartOnBoot(appContext)
+    fun setStartOnBoot(enabled: Boolean) {
+        scope.launch { AppDataStore.setStartOnBoot(appContext, enabled) }
+    }
 
     // File System Utilities
     // TODO: Move the file system utility to a separate class in the future.

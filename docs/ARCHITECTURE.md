@@ -21,7 +21,7 @@ com.ninecsdev.wallpaperchanger/
 ├── data/
 │   ├── local/
 │   │   ├── AppDatabase.kt           # Room database
-│   │   ├── AppPreferences.kt        # SharedPreferences wrapper for lightweight app flags
+│   │   ├── AppDataStore.kt          # Preferences DataStore wrapper for lightweight app flags
 │   │   ├── Converters.kt            # Room converters for Uri and enums
 │   │   └── WallpaperDao.kt          # Collection and image queries
 │   └── WallpaperRepository.kt       # Central coordinator and rotation engine
@@ -100,7 +100,7 @@ com.ninecsdev.wallpaperchanger/
 |---|---|
 | Collections and wallpapers | Room |
 | Active collection metadata | Room fields on `WallpaperCollection` |
-| Default wallpaper, revert toggle, boot toggle, soft running flag | SharedPreferences via `AppPreferences` |
+| Default wallpaper, revert toggle, boot toggle, soft running flag | Preferences DataStore via `AppDataStore` (with one-time migration from legacy SharedPreferences) |
 | Prepared next wallpaper | WebP file in `cacheDir` |
 | Manual collection source images | App-private files in `files/internal_wallpapers` |
 
@@ -158,7 +158,7 @@ These are intentional current limitations, not documentation mistakes:
 
 - Dependency injection is manual and based on singleton initialization.
 - ViewModels still extend `AndroidViewModel`.
-- Preferences are still backed by `SharedPreferences`.
+- Preferences are persisted with DataStore, but still wired through singleton repository APIs instead of DI.
 - Repository and buffer manager are `object` singletons instead of constructor-injected classes.
 
 The remediation plan for those items lives in `context.md`.
