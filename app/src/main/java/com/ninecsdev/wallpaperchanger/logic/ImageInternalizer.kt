@@ -2,7 +2,6 @@ package com.ninecsdev.wallpaperchanger.logic
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
 import androidx.core.graphics.scale
@@ -12,7 +11,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
 import java.util.UUID
 
 /**
@@ -37,10 +35,11 @@ object ImageInternalizer {
             val internalDir = File(context.filesDir, INTERNAL_FOLDER)
             if (!internalDir.exists()) internalDir.mkdirs()
 
-            val metrics = context.resources.displayMetrics
-            val screenW = metrics.widthPixels
-            val screenH = metrics.heightPixels
+            val (screenW, screenH) = ImageProcessingUtils.getScreenDimensions(context)
 
+            // Note: right now we are starting once process per uri for pure speed, from my small
+            // testing this has not produced problems but should be looked into and maybe changed
+            // to a batch approached (maybe doing 10 each time?)
             coroutineScope {
                 uris.map { uri ->
                     async {
@@ -65,32 +64,17 @@ object ImageInternalizer {
             val fileName = "img_${UUID.randomUUID()}.webp"
             val outputFile = File(internalDir, fileName)
 
-            // Read bounds only
-            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                BitmapFactory.decodeStream(input, null, options)
-            }
-
-            if (options.outWidth <= 0 || options.outHeight <= 0) return null
-
-            // Calculate inSampleSize to rough-downsample during decode
-            options.inSampleSize = calculateInSampleSize(options, screenW, screenH)
-            options.inJustDecodeBounds = false
-
-            // Decode at reduced resolution
-            val sampled = context.contentResolver.openInputStream(uri)?.use { input ->
-                BitmapFactory.decodeStream(input, null, options)
-            } ?: return null
+            // Decode at reduced resolution via two-pass helper
+            val sampled = ImageProcessingUtils.decodeSampledBitmap(context, uri, screenW, screenH)
+                ?: return null
 
             // Fine-resize to exact screen dimensions
             val processedBitmap = resizeToFitScreen(sampled, screenW, screenH)
 
-            FileOutputStream(outputFile).use { out ->
-                processedBitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, quality, out)
-            }
+            ImageProcessingUtils.compressToFile(processedBitmap, outputFile, quality = quality)
 
-            if (processedBitmap != sampled) sampled.recycle()
-            processedBitmap.recycle()
+            // Clean up
+            ImageProcessingUtils.recycleSafely(sampled, processedBitmap)
 
             Uri.fromFile(outputFile)
         } catch (e: Exception) {
@@ -99,18 +83,7 @@ object ImageInternalizer {
         }
     }
 
-    private fun calculateInSampleSize(options: BitmapFactory.Options, reqW: Int, reqH: Int): Int {
-        val (height, width) = options.outHeight to options.outWidth
-        var inSampleSize = 1
-        if (height > reqH || width > reqW) {
-            val halfH = height / 2
-            val halfW = width / 2
-            while (halfH / inSampleSize >= reqH && halfW / inSampleSize >= reqW) {
-                inSampleSize *= 2
-            }
-        }
-        return inSampleSize
-    }
+
 
     private fun resizeToFitScreen(src: Bitmap, targetW: Int, targetH: Int): Bitmap {
         val width = src.width

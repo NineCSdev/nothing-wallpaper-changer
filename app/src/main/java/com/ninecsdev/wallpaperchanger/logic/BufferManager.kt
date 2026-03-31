@@ -12,7 +12,6 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
 
 /**
  * In charge of preparing the next wallpaper that will be set.
@@ -41,30 +40,19 @@ object BufferManager {
     suspend fun prepareNextWallpaper(wallpaper: WallpaperImage, cropRule: CropRule): Boolean {
         return withContext(Dispatchers.IO) {
             try {
-                val metrics = appContext.resources.displayMetrics
-                val targetW = metrics.widthPixels
-                val targetH = metrics.heightPixels
+                val (targetW, targetH) = ImageProcessingUtils.getScreenDimensions(appContext)
 
                 // Prefer user-edited image; fall back to original
                 val sourceUri = wallpaper.editedUri ?: wallpaper.uri
 
                 // Load the Source Bitmap
+                // Already-internal images are decoded at full res to avoid double-compression
                 val sourceBitmap: Bitmap? = if (sourceUri.toString().contains("internal_wallpapers")) {
                     appContext.contentResolver.openInputStream(sourceUri)?.use {
                         BitmapFactory.decodeStream(it)
                     }
                 } else {
-                    val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    appContext.contentResolver.openInputStream(sourceUri)?.use {
-                        BitmapFactory.decodeStream(it, null, options)
-                    }
-
-                    options.inSampleSize = calculateInSampleSize(options, targetW, targetH)
-                    options.inJustDecodeBounds = false
-
-                    appContext.contentResolver.openInputStream(sourceUri)?.use {
-                        BitmapFactory.decodeStream(it, null, options)
-                    }
+                    ImageProcessingUtils.decodeSampledBitmap(appContext, sourceUri, targetW, targetH)
                 }
 
                 if (sourceBitmap == null) return@withContext false
@@ -76,9 +64,7 @@ object BufferManager {
                 val bufferFile = File(appContext.cacheDir, BUFFER_FILENAME)
                 val tempFile = File(appContext.cacheDir, TEMP_FILENAME)
 
-                FileOutputStream(tempFile).use { out ->
-                    finalBitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, COMPRESSION_QUALITY, out)
-                }
+                ImageProcessingUtils.compressToFile(finalBitmap, tempFile, quality = COMPRESSION_QUALITY)
 
                 val success = tempFile.renameTo(bufferFile)
                 if (success) {
@@ -86,8 +72,7 @@ object BufferManager {
                 }
 
                 // Clean up
-                if (finalBitmap != sourceBitmap) sourceBitmap.recycle()
-                finalBitmap.recycle()
+                ImageProcessingUtils.recycleSafely(sourceBitmap, finalBitmap)
 
                 success
             } catch (e: Exception) {
@@ -101,18 +86,7 @@ object BufferManager {
         return File(appContext.cacheDir, BUFFER_FILENAME)
     }
 
-    private fun calculateInSampleSize(options: BitmapFactory.Options, reqW: Int, reqH: Int): Int {
-        val (height: Int, width: Int) = options.outHeight to options.outWidth
-        var inSampleSize = 1
-        if (height > reqH || width > reqW) {
-            val halfH = height / 2
-            val halfW = width / 2
-            while (halfH / inSampleSize >= reqH && halfW / inSampleSize >= reqW) {
-                inSampleSize *= 2
-            }
-        }
-        return inSampleSize
-    }
+
 
     private fun processBitmap(source: Bitmap, targetW: Int, targetH: Int, rule: CropRule): Bitmap {
         val sourceW = source.width
