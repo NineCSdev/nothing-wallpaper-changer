@@ -4,7 +4,7 @@
   <h1>Wallpaper Changer for Nothing OS</h1>
 
   <p align="center">
-    <img src="https://img.shields.io/badge/Status-v0.2.1--beta-blue.svg" alt="Status">
+    <img src="https://img.shields.io/badge/Status-v0.2.2--beta-blue.svg" alt="Status">
     <img src="https://img.shields.io/badge/Android-13%2B-green.svg" alt="Android 13+">
     <img src="https://img.shields.io/badge/Kotlin-2.1-purple.svg" alt="Kotlin">
     <img src="https://img.shields.io/badge/Jetpack%20Compose-Material%203-teal.svg" alt="Compose">
@@ -200,7 +200,11 @@ This is my first native Android project, built while actively learning about bac
 
 ## Status
 
-**v0.2.1-beta** ships the complete local rotation loop: collection management, timed rotation modes, disk-buffered wallpaper preparation, battery-aware pause/resume behavior, Quick Settings integration, boot recovery, and fallback wallpaper restore. Recent main-branch updates also moved screen flow to Navigation Compose, improved UI state management, and migrated lightweight flags to DataStore. The next major milestone is architectural cleanup around dependency injection and singleton ownership.
+**v0.2.2-beta** is a stabilization release.
+
+Core features are in place: collections, timed rotation, pre-buffered wallpaper processing, battery-aware pause/resume, Quick Settings controls, boot restore, and fallback wallpaper restore.
+
+This version also locks in Navigation Compose, DataStore for app flags, and improved service/UI synchronization. The next milestone is dependency injection and singleton ownership cleanup.
 
 ---
 

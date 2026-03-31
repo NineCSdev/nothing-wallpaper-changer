@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Version:** v0.2.1-beta
+**Version:** v0.2.2-beta
 
 The current app architecture is a pragmatic Android 13+ implementation centered on four pieces:
 
@@ -27,7 +27,9 @@ com.ninecsdev.wallpaperchanger/
 │   └── WallpaperRepository.kt       # Central coordinator and rotation engine
 ├── logic/
 │   ├── BufferManager.kt             # Downsample, crop, and atomically write the next wallpaper buffer
-│   └── ImageInternalizer.kt         # Copy manual selections into app-private storage
+│   ├── ImageInternalizer.kt         # Copy manual selections into app-private storage
+│   ├── ImageProcessingUtils.kt      # Shared decode, resize, and compression helpers
+│   └── RotationEngine.kt            # Shuffle-cycle state machine and buffer refill orchestration
 ├── model/
 │   ├── CollectionSortOrder.kt       # NAME | LAST_USED | DATE_CREATED
 │   ├── CollectionType.kt            # FOLDER | MANUAL
@@ -38,6 +40,7 @@ com.ninecsdev.wallpaperchanger/
 │   └── WallpaperImage.kt            # Room entity for images
 ├── service/
 │   ├── BootReceiver.kt              # Restarts the service after reboot when appropriate
+│   ├── NotificationHelper.kt        # Builds and updates foreground-service notifications
 │   ├── ScreenOffReceiver.kt         # Applies the prepared wallpaper on screen-off
 │   ├── WallpaperService.kt          # Foreground engine and notification owner
 │   └── WallpaperTileService.kt      # Quick Settings tile entry point
@@ -140,15 +143,13 @@ The repository publishes both a `serviceStateFlow` and a lightweight `serviceEve
 
 ---
 
-## What v0.2.1-beta Adds or Stabilizes
+## What v0.2.2-beta Adds or Stabilizes
 
-- Rotation frequency per collection: per lock, hourly, and daily.
-- Collection sorting and on-demand preview loading in the grid.
-- Folder re-sync support for folder-backed collections.
-- Battery-saver pause/resume behavior with service-state feedback.
-- Quick Settings tile integration aligned with repository service state.
-- Boot restart path for previously active sessions.
-- Default wallpaper restore when the engine stops or pauses.
+- Keeps the complete v0.2.1-beta feature loop (timed rotation modes, sorting, folder re-sync, Quick Settings control, battery-aware pause/resume, boot restore, and fallback wallpaper restore).
+- Navigation Compose flow is now the active baseline with explicit route handling and edge-swipe navigation behavior.
+- Lightweight app flags are persisted through Preferences DataStore with one-time migration from legacy SharedPreferences.
+- Service/UI synchronization has been hardened to reduce stale or flickering state during startup and transitions.
+- Rotation and image-processing responsibilities were split into dedicated helpers (`RotationEngine`, `ImageProcessingUtils`, and `NotificationHelper`) to reduce monolithic service/repository logic while preserving behavior.
 
 ---
 
