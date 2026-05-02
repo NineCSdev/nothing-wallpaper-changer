@@ -1,5 +1,8 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionscreen
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -69,6 +72,7 @@ fun EditCollectionCard(
     var nameText by remember { mutableStateOf(collection.name) }
     var selectedRule by remember { mutableStateOf(collection.defaultCropRule) }
     var selectedRotationFrequency by remember { mutableStateOf(collection.rotationFrequency) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = if (isProcessing) ({}) else onDismiss,
@@ -115,7 +119,9 @@ fun EditCollectionCard(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    ManagementButtons(onDelete = onDelete)
+                    ManagementButtons(
+                        onDeleteRequest = { showDeleteConfirmation = true }
+                    )
 
                     Spacer(modifier = Modifier.height(32.dp))
 
@@ -137,6 +143,16 @@ fun EditCollectionCard(
                     ProcessingOverlay(
                         message = "UPDATING LIST...",
                         modifier = Modifier.matchParentSize()
+                    )
+                }
+
+                if(showDeleteConfirmation) {
+                    DeleteConfirmationOverlay(
+                        onConfirm = {
+                            showDeleteConfirmation = false
+                            onDelete()
+                        },
+                        onCancel = { showDeleteConfirmation = false }
                     )
                 }
             }
@@ -250,7 +266,7 @@ private fun EditCardHeader(
 }
 
 @Composable
-private fun ManagementButtons(onDelete: () -> Unit) {
+private fun ManagementButtons(onDeleteRequest: () -> Unit) {
     Column {
         /* TODO: Uncomment when the feature is added, Open Image Grid Screen remember to modify the alpha on colors
         OutlinedButton(
@@ -269,7 +285,7 @@ private fun ManagementButtons(onDelete: () -> Unit) {
          */
 
         Button(
-            onClick = onDelete,
+            onClick = onDeleteRequest,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = NothingRed),
