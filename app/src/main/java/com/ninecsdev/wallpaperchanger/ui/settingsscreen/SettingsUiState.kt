@@ -1,5 +1,7 @@
 package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
+import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
+
 /**
  * Snapshot of the Settings screen state.
  * Owned entirely by [SettingsViewModel].
@@ -7,6 +9,7 @@ package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 data class SettingsUiState(
     val screenOffDelayMs: Long = 250L,
     val startOnBoot: Boolean = true,
+    val batterySaverPolicy: BatterySaverPolicy = BatterySaverPolicy.PAUSE,
     val compressionQualityHigh: Int = 95,
     val compressionQualityLow: Int = 80,
     val appVersion: String = ""

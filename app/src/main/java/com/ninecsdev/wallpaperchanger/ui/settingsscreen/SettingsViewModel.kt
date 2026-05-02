@@ -1,11 +1,11 @@
 package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -31,11 +31,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         AppDataStore.screenOffDelayFlow(context),
         AppDataStore.startOnBootFlow(context),
         AppDataStore.compressionQualityHighFlow(context),
-        AppDataStore.compressionQualityLowFlow(context)
-    ) { delay, boot, qualityHigh, qualityLow ->
+        AppDataStore.compressionQualityLowFlow(context),
+        AppDataStore.batterySaverPolicyFlow(context)
+    ) { delay, boot, qualityHigh, qualityLow, batterySaverPolicy ->
         SettingsUiState(
             screenOffDelayMs = delay,
             startOnBoot = boot,
+            batterySaverPolicy = batterySaverPolicy,
             compressionQualityHigh = qualityHigh,
             compressionQualityLow = qualityLow,
             appVersion = appVersion
@@ -62,5 +64,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setCompressionQualityLow(quality: Int) {
         repository.setCompressionQualityLow(quality)
+    }
+
+    fun setBatterySaverPolicy(policy: BatterySaverPolicy) {
+        repository.setBatterySaverPolicy(policy)
     }
 }

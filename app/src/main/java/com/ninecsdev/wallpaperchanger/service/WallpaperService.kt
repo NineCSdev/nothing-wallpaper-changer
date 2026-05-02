@@ -14,6 +14,7 @@ import android.os.PowerManager
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
+import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -83,17 +84,21 @@ class WallpaperService : Service() {
             override fun onReceive(context: Context, intent: Intent) {
                 val pm = context.getSystemService(POWER_SERVICE) as PowerManager
 
-                // This part stopped the app when battery was under 15% but as we now pause the app
-                // it is no longer needed. Keep it in case i want to re-implement it
-                /*if (intent.action == Intent.ACTION_BATTERY_LOW) {
-                    handleStopCommand()
-                    return
-                }*/
+                serviceScope.launch {
+                    val policy = WallpaperRepository.getBatterySaverPolicy()
 
-                if (pm.isPowerSaveMode) {
-                    pauseEngine()
-                } else {
-                    resumeEngine()
+                    if (pm.isPowerSaveMode) {
+                        when (policy) {
+                            BatterySaverPolicy.STOP -> handleStopCommand()
+                            BatterySaverPolicy.PAUSE -> pauseEngine()
+                            BatterySaverPolicy.IGNORE -> { /* keep running normally */ }
+                        }
+                    } else {
+                        // Only resume if we were paused by battery saver
+                        if (policy == BatterySaverPolicy.PAUSE) {
+                            resumeEngine()
+                        }
+                    }
                 }
             }
         }

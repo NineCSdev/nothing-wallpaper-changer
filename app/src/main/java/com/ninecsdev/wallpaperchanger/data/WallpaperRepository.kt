@@ -11,6 +11,7 @@ import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperDao
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
+import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.CollectionType
 import com.ninecsdev.wallpaperchanger.model.CropRule
 import com.ninecsdev.wallpaperchanger.model.RotationFrequency
@@ -335,6 +336,7 @@ object WallpaperRepository {
     }
 
     suspend fun isServiceRunning(): Boolean = AppDataStore.isServiceRunning(appContext)
+
     suspend fun shouldStartOnBoot(): Boolean = AppDataStore.shouldStartOnBoot(appContext)
     fun setStartOnBoot(enabled: Boolean) {
         scope.launch { AppDataStore.setStartOnBoot(appContext, enabled) }
@@ -353,6 +355,11 @@ object WallpaperRepository {
     suspend fun getCompressionQualityLow(): Int = AppDataStore.getCompressionQualityLow(appContext)
     fun setCompressionQualityLow(quality: Int) {
         scope.launch { AppDataStore.setCompressionQualityLow(appContext, quality) }
+    }
+
+    suspend fun getBatterySaverPolicy(): BatterySaverPolicy = AppDataStore.getBatterySaverPolicy(appContext)
+    fun setBatterySaverPolicy(policy: BatterySaverPolicy) {
+        scope.launch { AppDataStore.setBatterySaverPolicy(appContext, policy) }
     }
 
     // File System Utilities

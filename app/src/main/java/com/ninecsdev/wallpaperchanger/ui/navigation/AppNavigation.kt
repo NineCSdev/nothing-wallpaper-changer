@@ -174,6 +174,7 @@ fun AppNavigation(
                 onBackClick = { navController.popBackStack() },
                 onScreenOffDelayChange = settingsViewModel::setScreenOffDelay,
                 onStartOnBootChange = settingsViewModel::setStartOnBoot,
+                onBatterySaverPolicyChange = settingsViewModel::setBatterySaverPolicy,
                 onCompressionQualityHighChange = settingsViewModel::setCompressionQualityHigh,
                 onCompressionQualityLowChange = settingsViewModel::setCompressionQualityLow
             )

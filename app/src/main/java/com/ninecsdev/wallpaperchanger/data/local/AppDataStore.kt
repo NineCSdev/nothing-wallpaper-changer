@@ -13,6 +13,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
 
 /**
  * Manages simple key-value pairs for global application settings using
@@ -40,6 +41,7 @@ object AppDataStore {
     private val KEY_SCREEN_OFF_DELAY = longPreferencesKey("screen_off_delay_ms")
     private val KEY_COMPRESSION_QUALITY_HIGH = intPreferencesKey("compression_quality_high")
     private val KEY_COMPRESSION_QUALITY_LOW = intPreferencesKey("compression_quality_low")
+    private val KEY_BATTERY_SAVER_POLICY = stringPreferencesKey("battery_saver_policy")
 
     // Flows (reactive reads)
 
@@ -78,6 +80,18 @@ object AppDataStore {
             prefs[KEY_COMPRESSION_QUALITY_LOW] ?: 80
         }
 
+    fun batterySaverPolicyFlow(context: Context): Flow<BatterySaverPolicy> =
+        context.dataStore.data.map { prefs ->
+            val raw = prefs[KEY_BATTERY_SAVER_POLICY]
+            // For first install we default to PAUSE
+            if (raw != null) {
+                // In case the data has been corrupted we fix to PAUSE
+                try { BatterySaverPolicy.valueOf(raw) } catch (_: Exception) { BatterySaverPolicy.PAUSE }
+            } else {
+                BatterySaverPolicy.PAUSE
+            }
+        }
+
     // Suspend reads (suspend, one-shot)
 
     suspend fun getDefaultWallpaperUri(context: Context): Uri? =
@@ -100,6 +114,9 @@ object AppDataStore {
 
     suspend fun getCompressionQualityLow(context: Context): Int =
         compressionQualityLowFlow(context).first()
+
+    suspend fun getBatterySaverPolicy(context: Context): BatterySaverPolicy =
+        batterySaverPolicyFlow(context).first()
 
     // Writes (suspend)
 
@@ -142,6 +159,12 @@ object AppDataStore {
     suspend fun setCompressionQualityLow(context: Context, quality: Int) {
         context.dataStore.edit { prefs ->
             prefs[KEY_COMPRESSION_QUALITY_LOW] = quality
+        }
+    }
+
+    suspend fun setBatterySaverPolicy(context: Context, policy: BatterySaverPolicy) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_BATTERY_SAVER_POLICY] = policy.name
         }
     }
 }
