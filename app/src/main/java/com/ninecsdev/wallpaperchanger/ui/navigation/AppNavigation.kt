@@ -23,6 +23,8 @@ import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionListScreen
 import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionViewModel
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.MainScreen
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.MainViewModel
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.SettingsScreen
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.SettingsViewModel
 
 /**
  * Top-level navigation host for the application.
@@ -39,10 +41,12 @@ fun AppNavigation(
     onLaunchDefaultWallpaperPicker: () -> Unit,
     modifier: Modifier = Modifier,
     mainViewModel: MainViewModel = viewModel(),
-    collectionViewModel: CollectionViewModel = viewModel()
+    collectionViewModel: CollectionViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel()
 ) {
     val mainState by mainViewModel.uiState.collectAsState()
     val collectionState by collectionViewModel.uiState.collectAsState()
+    val settingsState by settingsViewModel.uiState.collectAsState()
 
     NavHost(
         navController = navController,
@@ -79,7 +83,8 @@ fun AppNavigation(
                     onSelectDefaultClick = onLaunchDefaultWallpaperPicker,
                     onToggleRevert = mainViewModel::setRevertToDefault,
                     onStartClick = onStartClick,
-                    onStopClick = onStopService
+                    onStopClick = onStopService,
+                    onSettingsClick = { navController.navigate(Route.SETTINGS) }
                 )
             }
         }
@@ -162,6 +167,17 @@ fun AppNavigation(
                 )
             }
         }
+
+        composable(Route.SETTINGS) {
+            SettingsScreen(
+                uiState = settingsState,
+                onBackClick = { navController.popBackStack() },
+                onScreenOffDelayChange = settingsViewModel::setScreenOffDelay,
+                onStartOnBootChange = settingsViewModel::setStartOnBoot,
+                onCompressionQualityHighChange = settingsViewModel::setCompressionQualityHigh,
+                onCompressionQualityLowChange = settingsViewModel::setCompressionQualityLow
+            )
+        }
     }
 }
 
@@ -217,4 +233,5 @@ private object NavigationTransitions {
 object Route {
     const val MAIN = "main"
     const val COLLECTIONS = "collections"
+    const val SETTINGS = "settings"
 }

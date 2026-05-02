@@ -77,8 +77,7 @@ class WallpaperService : Service() {
         notificationHelper = NotificationHelper(this)
         notificationHelper.createChannel()
 
-        screenOffReceiver = ScreenOffReceiver()
-        registerReceiver(screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF), RECEIVER_EXPORTED)
+        registerScreenOffReceiver()
 
         systemEventReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -173,10 +172,7 @@ class WallpaperService : Service() {
         Log.i(tag, "Pausing engine (Power Save ON)")
         WallpaperRepository.markServicePaused()
 
-        screenOffReceiver?.let {
-            unregisterReceiver(it)
-            screenOffReceiver = null
-        }
+        unregisterScreenOffReceiver()
 
         serviceScope.launch {
             if (WallpaperRepository.shouldRevertToDefault()) {
@@ -196,8 +192,7 @@ class WallpaperService : Service() {
         Log.i(tag, "Resuming engine (Power Save OFF)")
         WallpaperRepository.markServiceRunning()
 
-        screenOffReceiver = ScreenOffReceiver()
-        registerReceiver(screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF), RECEIVER_EXPORTED)
+        registerScreenOffReceiver()
 
         serviceScope.launch {
             val activeName = WallpaperRepository.getActiveCollectionOnce()?.name
@@ -211,7 +206,7 @@ class WallpaperService : Service() {
         isAlive = false
         Log.i(tag, "Service Destroyed. Cleaning up.")
 
-        screenOffReceiver?.let { unregisterReceiver(it) }
+        unregisterScreenOffReceiver()
         systemEventReceiver?.let { unregisterReceiver(it) }
 
         RotationEngine.clearMagazine()
@@ -220,6 +215,20 @@ class WallpaperService : Service() {
     }
 
     private fun notifyUi() = WallpaperRepository.notifyServiceStateChanged()
+
+    private fun registerScreenOffReceiver() {
+        if (screenOffReceiver != null) return
+
+        val receiver = ScreenOffReceiver()
+        registerReceiver(receiver, IntentFilter(Intent.ACTION_SCREEN_OFF), RECEIVER_EXPORTED)
+        screenOffReceiver = receiver
+    }
+
+    private fun unregisterScreenOffReceiver() {
+        val receiver = screenOffReceiver ?: return
+        unregisterReceiver(receiver)
+        screenOffReceiver = null
+    }
 
 
 

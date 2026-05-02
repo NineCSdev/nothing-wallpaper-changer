@@ -323,7 +323,7 @@ object WallpaperRepository {
     suspend fun getDefaultWallpaperUri(): Uri? = AppDataStore.getDefaultWallpaperUri(appContext)
     suspend fun shouldRevertToDefault(): Boolean = AppDataStore.shouldRevertToDefault(appContext)
 
-    // Passthroughs to Preferences
+    // Passthroughs to Datastore
     fun setRevertToDefault(revert: Boolean) {
         _revertToDefaultFlow.value = revert
         scope.launch { AppDataStore.setRevertToDefault(appContext, revert) }
@@ -334,18 +334,25 @@ object WallpaperRepository {
         scope.launch { AppDataStore.saveDefaultWallpaperUri(appContext, uri) }
     }
 
-    fun setServiceRunning(isRunning: Boolean) {
-        if (isRunning) {
-            markServiceRunning()
-        } else {
-            markServiceStopped()
-        }
-    }
-
     suspend fun isServiceRunning(): Boolean = AppDataStore.isServiceRunning(appContext)
     suspend fun shouldStartOnBoot(): Boolean = AppDataStore.shouldStartOnBoot(appContext)
     fun setStartOnBoot(enabled: Boolean) {
         scope.launch { AppDataStore.setStartOnBoot(appContext, enabled) }
+    }
+
+    suspend fun getScreenOffDelay(): Long = AppDataStore.getScreenOffDelay(appContext)
+    fun setScreenOffDelay(delayMs: Long) {
+        scope.launch { AppDataStore.setScreenOffDelay(appContext, delayMs) }
+    }
+
+    suspend fun getCompressionQualityHigh(): Int = AppDataStore.getCompressionQualityHigh(appContext)
+    fun setCompressionQualityHigh(quality: Int) {
+        scope.launch { AppDataStore.setCompressionQualityHigh(appContext, quality) }
+    }
+
+    suspend fun getCompressionQualityLow(): Int = AppDataStore.getCompressionQualityLow(appContext)
+    fun setCompressionQualityLow(quality: Int) {
+        scope.launch { AppDataStore.setCompressionQualityLow(appContext, quality) }
     }
 
     // File System Utilities

@@ -6,6 +6,8 @@ import androidx.core.net.toUri
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -35,6 +37,9 @@ object AppDataStore {
     private val KEY_REVERT_TO_DEFAULT = booleanPreferencesKey("revert_to_default_on_stop")
     private val KEY_SERVICE_RUNNING = booleanPreferencesKey("service_running")
     private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
+    private val KEY_SCREEN_OFF_DELAY = longPreferencesKey("screen_off_delay_ms")
+    private val KEY_COMPRESSION_QUALITY_HIGH = intPreferencesKey("compression_quality_high")
+    private val KEY_COMPRESSION_QUALITY_LOW = intPreferencesKey("compression_quality_low")
 
     // Flows (reactive reads)
 
@@ -58,6 +63,21 @@ object AppDataStore {
             prefs[KEY_START_ON_BOOT] ?: true
         }
 
+    fun screenOffDelayFlow(context: Context): Flow<Long> =
+        context.dataStore.data.map { prefs ->
+            prefs[KEY_SCREEN_OFF_DELAY] ?: 250L
+        }
+
+    fun compressionQualityHighFlow(context: Context): Flow<Int> =
+        context.dataStore.data.map { prefs ->
+            prefs[KEY_COMPRESSION_QUALITY_HIGH] ?: 95
+        }
+
+    fun compressionQualityLowFlow(context: Context): Flow<Int> =
+        context.dataStore.data.map { prefs ->
+            prefs[KEY_COMPRESSION_QUALITY_LOW] ?: 80
+        }
+
     // Suspend reads (suspend, one-shot)
 
     suspend fun getDefaultWallpaperUri(context: Context): Uri? =
@@ -71,6 +91,15 @@ object AppDataStore {
 
     suspend fun shouldStartOnBoot(context: Context): Boolean =
         startOnBootFlow(context).first()
+
+    suspend fun getScreenOffDelay(context: Context): Long =
+        screenOffDelayFlow(context).first()
+
+    suspend fun getCompressionQualityHigh(context: Context): Int =
+        compressionQualityHighFlow(context).first()
+
+    suspend fun getCompressionQualityLow(context: Context): Int =
+        compressionQualityLowFlow(context).first()
 
     // Writes (suspend)
 
@@ -95,6 +124,24 @@ object AppDataStore {
     suspend fun setStartOnBoot(context: Context, enabled: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[KEY_START_ON_BOOT] = enabled
+        }
+    }
+
+    suspend fun setScreenOffDelay(context: Context, delayMs: Long) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_SCREEN_OFF_DELAY] = delayMs
+        }
+    }
+
+    suspend fun setCompressionQualityHigh(context: Context, quality: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_COMPRESSION_QUALITY_HIGH] = quality
+        }
+    }
+
+    suspend fun setCompressionQualityLow(context: Context, quality: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_COMPRESSION_QUALITY_LOW] = quality
         }
     }
 }

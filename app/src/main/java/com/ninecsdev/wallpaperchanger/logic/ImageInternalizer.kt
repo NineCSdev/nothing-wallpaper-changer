@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
 import androidx.core.graphics.scale
+import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -20,8 +21,6 @@ import java.util.UUID
 object ImageInternalizer {
     private const val TAG = "ImageInternalizer"
     private const val INTERNAL_FOLDER = "internal_wallpapers"
-    private const val QUALITY_HIGH = 95
-    private const val QUALITY_LOW = 80
     private const val LARGE_FILE_THRESHOLD = 2L * 1024 * 1024
 
     /**
@@ -37,14 +36,17 @@ object ImageInternalizer {
 
             val (screenW, screenH) = ImageProcessingUtils.getScreenDimensions(context)
 
-            // Note: right now we are starting once process per uri for pure speed, from my small
+            val qualityHigh = WallpaperRepository.getCompressionQualityHigh()
+            val qualityLow = WallpaperRepository.getCompressionQualityLow()
+
+            // Note: right now we are starting one process per uri for pure speed, from my small
             // testing this has not produced problems but should be looked into and maybe changed
             // to a batch approached (maybe doing 10 each time?)
             coroutineScope {
                 uris.map { uri ->
                     async {
                         val fileSize = context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
-                        val quality = if (fileSize > LARGE_FILE_THRESHOLD) QUALITY_LOW else QUALITY_HIGH
+                        val quality = if (fileSize > LARGE_FILE_THRESHOLD) qualityLow else qualityHigh
                         internalizeImage(context, uri, internalDir, screenW, screenH, quality)
                     }
                 }.awaitAll().filterNotNull()

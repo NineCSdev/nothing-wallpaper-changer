@@ -39,8 +39,9 @@ class ScreenOffReceiver : BroadcastReceiver() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // 250ms delay for Nothing Phone (1) animation
-                delay(250) //TODO: let the user choose the delay
+                // Configurable delay (default 250ms for Nothing Phone animation)
+                val delayMs = WallpaperRepository.getScreenOffDelay()
+                delay(delayMs)
 
                 // Safety check: if the user woke the screen during the delay abort
                 if (powerManager.isInteractive) {

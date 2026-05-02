@@ -36,7 +36,7 @@ class MainActivity : ComponentActivity() {
     private val notificationLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        if (isGranted) startWallpaperService()
+        if (isGranted) requestBatteryExemptionThenStartService()
     }
 
     // Folder picker
@@ -71,7 +71,7 @@ class MainActivity : ComponentActivity() {
     private val batteryExemptionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
-        startWallpaperService()
+        startWallpaperServiceNow()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -114,22 +114,24 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Checks battery optimization exemption before starting the service.
-     * If not exempted, shows a system dialog first, then starts the service
-     * regardless of the user's choice (it only affects boot-start behavior).
+     * Requests battery optimization exemption if needed before service start.
+     * Service still starts even if user declines the exemption.
      */
-    private fun startWallpaperService() {
+    private fun requestBatteryExemptionThenStartService() {
         val pm = getSystemService(POWER_SERVICE) as PowerManager
-        if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                data = "package:$packageName".toUri()
-            }
-            batteryExemptionLauncher.launch(intent)
+        if (pm.isIgnoringBatteryOptimizations(packageName)) {
+            startWallpaperServiceNow()
             return
         }
 
-        val intent = Intent(this, WallpaperService::class.java)
-        startForegroundService(intent)
+        val exemptionIntent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+            data = "package:$packageName".toUri()
+        }
+        batteryExemptionLauncher.launch(exemptionIntent)
+    }
+
+    private fun startWallpaperServiceNow() {
+        startForegroundService(Intent(this, WallpaperService::class.java))
     }
 
     override fun onResume() {

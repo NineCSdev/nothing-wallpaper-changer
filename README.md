@@ -204,7 +204,7 @@ This is my first native Android project, built while actively learning about bac
 
 Core features are in place: collections, timed rotation, pre-buffered wallpaper processing, battery-aware pause/resume, Quick Settings controls, boot restore, and fallback wallpaper restore.
 
-This version also locks in Navigation Compose, DataStore for app flags, and improved service/UI synchronization. The next milestone is dependency injection and singleton ownership cleanup.
+This version also locks in Navigation Compose, DataStore for app flags, and improved service/UI synchronization.
 
 ---
 

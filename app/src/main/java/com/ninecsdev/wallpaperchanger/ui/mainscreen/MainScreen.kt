@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -43,6 +45,7 @@ fun MainScreen(
     onStopClick: () -> Unit,
     onSelectFolderClick: () -> Unit,
     onOpenCollectionsClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     onToggleRevert: (Boolean) -> Unit,
     onSelectDefaultClick: () -> Unit
 ) {
@@ -72,18 +75,17 @@ fun MainScreen(
                         state = uiState.serviceState,
                         modifier = Modifier.weight(1f)
                     )
-                    /* TODO: Wire and uncomment settings icon when the screen is ready
                     IconButton(
-                        onClick = { },
+                        onClick = onSettingsClick,
                         modifier = Modifier.offset(y = (-20).dp)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Settings,
-                            contentDescription = "Collections",
+                            contentDescription = "Settings",
                             modifier = Modifier.size(32.dp),
                             tint = NothingWhite
                         )
-                    }*/
+                    }
 
                     IconButton(
                         onClick = onOpenCollectionsClick,
@@ -149,6 +151,7 @@ fun MainScreenRunningPreview() {
                 onStopClick = {},
                 onSelectFolderClick = {},
                 onOpenCollectionsClick = {},
+                onSettingsClick = {},
                 onToggleRevert = {},
                 onSelectDefaultClick = {}
             )
@@ -170,6 +173,7 @@ fun MainScreenEmptyPreview() {
                 onStopClick = {},
                 onSelectFolderClick = {},
                 onOpenCollectionsClick = {},
+                onSettingsClick = {},
                 onToggleRevert = {},
                 onSelectDefaultClick = {}
             )
