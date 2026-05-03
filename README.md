@@ -37,10 +37,11 @@ There weren't many solutions on the Play Store and the ones I found were either 
 - **Smart Shuffle:** Every image is shown exactly once before the collection reshuffles in order to never getting any individual wallpaper too often.
 - **Flexible Cropping:** Choose how images fit your screen per collection: center, left-aligned, right-aligned, or fit-to-screen.
 - **Rotation Timer Modes:** Configure each collection to rotate on every lock, every 1 hour, or once per day.
+- **Settings Screen:** Tune the screen-off debounce delay, boot behavior, manual-image compression quality, and Battery Saver behavior from inside the app.
 - **Quick Settings Tile:** Start, stop, or check status right from the notification shade letting you control it while doing something else.
 - **Default Wallpaper Fallback:** Pick a fallback lock screen image that's automatically restored when the service stops or pauses.
 - **Survives Reboots:** If the service was running before a restart, it picks right back up.
-- **Battery Aware:** Automatically pauses during Battery Saver and resumes when it's turned off.
+- **Battery Aware:** Choose what happens during Battery Saver: stop the service, pause and auto-resume, or keep running.
 - **Self-Healing:** If an image can't be loaded (e.g., the file was deleted), the app skips it and moves on.
 - **Privacy First:** No internet permissions. Your images never leave your device.
 
@@ -147,16 +148,16 @@ gradlew.bat assembleDebug      # Windows
 
 ## Architecture
 
-The app uses a **single-activity Jetpack Compose UI**, **Room** for collections and images, a centralized **WallpaperRepository** singleton for orchestration, and a **foreground service** that listens for screen-off events.
+The app uses a **single-activity Jetpack Compose UI**, **Hilt** for dependency injection, **Room** for collections and images, a centralized **WallpaperRepository** for orchestration, and a **foreground service** that listens for screen-off events.
 
-The current implementation is intentionally practical rather than fully modernized: it still uses manual singleton initialization and `AndroidViewModel`. Lightweight app flags are persisted with Preferences DataStore (including one-time migration from legacy SharedPreferences). Navigation is handled by Navigation Compose. The current architecture is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), alongside the next refactor targets.
+The current implementation uses Hilt-injected app-level dependencies, plain `@HiltViewModel` ViewModels, lifecycle-aware Compose state collection, and Preferences DataStore for lightweight app flags. Navigation is handled by Navigation Compose. The current architecture is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), alongside the next refactor targets.
 
 ### How It Works
 
 1. **User creates a collection** (folder or manual) → images are stored in Room.
 2. **User presses Start** → `WallpaperService` starts as a foreground service, loads & shuffles the active collection into an in-memory magazine, and pre-processes the first wallpaper into a WebP disk buffer.
 3. **Screen turns off** → `ScreenOffReceiver` fires, streams the buffer to `WallpaperManager.setStream()` on the lock screen flag, then triggers the repository to prepare the next image.
-4. **Battery Saver ON** → The receiver is unregistered (paused); OFF → re-registered (resumed).
+4. **Battery Saver ON** -> The configured policy is applied: stop the service, pause by unregistering the receiver and auto-resume later, or ignore Battery Saver.
 5. **User presses Stop** → Service stops; if "revert to default" is enabled, the saved default wallpaper is restored.
 6. **Device reboots** → `BootReceiver` checks persisted state and restarts the service if it was previously active.
 
@@ -171,6 +172,7 @@ The current implementation is intentionally practical rather than fully moderniz
 | Image loading | Coil 2.7                            |
 | Database      | Room 2.7 (KSP)                      |
 | Preferences   | Jetpack Preferences DataStore       |
+| DI            | Hilt                                |
 | Async         | Kotlin Coroutines + `SupervisorJob` |
 | Lifecycle     | ViewModel + StateFlow / SharedFlow  |
 | Min SDK       | 33 (Android 13)                     |
@@ -204,7 +206,7 @@ This is my first native Android project, built while actively learning about bac
 
 Core features are in place: collections, timed rotation, pre-buffered wallpaper processing, battery-aware pause/resume, Quick Settings controls, boot restore, and fallback wallpaper restore.
 
-This version also locks in Navigation Compose, DataStore for app flags, and improved service/UI synchronization.
+This version also includes Navigation Compose, DataStore for app flags, improved service/UI synchronization, the settings screen, configurable Battery Saver policy, collection delete confirmation, and the first Hilt-based dependency injection pass.
 
 ---
 

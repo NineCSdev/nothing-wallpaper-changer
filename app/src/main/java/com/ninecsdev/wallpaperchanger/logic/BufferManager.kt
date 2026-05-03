@@ -7,9 +7,9 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.util.Log
 import androidx.core.graphics.createBitmap
-import dagger.hilt.android.qualifiers.ApplicationContext
 import com.ninecsdev.wallpaperchanger.model.CropRule
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
