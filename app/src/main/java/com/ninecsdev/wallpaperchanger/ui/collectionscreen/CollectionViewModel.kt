@@ -1,8 +1,8 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionscreen
 
-import android.app.Application
+import android.content.Context
 import android.net.Uri
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
@@ -10,6 +10,8 @@ import com.ninecsdev.wallpaperchanger.model.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.CropRule
 import com.ninecsdev.wallpaperchanger.model.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,14 +20,18 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * ViewModel for the Collection List screen.
  * Owns [CollectionUiState] and handles imports, edits, and preview loading.
  */
-class CollectionViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = WallpaperRepository
-    private val context = application.applicationContext
+@HiltViewModel
+class CollectionViewModel @Inject constructor(
+    private val repository: WallpaperRepository,
+    private val imageInternalizer: ImageInternalizer,
+    @param:ApplicationContext private val context: Context
+) : ViewModel() {
 
     // Internal mutable state
 
@@ -107,7 +113,7 @@ class CollectionViewModel(application: Application) : AndroidViewModel(applicati
         if (pendingPhotosUris.isEmpty()) return
         viewModelScope.launch {
             setProcessing(true)
-            val internalizedUris = ImageInternalizer.internalizeImages(context, pendingPhotosUris)
+            val internalizedUris = imageInternalizer.internalizeImages(context, pendingPhotosUris)
             repository.createManualCollection(name, internalizedUris, rule)
             pendingPhotosUris = emptyList()
             setProcessing(false)

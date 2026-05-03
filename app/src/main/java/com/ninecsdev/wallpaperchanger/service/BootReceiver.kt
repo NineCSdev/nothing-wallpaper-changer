@@ -6,29 +6,33 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class BootReceiver : BroadcastReceiver() {
     private  val tag = "BootReceiver"
+
+    @Inject lateinit var repository: WallpaperRepository
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
         if (!isBootAction(action)) return
 
         Log.d(tag, "Phone rebooted. Checking service state...")
-        WallpaperRepository.initialize(context)
 
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                if (!WallpaperRepository.shouldStartOnBoot()) {
+                if (!repository.shouldStartOnBoot()) {
                     Log.d(tag, "Start on boot is disabled. Doing nothing.")
                     return@launch
                 }
 
-                if (!WallpaperRepository.isServiceRunning()) {
+                if (!repository.isServiceRunning()) {
                     Log.d(tag, "Service was not active. Doing nothing.")
                     return@launch
                 }

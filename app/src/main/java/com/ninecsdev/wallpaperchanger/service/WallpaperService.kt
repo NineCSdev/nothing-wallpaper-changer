@@ -16,21 +16,26 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.ServiceState
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
 /**
  * Foreground Service responsible for keeping the [ScreenOffReceiver] alive,
  * coordinating the whole app and creating and managing the notification.
  */
+@AndroidEntryPoint
 class WallpaperService : Service() {
 
     private val tag = "WallpaperService"
     private lateinit var notificationHelper: NotificationHelper
+    @Inject lateinit var repository: WallpaperRepository
+    @Inject lateinit var rotationEngine: RotationEngine
 
     private var screenOffReceiver: BroadcastReceiver? = null
     private var systemEventReceiver: BroadcastReceiver? = null
@@ -46,7 +51,7 @@ class WallpaperService : Service() {
     }
 
     private suspend fun applyDefaultWallpaper() {
-        val uri = WallpaperRepository.getDefaultWallpaperUri() ?: return
+        val uri = repository.getDefaultWallpaperUri() ?: return
 
         Log.d(tag, "Applying default wallpaper...")
 
@@ -74,7 +79,6 @@ class WallpaperService : Service() {
         super.onCreate()
         isAlive = true
         Log.d(tag, "Service Created")
-        WallpaperRepository.initialize(this)
         notificationHelper = NotificationHelper(this)
         notificationHelper.createChannel()
 
@@ -85,7 +89,7 @@ class WallpaperService : Service() {
                 val pm = context.getSystemService(POWER_SERVICE) as PowerManager
 
                 serviceScope.launch {
-                    val policy = WallpaperRepository.getBatterySaverPolicy()
+                    val policy = repository.getBatterySaverPolicy()
 
                     if (pm.isPowerSaveMode) {
                         when (policy) {
@@ -131,23 +135,23 @@ class WallpaperService : Service() {
         }
 
         serviceScope.launch {
-            WallpaperRepository.markServiceLoading()
+            repository.markServiceLoading()
             notifyUi()
 
-            val state = WallpaperRepository.getServiceState()
+            val state = repository.getServiceState()
 
             if (state !is ServiceState.DisabledNoCollection){
-                RotationEngine.loadMagazine()
-                RotationEngine.refillDiskBuffer()
+                rotationEngine.loadMagazine()
+                rotationEngine.refillDiskBuffer()
 
-                WallpaperRepository.markServiceRunning()
+                repository.markServiceRunning()
                 notifyUi()
 
-                val activeName = WallpaperRepository.getActiveCollectionOnce()?.name
+                val activeName = repository.getActiveCollectionOnce()?.name
                 notificationHelper.showCycling(activeName)
             }else{
                 Log.w(tag, "Abort startup: No collection found.")
-                WallpaperRepository.markServiceStopped()
+                repository.markServiceStopped()
                 handleStopCommand()
             }
         }
@@ -157,11 +161,11 @@ class WallpaperService : Service() {
 
     private fun handleStopCommand() {
         Log.i(tag, "Stopping service via command.")
-        WallpaperRepository.markServiceStopped()
+        repository.markServiceStopped()
         notifyUi()
 
         serviceScope.launch {
-            if (WallpaperRepository.shouldRevertToDefault()) {
+            if (repository.shouldRevertToDefault()) {
                 applyDefaultWallpaper()
             }
             stopSelf()
@@ -173,14 +177,14 @@ class WallpaperService : Service() {
      * The foreground service stays alive so it can auto-resume.
      */
     private fun pauseEngine() {
-        if (WallpaperRepository.serviceStateFlow.value is ServiceState.Paused) return
+        if (repository.serviceStateFlow.value is ServiceState.Paused) return
         Log.i(tag, "Pausing engine (Power Save ON)")
-        WallpaperRepository.markServicePaused()
+        repository.markServicePaused()
 
         unregisterScreenOffReceiver()
 
         serviceScope.launch {
-            if (WallpaperRepository.shouldRevertToDefault()) {
+            if (repository.shouldRevertToDefault()) {
                 applyDefaultWallpaper()
             }
         }
@@ -193,14 +197,14 @@ class WallpaperService : Service() {
      * Resumes the wallpaper changing by re-registering the ScreenOffReceiver.
      */
     private fun resumeEngine() {
-        if (WallpaperRepository.serviceStateFlow.value !is ServiceState.Paused) return
+        if (repository.serviceStateFlow.value !is ServiceState.Paused) return
         Log.i(tag, "Resuming engine (Power Save OFF)")
-        WallpaperRepository.markServiceRunning()
+        repository.markServiceRunning()
 
         registerScreenOffReceiver()
 
         serviceScope.launch {
-            val activeName = WallpaperRepository.getActiveCollectionOnce()?.name
+            val activeName = repository.getActiveCollectionOnce()?.name
             notificationHelper.showCycling(activeName)
         }
         notifyUi()
@@ -214,12 +218,12 @@ class WallpaperService : Service() {
         unregisterScreenOffReceiver()
         systemEventReceiver?.let { unregisterReceiver(it) }
 
-        RotationEngine.clearMagazine()
+        rotationEngine.clearMagazine()
         serviceScope.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
-    private fun notifyUi() = WallpaperRepository.notifyServiceStateChanged()
+    private fun notifyUi() = repository.notifyServiceStateChanged()
 
     private fun registerScreenOffReceiver() {
         if (screenOffReceiver != null) return

@@ -6,11 +6,10 @@ import android.net.Uri
 import android.os.PowerManager
 import android.provider.DocumentsContract
 import android.util.Log
-import com.ninecsdev.wallpaperchanger.data.local.AppDatabase
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperDao
-import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
+import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.CollectionType
 import com.ninecsdev.wallpaperchanger.model.CropRule
@@ -19,6 +18,7 @@ import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.service.WallpaperService
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -31,16 +31,25 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * The Coordinator of the Data Layer.
  * Orchestrates Room Database, System States, and Preferences.
  */
-object WallpaperRepository {
-    private const val TAG = "WallpaperRepository"
+@Singleton
+class WallpaperRepository @Inject constructor(
+    @param:ApplicationContext private val appContext: Context,
+    private val dao: WallpaperDao,
+    private val appDataStore: AppDataStore,
+    private val rotationEngine: RotationEngine,
+    private val imageInternalizer: ImageInternalizer
+) {
+    private companion object {
+        const val TAG = "WallpaperRepository"
+    }
 
-    private lateinit var appContext: Context
-    private lateinit var dao: WallpaperDao
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _serviceEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -55,17 +64,12 @@ object WallpaperRepository {
     private val _revertToDefaultFlow = MutableStateFlow(true)
     val revertToDefaultFlow: StateFlow<Boolean> = _revertToDefaultFlow.asStateFlow()
 
-    fun initialize(context: Context) {
-        if (!::appContext.isInitialized) {
-            appContext = context.applicationContext
-            dao = AppDatabase.getDatabase(appContext).wallpaperDao()
-            RotationEngine.initialize(dao)
-            _serviceStateFlow.value = ServiceState.Stopped
+    init {
+        _serviceStateFlow.value = ServiceState.Stopped
 
-            scope.launch {
-                _defaultWallpaperUriFlow.value = AppDataStore.getDefaultWallpaperUri(appContext)
-                _revertToDefaultFlow.value = AppDataStore.shouldRevertToDefault(appContext)
-            }
+        scope.launch {
+            _defaultWallpaperUriFlow.value = appDataStore.getDefaultWallpaperUri()
+            _revertToDefaultFlow.value = appDataStore.shouldRevertToDefault()
         }
     }
 
@@ -143,9 +147,9 @@ object WallpaperRepository {
                 Log.d(TAG, "Auto-syncing folder collection: ${collection.name}")
                 syncCollection(collectionId)
             }
-            RotationEngine.clearMagazine()
-            RotationEngine.loadMagazine()
-            RotationEngine.refillDiskBuffer()
+            rotationEngine.clearMagazine()
+            rotationEngine.loadMagazine()
+            rotationEngine.refillDiskBuffer()
         }
     }
 
@@ -180,7 +184,7 @@ object WallpaperRepository {
         withContext(Dispatchers.IO) {
             dao.updateCollection(id, newName, newRule, newFrequency)
             if (dao.getActiveCollection()?.id == id) {
-                RotationEngine.refillDiskBuffer()
+                rotationEngine.refillDiskBuffer()
             }
         }
     }
@@ -194,7 +198,7 @@ object WallpaperRepository {
     suspend fun deleteCollection(collection: WallpaperCollection) {
         withContext(Dispatchers.IO) {
             if (collection.isActive) {
-                RotationEngine.clearMagazine()
+                rotationEngine.clearMagazine()
                 markServiceStopped()
             }
 
@@ -202,9 +206,9 @@ object WallpaperRepository {
             val images = dao.getImagesForCollectionOnce(collection.id)
             images.forEach { image ->
                 if (collection.type == CollectionType.MANUAL) {
-                    ImageInternalizer.deleteInternalFile(image.uri.path)
+                    imageInternalizer.deleteInternalFile(image.uri.path)
                 }
-                ImageInternalizer.deleteInternalFile(image.editedUri?.path)
+                imageInternalizer.deleteInternalFile(image.editedUri?.path)
             }
 
             // Release the persisted folder permission if this is a folder collection
@@ -242,7 +246,7 @@ object WallpaperRepository {
                     Log.d(TAG, "Sync complete: ${freshImages.size} on disk, $added new images added.")
 
                     if (collection.isActive) {
-                        RotationEngine.loadMagazine()
+                        rotationEngine.loadMagazine()
                         Log.i(TAG, "Active collection synced. Magazine reloaded.")
                     }
                 } catch (e: Exception) {
@@ -263,7 +267,7 @@ object WallpaperRepository {
     }
 
     private fun persistServiceRunningState(isRunning: Boolean) {
-        scope.launch { AppDataStore.setServiceRunning(appContext, isRunning) }
+        scope.launch { appDataStore.setServiceRunning(isRunning) }
     }
 
     private fun resolveStoppedVisualState(isPowerSave: Boolean): ServiceState {
@@ -295,7 +299,7 @@ object WallpaperRepository {
         if (getActiveCollectionOnce() == null) return ServiceState.DisabledNoCollection
 
         val currentState = _serviceStateFlow.value
-        val isPersistedRunning = AppDataStore.isServiceRunning(appContext)
+        val isPersistedRunning = appDataStore.isServiceRunning()
         val isServiceAlive = WallpaperService.isAlive
         val isServiceMarkedActive = isServiceAlive || isPersistedRunning
         val stoppedState = resolveStoppedVisualState(isPowerSave)
@@ -321,45 +325,45 @@ object WallpaperRepository {
         }
     }
 
-    suspend fun getDefaultWallpaperUri(): Uri? = AppDataStore.getDefaultWallpaperUri(appContext)
-    suspend fun shouldRevertToDefault(): Boolean = AppDataStore.shouldRevertToDefault(appContext)
+    suspend fun getDefaultWallpaperUri(): Uri? = appDataStore.getDefaultWallpaperUri()
+    suspend fun shouldRevertToDefault(): Boolean = appDataStore.shouldRevertToDefault()
 
     // Passthroughs to Datastore
     fun setRevertToDefault(revert: Boolean) {
         _revertToDefaultFlow.value = revert
-        scope.launch { AppDataStore.setRevertToDefault(appContext, revert) }
+        scope.launch { appDataStore.setRevertToDefault(revert) }
     }
 
     fun saveDefaultWallpaperUri(uri: Uri) {
         _defaultWallpaperUriFlow.value = uri
-        scope.launch { AppDataStore.saveDefaultWallpaperUri(appContext, uri) }
+        scope.launch { appDataStore.saveDefaultWallpaperUri(uri) }
     }
 
-    suspend fun isServiceRunning(): Boolean = AppDataStore.isServiceRunning(appContext)
+    suspend fun isServiceRunning(): Boolean = appDataStore.isServiceRunning()
 
-    suspend fun shouldStartOnBoot(): Boolean = AppDataStore.shouldStartOnBoot(appContext)
+    suspend fun shouldStartOnBoot(): Boolean = appDataStore.shouldStartOnBoot()
     fun setStartOnBoot(enabled: Boolean) {
-        scope.launch { AppDataStore.setStartOnBoot(appContext, enabled) }
+        scope.launch { appDataStore.setStartOnBoot(enabled) }
     }
 
-    suspend fun getScreenOffDelay(): Long = AppDataStore.getScreenOffDelay(appContext)
+    suspend fun getScreenOffDelay(): Long = appDataStore.getScreenOffDelay()
     fun setScreenOffDelay(delayMs: Long) {
-        scope.launch { AppDataStore.setScreenOffDelay(appContext, delayMs) }
+        scope.launch { appDataStore.setScreenOffDelay(delayMs) }
     }
 
-    suspend fun getCompressionQualityHigh(): Int = AppDataStore.getCompressionQualityHigh(appContext)
+    suspend fun getCompressionQualityHigh(): Int = appDataStore.getCompressionQualityHigh()
     fun setCompressionQualityHigh(quality: Int) {
-        scope.launch { AppDataStore.setCompressionQualityHigh(appContext, quality) }
+        scope.launch { appDataStore.setCompressionQualityHigh(quality) }
     }
 
-    suspend fun getCompressionQualityLow(): Int = AppDataStore.getCompressionQualityLow(appContext)
+    suspend fun getCompressionQualityLow(): Int = appDataStore.getCompressionQualityLow()
     fun setCompressionQualityLow(quality: Int) {
-        scope.launch { AppDataStore.setCompressionQualityLow(appContext, quality) }
+        scope.launch { appDataStore.setCompressionQualityLow(quality) }
     }
 
-    suspend fun getBatterySaverPolicy(): BatterySaverPolicy = AppDataStore.getBatterySaverPolicy(appContext)
+    suspend fun getBatterySaverPolicy(): BatterySaverPolicy = appDataStore.getBatterySaverPolicy()
     fun setBatterySaverPolicy(policy: BatterySaverPolicy) {
-        scope.launch { AppDataStore.setBatterySaverPolicy(appContext, policy) }
+        scope.launch { appDataStore.setBatterySaverPolicy(policy) }
     }
 
     // File System Utilities

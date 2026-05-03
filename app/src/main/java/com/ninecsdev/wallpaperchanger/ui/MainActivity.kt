@@ -22,7 +22,9 @@ import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionViewModel
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.MainViewModel
 import com.ninecsdev.wallpaperchanger.ui.navigation.AppNavigation
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     // ViewModels are kept here so the activity-result launchers can call

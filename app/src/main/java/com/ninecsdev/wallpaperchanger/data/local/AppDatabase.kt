@@ -1,8 +1,6 @@
 package com.ninecsdev.wallpaperchanger.data.local
 
-import android.content.Context
 import androidx.room.Database
-import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
@@ -25,26 +23,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun wallpaperDao(): WallpaperDao
 
     companion object {
-        private const val DB_NAME = "smart_wallpaper_database.db"
+        const val DB_NAME = "smart_wallpaper_database.db"
 
-        @Volatile
-        private var INSTANCE: AppDatabase? = null
-
-        fun getDatabase(context: Context): AppDatabase {
-            return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    AppDatabase::class.java,
-                    DB_NAME
-                )
-                    .addMigrations(MIGRATION_1_2)
-                    .build()
-                INSTANCE = instance
-                instance
-            }
-        }
-
-        private val MIGRATION_1_2 = object : Migration(1, 2) {
+        val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     "ALTER TABLE collections ADD COLUMN rotationFrequency TEXT NOT NULL DEFAULT 'PER_LOCK'"

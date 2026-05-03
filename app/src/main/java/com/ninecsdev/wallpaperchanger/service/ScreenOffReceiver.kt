@@ -11,15 +11,22 @@ import com.ninecsdev.wallpaperchanger.logic.BufferManager
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.model.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.shouldRotateAt
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class ScreenOffReceiver : BroadcastReceiver() {
 
     private val tag = "ScreenOffReceiver"
+
+    @Inject lateinit var repository: WallpaperRepository
+    @Inject lateinit var rotationEngine: RotationEngine
+    @Inject lateinit var bufferManager: BufferManager
 
     companion object {
         // Prevents multiple concurrent swaps if the power button is clicked many times
@@ -40,7 +47,7 @@ class ScreenOffReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Configurable delay (default 250ms for Nothing Phone animation)
-                val delayMs = WallpaperRepository.getScreenOffDelay()
+                val delayMs = repository.getScreenOffDelay()
                 delay(delayMs)
 
                 // Safety check: if the user woke the screen during the delay abort
@@ -49,7 +56,7 @@ class ScreenOffReceiver : BroadcastReceiver() {
                     return@launch
                 }
 
-                val activeCollection = WallpaperRepository.getActiveCollectionOnce()
+                val activeCollection = repository.getActiveCollectionOnce()
                 if (activeCollection == null) {
                     Log.w(tag, "No active collection found. Skipping wallpaper change.")
                     return@launch
@@ -68,8 +75,8 @@ class ScreenOffReceiver : BroadcastReceiver() {
                 // Apply the pre-processed buffer image and prepare next image
                 val applied = applyBufferToLockScreen(context)
                 if (applied) {
-                    WallpaperRepository.markWallpaperChanged(activeCollection.id)
-                    RotationEngine.refillDiskBuffer()
+                    repository.markWallpaperChanged(activeCollection.id)
+                    rotationEngine.refillDiskBuffer()
                 }
             } catch (e: Exception) {
                 Log.e(tag, "Error during wallpaper change", e)
@@ -87,7 +94,7 @@ class ScreenOffReceiver : BroadcastReceiver() {
      */
     private fun applyBufferToLockScreen(context: Context): Boolean {
         try {
-            val bufferFile = BufferManager.getBufferFile()
+            val bufferFile = bufferManager.getBufferFile()
 
             if (!bufferFile.exists()) {
                 Log.w(tag, "Buffer file missing. Is the service initialized?")

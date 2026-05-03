@@ -9,13 +9,13 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntSize
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -40,13 +40,13 @@ fun AppNavigation(
     onLaunchPhotosPicker: () -> Unit,
     onLaunchDefaultWallpaperPicker: () -> Unit,
     modifier: Modifier = Modifier,
-    mainViewModel: MainViewModel = viewModel(),
-    collectionViewModel: CollectionViewModel = viewModel(),
-    settingsViewModel: SettingsViewModel = viewModel()
+    mainViewModel: MainViewModel = hiltViewModel(),
+    collectionViewModel: CollectionViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val mainState by mainViewModel.uiState.collectAsState()
-    val collectionState by collectionViewModel.uiState.collectAsState()
-    val settingsState by settingsViewModel.uiState.collectAsState()
+    val mainState by mainViewModel.uiState.collectAsStateWithLifecycle()
+    val collectionState by collectionViewModel.uiState.collectAsStateWithLifecycle()
+    val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
 
     NavHost(
         navController = navController,

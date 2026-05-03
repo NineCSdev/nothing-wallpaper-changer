@@ -5,7 +5,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
 import androidx.core.graphics.scale
-import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
+import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -13,15 +13,23 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Handles copying external images into the app's private storage.
  * Used for manual collections to not get limited by android persistence file access.
  */
-object ImageInternalizer {
-    private const val TAG = "ImageInternalizer"
-    private const val INTERNAL_FOLDER = "internal_wallpapers"
-    private const val LARGE_FILE_THRESHOLD = 2L * 1024 * 1024
+@Singleton
+class ImageInternalizer @Inject constructor(
+    // Though injecting the datastore here is not the best practice it was done for simplicity
+    private val appDataStore: AppDataStore
+) {
+    private companion object {
+        const val TAG = "ImageInternalizer"
+        const val INTERNAL_FOLDER = "internal_wallpapers"
+        const val LARGE_FILE_THRESHOLD = 2L * 1024 * 1024
+    }
 
     /**
      * Copies a list of URIs into internal storage as WebP files.
@@ -36,8 +44,8 @@ object ImageInternalizer {
 
             val (screenW, screenH) = ImageProcessingUtils.getScreenDimensions(context)
 
-            val qualityHigh = WallpaperRepository.getCompressionQualityHigh()
-            val qualityLow = WallpaperRepository.getCompressionQualityLow()
+            val qualityHigh = appDataStore.getCompressionQualityHigh()
+            val qualityLow = appDataStore.getCompressionQualityLow()
 
             // Note: right now we are starting one process per uri for pure speed, from my small
             // testing this has not produced problems but should be looked into and maybe changed

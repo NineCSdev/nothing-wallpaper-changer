@@ -161,5 +161,3 @@ These are intentional current limitations, not documentation mistakes:
 - ViewModels still extend `AndroidViewModel`.
 - Preferences are persisted with DataStore, but still wired through singleton repository APIs instead of DI.
 - Repository and buffer manager are `object` singletons instead of constructor-injected classes.
-
-The remediation plan for those items lives in `context.md`.

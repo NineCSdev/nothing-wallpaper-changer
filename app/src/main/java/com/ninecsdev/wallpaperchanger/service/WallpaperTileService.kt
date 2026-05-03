@@ -12,20 +12,23 @@ import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.ui.MainActivity
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * Quick settings tile for instant control of the app.
  */
+@AndroidEntryPoint
 class WallpaperTileService : TileService() {
 
     private val tag = "WallpaperTileService"
-    private val repository = WallpaperRepository
+    @Inject lateinit var repository: WallpaperRepository
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private var serviceEventJob: Job? = null
@@ -43,7 +46,6 @@ class WallpaperTileService : TileService() {
 
     override fun onStartListening() {
         super.onStartListening()
-        WallpaperRepository.initialize(applicationContext)
 
         registerReceiver(
             systemReceiver,

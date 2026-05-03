@@ -5,26 +5,26 @@ import com.ninecsdev.wallpaperchanger.data.local.WallpaperDao
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Owns the in-memory rotation state (the "magazine") and the shuffle-cycle algorithm.
  * Picks the next image, delegates disk-buffer preparation to [BufferManager],
  * and self-heals by removing images that fail to load
  */
-object RotationEngine {
-    private const val TAG = "RotationEngine"
-
-    // Although ideally WallpaperDao should only be accessed by the repository we use it here for simplicity
-    private lateinit var dao: WallpaperDao
+@Singleton
+class RotationEngine @Inject constructor(
+    private val dao: WallpaperDao,
+    private val bufferManager: BufferManager,
+    private val imageInternalizer: ImageInternalizer
+) {
+    private companion object {
+        const val TAG = "RotationEngine"
+    }
 
     private val imageMagazine = mutableListOf<WallpaperImage>()
     private var currentPointer = -1
-
-    fun initialize(dao: WallpaperDao) {
-        if (!this::dao.isInitialized) {
-            this.dao = dao
-        }
-    }
 
     /**
      * Loads and shuffles the images from the active collection into RAM
@@ -72,7 +72,7 @@ object RotationEngine {
                 }
             } ?: continue
 
-            val success = BufferManager.prepareNextWallpaper(
+            val success = bufferManager.prepareNextWallpaper(
                 nextImage,
                 activeCollection.defaultCropRule
             )
@@ -83,7 +83,7 @@ object RotationEngine {
             }
 
             Log.w(TAG, "Failed to load ${nextImage.uri}. Removing from rotation.")
-            ImageInternalizer.deleteInternalFile(nextImage.editedUri?.path)
+            imageInternalizer.deleteInternalFile(nextImage.editedUri?.path)
             dao.deleteImageById(nextImage.id)
 
             synchronized(imageMagazine) {

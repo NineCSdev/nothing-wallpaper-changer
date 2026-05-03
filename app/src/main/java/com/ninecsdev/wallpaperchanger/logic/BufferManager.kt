@@ -7,28 +7,28 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.util.Log
 import androidx.core.graphics.createBitmap
+import dagger.hilt.android.qualifiers.ApplicationContext
 import com.ninecsdev.wallpaperchanger.model.CropRule
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * In charge of preparing the next wallpaper that will be set.
  * Handles downsampling, aspect-ratio cropping, and WebP compression.
  */
-object BufferManager {
-    private const val TAG = "BufferManager"
-    private const val BUFFER_FILENAME = "buffer_next.webp"
-    private const val TEMP_FILENAME = "buffer_temp.webp"
-    private const val COMPRESSION_QUALITY = 95
-
-    private lateinit var appContext: Context
-
-    fun initialize(context: Context) {
-        if (!::appContext.isInitialized) {
-            appContext = context.applicationContext
-        }
+@Singleton
+class BufferManager @Inject constructor(
+    @param:ApplicationContext private val appContext: Context
+) {
+    private companion object {
+        const val TAG = "BufferManager"
+        const val BUFFER_FILENAME = "buffer_next.webp"
+        const val TEMP_FILENAME = "buffer_temp.webp"
+        const val COMPRESSION_QUALITY = 95
     }
 
     /**
@@ -61,7 +61,7 @@ object BufferManager {
                 val finalBitmap = processBitmap(sourceBitmap, targetW, targetH, cropRule)
 
                 // Atomic Write to Disk
-                val bufferFile = File(appContext.cacheDir, BUFFER_FILENAME)
+                val bufferFile = getBufferFile()
                 val tempFile = File(appContext.cacheDir, TEMP_FILENAME)
 
                 ImageProcessingUtils.compressToFile(finalBitmap, tempFile, quality = COMPRESSION_QUALITY)

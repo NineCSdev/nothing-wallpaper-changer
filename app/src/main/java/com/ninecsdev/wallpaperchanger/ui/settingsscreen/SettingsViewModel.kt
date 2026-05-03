@@ -1,25 +1,30 @@
 package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import android.content.Context
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import javax.inject.Inject
 
 /**
  * ViewModel for the Settings screen.
  * Reads the app version from PackageInfo and combines all
  * settings flows into a single [SettingsUiState].
  */
-class SettingsViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val repository = WallpaperRepository
-    private val context = application.applicationContext
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    private val repository: WallpaperRepository,
+    private val appDataStore: AppDataStore,
+    @param:ApplicationContext private val context: Context
+) : ViewModel() {
 
     private val appVersion: String = try {
         context.packageManager
@@ -28,11 +33,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     } catch (_: Exception) { "" }
 
     val uiState: StateFlow<SettingsUiState> = combine(
-        AppDataStore.screenOffDelayFlow(context),
-        AppDataStore.startOnBootFlow(context),
-        AppDataStore.compressionQualityHighFlow(context),
-        AppDataStore.compressionQualityLowFlow(context),
-        AppDataStore.batterySaverPolicyFlow(context)
+        appDataStore.screenOffDelayFlow(),
+        appDataStore.startOnBootFlow(),
+        appDataStore.compressionQualityHighFlow(),
+        appDataStore.compressionQualityLowFlow(),
+        appDataStore.batterySaverPolicyFlow()
     ) { delay, boot, qualityHigh, qualityLow, batterySaverPolicy ->
         SettingsUiState(
             screenOffDelayMs = delay,

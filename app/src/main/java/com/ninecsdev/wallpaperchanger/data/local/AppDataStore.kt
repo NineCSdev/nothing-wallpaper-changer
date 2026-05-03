@@ -3,17 +3,22 @@ package com.ninecsdev.wallpaperchanger.data.local
 import android.content.Context
 import android.net.Uri
 import androidx.core.net.toUri
+import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Manages simple key-value pairs for global application settings using
@@ -32,7 +37,11 @@ private val Context.dataStore by preferencesDataStore(
     }
 )
 
-object AppDataStore {
+@Singleton
+class AppDataStore @Inject constructor(
+    @ApplicationContext context: Context
+) {
+    private val dataStore: DataStore<Preferences> = context.dataStore
 
     private val KEY_DEFAULT_WALLPAPER_URI = stringPreferencesKey("default_wallpaper_uri")
     private val KEY_REVERT_TO_DEFAULT = booleanPreferencesKey("revert_to_default_on_stop")
@@ -45,43 +54,43 @@ object AppDataStore {
 
     // Flows (reactive reads)
 
-    fun defaultWallpaperUriFlow(context: Context): Flow<Uri?> =
-        context.dataStore.data.map { prefs ->
+    fun defaultWallpaperUriFlow(): Flow<Uri?> =
+        dataStore.data.map { prefs ->
             prefs[KEY_DEFAULT_WALLPAPER_URI]?.toUri()
         }
 
-    fun revertToDefaultFlow(context: Context): Flow<Boolean> =
-        context.dataStore.data.map { prefs ->
+    fun revertToDefaultFlow(): Flow<Boolean> =
+        dataStore.data.map { prefs ->
             prefs[KEY_REVERT_TO_DEFAULT] ?: true
         }
 
-    fun serviceRunningFlow(context: Context): Flow<Boolean> =
-        context.dataStore.data.map { prefs ->
+    fun serviceRunningFlow(): Flow<Boolean> =
+        dataStore.data.map { prefs ->
             prefs[KEY_SERVICE_RUNNING] ?: false
         }
 
-    fun startOnBootFlow(context: Context): Flow<Boolean> =
-        context.dataStore.data.map { prefs ->
+    fun startOnBootFlow(): Flow<Boolean> =
+        dataStore.data.map { prefs ->
             prefs[KEY_START_ON_BOOT] ?: true
         }
 
-    fun screenOffDelayFlow(context: Context): Flow<Long> =
-        context.dataStore.data.map { prefs ->
+    fun screenOffDelayFlow(): Flow<Long> =
+        dataStore.data.map { prefs ->
             prefs[KEY_SCREEN_OFF_DELAY] ?: 250L
         }
 
-    fun compressionQualityHighFlow(context: Context): Flow<Int> =
-        context.dataStore.data.map { prefs ->
+    fun compressionQualityHighFlow(): Flow<Int> =
+        dataStore.data.map { prefs ->
             prefs[KEY_COMPRESSION_QUALITY_HIGH] ?: 95
         }
 
-    fun compressionQualityLowFlow(context: Context): Flow<Int> =
-        context.dataStore.data.map { prefs ->
+    fun compressionQualityLowFlow(): Flow<Int> =
+        dataStore.data.map { prefs ->
             prefs[KEY_COMPRESSION_QUALITY_LOW] ?: 80
         }
 
-    fun batterySaverPolicyFlow(context: Context): Flow<BatterySaverPolicy> =
-        context.dataStore.data.map { prefs ->
+    fun batterySaverPolicyFlow(): Flow<BatterySaverPolicy> =
+        dataStore.data.map { prefs ->
             val raw = prefs[KEY_BATTERY_SAVER_POLICY]
             // For first install we default to PAUSE
             if (raw != null) {
@@ -94,76 +103,76 @@ object AppDataStore {
 
     // Suspend reads (suspend, one-shot)
 
-    suspend fun getDefaultWallpaperUri(context: Context): Uri? =
-        defaultWallpaperUriFlow(context).first()
+    suspend fun getDefaultWallpaperUri(): Uri? =
+        defaultWallpaperUriFlow().first()
 
-    suspend fun shouldRevertToDefault(context: Context): Boolean =
-        revertToDefaultFlow(context).first()
+    suspend fun shouldRevertToDefault(): Boolean =
+        revertToDefaultFlow().first()
 
-    suspend fun isServiceRunning(context: Context): Boolean =
-        serviceRunningFlow(context).first()
+    suspend fun isServiceRunning(): Boolean =
+        serviceRunningFlow().first()
 
-    suspend fun shouldStartOnBoot(context: Context): Boolean =
-        startOnBootFlow(context).first()
+    suspend fun shouldStartOnBoot(): Boolean =
+        startOnBootFlow().first()
 
-    suspend fun getScreenOffDelay(context: Context): Long =
-        screenOffDelayFlow(context).first()
+    suspend fun getScreenOffDelay(): Long =
+        screenOffDelayFlow().first()
 
-    suspend fun getCompressionQualityHigh(context: Context): Int =
-        compressionQualityHighFlow(context).first()
+    suspend fun getCompressionQualityHigh(): Int =
+        compressionQualityHighFlow().first()
 
-    suspend fun getCompressionQualityLow(context: Context): Int =
-        compressionQualityLowFlow(context).first()
+    suspend fun getCompressionQualityLow(): Int =
+        compressionQualityLowFlow().first()
 
-    suspend fun getBatterySaverPolicy(context: Context): BatterySaverPolicy =
-        batterySaverPolicyFlow(context).first()
+    suspend fun getBatterySaverPolicy(): BatterySaverPolicy =
+        batterySaverPolicyFlow().first()
 
     // Writes (suspend)
 
-    suspend fun saveDefaultWallpaperUri(context: Context, uri: Uri) {
-        context.dataStore.edit { prefs ->
+    suspend fun saveDefaultWallpaperUri(uri: Uri) {
+        dataStore.edit { prefs ->
             prefs[KEY_DEFAULT_WALLPAPER_URI] = uri.toString()
         }
     }
 
-    suspend fun setRevertToDefault(context: Context, revert: Boolean) {
-        context.dataStore.edit { prefs ->
+    suspend fun setRevertToDefault(revert: Boolean) {
+        dataStore.edit { prefs ->
             prefs[KEY_REVERT_TO_DEFAULT] = revert
         }
     }
 
-    suspend fun setServiceRunning(context: Context, isRunning: Boolean) {
-        context.dataStore.edit { prefs ->
+    suspend fun setServiceRunning(isRunning: Boolean) {
+        dataStore.edit { prefs ->
             prefs[KEY_SERVICE_RUNNING] = isRunning
         }
     }
 
-    suspend fun setStartOnBoot(context: Context, enabled: Boolean) {
-        context.dataStore.edit { prefs ->
+    suspend fun setStartOnBoot(enabled: Boolean) {
+        dataStore.edit { prefs ->
             prefs[KEY_START_ON_BOOT] = enabled
         }
     }
 
-    suspend fun setScreenOffDelay(context: Context, delayMs: Long) {
-        context.dataStore.edit { prefs ->
+    suspend fun setScreenOffDelay(delayMs: Long) {
+        dataStore.edit { prefs ->
             prefs[KEY_SCREEN_OFF_DELAY] = delayMs
         }
     }
 
-    suspend fun setCompressionQualityHigh(context: Context, quality: Int) {
-        context.dataStore.edit { prefs ->
+    suspend fun setCompressionQualityHigh(quality: Int) {
+        dataStore.edit { prefs ->
             prefs[KEY_COMPRESSION_QUALITY_HIGH] = quality
         }
     }
 
-    suspend fun setCompressionQualityLow(context: Context, quality: Int) {
-        context.dataStore.edit { prefs ->
+    suspend fun setCompressionQualityLow(quality: Int) {
+        dataStore.edit { prefs ->
             prefs[KEY_COMPRESSION_QUALITY_LOW] = quality
         }
     }
 
-    suspend fun setBatterySaverPolicy(context: Context, policy: BatterySaverPolicy) {
-        context.dataStore.edit { prefs ->
+    suspend fun setBatterySaverPolicy(policy: BatterySaverPolicy) {
+        dataStore.edit { prefs ->
             prefs[KEY_BATTERY_SAVER_POLICY] = policy.name
         }
     }
