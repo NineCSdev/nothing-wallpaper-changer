@@ -64,7 +64,8 @@ fun EditCollectionCard(
     onEdit: (String, CropRule, RotationFrequency) -> Unit,
     onDelete: () -> Unit,
     onSetActive: () -> Unit,
-    onSyncClick: () -> Unit
+    onSyncClick: () -> Unit,
+    onViewImages: () -> Unit
 ) {
     var nameText by remember { mutableStateOf(collection.name) }
     var selectedRule by remember { mutableStateOf(collection.defaultCropRule) }
@@ -117,7 +118,11 @@ fun EditCollectionCard(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     ManagementButtons(
-                        onDeleteRequest = { showDeleteConfirmation = true }
+                        onDeleteRequest = { showDeleteConfirmation = true },
+                        onViewImages = {
+                            onDismiss()
+                            onViewImages()
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(32.dp))
@@ -263,14 +268,16 @@ private fun EditCardHeader(
 }
 
 @Composable
-private fun ManagementButtons(onDeleteRequest: () -> Unit) {
+private fun ManagementButtons(
+    onDeleteRequest: () -> Unit,
+    onViewImages: () -> Unit
+) {
     Column {
-        /* TODO: Uncomment when the feature is added, Open Image Grid Screen remember to modify the alpha on colors
         OutlinedButton(
-            onClick = { },
+            onClick = onViewImages,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite.copy(alpha = 0.1f)),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite),
             border = BorderStroke(1.dp, NothingWhite.copy(alpha = 0.3f))
         ) {
             Icon(painterResource(R.drawable.icon_collection), null, Modifier.size(18.dp))
@@ -279,7 +286,6 @@ private fun ManagementButtons(onDeleteRequest: () -> Unit) {
         }
 
         Spacer(modifier = Modifier.height(12.dp))
-         */
 
         Button(
             onClick = onDeleteRequest,
@@ -349,7 +355,8 @@ fun EditCollectionCardPreview() {
             onEdit = { _, _, _ -> },
             onDelete = {},
             onSetActive = {},
-            onSyncClick = {}
+            onSyncClick = {},
+            onViewImages = {}
         )
     }
 }
@@ -369,7 +376,8 @@ fun EditCollectionCardManualPreview() {
                 onEdit = { _, _, _ -> },
                 onDelete = {},
                 onSetActive = {},
-                onSyncClick = {}
+                onSyncClick = {},
+                onViewImages = {}
             )
         }
     }
@@ -390,7 +398,8 @@ fun EditCollectionCardActivePreview() {
             onEdit = { _, _, _ -> },
             onDelete = {},
             onSetActive = {},
-            onSyncClick = {}
+            onSyncClick = {},
+            onViewImages = {}
         )
     }
 }
@@ -411,7 +420,8 @@ fun EditCollectionCardSyncingPreview() {
                 onEdit = { _, _, _ -> },
                 onDelete = {},
                 onSetActive = {},
-                onSyncClick = {}
+                onSyncClick = {},
+                onViewImages = {}
             )
         }
     }

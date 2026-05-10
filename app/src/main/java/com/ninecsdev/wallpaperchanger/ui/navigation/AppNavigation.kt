@@ -1,5 +1,10 @@
 package com.ninecsdev.wallpaperchanger.ui.navigation
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -17,8 +22,12 @@ import androidx.compose.ui.unit.IntSize
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
+import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.CollectionImageScreen
+import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.CollectionImageViewModel
 import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionListScreen
 import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionViewModel
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.MainScreen
@@ -46,18 +55,23 @@ fun AppNavigation(
 ) {
     val mainState by mainViewModel.uiState.collectAsStateWithLifecycle()
     val collectionState by collectionViewModel.uiState.collectAsStateWithLifecycle()
-    val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
 
     NavHost(
         navController = navController,
         startDestination = Route.MAIN,
-        enterTransition = { NavigationTransitions.enter },
-        exitTransition = { NavigationTransitions.exit },
-        popEnterTransition = { NavigationTransitions.popEnter },
-        popExitTransition = { NavigationTransitions.popExit },
+        enterTransition = { NavigationTransitions.enterDefault },
+        exitTransition = { NavigationTransitions.exitDefault },
+        popEnterTransition = { NavigationTransitions.enterDefault },
+        popExitTransition = { NavigationTransitions.exitDefault },
         modifier = modifier
     ) {
-        composable(Route.MAIN) {
+        composable(
+            route = Route.MAIN,
+            enterTransition = { NavigationTransitions.enterMain_Collections },
+            exitTransition = { NavigationTransitions.exitMain_Collections },
+            popEnterTransition = { NavigationTransitions.popEnterMain_Collections },
+            popExitTransition = { NavigationTransitions.popExitMain_Collections }
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -89,14 +103,24 @@ fun AppNavigation(
             }
         }
 
-        composable(Route.COLLECTIONS) {
+        composable(
+            route = Route.COLLECTIONS,
+            enterTransition = { NavigationTransitions.enterMain_Collections },
+            exitTransition = { NavigationTransitions.exitMain_Collections },
+            popEnterTransition = { NavigationTransitions.popEnterMain_Collections },
+            popExitTransition = { NavigationTransitions.popExitMain_Collections }
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .edgeSwipe(
                         edgePredicate = { offset, size -> offset.x < size.width * 0.70f },
                         swipePredicate = { dragAmount -> dragAmount > 50f },
-                        onSwipe = { navController.popBackStack() }
+                        onSwipe = {
+                            if (navController.previousBackStackEntry != null) {
+                                navController.popBackStack()
+                            }
+                        }
                     )
             ) {
                 CollectionListScreen(
@@ -105,7 +129,9 @@ fun AppNavigation(
                     onCollectionClick = { id ->
                         if (collectionState.isPickerMode) {
                             mainViewModel.setActiveCollection(id)
-                            navController.popBackStack()
+                            if (navController.previousBackStackEntry != null) {
+                                navController.popBackStack()
+                            }
                         } else {
                             collectionState.allCollections
                                 .find { it.id == id }
@@ -114,7 +140,11 @@ fun AppNavigation(
                     },
                     onSortOrderChange = collectionViewModel::setSortOrder,
                     onAddClick = { collectionViewModel.toggleCreateModal(true) },
-                    onBackClick = { navController.popBackStack() },
+                    onBackClick = {
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
+                    },
 
                     // Create modal callbacks
                     onDismissCreateModal = { collectionViewModel.toggleCreateModal(false) },
@@ -163,15 +193,69 @@ fun AppNavigation(
                         collectionState.editingCollection?.let {
                             collectionViewModel.syncCollection(it.id) {}
                         }
+                    },
+                    onViewImages = {
+                        collectionState.editingCollection?.let {
+                            navController.navigate(Route.collectionImages(it.id))
+                        }
                     }
                 )
             }
         }
 
-        composable(Route.SETTINGS) {
+        composable(
+            route = Route.COLLECTION_IMAGES,
+            arguments = listOf(
+                navArgument("collectionId") { type = NavType.LongType }
+            )
+        ) { entry ->
+            val collectionId = entry.arguments?.getLong("collectionId")
+            val collectionImageViewModel: CollectionImageViewModel = hiltViewModel()
+            val collectionImageState by collectionImageViewModel.uiState.collectAsStateWithLifecycle()
+
+            val imagePickerLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.PickMultipleVisualMedia()
+            ) { uris ->
+                if (uris.isNotEmpty()) {
+                    collectionImageViewModel.addWallpapers(uris)
+                }
+            }
+
+            CollectionImageScreen(
+                uiState = collectionImageState,
+                onBackClick = {
+                    collectionId?.let { id -> collectionViewModel.invalidatePreview(id) }
+                    if (navController.previousBackStackEntry != null) {
+                        navController.popBackStack()
+                    }
+                },
+                onAddWallpapers = {
+                    imagePickerLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                },
+                onWallpaperTap = collectionImageViewModel::openPreview,
+                onWallpaperLongPress = collectionImageViewModel::enterSelectionMode,
+                onToggleSelection = collectionImageViewModel::toggleSelection,
+                onExitSelectionMode = collectionImageViewModel::exitSelectionMode,
+                onDeleteSelected = collectionImageViewModel::deleteSelectedWallpapers,
+                onEditSelected = { /* TODO: Navigate to wallpaper edit/crop screen */ },
+                onClosePreview = collectionImageViewModel::closePreview
+            )
+        }
+
+        composable(
+            route = Route.SETTINGS
+        ) {
+            val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+
             SettingsScreen(
                 uiState = settingsState,
-                onBackClick = { navController.popBackStack() },
+                onBackClick = {
+                    if (navController.previousBackStackEntry != null) {
+                        navController.popBackStack()
+                    }
+                },
                 onScreenOffDelayChange = settingsViewModel::setScreenOffDelay,
                 onStartOnBootChange = settingsViewModel::setStartOnBoot,
                 onBatterySaverPolicyChange = settingsViewModel::setBatterySaverPolicy,
@@ -213,20 +297,25 @@ private fun Modifier.edgeSwipe(
 private object NavigationTransitions {
     private const val ANIM_DURATION = 1000
 
-    val enter = slideInHorizontally(
+    val enterMain_Collections = slideInHorizontally(
         initialOffsetX = { it },
         animationSpec = tween(ANIM_DURATION)
     )
-    val exit = fadeOut(
-        animationSpec = tween(ANIM_DURATION),
-        targetAlpha = 0.7f
-    )
-    val popEnter = fadeIn(
-        animationSpec = tween(ANIM_DURATION)
-    )
-    val popExit = slideOutHorizontally(
+
+    val exitMain_Collections = ExitTransition.None
+    val popEnterMain_Collections = EnterTransition.None
+
+    val popExitMain_Collections = slideOutHorizontally(
         targetOffsetX = { it },
         animationSpec = tween(ANIM_DURATION)
+    )
+
+    val enterDefault = fadeIn(
+        animationSpec = tween(500)
+    )
+    val exitDefault = fadeOut(
+        animationSpec = tween(500),
+        targetAlpha = 0.5f
     )
 }
 
@@ -234,5 +323,9 @@ private object NavigationTransitions {
 object Route {
     const val MAIN = "main"
     const val COLLECTIONS = "collections"
+    const val COLLECTION_IMAGES = "collection_images/{collectionId}"
     const val SETTINGS = "settings"
+
+    /** Builds the route for a specific collection's image screen. */
+    fun collectionImages(collectionId: Long) = "collection_images/$collectionId"
 }

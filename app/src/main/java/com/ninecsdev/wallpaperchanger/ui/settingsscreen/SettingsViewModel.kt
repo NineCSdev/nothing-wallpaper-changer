@@ -22,7 +22,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val repository: WallpaperRepository,
-    private val appDataStore: AppDataStore,
+    appDataStore: AppDataStore,
     @param:ApplicationContext private val context: Context
 ) : ViewModel() {
 

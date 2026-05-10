@@ -89,6 +89,9 @@ interface WallpaperDao {
     @Query("DELETE FROM wallpapers WHERE collectionId = :collectionId")
     suspend fun deleteImagesByCollectionId(collectionId: Long)
 
+    @Query("DELETE FROM wallpapers WHERE id IN (:ids)")
+    suspend fun deleteImagesByIds(ids: List<Long>)
+
     /**
      * Returns only the folder-sourced (non-manually-added) images for a collection.
      * Used during folder sync to compute diffs without touching manually added images.

@@ -24,15 +24,13 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.ninecsdev.wallpaperchanger.model.CollectionType
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
+import com.ninecsdev.wallpaperchanger.ui.components.ThumbnailSlot
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
@@ -151,31 +149,7 @@ private fun GridContent(uris: List<Uri>, totalCount: Int) {
     }
 }
 
-/**
- * Square slot for a single image preview.
- */
-@Composable
-private fun ThumbnailSlot(
-    uri: Uri?,
-    shape: Shape = RoundedCornerShape(0.dp),
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .padding(1.dp)
-            .clip(shape)
-            .background(NothingGray)
-    ) {
-        if (uri != null) {
-            AsyncImage(
-                model = uri,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-    }
-}
+
 
 @Preview(name = ">4 wallpapers",showBackground = true, backgroundColor = 0xFF000000)
 @Composable

@@ -90,6 +90,10 @@ class WallpaperRepository @Inject constructor(
         return dao.getImagesForCollection(collectionId)
     }
 
+    suspend fun getCollectionById(collectionId: Long): WallpaperCollection? {
+        return dao.getCollectionById(collectionId)
+    }
+
     // Collection Management
 
     suspend fun importFolderAsCollection(name: String, treeUri: Uri, rule: CropRule) {
@@ -133,6 +137,47 @@ class WallpaperRepository @Inject constructor(
             }
 
             dao.insertImages(images)
+        }
+    }
+
+    /**
+     * Adds wallpapers to an existing collection.
+     * For FOLDER collections the new images are marked [WallpaperImage.isManuallyAdded]
+     * so they survive folder-sync diffs.
+     */
+    suspend fun addImagesToCollection(collectionId: Long, uris: List<Uri>) {
+        withContext(Dispatchers.IO) {
+            val collection = dao.getCollectionById(collectionId) ?: return@withContext
+            val internalizedUris = imageInternalizer.internalizeImages(appContext, uris)
+
+            val isFolder = collection.type == CollectionType.FOLDER
+            val images = internalizedUris.map {
+                WallpaperImage(
+                    collectionId = collectionId,
+                    uri = it,
+                    isManuallyAdded = isFolder
+                )
+            }
+            dao.insertImages(images)
+
+            // Reload rotation engine if this is the active collection
+            if (collection.isActive) {
+                rotationEngine.loadMagazine()
+                rotationEngine.refillDiskBuffer()
+            }
+        }
+    }
+
+    /**
+     * Deletes specific wallpaper images and cleans up their internal files.
+     */
+    suspend fun deleteImagesById(images: List<WallpaperImage>) {
+        withContext(Dispatchers.IO) {
+            images.forEach { image ->
+                imageInternalizer.deleteInternalFile(image.uri.path)
+                imageInternalizer.deleteInternalFile(image.editedUri?.path)
+            }
+            dao.deleteImagesByIds(images.map { it.id })
         }
     }
 
@@ -202,10 +247,10 @@ class WallpaperRepository @Inject constructor(
                 markServiceStopped()
             }
 
-            // Clean up internal files for all images in the manual collection
+            // Clean up internal files for manual collections and manually-added folder images.
             val images = dao.getImagesForCollectionOnce(collection.id)
             images.forEach { image ->
-                if (collection.type == CollectionType.MANUAL) {
+                if (collection.type == CollectionType.MANUAL || image.isManuallyAdded) {
                     imageInternalizer.deleteInternalFile(image.uri.path)
                 }
                 imageInternalizer.deleteInternalFile(image.editedUri?.path)

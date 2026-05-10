@@ -67,7 +67,8 @@ fun CollectionListScreen(
     onEditCollection: (newName: String, rule: CropRule, freq: RotationFrequency) -> Unit,
     onSetActiveCollection: () -> Unit,
     onDeleteCollection: () -> Unit,
-    onSyncCollection: () -> Unit
+    onSyncCollection: () -> Unit,
+    onViewImages: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -179,7 +180,8 @@ fun CollectionListScreen(
                 onEdit = onEditCollection,
                 onSetActive = onSetActiveCollection,
                 onDelete = onDeleteCollection,
-                onSyncClick = onSyncCollection
+                onSyncClick = onSyncCollection,
+                onViewImages = onViewImages
             )
         }
     }
@@ -241,7 +243,8 @@ fun CollectionListScreenPopulatedPreview() {
             onEditCollection = { _, _, _ -> },
             onSetActiveCollection = {},
             onDeleteCollection = {},
-            onSyncCollection = {}
+            onSyncCollection = {},
+            onViewImages = {}
         )
     }
 }
@@ -265,7 +268,8 @@ fun CollectionListScreenEmptyPreview() {
             onEditCollection = { _, _, _ -> },
             onSetActiveCollection = {},
             onDeleteCollection = {},
-            onSyncCollection = {}
+            onSyncCollection = {},
+            onViewImages = {}
         )
     }
 }

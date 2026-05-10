@@ -148,12 +148,9 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    // Preview loading
-
     /**
-     * Loads the 2×2 thumbnail previews for a collection.
-     * Called once per visible grid item; cached in the map so it
-     * doesn't re-fetch unless the screen is recreated.
+     * Loads (or refreshes) the 2×2 thumbnail previews for a collection.
+     * Called by the grid when a collection item becomes visible.
      */
     fun loadPreview(collectionId: Long) {
         if (_previewStates.value.containsKey(collectionId)) return
@@ -166,6 +163,14 @@ class CollectionViewModel @Inject constructor(
                 current + (collectionId to CollectionPreviewState(uris, size))
             }
         }
+    }
+
+    /**
+     * Evicts the cached preview for [collectionId] so the next [loadPreview] call
+     * fetches fresh data. Call this when returning from the CollectionImageScreen.
+     */
+    fun invalidatePreview(collectionId: Long) {
+        _previewStates.update { it - collectionId }
     }
 
     // Sort order
