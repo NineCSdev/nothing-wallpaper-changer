@@ -10,6 +10,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
@@ -47,15 +49,20 @@ class ImageInternalizer @Inject constructor(
             val qualityHigh = appDataStore.getCompressionQualityHigh()
             val qualityLow = appDataStore.getCompressionQualityLow()
 
-            // Note: right now we are starting one process per uri for pure speed, from my small
-            // testing this has not produced problems but should be looked into and maybe changed
-            // to a batch approached (maybe doing 10 each time?)
+            // Added a semaphore approach to avoid possible OOM errors thought in my testing the previous
+            // one process process per uri for pure speed didn't produce problems. Added it because I didn't
+            // find a noticeable time increase between this and previous approach probably due to Android/Kotlin
+            // guardrails
+            val batchSemaphore = Semaphore(10)
+
             coroutineScope {
                 uris.map { uri ->
                     async {
-                        val fileSize = context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
-                        val quality = if (fileSize > LARGE_FILE_THRESHOLD) qualityLow else qualityHigh
-                        internalizeImage(context, uri, internalDir, screenW, screenH, quality)
+                        batchSemaphore.withPermit {
+                            val fileSize = context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
+                            val quality = if (fileSize > LARGE_FILE_THRESHOLD) qualityLow else qualityHigh
+                            internalizeImage(context, uri, internalDir, screenW, screenH, quality)
+                        }
                     }
                 }.awaitAll().filterNotNull()
             }
