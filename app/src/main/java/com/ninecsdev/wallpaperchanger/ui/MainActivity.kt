@@ -18,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.core.net.toUri
 import androidx.navigation.compose.rememberNavController
 import com.ninecsdev.wallpaperchanger.service.WallpaperService
-import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.CollectionImageViewModel
 import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionViewModel
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.MainViewModel
 import com.ninecsdev.wallpaperchanger.ui.navigation.AppNavigation

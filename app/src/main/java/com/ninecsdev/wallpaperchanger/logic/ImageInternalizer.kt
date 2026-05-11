@@ -46,6 +46,8 @@ class ImageInternalizer @Inject constructor(
 
             val (screenW, screenH) = ImageProcessingUtils.getScreenDimensions(context)
 
+            // Ideally we would check this using the repository but to avoid circular dependency
+            // I used the datastore directly
             val qualityHigh = appDataStore.getCompressionQualityHigh()
             val qualityLow = appDataStore.getCompressionQualityLow()
 

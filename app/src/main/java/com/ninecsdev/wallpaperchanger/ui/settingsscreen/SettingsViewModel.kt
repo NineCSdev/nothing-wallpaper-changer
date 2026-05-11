@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
+import com.ninecsdev.wallpaperchanger.model.LockscreenZoomFix
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
@@ -32,17 +33,26 @@ class SettingsViewModel @Inject constructor(
             .versionName ?: ""
     } catch (_: Exception) { "" }
 
+    // Separate in 2 flows as combine max is 5
+    private val lockscreenSettingsFlow = combine(
+        appDataStore.batterySaverPolicyFlow(),
+        appDataStore.lockscreenZoomFixFlow()
+    ) { batterySaverPolicy, lockscreenZoomFix ->
+        batterySaverPolicy to lockscreenZoomFix
+    }
+
     val uiState: StateFlow<SettingsUiState> = combine(
         appDataStore.screenOffDelayFlow(),
         appDataStore.startOnBootFlow(),
         appDataStore.compressionQualityHighFlow(),
         appDataStore.compressionQualityLowFlow(),
-        appDataStore.batterySaverPolicyFlow()
-    ) { delay, boot, qualityHigh, qualityLow, batterySaverPolicy ->
+        lockscreenSettingsFlow
+    ) { delay, boot, qualityHigh, qualityLow, lockscreenSettings ->
         SettingsUiState(
             screenOffDelayMs = delay,
             startOnBoot = boot,
-            batterySaverPolicy = batterySaverPolicy,
+            batterySaverPolicy = lockscreenSettings.first,
+            lockscreenZoomFix = lockscreenSettings.second,
             compressionQualityHigh = qualityHigh,
             compressionQualityLow = qualityLow,
             appVersion = appVersion
@@ -73,5 +83,9 @@ class SettingsViewModel @Inject constructor(
 
     fun setBatterySaverPolicy(policy: BatterySaverPolicy) {
         repository.setBatterySaverPolicy(policy)
+    }
+
+    fun setLockscreenZoomFix(zoomFix: LockscreenZoomFix) {
+        repository.setLockscreenZoomFix(zoomFix)
     }
 }

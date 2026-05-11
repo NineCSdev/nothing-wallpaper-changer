@@ -28,6 +28,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
+import com.ninecsdev.wallpaperchanger.model.LockscreenZoomFix
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
@@ -42,6 +43,7 @@ fun SettingsScreen(
     onScreenOffDelayChange: (Long) -> Unit,
     onStartOnBootChange: (Boolean) -> Unit,
     onBatterySaverPolicyChange: (BatterySaverPolicy) -> Unit,
+    onLockscreenZoomFixChange: (LockscreenZoomFix) -> Unit,
     onCompressionQualityHighChange: (Int) -> Unit,
     onCompressionQualityLowChange: (Int) -> Unit
 ) {
@@ -81,7 +83,6 @@ fun SettingsScreen(
         ) {
             Column(
                 modifier = Modifier
-                    .weight(1f)
                     .padding(horizontal = 24.dp)
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -104,9 +105,26 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                BatterySaverPolicySelector(
+                SettingsSegmentedSelector(
+                    title = "BATTERY SAVER POLICY",
+                    subtitle = "WHAT TO DO WHEN BATTERY SAVER ACTIVATES",
+                    options = BatterySaverPolicy.entries,
                     selected = uiState.batterySaverPolicy,
-                    onPolicyChange = onBatterySaverPolicyChange
+                    onOptionChange = onBatterySaverPolicyChange,
+                    optionLabel = { policy ->
+                        when (policy) {
+                            BatterySaverPolicy.STOP -> "STOP"
+                            BatterySaverPolicy.PAUSE -> "PAUSE"
+                            BatterySaverPolicy.IGNORE -> "IGNORE"
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                LockscreenZoomFixSelector(
+                    selected = uiState.lockscreenZoomFix,
+                    onZoomFixChange = onLockscreenZoomFixChange
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -143,7 +161,7 @@ fun SettingsScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 32.dp),
+                    .padding(bottom = 10.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -172,7 +190,7 @@ private fun SectionLabel(text: String) {
 
 // Previews
 
-@Preview(showSystemUi = true, name = "Settings", backgroundColor = 0xFF000000)
+@Preview(showSystemUi = true, name = "Settings", backgroundColor = 0xFF000000, device = "spec:width=411dp,height=1010dp,dpi=420")
 @Composable
 fun SettingsScreenPreview() {
     MaterialTheme {
@@ -181,6 +199,7 @@ fun SettingsScreenPreview() {
                 screenOffDelayMs = 250,
                 startOnBoot = true,
                 batterySaverPolicy = BatterySaverPolicy.PAUSE,
+                lockscreenZoomFix = LockscreenZoomFix.BLURRED,
                 compressionQualityHigh = 95,
                 compressionQualityLow = 80,
                 appVersion = "0.2.2-beta"
@@ -189,6 +208,7 @@ fun SettingsScreenPreview() {
             onScreenOffDelayChange = {},
             onStartOnBootChange = {},
             onBatterySaverPolicyChange = {},
+            onLockscreenZoomFixChange = {},
             onCompressionQualityHighChange = {},
             onCompressionQualityLowChange = {}
         )

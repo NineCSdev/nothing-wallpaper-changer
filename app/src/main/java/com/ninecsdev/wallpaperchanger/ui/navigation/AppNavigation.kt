@@ -259,6 +259,7 @@ fun AppNavigation(
                 onScreenOffDelayChange = settingsViewModel::setScreenOffDelay,
                 onStartOnBootChange = settingsViewModel::setStartOnBoot,
                 onBatterySaverPolicyChange = settingsViewModel::setBatterySaverPolicy,
+                onLockscreenZoomFixChange = settingsViewModel::setLockscreenZoomFix,
                 onCompressionQualityHighChange = settingsViewModel::setCompressionQualityHigh,
                 onCompressionQualityLowChange = settingsViewModel::setCompressionQualityLow
             )

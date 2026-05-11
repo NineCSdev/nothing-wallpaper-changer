@@ -411,6 +411,12 @@ class WallpaperRepository @Inject constructor(
         scope.launch { appDataStore.setBatterySaverPolicy(policy) }
     }
 
+    suspend fun getLockscreenZoomFix(): LockscreenZoomFix = appDataStore.getLockscreenZoomFix()
+    fun setLockscreenZoomFix(zoomFix: LockscreenZoomFix) {
+        scope.launch { appDataStore.setLockscreenZoomFix(zoomFix) }
+    }
+
+
     // File System Utilities
     // TODO: Move the file system utility to a separate class in the future.
 

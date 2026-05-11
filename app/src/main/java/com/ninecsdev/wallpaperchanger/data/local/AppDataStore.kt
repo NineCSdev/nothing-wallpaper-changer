@@ -37,20 +37,21 @@ private val Context.dataStore by preferencesDataStore(
     }
 )
 
+private val KEY_DEFAULT_WALLPAPER_URI = stringPreferencesKey("default_wallpaper_uri")
+private val KEY_REVERT_TO_DEFAULT = booleanPreferencesKey("revert_to_default_on_stop")
+private val KEY_SERVICE_RUNNING = booleanPreferencesKey("service_running")
+private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
+private val KEY_SCREEN_OFF_DELAY = longPreferencesKey("screen_off_delay_ms")
+private val KEY_COMPRESSION_QUALITY_HIGH = intPreferencesKey("compression_quality_high")
+private val KEY_COMPRESSION_QUALITY_LOW = intPreferencesKey("compression_quality_low")
+private val KEY_BATTERY_SAVER_POLICY = stringPreferencesKey("battery_saver_policy")
+private val KEY_UNZOOM_WALLPAPER = booleanPreferencesKey("unzoom_wallpaper")
+
 @Singleton
 class AppDataStore @Inject constructor(
     @ApplicationContext context: Context
 ) {
     private val dataStore: DataStore<Preferences> = context.dataStore
-
-    private val KEY_DEFAULT_WALLPAPER_URI = stringPreferencesKey("default_wallpaper_uri")
-    private val KEY_REVERT_TO_DEFAULT = booleanPreferencesKey("revert_to_default_on_stop")
-    private val KEY_SERVICE_RUNNING = booleanPreferencesKey("service_running")
-    private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
-    private val KEY_SCREEN_OFF_DELAY = longPreferencesKey("screen_off_delay_ms")
-    private val KEY_COMPRESSION_QUALITY_HIGH = intPreferencesKey("compression_quality_high")
-    private val KEY_COMPRESSION_QUALITY_LOW = intPreferencesKey("compression_quality_low")
-    private val KEY_BATTERY_SAVER_POLICY = stringPreferencesKey("battery_saver_policy")
 
     // Flows (reactive reads)
 
@@ -101,6 +102,11 @@ class AppDataStore @Inject constructor(
             }
         }
 
+    fun unzoomWallpaperFlow(): Flow<Boolean> =
+        dataStore.data.map { prefs ->
+            prefs[KEY_UNZOOM_WALLPAPER] ?: false
+        }
+
     // Suspend reads (suspend, one-shot)
 
     suspend fun getDefaultWallpaperUri(): Uri? =
@@ -126,6 +132,9 @@ class AppDataStore @Inject constructor(
 
     suspend fun getBatterySaverPolicy(): BatterySaverPolicy =
         batterySaverPolicyFlow().first()
+
+    suspend fun shouldUnzoomWallpaper(): Boolean =
+        unzoomWallpaperFlow().first()
 
     // Writes (suspend)
 
@@ -174,6 +183,12 @@ class AppDataStore @Inject constructor(
     suspend fun setBatterySaverPolicy(policy: BatterySaverPolicy) {
         dataStore.edit { prefs ->
             prefs[KEY_BATTERY_SAVER_POLICY] = policy.name
+        }
+    }
+
+    suspend fun setUnzoomWallpaper(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[KEY_UNZOOM_WALLPAPER] = enabled
         }
     }
 }
