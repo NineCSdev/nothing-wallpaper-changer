@@ -13,6 +13,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
+import com.ninecsdev.wallpaperchanger.model.LockscreenZoomFix
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -45,7 +46,7 @@ private val KEY_SCREEN_OFF_DELAY = longPreferencesKey("screen_off_delay_ms")
 private val KEY_COMPRESSION_QUALITY_HIGH = intPreferencesKey("compression_quality_high")
 private val KEY_COMPRESSION_QUALITY_LOW = intPreferencesKey("compression_quality_low")
 private val KEY_BATTERY_SAVER_POLICY = stringPreferencesKey("battery_saver_policy")
-private val KEY_UNZOOM_WALLPAPER = booleanPreferencesKey("unzoom_wallpaper")
+private val KEY_LOCKSCREEN_ZOOM_FIX = intPreferencesKey("lockscreen_zoom_fix")
 
 @Singleton
 class AppDataStore @Inject constructor(
@@ -102,9 +103,14 @@ class AppDataStore @Inject constructor(
             }
         }
 
-    fun unzoomWallpaperFlow(): Flow<Boolean> =
+    fun lockscreenZoomFixFlow(): Flow<LockscreenZoomFix> =
         dataStore.data.map { prefs ->
-            prefs[KEY_UNZOOM_WALLPAPER] ?: false
+            val raw = prefs[KEY_LOCKSCREEN_ZOOM_FIX]
+            if (raw != null) {
+                LockscreenZoomFix.fromStoredValue(raw)
+            } else {
+                LockscreenZoomFix.OFF
+            }
         }
 
     // Suspend reads (suspend, one-shot)
@@ -133,8 +139,8 @@ class AppDataStore @Inject constructor(
     suspend fun getBatterySaverPolicy(): BatterySaverPolicy =
         batterySaverPolicyFlow().first()
 
-    suspend fun shouldUnzoomWallpaper(): Boolean =
-        unzoomWallpaperFlow().first()
+    suspend fun getLockscreenZoomFix(): LockscreenZoomFix =
+        lockscreenZoomFixFlow().first()
 
     // Writes (suspend)
 
@@ -186,9 +192,9 @@ class AppDataStore @Inject constructor(
         }
     }
 
-    suspend fun setUnzoomWallpaper(enabled: Boolean) {
+    suspend fun setLockscreenZoomFix(zoomFix: LockscreenZoomFix) {
         dataStore.edit { prefs ->
-            prefs[KEY_UNZOOM_WALLPAPER] = enabled
+            prefs[KEY_LOCKSCREEN_ZOOM_FIX] = zoomFix.storedValue
         }
     }
 }
