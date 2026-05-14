@@ -23,10 +23,10 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  * Indicates that a wallpaper has a custom edited URI.
  */
 @Composable
-fun EditedBadge(modifier: Modifier = Modifier) {
+fun EditedBadge(size: Int = 14, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .size(22.dp)
+            .size((size+8).dp)
             .clip(RoundedCornerShape(6.dp))
             .background(NothingWhite),
         contentAlignment = Alignment.Center
@@ -35,7 +35,7 @@ fun EditedBadge(modifier: Modifier = Modifier) {
             painter = painterResource(R.drawable.icon_edit),
             contentDescription = "Edited",
             tint = NothingBlack,
-            modifier = Modifier.size(14.dp)
+            modifier = Modifier.size(size.dp)
         )
     }
 }

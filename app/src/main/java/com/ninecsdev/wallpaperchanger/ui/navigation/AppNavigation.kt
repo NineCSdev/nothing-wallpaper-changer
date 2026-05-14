@@ -34,6 +34,8 @@ import com.ninecsdev.wallpaperchanger.ui.mainscreen.MainScreen
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.MainViewModel
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.SettingsScreen
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.SettingsViewModel
+import com.ninecsdev.wallpaperchanger.ui.walleditscreen.WallpaperEditScreen
+import com.ninecsdev.wallpaperchanger.ui.walleditscreen.WallpaperEditViewModel
 
 /**
  * Top-level navigation host for the application.
@@ -239,8 +241,35 @@ fun AppNavigation(
                 onToggleSelection = collectionImageViewModel::toggleSelection,
                 onExitSelectionMode = collectionImageViewModel::exitSelectionMode,
                 onDeleteSelected = collectionImageViewModel::deleteSelectedWallpapers,
-                onEditSelected = { /* TODO: Navigate to wallpaper edit/crop screen */ },
+                onEditSelected = { wallpaper ->
+                    navController.navigate(Route.wallpaperEdit(wallpaper.id))
+                },
+                onEditFromPreview = { wallpaper ->
+                    navController.navigate(Route.wallpaperEdit(wallpaper.id))
+                },
+                onPreviewPageChanged = collectionImageViewModel::openPreview,
                 onClosePreview = collectionImageViewModel::closePreview
+            )
+        }
+
+        composable(
+            route = Route.WALLPAPER_EDIT,
+            arguments = listOf(
+                navArgument("wallpaperId") { type = NavType.LongType }
+            )
+        ) {
+            val editViewModel: WallpaperEditViewModel = hiltViewModel()
+            val editState by editViewModel.uiState.collectAsStateWithLifecycle()
+
+            WallpaperEditScreen(
+                uiState = editState,
+                onSave = editViewModel::save,
+                onReset = editViewModel::reset,
+                onBack = {
+                    if (navController.previousBackStackEntry != null) {
+                        navController.popBackStack()
+                    }
+                }
             )
         }
 
@@ -325,8 +354,12 @@ object Route {
     const val MAIN = "main"
     const val COLLECTIONS = "collections"
     const val COLLECTION_IMAGES = "collection_images/{collectionId}"
+    const val WALLPAPER_EDIT = "wallpaper_edit/{wallpaperId}"
     const val SETTINGS = "settings"
 
     /** Builds the route for a specific collection's image screen. */
     fun collectionImages(collectionId: Long) = "collection_images/$collectionId"
+
+    /** Builds the route for editing a specific wallpaper. */
+    fun wallpaperEdit(wallpaperId: Long) = "wallpaper_edit/$wallpaperId"
 }

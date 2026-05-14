@@ -122,6 +122,7 @@ class WallpaperRepository @Inject constructor(
     suspend fun createManualCollection(name: String, uris: List<Uri>, rule: CropRule) {
         withContext(Dispatchers.IO) {
             val isFirst = dao.getActiveCollection() == null
+            val internalizedUris = imageInternalizer.internalizeImages(appContext, uris)
 
             val collectionId = dao.insertCollection(
                 WallpaperCollection(
@@ -133,7 +134,7 @@ class WallpaperRepository @Inject constructor(
                 )
             )
 
-            val images = uris.map {
+            val images = internalizedUris.map {
                 WallpaperImage(collectionId = collectionId, uri = it)
             }
 
@@ -219,6 +220,55 @@ class WallpaperRepository @Inject constructor(
      */
     suspend fun getSizeOfCollection(collectionId: Long): Int {
         return dao.getImageCountOfCollection(collectionId)
+    }
+
+    // Editor Operations
+
+    /** Fetches a single wallpaper for the editor. */
+    suspend fun getWallpaperById(wallpaperId: Long): WallpaperImage? {
+        return dao.getWallpaperById(wallpaperId)
+    }
+
+    /**
+     * Saves the edited wallpaper image and its edit parameters.
+     * Deletes the previous edited file if one existed.
+     * If this wallpaper belongs to the active collection, reloads the rotation engine
+     * and refills the disk buffer so the change is immediately respected.
+     */
+    suspend fun saveWallpaperEdit(
+        wallpaper: WallpaperImage,
+        editedUri: Uri,
+        zoom: Float,
+        offsetX: Float,
+        offsetY: Float
+    ) {
+        withContext(Dispatchers.IO) {
+            imageInternalizer.deleteInternalFile(wallpaper.editedUri?.path)
+            dao.updateWallpaperEdit(wallpaper.id, editedUri.toString(), zoom, offsetX, offsetY)
+
+            val active = dao.getActiveCollection()
+            if (active?.id == wallpaper.collectionId) {
+                rotationEngine.loadMagazine()
+                rotationEngine.refillDiskBuffer()
+            }
+        }
+    }
+
+    /**
+     * Resets a wallpaper edit: removes the edited file and clears all edit parameters.
+     * Falls back to the original URI for display and rotation.
+     */
+    suspend fun resetWallpaperEdit(wallpaper: WallpaperImage) {
+        withContext(Dispatchers.IO) {
+            imageInternalizer.deleteInternalFile(wallpaper.editedUri?.path)
+            dao.updateWallpaperEdit(wallpaper.id, null, null, null, null)
+
+            val active = dao.getActiveCollection()
+            if (active?.id == wallpaper.collectionId) {
+                rotationEngine.loadMagazine()
+                rotationEngine.refillDiskBuffer()
+            }
+        }
     }
 
     suspend fun updateCollection(

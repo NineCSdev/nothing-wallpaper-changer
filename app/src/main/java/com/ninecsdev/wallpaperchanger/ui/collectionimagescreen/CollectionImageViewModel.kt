@@ -45,7 +45,18 @@ class CollectionImageViewModel @Inject constructor(
         viewModelScope.launch {
             repository.getImagesForCollection(collectionId)
                 .collect { images ->
-                    _uiState.update { it.copy(wallpapers = images, isLoading = false) }
+                    _uiState.update { state ->
+                        // Update preview as after saving an edit we go back to the preview
+                        val previewId = state.previewWallpaper?.id
+                        val updatedPreview = previewId?.let { id ->
+                            images.find { it.id == id }
+                        }
+                        state.copy(
+                            wallpapers = images,
+                            isLoading = false,
+                            previewWallpaper = updatedPreview
+                        )
+                    }
                 }
         }
     }
@@ -114,5 +125,25 @@ class CollectionImageViewModel @Inject constructor(
 
     fun closePreview() {
         _uiState.update { it.copy(previewWallpaper = null) }
+    }
+
+    fun showPreviousPreview() {
+        movePreviewBy(-1)
+    }
+
+    fun showNextPreview() {
+        movePreviewBy(1)
+    }
+
+    private fun movePreviewBy(step: Int) {
+        val state = _uiState.value
+        val currentPreviewId = state.previewWallpaper?.id ?: return
+        val currentIndex = state.wallpapers.indexOfFirst { it.id == currentPreviewId }
+        if (currentIndex == -1) return
+
+        val nextIndex = currentIndex + step
+        if (nextIndex !in state.wallpapers.indices) return
+
+        _uiState.update { it.copy(previewWallpaper = it.wallpapers[nextIndex]) }
     }
 }

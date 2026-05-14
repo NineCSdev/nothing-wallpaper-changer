@@ -119,6 +119,9 @@ class ImageInternalizer @Inject constructor(
      * Safely deletes internal wallpaper files.
      */
     fun deleteInternalFile(path: String?) {
+        // IMPORTANT: if we ever store external uris (changing how we store wallpapers)
+        //  we have to protect against deleting the actual image in the user storage as it would
+        //  be lost
         if (path == null) return
         try {
             val file = File(path)

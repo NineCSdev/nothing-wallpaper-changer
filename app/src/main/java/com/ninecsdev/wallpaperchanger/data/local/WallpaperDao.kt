@@ -136,4 +136,24 @@ interface WallpaperDao {
      */
     @Query("SELECT COUNT(*) FROM wallpapers WHERE collectionId = :collectionId")
     suspend fun getImageCountOfCollection(collectionId: Long): Int
+
+    // Editor Operations
+
+    /** Fetches a single wallpaper by ID. */
+    @Query("SELECT * FROM wallpapers WHERE id = :wallpaperId LIMIT 1")
+    suspend fun getWallpaperById(wallpaperId: Long): WallpaperImage?
+
+    /** Persists the edited URI and edit parameters for a wallpaper. */
+    @Query("""
+        UPDATE wallpapers 
+        SET editedUri = :editedUri, editZoom = :zoom, editOffsetX = :offsetX, editOffsetY = :offsetY 
+        WHERE id = :wallpaperId
+    """)
+    suspend fun updateWallpaperEdit(
+        wallpaperId: Long,
+        editedUri: String?,
+        zoom: Float?,
+        offsetX: Float?,
+        offsetY: Float?
+    )
 }

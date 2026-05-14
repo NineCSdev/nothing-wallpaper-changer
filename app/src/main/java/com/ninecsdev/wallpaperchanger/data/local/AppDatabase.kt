@@ -15,7 +15,7 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 @Database(entities = [
     WallpaperCollection::class,
     WallpaperImage::class],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -27,12 +27,16 @@ abstract class AppDatabase : RoomDatabase() {
 
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
-                    "ALTER TABLE collections ADD COLUMN rotationFrequency TEXT NOT NULL DEFAULT 'PER_LOCK'"
-                )
-                db.execSQL(
-                    "ALTER TABLE collections ADD COLUMN lastWallpaperChangeAt INTEGER NOT NULL DEFAULT 0"
-                )
+                db.execSQL("ALTER TABLE collections ADD COLUMN rotationFrequency TEXT NOT NULL DEFAULT 'PER_LOCK'")
+                db.execSQL("ALTER TABLE collections ADD COLUMN lastWallpaperChangeAt INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE wallpapers ADD COLUMN editZoom REAL")
+                db.execSQL("ALTER TABLE wallpapers ADD COLUMN editOffsetX REAL")
+                db.execSQL("ALTER TABLE wallpapers ADD COLUMN editOffsetY REAL")
             }
         }
     }

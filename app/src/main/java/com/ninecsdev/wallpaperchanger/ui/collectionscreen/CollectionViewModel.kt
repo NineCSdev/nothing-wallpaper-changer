@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
-import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.model.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.CropRule
 import com.ninecsdev.wallpaperchanger.model.RotationFrequency
@@ -29,8 +28,6 @@ import javax.inject.Inject
 @HiltViewModel
 class CollectionViewModel @Inject constructor(
     private val repository: WallpaperRepository,
-    private val imageInternalizer: ImageInternalizer,
-    @param:ApplicationContext private val context: Context
 ) : ViewModel() {
 
     // Internal mutable state
@@ -113,8 +110,7 @@ class CollectionViewModel @Inject constructor(
         if (pendingPhotosUris.isEmpty()) return
         viewModelScope.launch {
             setProcessing(true)
-            val internalizedUris = imageInternalizer.internalizeImages(context, pendingPhotosUris)
-            repository.createManualCollection(name, internalizedUris, rule)
+            repository.createManualCollection(name, pendingPhotosUris, rule)
             pendingPhotosUris = emptyList()
             setProcessing(false)
             onComplete()

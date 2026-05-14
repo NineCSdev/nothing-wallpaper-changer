@@ -3,6 +3,7 @@ package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -36,7 +38,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -68,6 +69,8 @@ fun CollectionImageScreen(
     onExitSelectionMode: () -> Unit,
     onDeleteSelected: () -> Unit,
     onEditSelected: (WallpaperImage) -> Unit,
+    onEditFromPreview: (WallpaperImage) -> Unit,
+    onPreviewPageChanged: (WallpaperImage) -> Unit,
     onClosePreview: () -> Unit
 ) {
     // Handle back press: exit selection mode first, then close preview, then navigate back
@@ -224,10 +227,16 @@ fun CollectionImageScreen(
 
     // Full-screen preview overlay TODO: Add an scale up animation
     uiState.previewWallpaper?.let { wallpaper ->
-        WallpaperPreviewOverlay(
-            wallpaper = wallpaper,
-            onDismiss = onClosePreview
-        )
+        val initialIndex = uiState.wallpapers.indexOfFirst { it.id == wallpaper.id }
+        if (initialIndex != -1) {
+            WallpaperPreviewOverlay(
+                wallpapers = uiState.wallpapers,
+                initialIndex = initialIndex,
+                onDismiss = onClosePreview,
+                onEdit = onEditFromPreview,
+                onPageChanged = onPreviewPageChanged
+            )
+        }
     }
 }
 
@@ -291,7 +300,9 @@ private fun WallpaperThumbnail(
         ThumbnailSlot(
             uri = displayUri,
             shape = RoundedCornerShape(0.dp),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(if (isSelectionMode && isSelected) 8.dp else 0.dp))
         )
 
         // Edited-URI pencil badge (bottom-right of thumbnail)
@@ -303,33 +314,30 @@ private fun WallpaperThumbnail(
             )
         }
 
-        // Selection overlay
-        if (isSelectionMode) {
+        // Selection indicator
+        if (isSelectionMode && isSelected) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        if (isSelected) NothingWhite.copy(alpha = 0.2f)
-                        else Color.Black.copy(alpha = 0.4f)
-                    ),
+                    .matchParentSize()
+                    .padding(1.dp)
+                    .border(3.dp, NothingWhite, RoundedCornerShape(5.dp))
+            )
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(10.dp)
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(NothingWhite),
                 contentAlignment = Alignment.Center
             ) {
-                if (isSelected) {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(NothingWhite),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Selected",
-                            tint = NothingBlack,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Selected",
+                    tint = NothingBlack,
+                    modifier = Modifier.size(12.dp)
+                )
             }
         }
     }
@@ -364,6 +372,8 @@ fun CollectionImageScreenPreview() {
             onExitSelectionMode = {},
             onDeleteSelected = {},
             onEditSelected = {},
+            onEditFromPreview = {},
+            onPreviewPageChanged = {},
             onClosePreview = {}
         )
     }
@@ -397,6 +407,8 @@ fun CollectionImageScreenSelectionPreview() {
             onExitSelectionMode = {},
             onDeleteSelected = {},
             onEditSelected = {},
+            onEditFromPreview = {},
+            onPreviewPageChanged = {},
             onClosePreview = {}
         )
     }
@@ -420,6 +432,8 @@ fun CollectionImageScreenEmptyPreview() {
             onExitSelectionMode = {},
             onDeleteSelected = {},
             onEditSelected = {},
+            onEditFromPreview = {},
+            onPreviewPageChanged = {},
             onClosePreview = {}
         )
     }

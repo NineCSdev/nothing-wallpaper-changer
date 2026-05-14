@@ -1,81 +1,185 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen
 
 import android.net.Uri
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush.Companion.verticalGradient
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 /**
  * Full-screen wallpaper preview overlay.
  * Tap anywhere to dismiss. Shows edited badge if applicable.
- * Features a scale-up animation as the preview expands to fill the screen.
+ * Features an edit button to navigate to the wallpaper editor.
+ * Lets swipe back and forth between wallpapers.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun WallpaperPreviewOverlay(
-    wallpaper: WallpaperImage,
+    wallpapers: List<WallpaperImage>,
+    initialIndex: Int,
     onDismiss: () -> Unit,
+    onEdit: (WallpaperImage) -> Unit = {},
+    onPageChanged: (WallpaperImage) -> Unit = {}
 ) {
-    val displayUri = wallpaper.editedUri ?: wallpaper.uri
+    if (wallpapers.isEmpty()) return
+
+    val safeInitialIndex = initialIndex.coerceIn(0, wallpapers.lastIndex)
+    val pagerState = rememberPagerState(
+        initialPage = safeInitialIndex,
+        pageCount = { wallpapers.size }
+    )
+
+    LaunchedEffect(safeInitialIndex, wallpapers.size) {
+        if (pagerState.currentPage != safeInitialIndex) {
+            pagerState.scrollToPage(safeInitialIndex)
+        }
+    }
+
+    LaunchedEffect(pagerState, wallpapers) {
+        snapshotFlow { pagerState.currentPage }
+            .distinctUntilChanged()
+            .collect { page ->
+                wallpapers.getOrNull(page)?.let(onPageChanged)
+            }
+    }
+
+    val currentWallpaper = wallpapers.getOrNull(pagerState.currentPage)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable(onClick = onDismiss),
+            .pointerInput(onDismiss) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    val up = waitForUpOrCancellation()
+                    if (up != null) {
+                        onDismiss()
+                    }
+                }
+            },
         contentAlignment = Alignment.Center
     ) {
-        AsyncImage(
-            model = displayUri,
-            contentDescription = "Wallpaper preview",
-            contentScale = ContentScale.Fit,
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier.fillMaxSize()
-        )
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(64.dp)
-        ) {
-            Text(
-                text = "WALLPAPER PREVIEW",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 2.sp,
-                color = NothingWhite
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "TAP ANYWHERE TO EXIT",
-                style = MaterialTheme.typography.bodySmall,
-                color = NothingWhite
+        ) { page ->
+            val wallpaper = wallpapers[page]
+            val displayUri = wallpaper.editedUri ?: wallpaper.uri
+            AsyncImage(
+                model = displayUri,
+                contentDescription = "Wallpaper preview",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize()
             )
         }
 
+        // Top scrim + labels
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .background(
+                    brush = verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.6f),
+                            Color.Transparent
+                        )
+                    )
+                )
+                .padding(top = 64.dp, bottom = 32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "WALLPAPER PREVIEW",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.sp,
+                    color = NothingWhite
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "TAP ANYWHERE TO EXIT",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = NothingWhite.copy(alpha = 0.7f)
+                )
+            }
+        }
+
+        // Bottom scrim + edit button
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(
+                    brush = verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.6f)
+                        )
+                    )
+                )
+                .padding(bottom = 48.dp, top = 32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            IconButton(
+                onClick = { currentWallpaper?.let(onEdit) },
+                enabled = currentWallpaper != null,
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.5f))
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.icon_edit),
+                    contentDescription = "Edit wallpaper",
+                    tint = NothingWhite,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
         // Edited badge in the bottom-right
-        if (wallpaper.editedUri != null) {
+        if (currentWallpaper?.editedUri != null) {
             EditedBadge(
+                size = 28,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(24.dp)
@@ -95,11 +199,14 @@ fun WallpaperPreviewOverlayPreview() {
     )
 
     MaterialTheme {
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+        ) {
             WallpaperPreviewOverlay(
-                wallpaper = sampleWallpaper,
+                wallpapers = listOf(sampleWallpaper),
+                initialIndex = 0,
                 onDismiss = {}
             )
         }
@@ -118,7 +225,8 @@ fun WallpaperPreviewOverlayEditedPreview() {
 
     MaterialTheme {
         WallpaperPreviewOverlay(
-            wallpaper = sampleWallpaper,
+            wallpapers = listOf(sampleWallpaper),
+            initialIndex = 0,
             onDismiss = {}
         )
     }
