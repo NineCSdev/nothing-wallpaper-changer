@@ -202,7 +202,7 @@ fun SettingsScreenPreview() {
                 lockscreenZoomFix = LockscreenZoomFix.BLURRED,
                 compressionQualityHigh = 95,
                 compressionQualityLow = 80,
-                appVersion = "0.2.2-beta"
+                appVersion = "0.3.0-beta"
             ),
             onBackClick = {},
             onScreenOffDelayChange = {},

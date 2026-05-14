@@ -52,8 +52,7 @@ fun AppNavigation(
     onLaunchDefaultWallpaperPicker: () -> Unit,
     modifier: Modifier = Modifier,
     mainViewModel: MainViewModel = hiltViewModel(),
-    collectionViewModel: CollectionViewModel = hiltViewModel(),
-    settingsViewModel: SettingsViewModel = hiltViewModel()
+    collectionViewModel: CollectionViewModel = hiltViewModel()
 ) {
     val mainState by mainViewModel.uiState.collectAsStateWithLifecycle()
     val collectionState by collectionViewModel.uiState.collectAsStateWithLifecycle()
@@ -276,6 +275,7 @@ fun AppNavigation(
         composable(
             route = Route.SETTINGS
         ) {
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
             val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
 
             SettingsScreen(
@@ -326,6 +326,7 @@ private fun Modifier.edgeSwipe(
  */
 private object NavigationTransitions {
     private const val ANIM_DURATION = 1000
+    private const val FADE_DURATION = 500
 
     val enterMain_Collections = slideInHorizontally(
         initialOffsetX = { it },
@@ -341,11 +342,10 @@ private object NavigationTransitions {
     )
 
     val enterDefault = fadeIn(
-        animationSpec = tween(500)
+        animationSpec = tween(FADE_DURATION)
     )
     val exitDefault = fadeOut(
-        animationSpec = tween(500),
-        targetAlpha = 0.5f
+        animationSpec = tween(FADE_DURATION)
     )
 }
 
