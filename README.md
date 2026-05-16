@@ -67,11 +67,21 @@ There weren't many solutions on the Play Store and the ones I found were either 
     <tr>
       <td align="center"><img src="readme_media/create_collection.png" width="250" alt="Create Collection"/></td>
       <td align="center"><img src="readme_media/edit_collection.png" width="250" alt="Edit Collection"/></td>
-      <td align="center"><video src="https://github.com/user-attachments/assets/6b4ad0d6-9da2-41fa-93fd-a61b268a31b7" width="300" controls></video></td>
+      <td align="center"><img src="readme_media/collection_images.png" width="250" alt="Collection Wallpapers"/></td>
     </tr>
     <tr>
       <td align="center"><sub>Create Collection</sub></td>
       <td align="center"><sub>Edit Collection</sub></td>
+      <td align="center"><sub>Collection Wallpapers</sub></td>
+    </tr>
+    <tr>
+      <td align="center"><img src="readme_media/settings.png" width="250" alt="Settings"/></td>
+      <td align="center"><img src="readme_media/wallpaper_edit.png" width="250" alt="Wallpaper Edit"/></td>
+      <td align="center"><video src="https://github.com/user-attachments/assets/6b4ad0d6-9da2-41fa-93fd-a61b268a31b7" width="250" controls></video></td>
+    </tr>
+    <tr>
+      <td align="center"><sub>Settings</sub></td>
+      <td align="center"><sub>Wallpaper Preview</sub></td>
       <td align="center"><sub>Quick settings tile demo</sub></td>
     </tr>
   </table>
