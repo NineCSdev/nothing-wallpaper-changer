@@ -64,7 +64,7 @@ fun ControlsPanel(
         SliderRow(
             label = "ZOOM",
             value = zoom,
-            valueRange = 1f..5f,
+            valueRange = 0.5f..5f,
             displayValue = "%.1fx".format(zoom),
             onValueChange = onZoomChange
         )

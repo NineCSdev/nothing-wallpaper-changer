@@ -2,12 +2,10 @@ package com.ninecsdev.wallpaperchanger.service
 
 import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Service
-import android.app.WallpaperManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
@@ -15,6 +13,7 @@ import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.ServiceState
@@ -24,7 +23,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
@@ -38,6 +36,7 @@ class WallpaperService : Service() {
     @Inject lateinit var notificationHelper: NotificationHelper
     @Inject lateinit var repository: WallpaperRepository
     @Inject lateinit var rotationEngine: RotationEngine
+    @Inject lateinit var wallpaperApplier: WallpaperApplier
     @Inject lateinit var lifecycleTracker: ServiceLifecycleTracker
     @Inject lateinit var serviceStateManager: ServiceStateManager
     @Inject lateinit var appDataStore: AppDataStore
@@ -49,31 +48,6 @@ class WallpaperService : Service() {
 
     companion object {
         const val ACTION_STOP_SERVICE = "com.ninecsdev.wallpaperchanger.ACTION_STOP_SERVICE"
-    }
-
-    private suspend fun applyDefaultWallpaper() {
-        val uri = appDataStore.getDefaultWallpaperUri() ?: return
-
-        Log.d(tag, "Applying default wallpaper...")
-
-        withContext(Dispatchers.IO) {
-            try {
-                contentResolver.openInputStream(uri)?.use { stream ->
-                    val bitmap = BitmapFactory.decodeStream(stream)
-                    if (bitmap != null) {
-                        WallpaperManager.getInstance(this@WallpaperService).setBitmap(
-                            bitmap,
-                            null,
-                            true,
-                            WallpaperManager.FLAG_LOCK
-                        )
-                        Log.i(tag, "Successfully applied default wallpaper.")
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(tag, "Fallback failed", e)
-            }
-        }
     }
 
     override fun onCreate() {
@@ -166,7 +140,7 @@ class WallpaperService : Service() {
 
         serviceScope.launch {
             if (appDataStore.shouldRevertToDefault()) {
-                applyDefaultWallpaper()
+                wallpaperApplier.applyDefaultWallpaper()
             }
             stopSelf()
         }
@@ -185,7 +159,7 @@ class WallpaperService : Service() {
 
         serviceScope.launch {
             if (appDataStore.shouldRevertToDefault()) {
-                applyDefaultWallpaper()
+                wallpaperApplier.applyDefaultWallpaper()
             }
         }
 

@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Rect
@@ -98,6 +97,24 @@ class BufferManager @Inject constructor(
 
     fun getBufferFile(): File {
         return File(appContext.cacheDir, BUFFER_FILENAME)
+    }
+
+    /**
+     * Applies the lockscreen zoom-fix padding to the given [bitmap] if the
+     * user has the setting enabled. Returns the original bitmap unchanged
+     * when the zoom-fix is [LockscreenZoomFix.OFF].
+     *
+     * This is used by [WallpaperApplier] to process the default
+     * wallpaper so both the rotating and default wallpaper paths receive the
+     * same treatment.
+     */
+    suspend fun applyZoomFixIfNeeded(bitmap: Bitmap): Bitmap {
+        val zoomFix = appDataStore.getLockscreenZoomFix()
+        if (zoomFix == LockscreenZoomFix.OFF) return bitmap
+
+        val padded = addLockscreenPadding(bitmap, zoomFix)
+        // Don't recycle the input — caller owns it
+        return padded
     }
 
 

@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.service
 
-import android.app.WallpaperManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -8,7 +7,7 @@ import android.os.PowerManager
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
-import com.ninecsdev.wallpaperchanger.logic.BufferManager
+import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.model.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.shouldRotateAt
@@ -28,7 +27,7 @@ class ScreenOffReceiver : BroadcastReceiver() {
     @Inject lateinit var repository: WallpaperRepository
     @Inject lateinit var appDataStore: AppDataStore
     @Inject lateinit var rotationEngine: RotationEngine
-    @Inject lateinit var bufferManager: BufferManager
+    @Inject lateinit var wallpaperApplier: WallpaperApplier
 
     /**
      * Structured scope provided by the owning [WallpaperService].
@@ -107,7 +106,7 @@ class ScreenOffReceiver : BroadcastReceiver() {
                 }
 
                 // Apply the pre-processed buffer image and prepare next image
-                val applied = applyBufferToLockScreen(context)
+                val applied = wallpaperApplier.applyBufferWallpaper()
                 if (applied) {
                     repository.markWallpaperChanged(activeCollection.id)
                     rotationEngine.refillDiskBuffer()
@@ -121,35 +120,4 @@ class ScreenOffReceiver : BroadcastReceiver() {
         }
     }
 
-    /**
-     * Reads the .webp buffer from disk and streams it to the WallpaperManager.
-     * This bypasses the Bitmap heap, preventing OutOfMemory errors
-     * and instantly changes the wallpaper.
-     */
-    private fun applyBufferToLockScreen(context: Context): Boolean {
-        try {
-            val bufferFile = bufferManager.getBufferFile()
-
-            if (!bufferFile.exists()) {
-                Log.w(tag, "Buffer file missing. Is the service initialized?")
-                return false
-            }
-
-            bufferFile.inputStream().use { stream ->
-                val wallpaperManager = WallpaperManager.getInstance(context)
-                wallpaperManager.setStream(
-                    stream,
-                    null,
-                    true,
-                    WallpaperManager.FLAG_LOCK
-                )
-            }
-            Log.i(tag, "Wallpaper applied successfully from disk buffer.")
-            return true
-
-        } catch (e: Exception) {
-            Log.e(tag, "Failed to stream buffer to lock screen", e)
-            return false
-        }
-    }
 }

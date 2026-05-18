@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -62,7 +63,8 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  *
  * A collapsible bottom panel provides precision sliders and save/cancel actions.
  *
- * Zoom = 1.0 means the image covers/fills the screen (minimum).
+ * Zoom = 1.0 means the image covers/fills the screen.
+ * Zoom can go below 1.0 (down to 0.5) to show more of the image with black bars.
  * Offset values are normalized to -1..1 representing the full available pan range.
  */
 @Composable
@@ -78,6 +80,9 @@ fun WallpaperEditScreen(
     var zoom by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
+
+    // Source image aspect ratio, needed to compute Fit-to-Cover scale boost
+    var imageAspectRatio by remember { mutableFloatStateOf(1f) }
 
     // Controls panel visibility
     var showControls by remember { mutableStateOf(false) }
@@ -98,7 +103,7 @@ fun WallpaperEditScreen(
 
     // Gesture state, pinch and drag update zoom and offset together
     val transformState = rememberTransformableState { zoomChange, panChange, _ ->
-        zoom = (zoom * zoomChange).coerceIn(1f, 5f)
+        zoom = (zoom * zoomChange).coerceIn(0.5f, 5f)
 
         val panSensitivity = 0.003f / zoom
         offsetX = (offsetX + panChange.x * panSensitivity).coerceIn(-1f, 1f)
@@ -123,20 +128,59 @@ fun WallpaperEditScreen(
             }
         }
     } else {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().background(NothingBlack).clipToBounds()) {
             // Full-screen wallpaper canvas
+            //
+            // We use ContentScale.Fit so the FULL image is rendered (no clipping).
+            // Then graphicsLayer scales up from Fit to Cover (matching the preview)
+            // and applies user zoom + pan on top. This way panning reveals the
+            // edges that would normally be cropped, instead of showing black.
             AsyncImage(
                 model = wallpaper.uri,
                 contentDescription = "Wallpaper being edited",
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.Fit,
+                onSuccess = { state ->
+                    val intrinsic = state.painter.intrinsicSize
+                    if (intrinsic.width > 0 && intrinsic.height > 0) {
+                        imageAspectRatio = intrinsic.width / intrinsic.height
+                    }
+                },
                 modifier = Modifier
                     .fillMaxSize()
                     .transformable(state = transformState)
                     .graphicsLayer {
-                        scaleX = zoom
-                        scaleY = zoom
-                        translationX = offsetX * size.width * 0.5f * (zoom - 1f).coerceAtLeast(0f)
-                        translationY = offsetY * size.height * 0.5f * (zoom - 1f).coerceAtLeast(0f)
+                        val viewAspect = size.width / size.height
+
+                        // ContentScale.Fit scales to fit within bounds.
+                        // To match Cover (fill), we need an additional scale:
+                        //   Cover/Fit = max(vW/iW, vH/iH) / min(vW/iW, vH/iH)
+                        val fitToCoverRatio = if (imageAspectRatio > viewAspect) {
+                            imageAspectRatio / viewAspect
+                        } else {
+                            viewAspect / imageAspectRatio
+                        }
+
+                        val totalScale = fitToCoverRatio * zoom
+                        scaleX = totalScale
+                        scaleY = totalScale
+
+                        // Compute actual image size after Fit + graphicsLayer scale.
+                        // Wide image: Fit fills width -> rendered = (viewW, viewW/imgAspect)
+                        // Tall image: Fit fills height -> rendered = (viewH*imgAspect, viewH)
+                        val (fitW, fitH) = if (imageAspectRatio > viewAspect) {
+                            size.width to (size.width / imageAspectRatio)
+                        } else {
+                            (size.height * imageAspectRatio) to size.height
+                        }
+                        val imgScaledW = fitW * totalScale
+                        val imgScaledH = fitH * totalScale
+
+                        // Pan range = how much the image overflows the viewport
+                        val maxPanX = ((imgScaledW - size.width) / 2f).coerceAtLeast(0f)
+                        val maxPanY = ((imgScaledH - size.height) / 2f).coerceAtLeast(0f)
+
+                        translationX = offsetX * maxPanX
+                        translationY = offsetY * maxPanY
                     }
             )
 
@@ -212,7 +256,7 @@ fun WallpaperEditScreen(
                     zoom = zoom,
                     offsetX = offsetX,
                     offsetY = offsetY,
-                    onZoomChange = { zoom = it.coerceIn(1f, 5f) },
+                    onZoomChange = { zoom = it.coerceIn(0.5f, 5f) },
                     onOffsetXChange = { offsetX = it.coerceIn(-1f, 1f) },
                     onOffsetYChange = { offsetY = it.coerceIn(-1f, 1f) },
                     onSave = { onSave(zoom, offsetX, offsetY) },

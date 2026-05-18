@@ -55,9 +55,12 @@ fun LockscreenZoomFixSelector(
             },
             text = {
                 Text(
-                    text = "Some phones's OS (such as Nothing) zoom lockscreen wallpapers after they are applied " +
-                            "for atmosphere/parallax effect. This adds hidden padding so the zoom crops padding " +
-                            "first. Use Blur for most wallpapers or Edge for sharper borders."
+                    text = "Certain phone operating systems (like Nothing OS) automatically zoom " +
+                            "in on lockscreen wallpapers to create a parallax effect. This setting " +
+                            "adds hidden padding to your image, ensuring the OS crops the padding " +
+                            "rather than the wallpaper itself. Because this zoom behavior varies, " +
+                            "two padding styles are available: choose Blur for most wallpapers, or " +
+                            "Edge for sharper borders."
                 )
             },
             containerColor = NothingBlack,
