@@ -141,23 +141,7 @@ class BufferManager @Inject constructor(
         }
         val yOffset = (targetH - scaledH) / 2f
 
-        // Render to the target-sized bitmap first
-        val result = createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(result)
-        canvas.drawColor(Color.BLACK) // Paint the background black for the fit option
-        val paint = Paint().apply {
-            isAntiAlias = true
-            isFilterBitmap = true
-            isDither = true
-        }
-
-        val matrix = Matrix().apply {
-            postScale(scale, scale)
-            postTranslate(xOffset, yOffset)
-        }
-
-        canvas.drawBitmap(source, matrix, paint)
-        return result
+        return ImageProcessingUtils.renderScaledBitmap(source, targetW, targetH, scale, xOffset, yOffset)
     }
 
     private fun addLockscreenPadding(screenBitmap: Bitmap, zoomFix: LockscreenZoomFix): Bitmap {
@@ -175,11 +159,7 @@ class BufferManager @Inject constructor(
 
         val padded = createBitmap(paddedW, paddedH, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(padded)
-        val paint = Paint().apply {
-            isAntiAlias = true
-            isFilterBitmap = true
-            isDither = true
-        }
+        val paint = ImageProcessingUtils.createRenderPaint()
 
         drawPaddingBackground(screenBitmap, canvas, paddedW, paddedH, insetX, insetY, paint, zoomFix)
         canvas.drawBitmap(screenBitmap, insetX.toFloat(), insetY.toFloat(), paint)

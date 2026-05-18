@@ -6,6 +6,9 @@ import android.app.NotificationManager
 import android.content.Context
 import androidx.core.app.NotificationCompat
 import com.ninecsdev.wallpaperchanger.R
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Centralises all notification-related logic for the foreground [WallpaperService]
@@ -15,7 +18,10 @@ import com.ninecsdev.wallpaperchanger.R
  * - Building the foreground notification
  * - Updating an already-posted notification
  */
-class NotificationHelper(private val context: Context) {
+@Singleton
+class NotificationHelper @Inject constructor(
+    @param:ApplicationContext private val context: Context
+) {
 
     companion object {
         private const val CHANNEL_ID = "WallpaperServiceChannel"

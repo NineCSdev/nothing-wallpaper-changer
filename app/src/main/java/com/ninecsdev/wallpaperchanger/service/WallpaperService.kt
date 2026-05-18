@@ -12,7 +12,9 @@ import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
+import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
+import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.ServiceState
@@ -33,9 +35,12 @@ import javax.inject.Inject
 class WallpaperService : Service() {
 
     private val tag = "WallpaperService"
-    private lateinit var notificationHelper: NotificationHelper
+    @Inject lateinit var notificationHelper: NotificationHelper
     @Inject lateinit var repository: WallpaperRepository
     @Inject lateinit var rotationEngine: RotationEngine
+    @Inject lateinit var lifecycleTracker: ServiceLifecycleTracker
+    @Inject lateinit var serviceStateManager: ServiceStateManager
+    @Inject lateinit var appDataStore: AppDataStore
 
     private var screenOffReceiver: BroadcastReceiver? = null
     private var systemEventReceiver: BroadcastReceiver? = null
@@ -44,14 +49,10 @@ class WallpaperService : Service() {
 
     companion object {
         const val ACTION_STOP_SERVICE = "com.ninecsdev.wallpaperchanger.ACTION_STOP_SERVICE"
-
-        /** In-memory flag that resets on process death (reboots). */
-        @Volatile var isAlive = false
-            private set
     }
 
     private suspend fun applyDefaultWallpaper() {
-        val uri = repository.getDefaultWallpaperUri() ?: return
+        val uri = appDataStore.getDefaultWallpaperUri() ?: return
 
         Log.d(tag, "Applying default wallpaper...")
 
@@ -77,9 +78,8 @@ class WallpaperService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        isAlive = true
+        lifecycleTracker.markAlive()
         Log.d(tag, "Service Created")
-        notificationHelper = NotificationHelper(this)
         notificationHelper.createChannel()
 
         registerScreenOffReceiver()
@@ -89,7 +89,7 @@ class WallpaperService : Service() {
                 val pm = context.getSystemService(POWER_SERVICE) as PowerManager
 
                 serviceScope.launch {
-                    val policy = repository.getBatterySaverPolicy()
+                    val policy = appDataStore.getBatterySaverPolicy()
 
                     if (pm.isPowerSaveMode) {
                         when (policy) {
@@ -135,23 +135,23 @@ class WallpaperService : Service() {
         }
 
         serviceScope.launch {
-            repository.markServiceLoading()
+            serviceStateManager.markServiceLoading()
             notifyUi()
 
-            val state = repository.getServiceState()
+            val state = serviceStateManager.getServiceState()
 
             if (state !is ServiceState.DisabledNoCollection){
                 rotationEngine.loadMagazine()
                 rotationEngine.refillDiskBuffer()
 
-                repository.markServiceRunning()
+                serviceStateManager.markServiceRunning()
                 notifyUi()
 
                 val activeName = repository.getActiveCollectionOnce()?.name
                 notificationHelper.showCycling(activeName)
             }else{
                 Log.w(tag, "Abort startup: No collection found.")
-                repository.markServiceStopped()
+                serviceStateManager.markServiceStopped()
                 handleStopCommand()
             }
         }
@@ -161,11 +161,11 @@ class WallpaperService : Service() {
 
     private fun handleStopCommand() {
         Log.i(tag, "Stopping service via command.")
-        repository.markServiceStopped()
+        serviceStateManager.markServiceStopped()
         notifyUi()
 
         serviceScope.launch {
-            if (repository.shouldRevertToDefault()) {
+            if (appDataStore.shouldRevertToDefault()) {
                 applyDefaultWallpaper()
             }
             stopSelf()
@@ -177,14 +177,14 @@ class WallpaperService : Service() {
      * The foreground service stays alive so it can auto-resume.
      */
     private fun pauseEngine() {
-        if (repository.serviceStateFlow.value is ServiceState.Paused) return
+        if (serviceStateManager.serviceStateFlow.value is ServiceState.Paused) return
         Log.i(tag, "Pausing engine (Power Save ON)")
-        repository.markServicePaused()
+        serviceStateManager.markServicePaused()
 
         unregisterScreenOffReceiver()
 
         serviceScope.launch {
-            if (repository.shouldRevertToDefault()) {
+            if (appDataStore.shouldRevertToDefault()) {
                 applyDefaultWallpaper()
             }
         }
@@ -197,9 +197,9 @@ class WallpaperService : Service() {
      * Resumes the wallpaper changing by re-registering the ScreenOffReceiver.
      */
     private fun resumeEngine() {
-        if (repository.serviceStateFlow.value !is ServiceState.Paused) return
+        if (serviceStateManager.serviceStateFlow.value !is ServiceState.Paused) return
         Log.i(tag, "Resuming engine (Power Save OFF)")
-        repository.markServiceRunning()
+        serviceStateManager.markServiceRunning()
 
         registerScreenOffReceiver()
 
@@ -212,7 +212,7 @@ class WallpaperService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        isAlive = false
+        lifecycleTracker.markDead()
         Log.i(tag, "Service Destroyed. Cleaning up.")
 
         unregisterScreenOffReceiver()
@@ -223,13 +223,14 @@ class WallpaperService : Service() {
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
-    private fun notifyUi() = repository.notifyServiceStateChanged()
+    private fun notifyUi() = serviceStateManager.notifyServiceStateChanged()
 
     private fun registerScreenOffReceiver() {
         if (screenOffReceiver != null) return
 
         val receiver = ScreenOffReceiver()
         registerReceiver(receiver, IntentFilter(Intent.ACTION_SCREEN_OFF), RECEIVER_EXPORTED)
+        receiver.serviceScope = serviceScope
         screenOffReceiver = receiver
     }
 

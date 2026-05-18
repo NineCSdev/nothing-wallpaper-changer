@@ -3,97 +3,53 @@ package com.ninecsdev.wallpaperchanger.data
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.PowerManager
 import android.provider.DocumentsContract
 import android.util.Log
-import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperDao
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
-import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.CollectionType
 import com.ninecsdev.wallpaperchanger.model.CropRule
-import com.ninecsdev.wallpaperchanger.model.LockscreenZoomFix
 import com.ninecsdev.wallpaperchanger.model.RotationFrequency
-import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
-import com.ninecsdev.wallpaperchanger.service.WallpaperService
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * The Coordinator of the Data Layer.
- * Orchestrates Room Database, System States, and Preferences.
+ * Coordinates the data layer.
+ *
+ * Responsible exclusively for collection and wallpaper image CRUD,
+ * folder scanning, and rotation-engine coordination.
+ * Service state is managed by [ServiceStateManager] and settings
+ * by [com.ninecsdev.wallpaperchanger.data.local.AppDataStore],
+ * both injected directly by consumers that need them.
  */
 @Singleton
 class WallpaperRepository @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
     private val dao: WallpaperDao,
-    private val appDataStore: AppDataStore,
     private val rotationEngine: RotationEngine,
-    private val imageInternalizer: ImageInternalizer
+    private val imageInternalizer: ImageInternalizer,
+    private val serviceStateManager: ServiceStateManager
 ) {
     private companion object {
         const val TAG = "WallpaperRepository"
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    private val _serviceEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    val serviceEvent: SharedFlow<Unit> = _serviceEvent.asSharedFlow()
-
-    private val _serviceStateFlow = MutableStateFlow<ServiceState>(ServiceState.Stopped)
-    val serviceStateFlow: StateFlow<ServiceState> = _serviceStateFlow.asStateFlow()
-
-    private val _defaultWallpaperUriFlow = MutableStateFlow<Uri?>(null)
-    val defaultWallpaperUriFlow: StateFlow<Uri?> = _defaultWallpaperUriFlow.asStateFlow()
-
-    private val _revertToDefaultFlow = MutableStateFlow(true)
-    val revertToDefaultFlow: StateFlow<Boolean> = _revertToDefaultFlow.asStateFlow()
-
-    init {
-        _serviceStateFlow.value = ServiceState.Stopped
-
-        scope.launch {
-            _defaultWallpaperUriFlow.value = appDataStore.getDefaultWallpaperUri()
-            _revertToDefaultFlow.value = appDataStore.shouldRevertToDefault()
-        }
-    }
-
-    /**
-     * Emits a signal to all UI consumers that service state has changed.
-     * Replaces broadcast-based UI sync for MainActivity and TileService.
-     */
-    fun notifyServiceStateChanged() {
-        _serviceEvent.tryEmit(Unit)
-    }
-
     // UI Data Access (Flows)
-    fun getAllCollections(): Flow<List<WallpaperCollection>> {
-        return dao.getAllCollections()
-    }
 
-    fun getImagesForCollection(collectionId: Long): Flow<List<WallpaperImage>> {
-        return dao.getImagesForCollection(collectionId)
-    }
+    fun getAllCollections(): Flow<List<WallpaperCollection>> = dao.getAllCollections()
 
-    suspend fun getCollectionById(collectionId: Long): WallpaperCollection? {
-        return dao.getCollectionById(collectionId)
-    }
+    fun getImagesForCollection(collectionId: Long): Flow<List<WallpaperImage>> =
+        dao.getImagesForCollection(collectionId)
+
+    suspend fun getCollectionById(collectionId: Long): WallpaperCollection? =
+        dao.getCollectionById(collectionId)
 
     // Collection Management
 
@@ -184,7 +140,7 @@ class WallpaperRepository @Inject constructor(
     }
 
     /**
-     *  If the collection is a folder type it auto syncs
+     * Sets the active collection and auto-syncs if it is a folder type.
      */
     suspend fun setActiveCollection(collectionId: Long) {
         withContext(Dispatchers.IO) {
@@ -201,33 +157,27 @@ class WallpaperRepository @Inject constructor(
     }
 
     /**
-     * Non-flow version of getActiveCollection() for use in background tasks
-     * like the CacheManager or Service.
+     * Non-flow version of getActiveCollection() for use in background tasks.
      */
-    suspend fun getActiveCollectionOnce(): WallpaperCollection? {
-        return dao.getActiveCollection()
-    }
+    suspend fun getActiveCollectionOnce(): WallpaperCollection? = dao.getActiveCollection()
 
     /**
      * Non-flow version of getImagesForCollection for background tasks.
      */
-    suspend fun getImagesForCollectionOnce(collectionId: Long): List<WallpaperImage> {
-        return dao.getImagesForCollectionOnce(collectionId)
-    }
+    suspend fun getImagesForCollectionOnce(collectionId: Long): List<WallpaperImage> =
+        dao.getImagesForCollectionOnce(collectionId)
 
     /**
-     *  Return the size of a collection in a non-flow way.
+     * Returns the image count of a collection in a non-flow way.
      */
-    suspend fun getSizeOfCollection(collectionId: Long): Int {
-        return dao.getImageCountOfCollection(collectionId)
-    }
+    suspend fun getSizeOfCollection(collectionId: Long): Int =
+        dao.getImageCountOfCollection(collectionId)
 
     // Editor Operations
 
     /** Fetches a single wallpaper for the editor. */
-    suspend fun getWallpaperById(wallpaperId: Long): WallpaperImage? {
-        return dao.getWallpaperById(wallpaperId)
-    }
+    suspend fun getWallpaperById(wallpaperId: Long): WallpaperImage? =
+        dao.getWallpaperById(wallpaperId)
 
     /**
      * Saves the edited wallpaper image and its edit parameters.
@@ -291,11 +241,16 @@ class WallpaperRepository @Inject constructor(
         }
     }
 
+    /**
+     * Deletes a collection and cleans up associated files and permissions.
+     * If the deleted collection was active, clears the rotation magazine and
+     * marks the service as stopped via [ServiceStateManager].
+     */
     suspend fun deleteCollection(collection: WallpaperCollection) {
         withContext(Dispatchers.IO) {
             if (collection.isActive) {
                 rotationEngine.clearMagazine()
-                markServiceStopped()
+                serviceStateManager.markServiceStopped()
             }
 
             // Clean up internal files for manual collections and manually-added folder images.
@@ -324,7 +279,8 @@ class WallpaperRepository @Inject constructor(
 
     /**
      * Syncs a folder collection with its physical directory.
-     * Uses diff-based approach: removes stale images, adds new ones, preserves manually added images.
+     * Uses diff-based approach: removes stale images, adds new ones,
+     * preserves manually added images.
      */
     suspend fun syncCollection(collectionId: Long) {
         withContext(Dispatchers.IO) {
@@ -352,129 +308,13 @@ class WallpaperRepository @Inject constructor(
         }
     }
 
-
-    // Service status & Preferences
-
-    private fun updateServiceState(state: ServiceState) {
-        if (_serviceStateFlow.value == state) return
-
-        _serviceStateFlow.value = state
-        notifyServiceStateChanged()
-    }
-
-    private fun persistServiceRunningState(isRunning: Boolean) {
-        scope.launch { appDataStore.setServiceRunning(isRunning) }
-    }
-
-    private fun resolveStoppedVisualState(isPowerSave: Boolean): ServiceState {
-        return if (isPowerSave) ServiceState.DisabledPowerSave else ServiceState.Stopped
-    }
-
-    fun markServiceLoading() {
-        updateServiceState(ServiceState.Loading)
-    }
-
-    fun markServiceRunning() {
-        persistServiceRunningState(true)
-        updateServiceState(ServiceState.Running)
-    }
-
-    fun markServicePaused() {
-        persistServiceRunningState(true)
-        updateServiceState(ServiceState.Paused)
-    }
-
-    fun markServiceStopped() {
-        persistServiceRunningState(false)
-        updateServiceState(ServiceState.Stopped)
-    }
-
-    suspend fun getServiceState(): ServiceState {
-        val powerManager = appContext.getSystemService(Context.POWER_SERVICE) as? PowerManager
-        val isPowerSave = powerManager?.isPowerSaveMode ?: false
-        if (getActiveCollectionOnce() == null) return ServiceState.DisabledNoCollection
-
-        val currentState = _serviceStateFlow.value
-        val isPersistedRunning = appDataStore.isServiceRunning()
-        val isServiceAlive = WallpaperService.isAlive
-        val isServiceMarkedActive = isServiceAlive || isPersistedRunning
-        val stoppedState = resolveStoppedVisualState(isPowerSave)
-
-        return when {
-            currentState is ServiceState.Loading -> ServiceState.Loading
-            currentState is ServiceState.Running || currentState is ServiceState.Paused -> {
-                if (isServiceMarkedActive) {
-                    currentState
-                } else {
-                    persistServiceRunningState(false)
-                    stoppedState
-                }
-            }
-            currentState is ServiceState.Stopped -> {
-                if (isPersistedRunning && !isServiceAlive) {
-                    persistServiceRunningState(false)
-                }
-                stoppedState
-            }
-            isServiceMarkedActive -> ServiceState.Running
-            else -> stoppedState
-        }
-    }
-
-    suspend fun getDefaultWallpaperUri(): Uri? = appDataStore.getDefaultWallpaperUri()
-    suspend fun shouldRevertToDefault(): Boolean = appDataStore.shouldRevertToDefault()
-
-    // Passthroughs to Datastore
-    fun setRevertToDefault(revert: Boolean) {
-        _revertToDefaultFlow.value = revert
-        scope.launch { appDataStore.setRevertToDefault(revert) }
-    }
-
-    fun saveDefaultWallpaperUri(uri: Uri) {
-        _defaultWallpaperUriFlow.value = uri
-        scope.launch { appDataStore.saveDefaultWallpaperUri(uri) }
-    }
-
-    suspend fun isServiceRunning(): Boolean = appDataStore.isServiceRunning()
-
-    suspend fun shouldStartOnBoot(): Boolean = appDataStore.shouldStartOnBoot()
-    fun setStartOnBoot(enabled: Boolean) {
-        scope.launch { appDataStore.setStartOnBoot(enabled) }
-    }
-
-    suspend fun getScreenOffDelay(): Long = appDataStore.getScreenOffDelay()
-    fun setScreenOffDelay(delayMs: Long) {
-        scope.launch { appDataStore.setScreenOffDelay(delayMs) }
-    }
-
-    suspend fun getCompressionQualityHigh(): Int = appDataStore.getCompressionQualityHigh()
-    fun setCompressionQualityHigh(quality: Int) {
-        scope.launch { appDataStore.setCompressionQualityHigh(quality) }
-    }
-
-    suspend fun getCompressionQualityLow(): Int = appDataStore.getCompressionQualityLow()
-    fun setCompressionQualityLow(quality: Int) {
-        scope.launch { appDataStore.setCompressionQualityLow(quality) }
-    }
-
-    suspend fun getBatterySaverPolicy(): BatterySaverPolicy = appDataStore.getBatterySaverPolicy()
-    fun setBatterySaverPolicy(policy: BatterySaverPolicy) {
-        scope.launch { appDataStore.setBatterySaverPolicy(policy) }
-    }
-
-    suspend fun getLockscreenZoomFix(): LockscreenZoomFix = appDataStore.getLockscreenZoomFix()
-    fun setLockscreenZoomFix(zoomFix: LockscreenZoomFix) {
-        scope.launch { appDataStore.setLockscreenZoomFix(zoomFix) }
-    }
-
-
     // File System Utilities
-    // TODO: Move the file system utility to a separate class in the future.
+    // TODO: Move folder scanning to a dedicated FolderScanner collaborator
 
     /**
      * Scans the user-selected folder for images.
      * @param rootFolderUri The top-level folder URI granted by the user.
-     * @return A list of [WallpaperImage] objects.
+     * @return A list of [WallpaperImage] objects with collectionId = 0 (caller must copy).
      */
     private suspend fun getImageListFromFolder(rootFolderUri: Uri): List<WallpaperImage> {
         return withContext(Dispatchers.IO) {
@@ -495,7 +335,7 @@ class WallpaperRepository @Inject constructor(
                     null
                 )?.use { cursor ->
                     val idCol = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-                    val mimeTypeCol = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE) // Get the column index
+                    val mimeTypeCol = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE)
 
                     while (cursor.moveToNext()) {
                         val mimeType = cursor.getString(mimeTypeCol)

@@ -2,12 +2,14 @@ package com.ninecsdev.wallpaperchanger.data.local
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.core.net.toUri
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -16,6 +18,7 @@ import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.LockscreenZoomFix
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -52,47 +55,61 @@ private val KEY_LOCKSCREEN_ZOOM_FIX = intPreferencesKey("lockscreen_zoom_fix")
 class AppDataStore @Inject constructor(
     @ApplicationContext context: Context
 ) {
+    private companion object {
+        const val TAG = "AppDataStore"
+    }
+
     private val dataStore: DataStore<Preferences> = context.dataStore
+
+    /**
+     * Shared safe data flow. Catches IO and corruption errors from the DataStore file
+     * and falls back to empty preferences returning to default instead of crashing
+     */
+    private val safeData: Flow<Preferences> = dataStore.data
+        .catch { e ->
+            Log.e(TAG, "DataStore read failed, falling back to defaults", e)
+            emit(emptyPreferences())
+        }
 
     // Flows (reactive reads)
 
     fun defaultWallpaperUriFlow(): Flow<Uri?> =
-        dataStore.data.map { prefs ->
+        safeData.map { prefs ->
             prefs[KEY_DEFAULT_WALLPAPER_URI]?.toUri()
         }
 
     fun revertToDefaultFlow(): Flow<Boolean> =
-        dataStore.data.map { prefs ->
+        safeData.map { prefs ->
             prefs[KEY_REVERT_TO_DEFAULT] ?: true
         }
 
     fun serviceRunningFlow(): Flow<Boolean> =
-        dataStore.data.map { prefs ->
+        safeData.map { prefs ->
             prefs[KEY_SERVICE_RUNNING] ?: false
         }
 
     fun startOnBootFlow(): Flow<Boolean> =
-        dataStore.data.map { prefs ->
+        safeData.map { prefs ->
             prefs[KEY_START_ON_BOOT] ?: true
         }
 
     fun screenOffDelayFlow(): Flow<Long> =
-        dataStore.data.map { prefs ->
+        safeData.map { prefs ->
             prefs[KEY_SCREEN_OFF_DELAY] ?: 250L
         }
 
     fun compressionQualityHighFlow(): Flow<Int> =
-        dataStore.data.map { prefs ->
+        safeData.map { prefs ->
             prefs[KEY_COMPRESSION_QUALITY_HIGH] ?: 95
         }
 
     fun compressionQualityLowFlow(): Flow<Int> =
-        dataStore.data.map { prefs ->
+        safeData.map { prefs ->
             prefs[KEY_COMPRESSION_QUALITY_LOW] ?: 80
         }
 
     fun batterySaverPolicyFlow(): Flow<BatterySaverPolicy> =
-        dataStore.data.map { prefs ->
+        safeData.map { prefs ->
             val raw = prefs[KEY_BATTERY_SAVER_POLICY]
             // For first install we default to PAUSE
             if (raw != null) {
@@ -104,7 +121,7 @@ class AppDataStore @Inject constructor(
         }
 
     fun lockscreenZoomFixFlow(): Flow<LockscreenZoomFix> =
-        dataStore.data.map { prefs ->
+        safeData.map { prefs ->
             val raw = prefs[KEY_LOCKSCREEN_ZOOM_FIX]
             if (raw != null) {
                 LockscreenZoomFix.fromStoredValue(raw)

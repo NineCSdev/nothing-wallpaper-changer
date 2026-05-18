@@ -3,14 +3,19 @@ package com.ninecsdev.wallpaperchanger.logic
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Matrix
+import android.graphics.Paint
 import android.net.Uri
+import androidx.core.graphics.createBitmap
 import java.io.File
 import java.io.FileOutputStream
 
 /**
- * Shared image processing utilities used by [BufferManager] and [ImageInternalizer]
- * Centralises bitmap decoding, compression, and screen-dimension helpers so
- * the logic is not duplicated
+ * Shared image processing utilities used by [BufferManager], [WallpaperEditRenderer],
+ * and [ImageInternalizer]. Centralises bitmap decoding, compression, rendering, and
+ * screen-dimension helpers so the logic is not duplicated.
  */
 object ImageProcessingUtils {
 
@@ -88,5 +93,42 @@ object ImageProcessingUtils {
     fun recycleSafely(source: Bitmap, processed: Bitmap) {
         if (processed != source) source.recycle()
         processed.recycle()
+    }
+
+    /**
+     * Returns a [Paint] configured for high-quality bitmap rendering.
+     * Shared by all render paths to avoid constructing identical [Paint]
+     * objects in [BufferManager] and [WallpaperEditRenderer].
+     */
+    fun createRenderPaint(): Paint = Paint().apply {
+        isAntiAlias = true
+        isFilterBitmap = true
+        isDither = true
+    }
+
+    /**
+     * Scales [source] and draws it onto a new [targetW] × [targetH] bitmap using
+     * the given [scale] and pixel translation ([translateX], [translateY]).
+     *
+     * The canvas is first filled with [Color.BLACK] so transparent or unfilled
+     * areas (e.g. from FIT crop mode) have a clean background.
+     */
+    fun renderScaledBitmap(
+        source: Bitmap,
+        targetW: Int,
+        targetH: Int,
+        scale: Float,
+        translateX: Float,
+        translateY: Float
+    ): Bitmap {
+        val output = createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(output)
+        canvas.drawColor(Color.BLACK)
+        val matrix = Matrix().apply {
+            postScale(scale, scale)
+            postTranslate(translateX, translateY)
+        }
+        canvas.drawBitmap(source, matrix, createRenderPaint())
+        return output
     }
 }

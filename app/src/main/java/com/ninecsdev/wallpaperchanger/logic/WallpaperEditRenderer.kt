@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
-import android.graphics.Paint
 import android.net.Uri
 import android.util.Log
 import androidx.core.graphics.createBitmap
@@ -88,13 +87,7 @@ class WallpaperEditRenderer @Inject constructor(
                 postScale(scale, scale)
                 postTranslate(centerX + pixelOffsetX, centerY + pixelOffsetY)
             }
-
-            val paint = Paint().apply {
-                isAntiAlias = true
-                isFilterBitmap = true
-                isDither = true
-            }
-            canvas.drawBitmap(source, matrix, paint)
+            canvas.drawBitmap(source, matrix, ImageProcessingUtils.createRenderPaint())
 
             // Save to file
             val dir = File(appContext.filesDir, EDITED_FOLDER)

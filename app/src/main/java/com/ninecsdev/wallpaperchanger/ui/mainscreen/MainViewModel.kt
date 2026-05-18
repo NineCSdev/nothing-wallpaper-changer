@@ -4,7 +4,9 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
+import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,6 +33,8 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val repository: WallpaperRepository,
+    private val serviceStateManager: ServiceStateManager,
+    private val appDataStore: AppDataStore,
     private val imageInternalizer: ImageInternalizer,
     @param:ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -40,12 +44,12 @@ class MainViewModel @Inject constructor(
     // For performance reasons the state flow has been separated into 3 flows
     // depending on how much they update that are then combined
     private val baseStateFlow = combine(
-        repository.defaultWallpaperUriFlow,
-        repository.revertToDefaultFlow,
-        repository.serviceEvent.onStart { emit(Unit) },
+        appDataStore.defaultWallpaperUriFlow(),
+        appDataStore.revertToDefaultFlow(),
+        serviceStateManager.serviceEvent.onStart { emit(Unit) },
         _serviceRefresh
     ) { defaultUri, revert, _, _ ->
-        Triple(defaultUri, revert, repository.getServiceState())
+        Triple(defaultUri, revert, serviceStateManager.getServiceState())
     }
     private val activeCollectionFlow = repository.getAllCollections()
         .map { it.find { coll -> coll.isActive } }
@@ -88,15 +92,15 @@ class MainViewModel @Inject constructor(
     }
 
     fun setRevertToDefault(isChecked: Boolean) {
-        repository.setRevertToDefault(isChecked)
+        viewModelScope.launch { appDataStore.setRevertToDefault(isChecked) }
     }
 
     fun internalizeAndSaveDefaultWallpaper(uri: Uri) {
         viewModelScope.launch {
-            val previousUri = repository.getDefaultWallpaperUri()
+            val previousUri = appDataStore.getDefaultWallpaperUri()
             if (previousUri != null) imageInternalizer.deleteInternalFile(previousUri.path)
             val internalized = imageInternalizer.internalizeImages(context, listOf(uri))
-            internalized.firstOrNull()?.let { repository.saveDefaultWallpaperUri(it) }
+            internalized.firstOrNull()?.let { appDataStore.saveDefaultWallpaperUri(it) }
         }
     }
 

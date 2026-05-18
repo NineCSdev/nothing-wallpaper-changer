@@ -1,16 +1,15 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionscreen
 
-import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.model.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.CropRule
 import com.ninecsdev.wallpaperchanger.model.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +27,7 @@ import javax.inject.Inject
 @HiltViewModel
 class CollectionViewModel @Inject constructor(
     private val repository: WallpaperRepository,
+    private val serviceStateManager: ServiceStateManager
 ) : ViewModel() {
 
     // Internal mutable state
@@ -50,7 +50,7 @@ class CollectionViewModel @Inject constructor(
         _previewStates,
         _screenState,
         _sortOrder,
-        repository.serviceEvent.onStart { emit(Unit) }
+        serviceStateManager.serviceEvent.onStart { emit(Unit) }
     ) { collections, previews, modal, sort, _ ->
         val sorted = when (sort) {
             CollectionSortOrder.NAME -> collections.sortedBy { it.name.lowercase() }
@@ -61,7 +61,7 @@ class CollectionViewModel @Inject constructor(
         CollectionUiState(
             allCollections = sorted,
             previewStates = previews,
-            serviceState = repository.getServiceState(),
+            serviceState = serviceStateManager.getServiceState(),
             sortOrder = sort,
             isPickerMode = modal.isPickerMode,
             isShowingCreateModal = modal.isShowingCreateModal,

@@ -9,7 +9,7 @@ import android.os.PowerManager
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.util.Log
-import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
+import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.ui.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
@@ -28,7 +28,7 @@ import javax.inject.Inject
 class WallpaperTileService : TileService() {
 
     private val tag = "WallpaperTileService"
-    @Inject lateinit var repository: WallpaperRepository
+    @Inject lateinit var serviceStateManager: ServiceStateManager
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private var serviceEventJob: Job? = null
@@ -54,7 +54,7 @@ class WallpaperTileService : TileService() {
         )
 
         serviceEventJob = serviceScope.launch {
-            repository.serviceEvent.collect { updateTile() }
+            serviceStateManager.serviceEvent.collect { updateTile() }
         }
 
         updateTile()
@@ -82,7 +82,7 @@ class WallpaperTileService : TileService() {
         super.onClick()
 
         serviceScope.launch {
-            val currentState = repository.getServiceState()
+            val currentState = serviceStateManager.getServiceState()
 
             when (currentState) {
                 is ServiceState.DisabledNoCollection -> {
@@ -95,7 +95,7 @@ class WallpaperTileService : TileService() {
                     updateTile()
                 }
                 is ServiceState.Stopped -> {
-                    repository.markServiceLoading()
+                    serviceStateManager.markServiceLoading()
                     updateTile()
                     val intent = Intent(this@WallpaperTileService, WallpaperService::class.java)
                     startForegroundService(intent)
@@ -119,7 +119,7 @@ class WallpaperTileService : TileService() {
         val tile = qsTile ?: return
 
         serviceScope.launch {
-            val state = repository.getServiceState()
+            val state = serviceStateManager.getServiceState()
 
             tile.label = "Changer"
 

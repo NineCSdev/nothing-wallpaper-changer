@@ -5,7 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
+import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +16,7 @@ import javax.inject.Inject
 class BootReceiver : BroadcastReceiver() {
     private  val tag = "BootReceiver"
 
-    @Inject lateinit var repository: WallpaperRepository
+    @Inject lateinit var appDataStore: AppDataStore
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
@@ -27,12 +27,12 @@ class BootReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                if (!repository.shouldStartOnBoot()) {
+                if (!appDataStore.shouldStartOnBoot()) {
                     Log.d(tag, "Start on boot is disabled. Doing nothing.")
                     return@launch
                 }
 
-                if (!repository.isServiceRunning()) {
+                if (!appDataStore.isServiceRunning()) {
                     Log.d(tag, "Service was not active. Doing nothing.")
                     return@launch
                 }

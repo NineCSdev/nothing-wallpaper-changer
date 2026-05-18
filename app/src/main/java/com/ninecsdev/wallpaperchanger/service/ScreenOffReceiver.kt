@@ -7,6 +7,7 @@ import android.content.Intent
 import android.os.PowerManager
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
+import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.BufferManager
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.model.RotationFrequency
@@ -25,29 +26,62 @@ class ScreenOffReceiver : BroadcastReceiver() {
     private val tag = "ScreenOffReceiver"
 
     @Inject lateinit var repository: WallpaperRepository
+    @Inject lateinit var appDataStore: AppDataStore
     @Inject lateinit var rotationEngine: RotationEngine
     @Inject lateinit var bufferManager: BufferManager
+
+    /**
+     * Structured scope provided by the owning [WallpaperService].
+     * Using the service's scope ensures coroutines are cancelled when the
+     * service is destroyed, preventing leaked work.
+     */
+    var serviceScope: CoroutineScope? = null
 
     companion object {
         // Prevents multiple concurrent swaps if the power button is clicked many times
         private val isWorkInProgress = AtomicBoolean(false)
+
+        /** Timestamp of when work started. Used as a safety net to reset the
+         *  guard if a coroutine hangs longer than [WORK_TIMEOUT_MS]. 
+         *  Although I have not seen this happen and goAsync() should handle it
+         *  I have decided to add another layer of protection.
+         */
+        @Volatile private var workStartedAt = 0L
+        private const val WORK_TIMEOUT_MS = 30_000L
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
         if (context == null || intent?.action != Intent.ACTION_SCREEN_OFF) return
 
+        // If a previous coroutine got stuck, reset the guard after the timeout
+        if (isWorkInProgress.get()) {
+            val elapsed = System.currentTimeMillis() - workStartedAt
+            if (elapsed > WORK_TIMEOUT_MS) {
+                Log.w(tag, "Work guard stuck for ${elapsed}ms. Force-resetting.")
+                isWorkInProgress.set(false)
+            }
+        }
+
         if (!isWorkInProgress.compareAndSet(false, true)) {
             Log.d(tag, "Work already in progress. Skipping.")
+            return
+        }
+        workStartedAt = System.currentTimeMillis()
+
+        val scope = serviceScope
+        if (scope == null) {
+            Log.w(tag, "No service scope available. Skipping.")
+            isWorkInProgress.set(false)
             return
         }
 
         val pendingResult = goAsync()
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
 
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 // Configurable delay (default 250ms for Nothing Phone animation)
-                val delayMs = repository.getScreenOffDelay()
+                val delayMs = appDataStore.getScreenOffDelay()
                 delay(delayMs)
 
                 // Safety check: if the user woke the screen during the delay abort
