@@ -62,8 +62,8 @@ class WallpaperEditRenderer @Inject constructor(
             val canvas = Canvas(output)
             canvas.drawColor(Color.BLACK)
 
-            // Base scale: cover the screen
-            val baseScale = maxOf(
+            // Base scale: fit the screen
+            val baseScale = minOf(
                 targetW.toFloat() / source.width,
                 targetH.toFloat() / source.height
             )

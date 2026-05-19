@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -55,6 +56,65 @@ import com.ninecsdev.wallpaperchanger.ui.components.ProcessingOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
+// Constants and helpers to leave the UI code more readable
+private const val MinZoom = 0.5f
+private const val MaxZoom = 5f
+private const val MinOffset = -1f
+private const val MaxOffset = 1f
+private const val PanSensitivity = 0.003f
+private const val PanSensitivityXMultiplier = 1.25f
+
+private data class TransformResult(
+    val scale: Float,
+    val translationX: Float,
+    val translationY: Float
+)
+
+private fun coerceZoom(value: Float): Float = value.coerceIn(MinZoom, MaxZoom)
+
+private fun coerceOffset(value: Float): Float = value.coerceIn(MinOffset, MaxOffset)
+
+private fun calculateTransform(
+    viewWidth: Float,
+    viewHeight: Float,
+    imageAspectRatio: Float,
+    zoom: Float,
+    offsetX: Float,
+    offsetY: Float,
+): TransformResult {
+    val viewAspect = viewWidth / viewHeight
+
+    val (fitW, fitH) = if (imageAspectRatio > viewAspect) {
+        viewWidth to (viewWidth / imageAspectRatio)
+    } else {
+        (viewHeight * imageAspectRatio) to viewHeight
+    }
+    val imgScaledW = fitW * zoom
+    val imgScaledH = fitH * zoom
+
+    val maxPanX = ((imgScaledW - viewWidth) / 2f).coerceAtLeast(0f)
+    val maxPanY = ((imgScaledH - viewHeight) / 2f).coerceAtLeast(0f)
+
+    return TransformResult(
+        scale = zoom,
+        translationX = offsetX * maxPanX,
+        translationY = offsetY * maxPanY
+    )
+}
+
+private fun calculateFitHeightZoom(
+    imageAspectRatio: Float,
+    viewAspect: Float,
+): Float {
+    if (imageAspectRatio <= 0f || viewAspect <= 0f) return 1f
+
+    return if (imageAspectRatio > viewAspect) {
+        imageAspectRatio / viewAspect
+    } else {
+        1f
+    }
+}
+
 /**
  * Full-screen wallpaper editor.
  *
@@ -63,8 +123,8 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  *
  * A collapsible bottom panel provides precision sliders and save/cancel actions.
  *
- * Zoom = 1.0 means the image covers/fills the screen.
- * Zoom can go below 1.0 (down to 0.5) to show more of the image with black bars.
+ * Zoom = 1.0 means the image fits the screen completely (letterboxed/pillarboxed if needed).
+ * Zoom > 1.0 scales the image up (to cover and beyond).
  * Offset values are normalized to -1..1 representing the full available pan range.
  */
 @Composable
@@ -81,9 +141,6 @@ fun WallpaperEditScreen(
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
 
-    // Source image aspect ratio, needed to compute Fit-to-Cover scale boost
-    var imageAspectRatio by remember { mutableFloatStateOf(1f) }
-
     // Controls panel visibility
     var showControls by remember { mutableStateOf(false) }
 
@@ -96,215 +153,354 @@ fun WallpaperEditScreen(
         }
     }
 
-    // Navigate back (to preview) when save completes successfully
-    LaunchedEffect(uiState.saveComplete) {
-        if (uiState.saveComplete) onBack()
-    }
+    HandleSaveComplete(saveComplete = uiState.saveComplete, onBack = onBack)
 
-    // Gesture state, pinch and drag update zoom and offset together
-    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
-        zoom = (zoom * zoomChange).coerceIn(0.5f, 5f)
-
-        val panSensitivity = 0.003f / zoom
-        offsetX = (offsetX + panChange.x * panSensitivity).coerceIn(-1f, 1f)
-        offsetY = (offsetY + panChange.y * panSensitivity).coerceIn(-1f, 1f)
-    }
+    val setZoom: (Float) -> Unit = { zoom = coerceZoom(it) }
+    val setOffsetX: (Float) -> Unit = { offsetX = coerceOffset(it) }
+    val setOffsetY: (Float) -> Unit = { offsetY = coerceOffset(it) }
 
     if (wallpaper == null) {
-        // Loading state
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(NothingBlack),
-            contentAlignment = Alignment.Center
-        ) {
-            if (uiState.isLoading) {
-                Text(
-                    text = "LOADING...",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = NothingWhite.copy(alpha = 0.4f),
-                    letterSpacing = 2.sp
-                )
-            }
-        }
+        WallpaperLoadingState(isLoading = uiState.isLoading)
     } else {
-        Box(modifier = Modifier.fillMaxSize().background(NothingBlack).clipToBounds()) {
-            // Full-screen wallpaper canvas
-            //
-            // We use ContentScale.Fit so the FULL image is rendered (no clipping).
-            // Then graphicsLayer scales up from Fit to Cover (matching the preview)
-            // and applies user zoom + pan on top. This way panning reveals the
-            // edges that would normally be cropped, instead of showing black.
-            AsyncImage(
-                model = wallpaper.uri,
-                contentDescription = "Wallpaper being edited",
-                contentScale = ContentScale.Fit,
-                onSuccess = { state ->
-                    val intrinsic = state.painter.intrinsicSize
-                    if (intrinsic.width > 0 && intrinsic.height > 0) {
-                        imageAspectRatio = intrinsic.width / intrinsic.height
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .transformable(state = transformState)
-                    .graphicsLayer {
-                        val viewAspect = size.width / size.height
+        WallpaperEditContent(
+            wallpaper = wallpaper,
+            zoom = zoom,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            showControls = showControls,
+            onZoomChange = setZoom,
+            onOffsetXChange = setOffsetX,
+            onOffsetYChange = setOffsetY,
+            onToggleControls = { !showControls },
+            onSave = { onSave(zoom, offsetX, offsetY) },
+            onReset = onReset,
+            onBack = onBack
+        )
+    }
 
-                        // ContentScale.Fit scales to fit within bounds.
-                        // To match Cover (fill), we need an additional scale:
-                        //   Cover/Fit = max(vW/iW, vH/iH) / min(vW/iW, vH/iH)
-                        val fitToCoverRatio = if (imageAspectRatio > viewAspect) {
-                            imageAspectRatio / viewAspect
-                        } else {
-                            viewAspect / imageAspectRatio
-                        }
+    SavingOverlay(isSaving = uiState.isSaving)
+    SaveErrorBanner(show = uiState.saveError)
+}
 
-                        val totalScale = fitToCoverRatio * zoom
-                        scaleX = totalScale
-                        scaleY = totalScale
+//TODO: Extract the composable into separate files for readability
 
-                        // Compute actual image size after Fit + graphicsLayer scale.
-                        // Wide image: Fit fills width -> rendered = (viewW, viewW/imgAspect)
-                        // Tall image: Fit fills height -> rendered = (viewH*imgAspect, viewH)
-                        val (fitW, fitH) = if (imageAspectRatio > viewAspect) {
-                            size.width to (size.width / imageAspectRatio)
-                        } else {
-                            (size.height * imageAspectRatio) to size.height
-                        }
-                        val imgScaledW = fitW * totalScale
-                        val imgScaledH = fitH * totalScale
+@Composable
+private fun WallpaperCanvas(
+    wallpaperUri: Uri,
+    zoom: Float,
+    offsetX: Float,
+    offsetY: Float,
+    imageAspectRatio: Float,
+    onImageAspectRatioChange: (Float) -> Unit,
+    onViewAspectChange: (Float) -> Unit,
+    onZoomChange: (Float) -> Unit,
+    onOffsetXChange: (Float) -> Unit,
+    onOffsetYChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // Gesture state, pinch and drag update zoom and offset together
+    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+        val nextZoom = coerceZoom(zoom * zoomChange)
+        val panSensitivity = PanSensitivity / nextZoom
+        val nextOffsetX = coerceOffset(offsetX + panChange.x * panSensitivity * PanSensitivityXMultiplier)
+        val nextOffsetY = coerceOffset(offsetY + panChange.y * panSensitivity)
 
-                        // Pan range = how much the image overflows the viewport
-                        val maxPanX = ((imgScaledW - size.width) / 2f).coerceAtLeast(0f)
-                        val maxPanY = ((imgScaledH - size.height) / 2f).coerceAtLeast(0f)
+        onZoomChange(nextZoom)
+        onOffsetXChange(nextOffsetX)
+        onOffsetYChange(nextOffsetY)
+    }
 
-                        translationX = offsetX * maxPanX
-                        translationY = offsetY * maxPanY
-                    }
-            )
-
-            // Top bar overlay with gradient scrim
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.7f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-                    .padding(top = 40.dp, bottom = 24.dp, start = 4.dp, end = 4.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Back button
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = NothingWhite
-                        )
-                    }
-
-                    Text(
-                        text = "EDIT WALLPAPER",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp,
-                        color = NothingWhite,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    // Reset button, only visible when an edit exists
-                    if (wallpaper.editedUri != null) {
-                        IconButton(onClick = onReset) {
-                            Icon(
-                                painter = painterResource(R.drawable.icon_undo),
-                                contentDescription = "Reset edit",
-                                tint = NothingWhite,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-
-                    // Toggle controls panel
-                    IconButton(onClick = { showControls = !showControls }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = if (showControls) "Hide controls" else "Show controls",
-                            tint = if (showControls) NothingWhite else NothingWhite.copy(alpha = 0.5f),
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+    AsyncImage(
+        model = wallpaperUri,
+        contentDescription = "Wallpaper being edited",
+        contentScale = ContentScale.Fit,
+        onSuccess = { state ->
+            val intrinsic = state.painter.intrinsicSize
+            if (intrinsic.width > 0 && intrinsic.height > 0) {
+                onImageAspectRatioChange(intrinsic.width / intrinsic.height)
+            }
+        },
+        modifier = modifier
+            .transformable(state = transformState)
+            .onSizeChanged { size ->
+                if (size.height > 0) {
+                    onViewAspectChange(size.width.toFloat() / size.height)
                 }
             }
-
-            // Bottom controls panel (collapsible)
-            AnimatedVisibility(
-                visible = showControls,
-                modifier = Modifier.align(Alignment.BottomCenter),
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-            ) {
-                ControlsPanel(
+            .graphicsLayer {
+                val transform = calculateTransform(
+                    viewWidth = size.width,
+                    viewHeight = size.height,
+                    imageAspectRatio = imageAspectRatio,
                     zoom = zoom,
                     offsetX = offsetX,
-                    offsetY = offsetY,
-                    onZoomChange = { zoom = it.coerceIn(0.5f, 5f) },
-                    onOffsetXChange = { offsetX = it.coerceIn(-1f, 1f) },
-                    onOffsetYChange = { offsetY = it.coerceIn(-1f, 1f) },
-                    onSave = { onSave(zoom, offsetX, offsetY) },
-                    onCancel = onBack
+                    offsetY = offsetY
+                )
+
+                scaleX = transform.scale
+                scaleY = transform.scale
+                translationX = transform.translationX
+                translationY = transform.translationY
+            }
+    )
+}
+
+@Composable
+private fun HandleSaveComplete(
+    saveComplete: Boolean,
+    onBack: () -> Unit,
+) {
+    LaunchedEffect(saveComplete) {
+        if (saveComplete) {
+            onBack()
+        }
+    }
+}
+
+@Composable
+private fun WallpaperLoadingState(isLoading: Boolean) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(NothingBlack),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isLoading) {
+            Text(
+                text = "LOADING...",
+                style = MaterialTheme.typography.labelLarge,
+                color = NothingWhite.copy(alpha = 0.4f),
+                letterSpacing = 2.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun WallpaperEditContent(
+    wallpaper: WallpaperImage,
+    zoom: Float,
+    offsetX: Float,
+    offsetY: Float,
+    showControls: Boolean,
+    onZoomChange: (Float) -> Unit,
+    onOffsetXChange: (Float) -> Unit,
+    onOffsetYChange: (Float) -> Unit,
+    onToggleControls: () -> Unit,
+    onSave: () -> Unit,
+    onReset: () -> Unit,
+    onBack: () -> Unit,
+) {
+    var imageAspectRatio by remember { mutableFloatStateOf(1f) }
+    var viewAspect by remember { mutableFloatStateOf(1f) }
+    val onFitHeight = {
+        val targetZoom = calculateFitHeightZoom(
+            imageAspectRatio = imageAspectRatio,
+            viewAspect = viewAspect
+        )
+        onZoomChange(coerceZoom(targetZoom))
+        onOffsetXChange(0f)
+        onOffsetYChange(0f)
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(NothingBlack).clipToBounds()) {
+        WallpaperCanvas(
+            wallpaperUri = wallpaper.uri,
+            zoom = zoom,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            imageAspectRatio = imageAspectRatio,
+            onImageAspectRatioChange = { imageAspectRatio = it },
+            onViewAspectChange = { viewAspect = it },
+            onZoomChange = onZoomChange,
+            onOffsetXChange = onOffsetXChange,
+            onOffsetYChange = onOffsetYChange,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        WallpaperEditTopBar(
+            hasEdits = wallpaper.editedUri != null,
+            showControls = showControls,
+            onBack = onBack,
+            onReset = onReset,
+            onToggleControls = onToggleControls,
+            onFitHeight = onFitHeight,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+
+        WallpaperEditControlsPanel(
+            visible = showControls,
+            zoom = zoom,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            onZoomChange = onZoomChange,
+            onOffsetXChange = onOffsetXChange,
+            onOffsetYChange = onOffsetYChange,
+            onSave = onSave,
+            onCancel = onBack,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
+
+        if (!showControls) {
+            FloatingSaveButton(
+                onSave = onSave,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
+    }
+}
+
+@Composable
+private fun WallpaperEditTopBar(
+    hasEdits: Boolean,
+    showControls: Boolean,
+    onBack: () -> Unit,
+    onReset: () -> Unit,
+    onToggleControls: () -> Unit,
+    onFitHeight: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.7f),
+                        Color.Transparent
+                    )
+                )
+            )
+            .padding(top = 40.dp, bottom = 24.dp, start = 4.dp, end = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = NothingWhite
                 )
             }
 
-            // When controls are hidden, show a floating save button
-            if (!showControls) {
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .windowInsetsPadding(WindowInsets.navigationBars)
-                        .padding(bottom = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Small floating save pill
-                    IconButton(
-                        onClick = { onSave(zoom, offsetX, offsetY) },
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(NothingWhite)
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.icon_save),
-                            contentDescription = "Save",
-                            tint = NothingBlack,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+            Text(
+                text = "EDIT WALLPAPER",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp,
+                color = NothingWhite,
+                modifier = Modifier.weight(1f)
+            )
+
+            if (hasEdits) {
+                IconButton(onClick = onReset) {
+                    Icon(
+                        painter = painterResource(R.drawable.icon_undo),
+                        contentDescription = "Reset edit",
+                        tint = NothingWhite,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
+            }
+
+            IconButton(onClick = onFitHeight) {
+                Icon(
+                    painter = painterResource(R.drawable.icon_fit_height),
+                    contentDescription = "Fit height",
+                    tint = NothingWhite,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            IconButton(onClick = onToggleControls) {
+                Icon(
+                    imageVector = Icons.Outlined.Settings,
+                    contentDescription = if (showControls) "Hide controls" else "Show controls",
+                    tint = if (showControls) NothingWhite else NothingWhite.copy(alpha = 0.5f),
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
     }
+}
 
-    // Saving overlay
+@Composable
+private fun WallpaperEditControlsPanel(
+    visible: Boolean,
+    zoom: Float,
+    offsetX: Float,
+    offsetY: Float,
+    onZoomChange: (Float) -> Unit,
+    onOffsetXChange: (Float) -> Unit,
+    onOffsetYChange: (Float) -> Unit,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     AnimatedVisibility(
-        visible = uiState.isSaving,
+        visible = visible,
+        modifier = modifier,
+        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+    ) {
+        ControlsPanel(
+            zoom = zoom,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            onZoomChange = onZoomChange,
+            onOffsetXChange = onOffsetXChange,
+            onOffsetYChange = onOffsetYChange,
+            onSave = onSave,
+            onCancel = onCancel
+        )
+    }
+}
+
+@Composable
+private fun FloatingSaveButton(
+    onSave: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(bottom = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        IconButton(
+            onClick = onSave,
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(NothingWhite)
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.icon_save),
+                contentDescription = "Save",
+                tint = NothingBlack,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SavingOverlay(isSaving: Boolean) {
+    AnimatedVisibility(
+        visible = isSaving,
         enter = fadeIn(),
         exit = fadeOut()
     ) {
         ProcessingOverlay(message = "SAVING EDIT...")
     }
+}
 
-    // Error overlay
+@Composable
+private fun SaveErrorBanner(show: Boolean) {
     AnimatedVisibility(
-        visible = uiState.saveError,
+        visible = show,
         enter = fadeIn(),
         exit = fadeOut()
     ) {
