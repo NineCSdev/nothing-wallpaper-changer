@@ -131,11 +131,19 @@ class WallpaperRepository @Inject constructor(
      */
     suspend fun deleteImagesById(images: List<WallpaperImage>) {
         withContext(Dispatchers.IO) {
+            val activeCollectionId = dao.getActiveCollection()?.id
+            val affectsActive = activeCollectionId != null && images.any { it.collectionId == activeCollectionId }
+
             images.forEach { image ->
                 imageInternalizer.deleteInternalFile(image.uri.path)
                 imageInternalizer.deleteInternalFile(image.editedUri?.path)
             }
             dao.deleteImagesByIds(images.map { it.id })
+
+            if (affectsActive) {
+                rotationEngine.loadMagazine()
+                rotationEngine.refillDiskBuffer()
+            }
         }
     }
 

@@ -82,8 +82,12 @@ class RotationEngine @Inject constructor(
                 continue
             }
 
+            // Cleanup
             Log.w(TAG, "Failed to load ${nextImage.uri}. Removing from rotation.")
             imageInternalizer.deleteInternalFile(nextImage.editedUri?.path)
+            if (nextImage.uri.toString().contains("internal_wallpapers")) {
+                imageInternalizer.deleteInternalFile(nextImage.uri.path)
+            }
             dao.deleteImageById(nextImage.id)
 
             synchronized(imageMagazine) {
