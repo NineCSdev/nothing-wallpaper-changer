@@ -41,6 +41,7 @@ fun ControlsPanel(
     onZoomChange: (Float) -> Unit,
     onOffsetXChange: (Float) -> Unit,
     onOffsetYChange: (Float) -> Unit,
+    isSaveEnabled: Boolean,
     onSave: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
@@ -98,6 +99,7 @@ fun ControlsPanel(
             NothingButton(
                 text = "SAVE",
                 onClick = onSave,
+                enabled = isSaveEnabled,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -162,6 +164,7 @@ private fun ControlsPanelPreview() {
             onZoomChange = {},
             onOffsetXChange = {},
             onOffsetYChange = {},
+            isSaveEnabled = true,
             onSave = {},
             onCancel = {}
         )

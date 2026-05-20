@@ -263,7 +263,7 @@ fun AppNavigation(
             WallpaperEditScreen(
                 uiState = editState,
                 onSave = editViewModel::save,
-                onReset = editViewModel::reset,
+                onReset = editViewModel::resetAndExit,
                 onBack = {
                     if (navController.previousBackStackEntry != null) {
                         navController.popBackStack()

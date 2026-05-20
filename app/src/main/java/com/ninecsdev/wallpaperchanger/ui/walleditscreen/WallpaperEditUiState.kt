@@ -10,6 +10,6 @@ data class WallpaperEditUiState(
     val wallpaper: WallpaperImage? = null,
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
-    val saveComplete: Boolean = false,
+    val shouldExit: Boolean = false,
     val saveError: Boolean = false
 )

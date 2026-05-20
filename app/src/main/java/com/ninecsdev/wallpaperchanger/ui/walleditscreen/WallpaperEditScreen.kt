@@ -141,23 +141,46 @@ fun WallpaperEditScreen(
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
 
+    var initialZoom by remember { mutableFloatStateOf(1f) }
+    var initialOffsetX by remember { mutableFloatStateOf(0f) }
+    var initialOffsetY by remember { mutableFloatStateOf(0f) }
+
     // Controls panel visibility
     var showControls by remember { mutableStateOf(false) }
 
     // Restore saved edit params when wallpaper loads
     LaunchedEffect(wallpaper) {
         wallpaper?.let { wp ->
-            zoom = wp.editZoom ?: 1f
-            offsetX = wp.editOffsetX ?: 0f
-            offsetY = wp.editOffsetY ?: 0f
+            val savedZoom = wp.editZoom ?: 1f
+            val savedOffsetX = wp.editOffsetX ?: 0f
+            val savedOffsetY = wp.editOffsetY ?: 0f
+
+            zoom = savedZoom
+            offsetX = savedOffsetX
+            offsetY = savedOffsetY
+            initialZoom = savedZoom
+            initialOffsetX = savedOffsetX
+            initialOffsetY = savedOffsetY
         }
     }
 
-    HandleSaveComplete(saveComplete = uiState.saveComplete, onBack = onBack)
+    HandleExit(shouldExit = uiState.shouldExit, onBack = onBack)
 
     val setZoom: (Float) -> Unit = { zoom = coerceZoom(it) }
     val setOffsetX: (Float) -> Unit = { offsetX = coerceOffset(it) }
     val setOffsetY: (Float) -> Unit = { offsetY = coerceOffset(it) }
+
+    val hasUnsavedChanges = wallpaper != null && (
+        !isCloseEnough(zoom, initialZoom) ||
+            !isCloseEnough(offsetX, initialOffsetX) ||
+            !isCloseEnough(offsetY, initialOffsetY)
+        )
+    val isSaveEnabled = hasUnsavedChanges && !uiState.isSaving
+    val undoChanges = {
+        zoom = initialZoom
+        offsetX = initialOffsetX
+        offsetY = initialOffsetY
+    }
 
     if (wallpaper == null) {
         WallpaperLoadingState(isLoading = uiState.isLoading)
@@ -167,12 +190,15 @@ fun WallpaperEditScreen(
             zoom = zoom,
             offsetX = offsetX,
             offsetY = offsetY,
+            hasUnsavedChanges = hasUnsavedChanges,
+            isSaveEnabled = isSaveEnabled,
             showControls = showControls,
             onZoomChange = setZoom,
             onOffsetXChange = setOffsetX,
             onOffsetYChange = setOffsetY,
-            onToggleControls = { !showControls },
+            onToggleControls = { showControls = !showControls },
             onSave = { onSave(zoom, offsetX, offsetY) },
+            onUndo = undoChanges,
             onReset = onReset,
             onBack = onBack
         )
@@ -246,12 +272,12 @@ private fun WallpaperCanvas(
 }
 
 @Composable
-private fun HandleSaveComplete(
-    saveComplete: Boolean,
+private fun HandleExit(
+    shouldExit: Boolean,
     onBack: () -> Unit,
 ) {
-    LaunchedEffect(saveComplete) {
-        if (saveComplete) {
+    LaunchedEffect(shouldExit) {
+        if (shouldExit) {
             onBack()
         }
     }
@@ -282,12 +308,15 @@ private fun WallpaperEditContent(
     zoom: Float,
     offsetX: Float,
     offsetY: Float,
+    hasUnsavedChanges: Boolean,
+    isSaveEnabled: Boolean,
     showControls: Boolean,
     onZoomChange: (Float) -> Unit,
     onOffsetXChange: (Float) -> Unit,
     onOffsetYChange: (Float) -> Unit,
     onToggleControls: () -> Unit,
     onSave: () -> Unit,
+    onUndo: () -> Unit,
     onReset: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -319,10 +348,12 @@ private fun WallpaperEditContent(
         )
 
         WallpaperEditTopBar(
-            hasEdits = wallpaper.editedUri != null,
+            hasSavedEdits = wallpaper.editedUri != null,
+            hasUnsavedChanges = hasUnsavedChanges,
             showControls = showControls,
             onBack = onBack,
-            onReset = onReset,
+            onUndo = onUndo,
+            onResetSaved = onReset,
             onToggleControls = onToggleControls,
             onFitHeight = onFitHeight,
             modifier = Modifier.align(Alignment.TopCenter)
@@ -336,14 +367,16 @@ private fun WallpaperEditContent(
             onZoomChange = onZoomChange,
             onOffsetXChange = onOffsetXChange,
             onOffsetYChange = onOffsetYChange,
+            isSaveEnabled = isSaveEnabled,
             onSave = onSave,
             onCancel = onBack,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
 
-        if (!showControls) {
+        if (!showControls && hasUnsavedChanges) {
             FloatingSaveButton(
                 onSave = onSave,
+                enabled = isSaveEnabled,
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
@@ -352,14 +385,19 @@ private fun WallpaperEditContent(
 
 @Composable
 private fun WallpaperEditTopBar(
-    hasEdits: Boolean,
+    hasSavedEdits: Boolean,
+    hasUnsavedChanges: Boolean,
     showControls: Boolean,
     onBack: () -> Unit,
-    onReset: () -> Unit,
+    onUndo: () -> Unit,
+    onResetSaved: () -> Unit,
     onToggleControls: () -> Unit,
     onFitHeight: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val canResetSaved = !hasUnsavedChanges && hasSavedEdits
+    val resetEnabled = hasUnsavedChanges || canResetSaved
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -394,11 +432,22 @@ private fun WallpaperEditTopBar(
                 modifier = Modifier.weight(1f)
             )
 
-            if (hasEdits) {
-                IconButton(onClick = onReset) {
+            if (resetEnabled) {
+                IconButton(
+                    onClick = {
+                        when {
+                            hasUnsavedChanges -> onUndo()
+                            canResetSaved -> onResetSaved()
+                        }
+                    }
+                ) {
                     Icon(
                         painter = painterResource(R.drawable.icon_undo),
-                        contentDescription = "Reset edit",
+                        contentDescription = when {
+                            hasUnsavedChanges -> "Undo changes"
+                            canResetSaved -> "Reset edit"
+                            else -> "Reset edit"
+                        },
                         tint = NothingWhite,
                         modifier = Modifier.size(24.dp)
                     )
@@ -435,6 +484,7 @@ private fun WallpaperEditControlsPanel(
     onZoomChange: (Float) -> Unit,
     onOffsetXChange: (Float) -> Unit,
     onOffsetYChange: (Float) -> Unit,
+    isSaveEnabled: Boolean,
     onSave: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
@@ -452,6 +502,7 @@ private fun WallpaperEditControlsPanel(
             onZoomChange = onZoomChange,
             onOffsetXChange = onOffsetXChange,
             onOffsetYChange = onOffsetYChange,
+            isSaveEnabled = isSaveEnabled,
             onSave = onSave,
             onCancel = onCancel
         )
@@ -461,6 +512,7 @@ private fun WallpaperEditControlsPanel(
 @Composable
 private fun FloatingSaveButton(
     onSave: () -> Unit,
+    enabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -471,15 +523,16 @@ private fun FloatingSaveButton(
     ) {
         IconButton(
             onClick = onSave,
+            enabled = enabled,
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(NothingWhite)
+                .background(if (enabled) NothingWhite else NothingWhite.copy(alpha = 0.2f))
         ) {
             Icon(
                 painter = painterResource(R.drawable.icon_save),
                 contentDescription = "Save",
-                tint = NothingBlack,
+                tint = if (enabled) NothingBlack else NothingWhite.copy(alpha = 0.4f),
                 modifier = Modifier.size(24.dp)
             )
         }
