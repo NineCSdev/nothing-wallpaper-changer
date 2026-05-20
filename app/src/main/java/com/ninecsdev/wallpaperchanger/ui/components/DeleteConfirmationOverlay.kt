@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.ui.collectionscreen
+package com.ninecsdev.wallpaperchanger.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +33,10 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 @Composable
 fun DeleteConfirmationOverlay(
     modifier: Modifier = Modifier,
+    title: String,
+    message: String,
+    confirmLabel: String = "DELETE",
+    cancelLabel: String = "CANCEL",
     onConfirm: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -55,7 +59,7 @@ fun DeleteConfirmationOverlay(
             ) {
 
                 Text(
-                    text = "DELETE LIST?",
+                    text = title,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp,
@@ -65,7 +69,7 @@ fun DeleteConfirmationOverlay(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "This action cannot be undone.\nAll images in this list will be removed.",
+                    text = message,
                     style = MaterialTheme.typography.bodySmall,
                     color = NothingWhite.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center
@@ -84,7 +88,7 @@ fun DeleteConfirmationOverlay(
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite),
                         border = BorderStroke(1.dp, NothingWhite.copy(alpha = 0.4f))
                     ) {
-                        Text("CANCEL", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Text(cancelLabel, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     }
 
                     Button(
@@ -96,7 +100,7 @@ fun DeleteConfirmationOverlay(
                             contentColor = NothingWhite
                         )
                     ) {
-                        Text("DELETE", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                        Text(confirmLabel, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                     }
                 }
 
@@ -112,7 +116,11 @@ fun DeleteConfirmationOverlayPreview() {
         DeleteConfirmationOverlay(
             modifier = Modifier.padding(16.dp),
             onConfirm = {},
-            onCancel = {}
+            onCancel = {},
+            title = "Title",
+            message = "Description",
+            confirmLabel = "Confirm",
+            cancelLabel = "Cancel"
         )
     }
 }

@@ -8,6 +8,7 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
+import android.net.Uri
 import android.util.Log
 import androidx.core.graphics.createBitmap
 import kotlin.math.roundToInt
@@ -21,6 +22,16 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+
+enum class BufferSource {
+    EDITED,
+    ORIGINAL
+}
+
+sealed class BufferPreparationResult {
+    data class Success(val source: BufferSource) : BufferPreparationResult()
+    object Failure : BufferPreparationResult()
+}
 
 /**
  * In charge of preparing the next wallpaper that will be set.
@@ -48,25 +59,17 @@ class BufferManager @Inject constructor(
      * If the wallpaper is already in internal storage it uses that file to not overcompress.
      * Does all the processing first on a temp file and then renames to the actual file that will be used
      */
-    suspend fun prepareNextWallpaper(wallpaper: WallpaperImage, cropRule: CropRule): Boolean {
+    suspend fun prepareNextWallpaper(wallpaper: WallpaperImage, cropRule: CropRule): BufferPreparationResult {
         return withContext(Dispatchers.IO) {
             try {
                 val (targetW, targetH) = ImageProcessingUtils.getScreenDimensions(appContext)
 
-                // Prefer user-edited image; fall back to original
-                val sourceUri = wallpaper.editedUri ?: wallpaper.uri
-
-                // Load the Source Bitmap
-                // Already-internal images are decoded at full res to avoid double-compression
-                val sourceBitmap: Bitmap? = if (sourceUri.toString().contains("internal_wallpapers")) {
-                    appContext.contentResolver.openInputStream(sourceUri)?.use {
-                        BitmapFactory.decodeStream(it)
-                    }
-                } else {
-                    ImageProcessingUtils.decodeSampledBitmap(appContext, sourceUri, targetW, targetH)
-                }
-
-                if (sourceBitmap == null) return@withContext false
+                // Prefer user-edited image; fall back to original if needed
+                val (sourceBitmap, source) = wallpaper.editedUri?.let { uri ->
+                    decodeSourceBitmap(uri, targetW, targetH)?.let { it to BufferSource.EDITED }
+                } ?: decodeSourceBitmap(wallpaper.uri, targetW, targetH)?.let {
+                    it to BufferSource.ORIGINAL
+                } ?: return@withContext BufferPreparationResult.Failure
 
                 val zoomFix = appDataStore.getLockscreenZoomFix()
 
@@ -87,10 +90,14 @@ class BufferManager @Inject constructor(
                 // Clean up
                 ImageProcessingUtils.recycleSafely(sourceBitmap, finalBitmap)
 
-                success
+                if (success) {
+                    BufferPreparationResult.Success(source)
+                } else {
+                    BufferPreparationResult.Failure
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to prepare buffer: ${e.message}")
-                false
+                BufferPreparationResult.Failure
             }
         }
     }
@@ -182,6 +189,16 @@ class BufferManager @Inject constructor(
         canvas.drawBitmap(screenBitmap, insetX.toFloat(), insetY.toFloat(), paint)
 
         return padded
+    }
+
+    private fun decodeSourceBitmap(sourceUri: Uri, targetW: Int, targetH: Int): Bitmap? {
+        return if (sourceUri.toString().contains("internal_wallpapers")) {
+            appContext.contentResolver.openInputStream(sourceUri)?.use {
+                BitmapFactory.decodeStream(it)
+            }
+        } else {
+            ImageProcessingUtils.decodeSampledBitmap(appContext, sourceUri, targetW, targetH)
+        }
     }
 
     private fun calculateZoomInset(size: Int, extraPx: Int): Int {

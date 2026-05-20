@@ -21,10 +21,12 @@ class RotationEngine @Inject constructor(
 ) {
     private companion object {
         const val TAG = "RotationEngine"
+        const val MAX_FAILURES_BEFORE_PURGE = 2
     }
 
     private val imageMagazine = mutableListOf<WallpaperImage>()
     private var currentPointer = -1
+    private val failureCounts = mutableMapOf<Long, Int>()
 
     /**
      * Loads and shuffles the images from the active collection into RAM
@@ -38,6 +40,7 @@ class RotationEngine @Inject constructor(
                 imageMagazine.clear()
                 imageMagazine.addAll(images.shuffled())
                 currentPointer = -1
+                failureCounts.clear()
             }
             Log.d(TAG, "Magazine loaded: ${imageMagazine.size} items.")
         }
@@ -51,13 +54,12 @@ class RotationEngine @Inject constructor(
         if (imageMagazine.isEmpty()) loadMagazine()
 
         val activeCollection = dao.getActiveCollection() ?: return@withContext false
-        var result: Boolean? = null
+        val maxAttempts = synchronized(imageMagazine) { imageMagazine.size }
+        if (maxAttempts == 0) return@withContext false
 
-        // Uses an iterative approach to avoid stack overflow from recursion
-        while (result == null) {
+        for (attempt in 0 until maxAttempts) {
             val nextImage = synchronized(imageMagazine) {
                 if (imageMagazine.isEmpty()) {
-                    result = false
                     null
                 } else {
                     currentPointer++
@@ -70,37 +72,51 @@ class RotationEngine @Inject constructor(
 
                     imageMagazine[currentPointer]
                 }
-            } ?: continue
+            } ?: break
 
-            val success = bufferManager.prepareNextWallpaper(
+            val preparation = bufferManager.prepareNextWallpaper(
                 nextImage,
                 activeCollection.defaultCropRule
             )
 
-            if (success) {
-                result = true
-                continue
-            }
+            when (preparation) {
+                is BufferPreparationResult.Success -> {
+                    if (preparation.source == BufferSource.ORIGINAL && nextImage.editedUri != null) {
+                        Log.w(TAG, "Edited wallpaper failed; reverting to original for ${nextImage.id}.")
+                        imageInternalizer.deleteInternalFile(nextImage.editedUri.path)
+                        dao.updateWallpaperEdit(nextImage.id, null, null, null, null)
+                    }
+                    failureCounts.remove(nextImage.id)
+                    return@withContext true
+                }
+                BufferPreparationResult.Failure -> {
+                    val failures = (failureCounts[nextImage.id] ?: 0) + 1
+                    if (failures < MAX_FAILURES_BEFORE_PURGE) {
+                        failureCounts[nextImage.id] = failures
+                        Log.w(TAG, "Failed to load ${nextImage.uri}. Will retry later ($failures/$MAX_FAILURES_BEFORE_PURGE).")
+                    } else {
+                        failureCounts.remove(nextImage.id)
+                        Log.w(TAG, "Failed to load ${nextImage.uri}. Removing after $failures failures.")
+                        imageInternalizer.deleteInternalFile(nextImage.editedUri?.path)
+                        if (nextImage.uri.toString().contains("internal_wallpapers")) {
+                            imageInternalizer.deleteInternalFile(nextImage.uri.path)
+                        }
+                        dao.deleteImageById(nextImage.id)
 
-            // Cleanup
-            Log.w(TAG, "Failed to load ${nextImage.uri}. Removing from rotation.")
-            imageInternalizer.deleteInternalFile(nextImage.editedUri?.path)
-            if (nextImage.uri.toString().contains("internal_wallpapers")) {
-                imageInternalizer.deleteInternalFile(nextImage.uri.path)
-            }
-            dao.deleteImageById(nextImage.id)
-
-            synchronized(imageMagazine) {
-                imageMagazine.remove(nextImage)
-                if (imageMagazine.isEmpty()) {
-                    currentPointer = -1
-                } else if (currentPointer >= imageMagazine.size) {
-                    currentPointer = imageMagazine.lastIndex
+                        synchronized(imageMagazine) {
+                            imageMagazine.remove(nextImage)
+                            if (imageMagazine.isEmpty()) {
+                                currentPointer = -1
+                            } else if (currentPointer >= imageMagazine.size) {
+                                currentPointer = imageMagazine.lastIndex
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        result ?: false
+        false
     }
 
     /**
@@ -110,6 +126,7 @@ class RotationEngine @Inject constructor(
         synchronized(imageMagazine) {
             imageMagazine.clear()
             currentPointer = -1
+            failureCounts.clear()
         }
     }
 }

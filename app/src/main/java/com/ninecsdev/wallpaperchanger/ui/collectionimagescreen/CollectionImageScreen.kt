@@ -35,6 +35,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.ui.components.DeleteConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.ThumbnailSlot
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -73,6 +78,8 @@ fun CollectionImageScreen(
     onPreviewPageChanged: (WallpaperImage) -> Unit,
     onClosePreview: () -> Unit
 ) {
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+
     // Handle back press: exit selection mode first, then close preview, then navigate back
     // TODO: Do a better handling of this
     BackHandler(enabled = uiState.isSelectionMode) {
@@ -154,7 +161,7 @@ fun CollectionImageScreen(
                     IconButton(
                         onClick = {
                             if (uiState.isSelectionMode && uiState.selectedIds.isNotEmpty()) {
-                                onDeleteSelected()
+                                showDeleteConfirmation = true
                             }
                         },
                         enabled = uiState.isSelectionMode && uiState.selectedIds.isNotEmpty()
@@ -237,6 +244,23 @@ fun CollectionImageScreen(
                 onPageChanged = onPreviewPageChanged
             )
         }
+    }
+
+    if (showDeleteConfirmation) {
+        val selectedCount = uiState.selectedIds.size
+        DeleteConfirmationOverlay(
+            title = if (selectedCount == 1) "DELETE WALLPAPER?" else "DELETE WALLPAPERS?",
+            message = if (selectedCount == 1) {
+                "This action cannot be undone.\nThe selected wallpaper will be removed."
+            } else {
+                "This action cannot be undone.\nThe selected wallpapers will be removed."
+            },
+            onConfirm = {
+                showDeleteConfirmation = false
+                if (selectedCount > 0) onDeleteSelected()
+            },
+            onCancel = { showDeleteConfirmation = false }
+        )
     }
 }
 

@@ -47,6 +47,7 @@ import com.ninecsdev.wallpaperchanger.model.CropRule
 import com.ninecsdev.wallpaperchanger.model.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.ui.components.CropRuleSelector
+import com.ninecsdev.wallpaperchanger.ui.components.DeleteConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.NothingTextField
 import com.ninecsdev.wallpaperchanger.ui.components.ProcessingOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
@@ -150,6 +151,8 @@ fun EditCollectionCard(
 
                 if(showDeleteConfirmation) {
                     DeleteConfirmationOverlay(
+                        title = "DELETE LIST?",
+                        message = "This action cannot be undone.\nAll images in this list will be removed.",
                         onConfirm = {
                             showDeleteConfirmation = false
                             onDelete()

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -91,10 +92,11 @@ class ServiceStateManager @Inject constructor(
     suspend fun getServiceState(): ServiceState {
         val powerManager = appContext.getSystemService(Context.POWER_SERVICE) as? PowerManager
         val isPowerSave = powerManager?.isPowerSaveMode ?: false
-        if (dao.getActiveCollection() == null) return ServiceState.DisabledNoCollection
+        val hasActiveCollection = withContext(Dispatchers.IO) { dao.getActiveCollection() != null }
+        if (!hasActiveCollection) return ServiceState.DisabledNoCollection
 
         val currentState = _serviceStateFlow.value
-        val isPersistedRunning = appDataStore.isServiceRunning()
+        val isPersistedRunning = withContext(Dispatchers.IO) { appDataStore.isServiceRunning() }
         val isServiceAlive = lifecycleTracker.isAlive.value
         val isServiceMarkedActive = isServiceAlive || isPersistedRunning
         val stoppedState = resolveStoppedVisualState(isPowerSave)

@@ -144,13 +144,16 @@ fun CollectionListScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(uiState.allCollections, key = { it.id }) { collection ->
-                            LaunchedEffect(collection.id) {
-                                onRequestPreview(collection.id)
+                            val previewState = uiState.previewStates[collection.id]
+                            LaunchedEffect(collection.id, previewState) {
+                                if (previewState == null) {
+                                    onRequestPreview(collection.id)
+                                }
                             }
 
                             CollectionGridItem(
                                 collection = collection,
-                                state = uiState.previewStates[collection.id] ?: CollectionPreviewState(),
+                                state = previewState ?: CollectionPreviewState(),
                                 onClick = { onCollectionClick(collection.id) }
                             )
                         }
