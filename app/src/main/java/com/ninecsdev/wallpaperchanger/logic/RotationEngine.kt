@@ -57,6 +57,9 @@ class RotationEngine @Inject constructor(
         val maxAttempts = synchronized(imageMagazine) { imageMagazine.size }
         if (maxAttempts == 0) return@withContext false
 
+        // Added multiple tries before deleting for being more permissive in case there was an issue
+        // and the file wasn't actually deleted, not sure it is better than trying once for UX so may
+        // revert in the future
         for (attempt in 0 until maxAttempts) {
             val nextImage = synchronized(imageMagazine) {
                 if (imageMagazine.isEmpty()) {

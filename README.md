@@ -4,7 +4,7 @@
   <h1>Wallpaper Changer for Nothing OS</h1>
 
   <p align="center">
-    <img src="https://img.shields.io/badge/Status-v0.3.0--beta-blue.svg" alt="Status">
+    <img src="https://img.shields.io/badge/Status-v0.3.1--beta-blue.svg" alt="Status">
     <img src="https://img.shields.io/badge/Android-13%2B-green.svg" alt="Android 13+">
     <img src="https://img.shields.io/badge/Kotlin-2.1-purple.svg" alt="Kotlin">
     <img src="https://img.shields.io/badge/Jetpack%20Compose-Material%203-teal.svg" alt="Compose">
@@ -35,17 +35,18 @@ There weren't many solutions on the Play Store and the ones I found were either 
     - **Folder-based:** Point the app at a folder on your device and it picks up all the images inside, with re-sync on demand.
     - **Manual:** Hand-pick individual photos; they're safely copied into the app's private storage so they're always available.
 - **Collection Image Gallery:** Browse all wallpapers in a collection with a 3-column grid, full-screen preview with swipe-through, and multi-select for batch operations.
-- **Per-Image Wallpaper Editor:** Crop, zoom, and position individual wallpapers with a full-screen editor featuring pinch-to-zoom gestures and precision sliders. Edits are rendered from the original image to avoid quality loss, and parameters are persisted so you can adjust them later.
+- **Delete Confirmation:** Confirm before removing selected wallpapers from a collection.
+- **Per-Image Wallpaper Editor:** Crop, zoom, and position individual wallpapers with pinch-to-zoom gestures, precision sliders, undo, and a fit-to-height control. Edits are rendered from the original image to avoid quality loss, and parameters are persisted so you can adjust them later.
 - **Smart Shuffle:** Every image is shown exactly once before the collection reshuffles in order to never getting any individual wallpaper too often.
 - **Flexible Cropping:** Choose how images fit your screen per collection: center, left-aligned, right-aligned, or fit-to-screen.
-- **Lockscreen Zoom Fix:** Counteracts the auto-zoom some phones (especially Nothing OS) apply to lock screen wallpapers. Choose between blurred-edge or sharp-edge padding modes, or turn it off.
+- **Lockscreen Zoom Fix:** Counteracts the auto-zoom some phones (especially Nothing OS) apply to lock screen wallpapers. Choose between blurred-edge or sharp-edge padding modes, or turn it off. Applied to both rotating and default wallpapers.
 - **Rotation Timer Modes:** Configure each collection to rotate on every lock, every 1 hour, or once per day.
 - **Settings Screen:** Tune the screen-off debounce delay, boot behavior, manual-image compression quality, Battery Saver behavior, and lockscreen zoom fix from inside the app.
 - **Quick Settings Tile:** Start, stop, or check status right from the notification shade letting you control it while doing something else.
 - **Default Wallpaper Fallback:** Pick a fallback lock screen image that's automatically restored when the service stops or pauses.
 - **Survives Reboots:** If the service was running before a restart, it picks right back up.
 - **Battery Aware:** Choose what happens during Battery Saver: stop the service, pause and auto-resume, or keep running.
-- **Self-Healing:** If an image can't be loaded (e.g., the file was deleted), the app skips it and moves on.
+- **Self-Healing:** Failed images are retried, edited files can fall back to originals, and broken entries are removed after repeated failures.
 - **Privacy First:** No internet permissions. Your images never leave your device.
 
 ---
@@ -168,7 +169,7 @@ gradlew.bat assembleDebug      # Windows
 
 ## Architecture
 
-The app uses a **single-activity Jetpack Compose UI**, **Hilt** for dependency injection, **Room** for collections and images, a centralized **WallpaperRepository** for orchestration, and a **foreground service** that listens for screen-off events.
+The app uses a **single-activity Jetpack Compose UI**, **Hilt** for dependency injection, **Room** for collections and images, a **WallpaperRepository** for collection/rotation coordination, a **ServiceStateManager** for service state, and a **foreground service** that listens for screen-off events.
 
 The current implementation uses Hilt-injected app-level dependencies, plain `@HiltViewModel` ViewModels, lifecycle-aware Compose state collection, and Preferences DataStore for lightweight app flags. Navigation is handled by Navigation Compose with five routes: main dashboard, collections, collection image gallery, wallpaper editor, and settings. The current architecture is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), alongside the next refactor targets.
 
@@ -179,7 +180,7 @@ The current implementation uses Hilt-injected app-level dependencies, plain `@Hi
 3. **User presses Start** → `WallpaperService` starts as a foreground service, loads & shuffles the active collection into an in-memory magazine, and pre-processes the first wallpaper into a WebP disk buffer. Edited images are preferred over originals.
 4. **Screen turns off** → `ScreenOffReceiver` fires, streams the buffer to `WallpaperManager.setStream()` on the lock screen flag, then triggers the repository to prepare the next image.
 5. **Battery Saver ON** -> The configured policy is applied: stop the service, pause by unregistering the receiver and auto-resume later, or ignore Battery Saver.
-6. **User presses Stop** → Service stops; if "revert to default" is enabled, the saved default wallpaper is restored.
+6. **User presses Stop** → Service stops; if "revert to default" is enabled, the saved default wallpaper is restored (including lockscreen zoom fix if enabled).
 7. **Device reboots** → `BootReceiver` checks persisted state and restarts the service if it was previously active.
 
 ---
@@ -223,11 +224,9 @@ This is my first native Android project, built while actively learning about bac
 
 ## Status
 
-**v0.3.0-beta** adds the wallpaper editor and collection image gallery and settings screen.
+**v0.3.1-beta** focuses on polish and resilience.
 
-Core features are in place: collections, timed rotation, pre-buffered wallpaper processing, battery-aware pause/resume, Quick Settings controls, boot restore, and fallback wallpaper restore.
-
-This version adds the settings screen, a full-screen per-image wallpaper editor with gesture-based cropping and precision sliders, a collection image gallery with multi-select and full-screen preview pager, lockscreen zoom fix for Nothing OS auto-zoom behavior, and a Room database migration (v3) for persisting edit parameters. It also includes configurable Battery Saver policy, collection delete confirmation, and the first pass Hilt-based dependency injection.
+It adds editor quality-of-life (undo, fit-to-height, sub-1x zoom), applies the lockscreen zoom fix to the default wallpaper, strengthens rotation self-healing with retries and fallbacks, and adds confirmation before deleting selected wallpapers.
 
 ---
 
