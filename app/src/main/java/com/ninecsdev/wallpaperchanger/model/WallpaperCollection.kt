@@ -27,6 +27,7 @@ data class WallpaperCollection(
     val lastUsedAt: Long = System.currentTimeMillis()
 )
 
+// TODO: I think this should not live here, decide where to put it
 fun WallpaperCollection.shouldRotateAt(
     nowMillis: Long = System.currentTimeMillis(),
     zoneId: ZoneId = ZoneId.systemDefault()

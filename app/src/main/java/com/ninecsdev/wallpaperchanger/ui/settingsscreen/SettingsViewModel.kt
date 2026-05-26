@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.LockscreenZoomFix
+import com.ninecsdev.wallpaperchanger.model.WallpaperDestination
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
@@ -38,9 +39,10 @@ class SettingsViewModel @Inject constructor(
     // Separate in 2 flows as combine max is 5
     private val lockscreenSettingsFlow = combine(
         appDataStore.batterySaverPolicyFlow(),
-        appDataStore.lockscreenZoomFixFlow()
-    ) { batterySaverPolicy, lockscreenZoomFix ->
-        batterySaverPolicy to lockscreenZoomFix
+        appDataStore.lockscreenZoomFixFlow(),
+        appDataStore.wallpaperDestinationFlow()
+    ) { batterySaverPolicy, lockscreenZoomFix, wallpaperDestination ->
+        Triple(batterySaverPolicy, lockscreenZoomFix, wallpaperDestination)
     }
 
     val uiState: StateFlow<SettingsUiState> = combine(
@@ -55,6 +57,7 @@ class SettingsViewModel @Inject constructor(
             startOnBoot = boot,
             batterySaverPolicy = lockscreenSettings.first,
             lockscreenZoomFix = lockscreenSettings.second,
+            wallpaperDestination = lockscreenSettings.third,
             compressionQualityHigh = qualityHigh,
             compressionQualityLow = qualityLow,
             appVersion = appVersion
@@ -85,6 +88,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setBatterySaverPolicy(policy: BatterySaverPolicy) {
         viewModelScope.launch { appDataStore.setBatterySaverPolicy(policy) }
+    }
+
+    fun setWallpaperDestination(destination: WallpaperDestination) {
+        viewModelScope.launch { appDataStore.setWallpaperDestination(destination) }
     }
 
     fun setLockscreenZoomFix(zoomFix: LockscreenZoomFix) {

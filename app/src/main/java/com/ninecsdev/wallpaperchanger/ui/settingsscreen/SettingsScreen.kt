@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.LockscreenZoomFix
+import com.ninecsdev.wallpaperchanger.model.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
@@ -43,6 +44,7 @@ fun SettingsScreen(
     onScreenOffDelayChange: (Long) -> Unit,
     onStartOnBootChange: (Boolean) -> Unit,
     onBatterySaverPolicyChange: (BatterySaverPolicy) -> Unit,
+    onWallpaperDestinationChange: (WallpaperDestination) -> Unit,
     onLockscreenZoomFixChange: (LockscreenZoomFix) -> Unit,
     onCompressionQualityHighChange: (Int) -> Unit,
     onCompressionQualityLowChange: (Int) -> Unit
@@ -116,6 +118,23 @@ fun SettingsScreen(
                             BatterySaverPolicy.STOP -> "STOP"
                             BatterySaverPolicy.PAUSE -> "PAUSE"
                             BatterySaverPolicy.IGNORE -> "IGNORE"
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                SettingsSegmentedSelector(
+                    title = "WALLPAPER DESTINATION",
+                    subtitle = "APPLY TO YOUR LOCK SCREEN, HOME SCREEN  OR BOTH",
+                    options = WallpaperDestination.entries,
+                    selected = uiState.wallpaperDestination,
+                    onOptionChange = onWallpaperDestinationChange,
+                    optionLabel = { destination ->
+                        when (destination) {
+                            WallpaperDestination.LOCK -> "LOCK"
+                            WallpaperDestination.HOME -> "HOME"
+                            WallpaperDestination.BOTH -> "BOTH"
                         }
                     }
                 )
@@ -210,7 +229,8 @@ fun SettingsScreenPreview() {
             onBatterySaverPolicyChange = {},
             onLockscreenZoomFixChange = {},
             onCompressionQualityHighChange = {},
-            onCompressionQualityLowChange = {}
+            onCompressionQualityLowChange = {},
+            onWallpaperDestinationChange = {}
         )
     }
 }

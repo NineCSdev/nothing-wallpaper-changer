@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.model.WallpaperDestination
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,6 +27,7 @@ class WallpaperApplier @Inject constructor(
 
     suspend fun applyDefaultWallpaper(): Boolean = withContext(Dispatchers.IO) {
         val uri = appDataStore.getDefaultWallpaperUri() ?: return@withContext false
+        val destination = appDataStore.getWallpaperDestination()
 
         try {
             appContext.contentResolver.openInputStream(uri)?.use { stream ->
@@ -38,10 +40,10 @@ class WallpaperApplier @Inject constructor(
                         processed,
                         null,
                         true,
-                        WallpaperManager.FLAG_LOCK
+                        destination.toFlags()
                     )
 
-                    Log.i(TAG, "Successfully applied default wallpaper.")
+                    Log.i(TAG, "Successfully applied default wallpaper to $destination.")
                     true
                 } finally {
                     if (processed !== bitmap) processed.recycle()
@@ -49,12 +51,13 @@ class WallpaperApplier @Inject constructor(
                 }
             } ?: false
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to apply default wallpaper", e)
+            Log.e(TAG, "Failed to apply default wallpaper to $destination", e)
             false
         }
     }
 
     suspend fun applyBufferWallpaper(): Boolean = withContext(Dispatchers.IO) {
+        val destination = appDataStore.getWallpaperDestination()
         try {
             val bufferFile = bufferManager.getBufferFile()
 
@@ -68,15 +71,26 @@ class WallpaperApplier @Inject constructor(
                     stream,
                     null,
                     true,
-                    WallpaperManager.FLAG_LOCK
+                    destination.toFlags()
                 )
             }
 
-            Log.i(TAG, "Wallpaper applied successfully from disk buffer.")
+            Log.i(TAG, "Wallpaper applied successfully from disk buffer to $destination.")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to stream buffer to lock screen", e)
+            Log.e(TAG, "Failed to stream buffer to $destination", e)
             false
         }
+    }
+
+    /**
+     * Extension helper to translate [WallpaperDestination] to [WallpaperManager.FLAG_LOCK] or
+     * [WallpaperManager.FLAG_SYSTEM]
+     */
+    private fun WallpaperDestination.toFlags(): Int = when (this) {
+        WallpaperDestination.LOCK -> WallpaperManager.FLAG_LOCK
+        WallpaperDestination.HOME -> WallpaperManager.FLAG_SYSTEM
+        // As WallpaperManger checks the bits we do an or to activate both (01 or 10 = 11)
+        WallpaperDestination.BOTH -> WallpaperManager.FLAG_LOCK or WallpaperManager.FLAG_SYSTEM
     }
 }

@@ -16,6 +16,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.LockscreenZoomFix
+import com.ninecsdev.wallpaperchanger.model.WallpaperDestination
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -50,6 +51,7 @@ private val KEY_COMPRESSION_QUALITY_HIGH = intPreferencesKey("compression_qualit
 private val KEY_COMPRESSION_QUALITY_LOW = intPreferencesKey("compression_quality_low")
 private val KEY_BATTERY_SAVER_POLICY = stringPreferencesKey("battery_saver_policy")
 private val KEY_LOCKSCREEN_ZOOM_FIX = intPreferencesKey("lockscreen_zoom_fix")
+private val KEY_WALLPAPER_DESTINATION = stringPreferencesKey("wallpaper_destination")
 
 @Singleton
 class AppDataStore @Inject constructor(
@@ -130,6 +132,21 @@ class AppDataStore @Inject constructor(
             }
         }
 
+    fun wallpaperDestinationFlow(): Flow<WallpaperDestination> =
+        safeData.map { prefs ->
+            val raw = prefs[KEY_WALLPAPER_DESTINATION]
+            if (raw != null) {
+                try {
+                    WallpaperDestination.valueOf(raw)
+                } catch (_: Exception) {
+                    WallpaperDestination.LOCK
+                }
+            } else {
+                WallpaperDestination.LOCK
+            }
+        }
+    
+
     // Suspend reads (suspend, one-shot)
 
     suspend fun getDefaultWallpaperUri(): Uri? =
@@ -158,6 +175,9 @@ class AppDataStore @Inject constructor(
 
     suspend fun getLockscreenZoomFix(): LockscreenZoomFix =
         lockscreenZoomFixFlow().first()
+
+    suspend fun getWallpaperDestination(): WallpaperDestination =
+        wallpaperDestinationFlow().first()
 
     // Writes (suspend)
 
@@ -212,6 +232,12 @@ class AppDataStore @Inject constructor(
     suspend fun setLockscreenZoomFix(zoomFix: LockscreenZoomFix) {
         dataStore.edit { prefs ->
             prefs[KEY_LOCKSCREEN_ZOOM_FIX] = zoomFix.storedValue
+        }
+    }
+
+    suspend fun setWallpaperDestination(target: WallpaperDestination) {
+        dataStore.edit { prefs ->
+            prefs[KEY_WALLPAPER_DESTINATION] = target.name
         }
     }
 }
