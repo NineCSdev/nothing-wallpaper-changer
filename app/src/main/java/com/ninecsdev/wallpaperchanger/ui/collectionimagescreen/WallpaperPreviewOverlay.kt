@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -104,7 +105,7 @@ fun WallpaperPreviewOverlay(
             val displayUri = wallpaper.editedUri ?: wallpaper.uri
             AsyncImage(
                 model = displayUri,
-                contentDescription = "Wallpaper preview",
+                contentDescription = stringResource(R.string.cd_wallpaper_preview),
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize()
             )
@@ -128,7 +129,7 @@ fun WallpaperPreviewOverlay(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "WALLPAPER PREVIEW",
+                    text = stringResource(R.string.preview_title),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 2.sp,
@@ -136,7 +137,7 @@ fun WallpaperPreviewOverlay(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "TAP ANYWHERE TO EXIT",
+                    text = stringResource(R.string.preview_tap_to_exit),
                     style = MaterialTheme.typography.bodySmall,
                     color = NothingWhite.copy(alpha = 0.7f)
                 )
@@ -169,7 +170,7 @@ fun WallpaperPreviewOverlay(
             ) {
                 Icon(
                     painter = painterResource(R.drawable.icon_edit),
-                    contentDescription = "Edit wallpaper",
+                    contentDescription = stringResource(R.string.cd_edit_wallpaper),
                     tint = NothingWhite,
                     modifier = Modifier.size(20.dp)
                 )

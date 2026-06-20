@@ -25,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
@@ -35,7 +37,7 @@ fun <T> SettingsSegmentedSelector(
     options: List<T>,
     selected: T,
     onOptionChange: (T) -> Unit,
-    optionLabel: (T) -> String,
+    optionLabel: @Composable (T) -> String,
     onInfoClick: (() -> Unit)? = null
 ) {
     Column {
@@ -58,7 +60,7 @@ fun <T> SettingsSegmentedSelector(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Info,
-                        contentDescription = "Setting information",
+                        contentDescription = stringResource(R.string.cd_setting_information),
                         tint = NothingWhite.copy(alpha = 0.55f),
                         modifier = Modifier.size(16.dp)
                     )

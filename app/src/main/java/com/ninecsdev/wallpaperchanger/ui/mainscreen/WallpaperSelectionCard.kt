@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -51,7 +52,7 @@ fun WallpaperSelectionCard(
     totalImages: Int,
     onSelectFolderClick: () -> Unit
 ) {
-    val displayName = activeCollection?.name ?: "SELECT LIST"
+    val displayName = activeCollection?.name ?: stringResource(R.string.label_select_list)
 
     OutlinedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -93,7 +94,7 @@ fun WallpaperSelectionCard(
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                 ) {
                     Text(
-                        text = if (activeCollection != null) "CHANGE" else "SELECT",
+                        text = if (activeCollection != null) stringResource(R.string.action_change) else stringResource(R.string.action_select),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 0.5.sp

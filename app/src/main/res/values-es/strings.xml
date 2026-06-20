@@ -1,0 +1,179 @@
+<resources>
+    <!-- Service status strings for notifications-->
+    <string name="status_running">El servicio está ACTIVO</string>
+    <string name="status_stopped">El servicio está PARADO</string>
+    <string name="status_disabled_power">Servicio deshabilitado (Ahorro de batería)</string>
+    <string name="status_disabled_folder">Servicio deshabilitado (Ninguna lista seleccionada)</string>
+    <string name="status_loading">Cargando…</string>
+    <string name="notification_channel_name">ESTADO DEL SERVICIO</string>
+    <string name="notification_initializing">INICIALIZANDO…</string>
+    <string name="notification_cycling">Rotando: %1$s</string>
+    <string name="notification_active_collection_fallback">ACTIVO</string>
+    <string name="notification_paused_power_save">Pausado (Ahorro de batería)</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_settings">Ajustes</string>
+    <string name="cd_collections">Listas</string>
+    <string name="cd_back">Atrás</string>
+    <string name="cd_add_list">Añadir lista</string>
+    <string name="cd_add_wallpapers">Añadir fondo de pantalla</string>
+    <string name="cd_edit_wallpaper">Editar fondo de pantalla</string>
+    <string name="cd_delete_wallpapers">Eliminar fondo de pantalla</string>
+    <string name="cd_exit_selection">Salir de la selección</string>
+    <string name="cd_selected">Seleccionado</string>
+    <string name="cd_sync">Sincronizar</string>
+    <string name="cd_close">Cerrar</string>
+    <string name="cd_save">Guardar</string>
+    <string name="cd_setting_information">Informacion de la configuración</string>
+    <string name="cd_wallpaper_preview">Vista previa</string>
+    <string name="cd_wallpaper_being_edited">Fondo de pantalla en edición</string>
+    <string name="cd_fit_height">Ajustar altura</string>
+    <string name="cd_hide_controls">Ocultar controles</string>
+    <string name="cd_show_controls">Mostrar controles</string>
+    <string name="cd_undo_changes">Deshacer cambios</string>
+    <string name="cd_reset_edit">Restablecer edición</string>
+    <string name="cd_collapse">Contraer</string>
+    <string name="cd_expand">Expandir</string>
+
+    <!-- Main screen -->
+    <string name="label_app_status">ESTADO DE LA APP</string>
+    <string name="label_select_list">SELECCIONAR LISTA</string>
+
+    <!-- Service status labels -->
+    <string name="status_label_active">ACTIVO</string>
+    <string name="status_label_inactive">INACTIVO</string>
+    <string name="status_label_paused_battery">PAUSADO (BATERÍA)</string>
+    <string name="status_label_power_save_on">AHORRO DE BATERÍA ACTIVADO</string>
+    <string name="status_label_setup_needed">REQUIERE CONFIGURACIÓN</string>
+    <string name="status_label_initializing">INICIALIZANDO</string>
+
+    <!-- Wallpaper selection card -->
+    <string name="action_change">CAMBIAR</string>
+    <string name="action_select">SELECCIONAR</string>
+
+    <!-- Default wallpaper card -->
+    <string name="label_default_wallpaper">FONDO PREDETERMINADO</string>
+    <string name="label_revert_on_stop">PONER AL PARAR EL SERVICIO</string>
+    <string name="label_status">ESTADO</string>
+    <string name="label_ready">LISTO</string>
+    <string name="label_not_set">NO ESTABLECIDO</string>
+
+    <!-- Service control buttons -->
+    <string name="action_stop">PARAR</string>
+    <string name="action_start">INICIAR</string>
+
+    <!-- Settings screen -->
+    <string name="settings_title">AJUSTES</string>
+    <string name="settings_section_service">SERVICIO</string>
+    <string name="settings_section_quality">CALIDAD DE IMAGEN EN ALMACENAMIENTO</string>
+    <string name="settings_battery_saver_title">POLÍTICA DE AHORRO DE BATERÍA</string>
+    <string name="settings_battery_saver_subtitle">QUÉ HACER CUANDO SE ACTIVA EL AHORRO DE BATERÍA</string>
+    <string name="settings_battery_stop">PARAR</string>
+    <string name="settings_battery_pause">PAUSAR</string>
+    <string name="settings_battery_ignore">IGNORAR</string>
+    <string name="settings_destination_title">DESTINO DEL FONDO DE PANTALLA</string>
+    <string name="settings_destination_subtitle">APLICAR A PANTALLA DE BLOQUEO, PANTALLA DE INICIO O AMBAS</string>
+    <string name="settings_destination_lock">BLOQUEO</string>
+    <string name="settings_destination_home">INICIO</string>
+    <string name="settings_destination_both">AMBAS</string>
+    <string name="settings_quality_high_label">CALIDAD ESTÁNDAR</string>
+    <string name="settings_quality_high_subtitle">PARA LA MAYORÍA DE IMÁGENES - RECOMENDADO 95%</string>
+    <string name="settings_quality_low_label">CALIDAD REDUCIDAD</string>
+    <string name="settings_quality_low_subtitle">PARA IMÁGENES PESADAS - RECOMENDADO 80%</string>
+
+    <!-- Boot toggle -->
+    <string name="settings_autostart_title">INICIO AUTOMÁTICO AL ARRANCAR</string>
+    <string name="settings_autostart_subtitle">REANUDAR EL SERVICIO TRAS REINICIAR</string>
+
+    <!-- Screen off delay -->
+    <string name="settings_screen_off_delay_title">RETARDO MIENTRAS PANTALLA SE APAGA</string>
+    <string name="settings_screen_off_delay_subtitle">POR ANIMACIÓN DE PANTALLA APAGADA - 250ms POR DEFECTO</string>
+
+    <!-- Lockscreen zoom fix -->
+    <string name="settings_zoom_fix_title">CORRECIÓN DEL ZOOM DE PANTALLA DE BLOQUEO</string>
+    <string name="settings_zoom_fix_subtitle">CORRIGE EL ZOOM AUTOMÁTICO DE NOTHING OS</string>
+    <string name="settings_zoom_fix_off">DESACTIVADO</string>
+    <string name="settings_zoom_fix_blur">DESENFOQUE</string>
+    <string name="settings_zoom_fix_edge">BORDE</string>
+    <string name="settings_zoom_fix_dialog_title">Corrección de zoom en pantalla de bloqueo</string>
+    <string name="settings_zoom_fix_dialog_body">
+        Algunos sistemas operativos de móviles (como Nothing OS) hacen un zoom automático al fondo de pantalla de la pantalla de bloqueo para crear efecto "parallax".
+        Este ajuste añade un margen oculto al fondo para que el SO recorte este margen en vez del fondo de pantalla en sí.
+        Dado que el comportamiento del zoom varia hay dos estilos de margen: elige Desenfoque para la mayoría, o Borde para bordes más marcado.
+    </string>
+
+    <!-- Collections screen -->
+    <string name="collections_title">MIS LISTAS</string>
+    <string name="collections_empty_title">NO SE ENCONTRARON LISTAS</string>
+    <string name="collections_empty_hint">PULSA + PARA EMPEZAR</string>
+
+    <!-- Create list card -->
+    <string name="create_list_title">CREAR LISTA NUEVA</string>
+    <string name="create_list_label_folder">CARPETA</string>
+    <string name="create_list_label_photos">FOTOS</string>
+    <string name="create_list_field_name">NOMBRE DE LA LISTA</string>
+    <string name="create_list_action_cancel">CANCELAR</string>
+    <string name="create_list_action_create">CREAR</string>
+    <string name="create_list_processing">INTERNALIZANDO…</string>
+
+    <!-- Edit collection card -->
+    <string name="edit_list_title">AJUSTES LISTA</string>
+    <string name="edit_list_field_name">NOMBRE DE LA LISTA</string>
+    <string name="edit_list_rotation_title">FRECUENCIA DE ROTACIÓN</string>
+    <string name="edit_list_rotation_per_lock">POR BLOQUEO</string>
+    <string name="edit_list_rotation_hourly">CADA 1H</string>
+    <string name="edit_list_rotation_daily">DIARIO</string>
+    <string name="edit_list_action_manage_images">GESTIONAR IMÁGENES</string>
+    <string name="edit_list_action_delete">ELIMINAR LISTA</string>
+    <string name="edit_list_action_currently_active">ACTIVA</string>
+    <string name="edit_list_action_set_active">PONER COMO ACTIVA</string>
+    <string name="edit_list_action_save">GUARDAR</string>
+    <string name="edit_list_processing">ACTUALIZANDO LISTA…</string>
+    <string name="edit_list_delete_title">¿ELIMINAR LISTA?</string>
+    <string name="edit_list_delete_message">Esta acción no se puede deshacer.\nSe eliminarán todas las imágenes de esta lista.</string>
+
+    <!-- Sort dropdown -->
+    <string name="sort_by_prefix">ORDENAR POR: %1$s</string>
+    <string name="sort_order_name">NOMBRE</string>
+    <string name="sort_order_last_used">ÚLTIMO USO</string>
+    <string name="sort_order_date_created">CREACIÓN</string>
+
+    <!-- Collection image screen -->
+    <string name="image_screen_count_selected">%1$d SELECCIONADAS</string>
+    <string name="image_screen_empty_title">NO HAY FONDOS DE PANTALLA</string>
+    <string name="image_screen_empty_hint">PULSA + PARA AÑADIR FONDOS</string>
+    <string name="image_screen_delete_single_title">¿ELIMINAR FONDO?</string>
+    <string name="image_screen_delete_multiple_title">¿ELIMINAR FONDOS?</string>
+    <string name="image_screen_delete_single_message">Esta acción no se puede deshacer.\nEl fondo de pantalla seleccionado será eliminado.</string>
+    <string name="image_screen_delete_multiple_message">Esta acción no se puede deshacer.\nLos fondos de pantalla seleccionados serán eliminados.</string>
+
+    <!-- Delete confirmation overlay -->
+    <string name="action_delete">ELIMINAR</string>
+    <string name="action_cancel">CANCELAR</string>
+
+    <!-- Wallpaper preview overlay -->
+    <string name="preview_title">VISTA PREVIA</string>
+    <string name="preview_tap_to_exit">TOCA EN CUALQUIER LADO PARA SALIR</string>
+
+    <!-- Wallpaper edit screen -->
+    <string name="edit_screen_title">EDITAR FONDO DE PANTALLA</string>
+    <string name="edit_screen_loading">CARGANDO…</string>
+    <string name="edit_screen_saving">GUARDANDO CAMBIOS…</string>
+    <string name="edit_screen_save_failed">ERROR AL GUARDAR — REINTENTALO</string>
+    <string name="edit_controls_zoom">ZOOM</string>
+    <string name="edit_controls_cancel">CANCELAR</string>
+    <string name="edit_controls_save">GUARDAR</string>
+
+    <!-- Quick settings tile -->
+    <string name="tile_label">Cambiador</string>
+    <string name="tile_subtitle_active">Activo</string>
+    <string name="tile_subtitle_initializing">Inicializando…</string>
+    <string name="tile_subtitle_ready">Listo</string>
+    <string name="tile_subtitle_no_list">Sin lista</string>
+    <string name="tile_subtitle_power_save">Ahorro de batería</string>
+    <string name="tile_subtitle_paused">Pausado (Batería)</string>
+    <string name="tile_dialog_title">Wallpaper Changer</string>
+    <string name="tile_no_collection_message">No hay lista activa. Configura una en la app.</string>
+    <string name="tile_dialog_open_app">Abrir App</string>
+    <string name="tile_dialog_cancel">Cancelar</string>
+</resources>

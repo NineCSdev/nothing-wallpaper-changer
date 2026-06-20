@@ -27,11 +27,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.theme.CardCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -83,13 +85,13 @@ private fun DefaultCardHeader(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "DEFAULT WALLPAPER",
+                text = stringResource(R.string.label_default_wallpaper),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
             Text(
-                text = "REVERT ON SERVICE STOP",
+                text = stringResource(R.string.label_revert_on_stop),
                 style = MaterialTheme.typography.labelSmall,
                 color = NothingWhite.copy(alpha = 0.4f),
                 letterSpacing = 0.5.sp
@@ -136,12 +138,12 @@ private fun DefaultCardContent(
         ) {
             Column {
                 Text(
-                    text = "STATUS",
+                    text = stringResource(R.string.label_status),
                     style = MaterialTheme.typography.labelSmall,
                     color = NothingWhite.copy(alpha = 0.3f)
                 )
                 Text(
-                    text = if (uri != null) "READY" else "NOT SET",
+                    text = if (uri != null) stringResource(R.string.label_ready) else stringResource(R.string.label_not_set),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (uri != null) NothingWhite else Color.Red.copy(alpha = 0.8f),
                     fontWeight = FontWeight.Bold
@@ -154,7 +156,7 @@ private fun DefaultCardContent(
                 colors = ButtonDefaults.textButtonColors(contentColor = NothingWhite)
             ) {
                 Text(
-                    text = if (uri != null) "CHANGE" else "SELECT",
+                    text = if (uri != null) stringResource(R.string.action_change) else stringResource(R.string.action_select),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp

@@ -14,10 +14,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.ui.components.StatusLed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
@@ -32,14 +34,14 @@ fun ServiceStatusHeader(
     state: ServiceState,
     modifier: Modifier = Modifier
 ) {
-    val (color, label) = getVisualsForState(state)
+    val (color, labelRes) = getVisualsForState(state)
 
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.Start
     ) {
         Text(
-            text = "APP STATUS",
+            text = stringResource(R.string.label_app_status),
             style = MaterialTheme.typography.labelSmall,
             color = NothingWhite.copy(alpha = 0.4f),
             letterSpacing = 2.sp,
@@ -57,7 +59,7 @@ fun ServiceStatusHeader(
             Spacer(modifier = Modifier.width(16.dp))
 
             Text(
-                text = label,
+                text = stringResource(labelRes),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Black,
                 color = NothingWhite,
@@ -67,14 +69,14 @@ fun ServiceStatusHeader(
     }
 }
 
-internal fun getVisualsForState(state: ServiceState): Pair<Color, String> {
+internal fun getVisualsForState(state: ServiceState): Pair<Color, Int> {
     return when (state) {
-        is ServiceState.Running -> Color.Green to "ACTIVE"
-        is ServiceState.Stopped -> NothingRed to "INACTIVE"
-        is ServiceState.Paused -> Color(0xFFFFA500) to "PAUSED (BATTERY)"
-        is ServiceState.DisabledPowerSave -> Color(0xFFFFA500) to "POWER SAVE ON"
-        is ServiceState.DisabledNoCollection -> NothingGray to "SETUP NEEDED"
-        is ServiceState.Loading -> NothingWhite to "INITIALIZING"
+        is ServiceState.Running -> Color.Green to R.string.status_label_active
+        is ServiceState.Stopped -> NothingRed to R.string.status_label_inactive
+        is ServiceState.Paused -> Color(0xFFFFA500) to R.string.status_label_paused_battery
+        is ServiceState.DisabledPowerSave -> Color(0xFFFFA500) to R.string.status_label_power_save_on
+        is ServiceState.DisabledNoCollection -> NothingGray to R.string.status_label_setup_needed
+        is ServiceState.Loading -> NothingWhite to R.string.status_label_initializing
     }
 }
 

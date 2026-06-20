@@ -9,6 +9,7 @@ import android.os.PowerManager
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.util.Log
+import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.ui.MainActivity
@@ -86,7 +87,7 @@ class WallpaperTileService : TileService() {
 
             when (currentState) {
                 is ServiceState.DisabledNoCollection -> {
-                    showTileMessage("No collection active. Please set one up in the app.")
+                    showTileMessage(getString(R.string.tile_no_collection_message))
                 }
                 is ServiceState.DisabledPowerSave -> {
                     updateTile()
@@ -121,32 +122,32 @@ class WallpaperTileService : TileService() {
         serviceScope.launch {
             val state = serviceStateManager.getServiceState()
 
-            tile.label = "Changer"
+            tile.label = getString(R.string.tile_label)
 
             when (state) {
                 is ServiceState.Running -> {
                     tile.state = Tile.STATE_ACTIVE
-                    tile.subtitle = "Active"
+                    tile.subtitle = getString(R.string.tile_subtitle_active)
                 }
                 is ServiceState.Loading -> {
                     tile.state = Tile.STATE_ACTIVE
-                    tile.subtitle = "Initializing..."
+                    tile.subtitle = getString(R.string.tile_subtitle_initializing)
                 }
                 is ServiceState.Stopped -> {
                     tile.state = Tile.STATE_INACTIVE
-                    tile.subtitle = "Ready"
+                    tile.subtitle = getString(R.string.tile_subtitle_ready)
                 }
                 is ServiceState.DisabledNoCollection -> {
                     tile.state = Tile.STATE_UNAVAILABLE
-                    tile.subtitle = "No List"
+                    tile.subtitle = getString(R.string.tile_subtitle_no_list)
                 }
                 is ServiceState.DisabledPowerSave -> {
                     tile.state = Tile.STATE_UNAVAILABLE
-                    tile.subtitle = "Power Save"
+                    tile.subtitle = getString(R.string.tile_subtitle_power_save)
                 }
                 is ServiceState.Paused -> {
                     tile.state = Tile.STATE_ACTIVE
-                    tile.subtitle = "Paused (Battery)"
+                    tile.subtitle = getString(R.string.tile_subtitle_paused)
                 }
             }
             tile.updateTile()
@@ -163,14 +164,14 @@ class WallpaperTileService : TileService() {
     private fun showTileMessage(message: String) {
         showDialog(
             AlertDialog.Builder(this)
-            .setTitle("Wallpaper Changer")
+            .setTitle(getString(R.string.tile_dialog_title))
             .setMessage(message)
-            .setPositiveButton("Open App") { _, _ ->
+            .setPositiveButton(getString(R.string.tile_dialog_open_app)) { _, _ ->
                 val intent = Intent(this, MainActivity::class.java)
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 startActivity(intent)
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(getString(R.string.tile_dialog_cancel), null)
             .create())
     }
 }

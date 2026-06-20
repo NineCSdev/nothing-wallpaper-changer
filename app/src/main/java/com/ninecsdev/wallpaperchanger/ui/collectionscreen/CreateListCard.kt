@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -94,14 +95,14 @@ fun CreateListCard(
                         SourceButton(
                             modifier = Modifier.weight(1f),
                             icon = painterResource(R.drawable.icon_filled_folder),
-                            label = "FOLDER",
+                            label = stringResource(R.string.create_list_label_folder),
                             isSelected = hasPendingFolder,
                             onClick = onFolderSelect
                         )
                         SourceButton(
                             modifier = Modifier.weight(1f),
                             icon = painterResource(R.drawable.icon_collection),
-                            label = "PHOTOS",
+                            label = stringResource(R.string.create_list_label_photos),
                             isSelected = hasPendingPhotos,
                             onClick = onPhotosSelect
                         )
@@ -112,7 +113,7 @@ fun CreateListCard(
                     NothingTextField(
                         value = listName,
                         onValueChange = { listName = it },
-                        label = "LIST NAME"
+                        label = stringResource(R.string.create_list_field_name)
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -134,7 +135,7 @@ fun CreateListCard(
 
                 if (isProcessing) {
                     ProcessingOverlay(
-                        message = "INTERNALIZING...",
+                        message = stringResource(R.string.create_list_processing),
                         modifier = Modifier.matchParentSize()
                     )
                 }
@@ -151,7 +152,7 @@ private fun CreateCardHeader(onDismiss: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "CREATE NEW LIST",
+            text = stringResource(R.string.create_list_title),
             color = NothingWhite,
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp
@@ -206,14 +207,14 @@ private fun CreateCardActions(
 ) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         NothingButton(
-            text = "CANCEL",
+            text = stringResource(R.string.create_list_action_cancel),
             onClick = onDismiss,
             modifier = Modifier.weight(1f),
             enabled = !isProcessing,
             variant = NothingButtonVariant.SECONDARY
         )
         NothingButton(
-            text = "CREATE",
+            text = stringResource(R.string.create_list_action_create),
             onClick = onCreate,
             modifier = Modifier.weight(1f),
             enabled = enabled && !isProcessing,

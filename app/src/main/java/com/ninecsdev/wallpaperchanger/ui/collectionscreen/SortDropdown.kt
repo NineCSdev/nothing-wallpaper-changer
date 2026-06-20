@@ -28,6 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
@@ -58,7 +60,7 @@ fun SortDropdown(
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
             Text(
-                text = "SORT BY: ${selected.label}",
+                text = stringResource(R.string.sort_by_prefix, stringResource(selected.labelRes)),
                 style = MaterialTheme.typography.labelSmall,
                 color = NothingWhite,
                 fontWeight = FontWeight.Bold,
@@ -66,7 +68,7 @@ fun SortDropdown(
             )
             Icon(
                 imageVector = if (expanded) Icons.Default.ArrowDropDown else Icons.Default.ArrowDropDown,
-                contentDescription = if (expanded) "Collapse" else "Expand",
+                contentDescription = if (expanded) stringResource(R.string.cd_collapse) else stringResource(R.string.cd_expand),
                 tint = NothingWhite.copy(alpha = 1f),
                 modifier = Modifier.size(18.dp)
             )
@@ -81,7 +83,7 @@ fun SortDropdown(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = option.label,
+                            text = stringResource(option.labelRes),
                             style = MaterialTheme.typography.labelSmall,
                             color = if (option == selected)
                                 NothingWhite

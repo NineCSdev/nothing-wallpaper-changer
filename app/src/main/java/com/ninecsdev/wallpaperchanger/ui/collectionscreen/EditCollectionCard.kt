@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -99,7 +100,7 @@ fun EditCollectionCard(
                     NothingTextField(
                         value = nameText,
                         onValueChange = { nameText = it },
-                        label = "LIST NAME"
+                        label = stringResource(R.string.edit_list_field_name)
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -144,15 +145,15 @@ fun EditCollectionCard(
 
                 if (isProcessing) {
                     ProcessingOverlay(
-                        message = "UPDATING LIST...",
+                        message = stringResource(R.string.edit_list_processing),
                         modifier = Modifier.matchParentSize()
                     )
                 }
 
                 if(showDeleteConfirmation) {
                     DeleteConfirmationOverlay(
-                        title = "DELETE LIST?",
-                        message = "This action cannot be undone.\nAll images in this list will be removed.",
+                        title = stringResource(R.string.edit_list_delete_title),
+                        message = stringResource(R.string.edit_list_delete_message),
                         onConfirm = {
                             showDeleteConfirmation = false
                             onDelete()
@@ -171,7 +172,7 @@ private fun RotationFrequencySelector(
     onFrequencySelected: (RotationFrequency) -> Unit
 ) {
     Text(
-        text = "ROTATION FREQUENCY",
+        text = stringResource(R.string.edit_list_rotation_title),
         style = MaterialTheme.typography.labelSmall,
         color = NothingWhite.copy(alpha = 0.7f),
         letterSpacing = 1.sp,
@@ -185,19 +186,19 @@ private fun RotationFrequencySelector(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         TimerOptionButton(
-            label = "PER LOCK",
+            label = stringResource(R.string.edit_list_rotation_per_lock),
             selected = selectedFrequency == RotationFrequency.PER_LOCK,
             onClick = { onFrequencySelected(RotationFrequency.PER_LOCK) },
             modifier = Modifier.weight(1f)
         )
         TimerOptionButton(
-            label = "EVERY 1H",
+            label = stringResource(R.string.edit_list_rotation_hourly),
             selected = selectedFrequency == RotationFrequency.HOURLY,
             onClick = { onFrequencySelected(RotationFrequency.HOURLY) },
             modifier = Modifier.weight(1f)
         )
         TimerOptionButton(
-            label = "DAILY",
+            label = stringResource(R.string.edit_list_rotation_daily),
             selected = selectedFrequency == RotationFrequency.PER_DAY,
             onClick = { onFrequencySelected(RotationFrequency.PER_DAY) },
             modifier = Modifier.weight(1f)
@@ -243,7 +244,7 @@ private fun EditCardHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "MANAGE LIST",
+            text = stringResource(R.string.edit_list_title),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp,
@@ -255,7 +256,7 @@ private fun EditCardHeader(
                 IconButton(onClick = onSyncClick) {
                     Icon(
                         painter = painterResource(R.drawable.icon_sync),
-                        contentDescription = "Sync",
+                        contentDescription = stringResource(R.string.cd_sync),
                         tint = NothingWhite.copy(alpha = 0.6f),
                         modifier = Modifier.size(20.dp)
                     )
@@ -264,7 +265,7 @@ private fun EditCardHeader(
             }
 
             IconButton(onClick = onDismiss) {
-                Icon(Icons.Default.Close, "Close", tint = NothingWhite)
+                Icon(Icons.Default.Close, stringResource(R.string.cd_close), tint = NothingWhite)
             }
         }
     }
@@ -285,7 +286,7 @@ private fun ManagementButtons(
         ) {
             Icon(painterResource(R.drawable.icon_collection), null, Modifier.size(18.dp))
             Spacer(Modifier.width(12.dp))
-            Text("MANAGE IMAGES", fontWeight = FontWeight.Medium, letterSpacing = 1.sp)
+            Text(stringResource(R.string.edit_list_action_manage_images), fontWeight = FontWeight.Medium, letterSpacing = 1.sp)
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -297,7 +298,7 @@ private fun ManagementButtons(
             colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = NothingRed),
             border = BorderStroke(1.dp, NothingRed.copy(alpha = 0.4f))
         ) {
-            Text("DELETE LIST", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Text(stringResource(R.string.edit_list_action_delete), fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         }
     }
 }
@@ -326,7 +327,7 @@ private fun EditCardActions(
             enabled = !isActive
         ) {
             Text(
-                if (isActive) "CURRENTLY ACTIVE" else "SET AS ACTIVE",
+                if (isActive) stringResource(R.string.edit_list_action_currently_active) else stringResource(R.string.edit_list_action_set_active),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -339,7 +340,7 @@ private fun EditCardActions(
             shape = RoundedCornerShape(8.dp),
             enabled = isChanged
         ) {
-            Text("SAVE", fontWeight = FontWeight.Black)
+            Text(stringResource(R.string.edit_list_action_save), fontWeight = FontWeight.Black)
         }
     }
 }

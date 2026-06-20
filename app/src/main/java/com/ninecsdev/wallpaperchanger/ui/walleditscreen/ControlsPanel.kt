@@ -25,6 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButton
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButtonVariant
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -63,7 +65,7 @@ fun ControlsPanel(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         SliderRow(
-            label = "ZOOM",
+            label = stringResource(R.string.edit_controls_zoom),
             value = zoom,
             valueRange = 0.5f..5f,
             displayValue = "%.1fx".format(zoom),
@@ -91,13 +93,13 @@ fun ControlsPanel(
             modifier = Modifier.fillMaxWidth()
         ) {
             NothingButton(
-                text = "CANCEL",
+                text = stringResource(R.string.edit_controls_cancel),
                 onClick = onCancel,
                 variant = NothingButtonVariant.SECONDARY,
                 modifier = Modifier.weight(1f)
             )
             NothingButton(
-                text = "SAVE",
+                text = stringResource(R.string.edit_controls_save),
                 onClick = onSave,
                 enabled = isSaveEnabled,
                 modifier = Modifier.weight(1f)

@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -95,7 +96,7 @@ fun CollectionImageScreen(
                 title = {
                     if (uiState.isSelectionMode) {
                         Text(
-                            text = "${uiState.selectedIds.size} SELECTED",
+                            text = stringResource(R.string.image_screen_count_selected, uiState.selectedIds.size),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 2.sp
@@ -114,7 +115,7 @@ fun CollectionImageScreen(
                         IconButton(onClick = onExitSelectionMode) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Exit selection",
+                                contentDescription = stringResource(R.string.cd_exit_selection),
                                 tint = NothingWhite
                             )
                         }
@@ -122,7 +123,7 @@ fun CollectionImageScreen(
                         IconButton(onClick = onBackClick) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
+                                contentDescription = stringResource(R.string.cd_back),
                                 tint = NothingWhite
                             )
                         }
@@ -146,7 +147,7 @@ fun CollectionImageScreen(
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.icon_edit),
-                            contentDescription = "Edit wallpaper",
+                            contentDescription = stringResource(R.string.cd_edit_wallpaper),
                             tint = NothingWhite.copy(alpha = editAlpha),
                             modifier = Modifier.size(20.dp)
                         )
@@ -168,7 +169,7 @@ fun CollectionImageScreen(
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.icon_delete),
-                            contentDescription = "Delete wallpapers",
+                            contentDescription = stringResource(R.string.cd_delete_wallpapers),
                             tint = NothingWhite.copy(alpha = deleteAlpha),
                             modifier = Modifier.size(20.dp)
                         )
@@ -188,7 +189,7 @@ fun CollectionImageScreen(
                     contentColor = NothingBlack,
                     shape = MaterialTheme.shapes.large
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add wallpapers")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_wallpapers))
                 }
             }
         },
@@ -249,11 +250,11 @@ fun CollectionImageScreen(
     if (showDeleteConfirmation) {
         val selectedCount = uiState.selectedIds.size
         DeleteConfirmationOverlay(
-            title = if (selectedCount == 1) "DELETE WALLPAPER?" else "DELETE WALLPAPERS?",
+            title = if (selectedCount == 1) stringResource(R.string.image_screen_delete_single_title) else stringResource(R.string.image_screen_delete_multiple_title),
             message = if (selectedCount == 1) {
-                "This action cannot be undone.\nThe selected wallpaper will be removed."
+                stringResource(R.string.image_screen_delete_single_message)
             } else {
-                "This action cannot be undone.\nThe selected wallpapers will be removed."
+                stringResource(R.string.image_screen_delete_multiple_message)
             },
             onConfirm = {
                 showDeleteConfirmation = false
@@ -280,7 +281,7 @@ private fun EmptyCollectionState(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "NO WALLPAPERS",
+            text = stringResource(R.string.image_screen_empty_title),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Black,
             letterSpacing = 2.sp,
@@ -288,7 +289,7 @@ private fun EmptyCollectionState(
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "TAP + TO ADD IMAGES",
+            text = stringResource(R.string.image_screen_empty_hint),
             style = MaterialTheme.typography.bodySmall,
             color = NothingWhite.copy(alpha = 0.25f)
         )
@@ -358,7 +359,7 @@ private fun WallpaperThumbnail(
             ) {
                 Icon(
                     imageVector = Icons.Default.Check,
-                    contentDescription = "Selected",
+                    contentDescription = stringResource(R.string.cd_selected),
                     tint = NothingBlack,
                     modifier = Modifier.size(12.dp)
                 )

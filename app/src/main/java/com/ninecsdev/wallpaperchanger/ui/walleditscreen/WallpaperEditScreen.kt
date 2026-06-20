@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -238,7 +239,7 @@ private fun WallpaperCanvas(
 
     AsyncImage(
         model = wallpaperUri,
-        contentDescription = "Wallpaper being edited",
+        contentDescription = stringResource(R.string.cd_wallpaper_being_edited),
         contentScale = ContentScale.Fit,
         onSuccess = { state ->
             val intrinsic = state.painter.intrinsicSize
@@ -293,7 +294,7 @@ private fun WallpaperLoadingState(isLoading: Boolean) {
     ) {
         if (isLoading) {
             Text(
-                text = "LOADING...",
+                text = stringResource(R.string.edit_screen_loading),
                 style = MaterialTheme.typography.labelLarge,
                 color = NothingWhite.copy(alpha = 0.4f),
                 letterSpacing = 2.sp
@@ -418,13 +419,13 @@ private fun WallpaperEditTopBar(
             IconButton(onClick = onBack) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.cd_back),
                     tint = NothingWhite
                 )
             }
 
             Text(
-                text = "EDIT WALLPAPER",
+                text = stringResource(R.string.edit_screen_title),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 2.sp,
@@ -444,9 +445,9 @@ private fun WallpaperEditTopBar(
                     Icon(
                         painter = painterResource(R.drawable.icon_undo),
                         contentDescription = when {
-                            hasUnsavedChanges -> "Undo changes"
-                            canResetSaved -> "Reset edit"
-                            else -> "Reset edit"
+                            hasUnsavedChanges -> stringResource(R.string.cd_undo_changes)
+                            canResetSaved -> stringResource(R.string.cd_reset_edit)
+                            else -> stringResource(R.string.cd_reset_edit)
                         },
                         tint = NothingWhite,
                         modifier = Modifier.size(24.dp)
@@ -457,7 +458,7 @@ private fun WallpaperEditTopBar(
             IconButton(onClick = onFitHeight) {
                 Icon(
                     painter = painterResource(R.drawable.icon_fit_height),
-                    contentDescription = "Fit height",
+                    contentDescription = stringResource(R.string.cd_fit_height),
                     tint = NothingWhite,
                     modifier = Modifier.size(24.dp)
                 )
@@ -466,7 +467,7 @@ private fun WallpaperEditTopBar(
             IconButton(onClick = onToggleControls) {
                 Icon(
                     imageVector = Icons.Outlined.Settings,
-                    contentDescription = if (showControls) "Hide controls" else "Show controls",
+                    contentDescription = if (showControls) stringResource(R.string.cd_hide_controls) else stringResource(R.string.cd_show_controls),
                     tint = if (showControls) NothingWhite else NothingWhite.copy(alpha = 0.5f),
                     modifier = Modifier.size(24.dp)
                 )
@@ -531,7 +532,7 @@ private fun FloatingSaveButton(
         ) {
             Icon(
                 painter = painterResource(R.drawable.icon_save),
-                contentDescription = "Save",
+                contentDescription = stringResource(R.string.cd_save),
                 tint = if (enabled) NothingBlack else NothingWhite.copy(alpha = 0.4f),
                 modifier = Modifier.size(24.dp)
             )
@@ -546,7 +547,7 @@ private fun SavingOverlay(isSaving: Boolean) {
         enter = fadeIn(),
         exit = fadeOut()
     ) {
-        ProcessingOverlay(message = "SAVING EDIT...")
+        ProcessingOverlay(message = stringResource(R.string.edit_screen_saving))
     }
 }
 
@@ -564,7 +565,7 @@ private fun SaveErrorBanner(show: Boolean) {
             contentAlignment = Alignment.BottomCenter
         ) {
             Text(
-                text = "SAVE FAILED — TRY AGAIN",
+                text = stringResource(R.string.edit_screen_save_failed),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,

@@ -23,10 +23,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.LockscreenZoomFix
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
@@ -54,7 +56,7 @@ fun SettingsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "SETTINGS",
+                        text = stringResource(R.string.settings_title),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
@@ -64,7 +66,7 @@ fun SettingsScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.cd_back),
                             tint = NothingWhite
                         )
                     }
@@ -89,7 +91,7 @@ fun SettingsScreen(
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
 
-                SectionLabel("SERVICE")
+                SectionLabel(stringResource(R.string.settings_section_service))
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -108,16 +110,16 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 SettingsSegmentedSelector(
-                    title = "BATTERY SAVER POLICY",
-                    subtitle = "WHAT TO DO WHEN BATTERY SAVER ACTIVATES",
+                    title = stringResource(R.string.settings_battery_saver_title),
+                    subtitle = stringResource(R.string.settings_battery_saver_subtitle),
                     options = BatterySaverPolicy.entries,
                     selected = uiState.batterySaverPolicy,
                     onOptionChange = onBatterySaverPolicyChange,
                     optionLabel = { policy ->
                         when (policy) {
-                            BatterySaverPolicy.STOP -> "STOP"
-                            BatterySaverPolicy.PAUSE -> "PAUSE"
-                            BatterySaverPolicy.IGNORE -> "IGNORE"
+                            BatterySaverPolicy.STOP -> stringResource(R.string.settings_battery_stop)
+                            BatterySaverPolicy.PAUSE -> stringResource(R.string.settings_battery_pause)
+                            BatterySaverPolicy.IGNORE -> stringResource(R.string.settings_battery_ignore)
                         }
                     }
                 )
@@ -125,16 +127,16 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 SettingsSegmentedSelector(
-                    title = "WALLPAPER DESTINATION",
-                    subtitle = "APPLY TO YOUR LOCK SCREEN, HOME SCREEN  OR BOTH",
+                    title = stringResource(R.string.settings_destination_title),
+                    subtitle = stringResource(R.string.settings_destination_subtitle),
                     options = WallpaperDestination.entries,
                     selected = uiState.wallpaperDestination,
                     onOptionChange = onWallpaperDestinationChange,
                     optionLabel = { destination ->
                         when (destination) {
-                            WallpaperDestination.LOCK -> "LOCK"
-                            WallpaperDestination.HOME -> "HOME"
-                            WallpaperDestination.BOTH -> "BOTH"
+                            WallpaperDestination.LOCK -> stringResource(R.string.settings_destination_lock)
+                            WallpaperDestination.HOME -> stringResource(R.string.settings_destination_home)
+                            WallpaperDestination.BOTH -> stringResource(R.string.settings_destination_both)
                         }
                     }
                 )
@@ -155,13 +157,13 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                SectionLabel("STORAGE IMAGE QUALITY")
+                SectionLabel(stringResource(R.string.settings_section_quality))
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 QualitySlider(
-                    label = "STANDARD QUALITY",
-                    subtitle = "FOR MOST IMAGES - RECOMMENDED 95%",
+                    label = stringResource(R.string.settings_quality_high_label),
+                    subtitle = stringResource(R.string.settings_quality_high_subtitle),
                     value = uiState.compressionQualityHigh,
                     onValueChange = onCompressionQualityHighChange
                 )
@@ -169,8 +171,8 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 QualitySlider(
-                    label = "REDUCED QUALITY",
-                    subtitle = "FOR HEAVY IMAGES - RECOMMENDED 80%",
+                    label = stringResource(R.string.settings_quality_low_label),
+                    subtitle = stringResource(R.string.settings_quality_low_subtitle),
                     value = uiState.compressionQualityLow,
                     onValueChange = onCompressionQualityLowChange
                 )

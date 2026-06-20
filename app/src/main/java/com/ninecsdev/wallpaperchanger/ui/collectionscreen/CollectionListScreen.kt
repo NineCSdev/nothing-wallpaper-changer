@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -42,6 +43,7 @@ import com.ninecsdev.wallpaperchanger.ui.components.StatusLed
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.getVisualsForState
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.R
 
 /**
  * Screen for displaying all the user's collections in a
@@ -76,7 +78,7 @@ fun CollectionListScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            text = "MY LISTS",
+                            text = stringResource(R.string.collections_title),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 2.sp
@@ -86,7 +88,7 @@ fun CollectionListScreen(
                         IconButton(onClick = onBackClick) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
+                                contentDescription = stringResource(R.string.cd_back),
                                 tint = NothingWhite
                             )
                         }
@@ -112,7 +114,7 @@ fun CollectionListScreen(
                     contentColor = NothingBlack,
                     shape = MaterialTheme.shapes.large
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add List")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_list))
                 }
             },
             containerColor = NothingBlack
@@ -198,7 +200,7 @@ private fun EmptyCollectionsView() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "NO LISTS FOUND",
+            text = stringResource(R.string.collections_empty_title),
             style = MaterialTheme.typography.labelLarge,
             color = NothingWhite.copy(alpha = 0.4f),
             fontWeight = FontWeight.Black,
@@ -206,7 +208,7 @@ private fun EmptyCollectionsView() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "TAP + TO INITIALIZE",
+            text = stringResource(R.string.collections_empty_hint),
             style = MaterialTheme.typography.labelSmall,
             color = NothingWhite.copy(alpha = 0.2f),
             letterSpacing = 1.sp

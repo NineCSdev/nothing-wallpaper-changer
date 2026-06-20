@@ -13,8 +13,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.enums.LockscreenZoomFix
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -27,16 +29,16 @@ fun LockscreenZoomFixSelector(
     var showInfo by remember { mutableStateOf(false) }
 
     SettingsSegmentedSelector(
-        title = "LOCKSCREEN ZOOM FIX",
-        subtitle = "FIXES NOTHING OS WALLPAPER AUTOZOOM",
+        title = stringResource(R.string.settings_zoom_fix_title),
+        subtitle = stringResource(R.string.settings_zoom_fix_subtitle),
         options = LockscreenZoomFix.entries,
         selected = selected,
         onOptionChange = onZoomFixChange,
         optionLabel = { zoomFix ->
             when (zoomFix) {
-                LockscreenZoomFix.OFF -> "OFF"
-                LockscreenZoomFix.BLURRED -> "BLUR"
-                LockscreenZoomFix.EDGE -> "EDGE"
+                LockscreenZoomFix.OFF -> stringResource(R.string.settings_zoom_fix_off)
+                LockscreenZoomFix.BLURRED -> stringResource(R.string.settings_zoom_fix_blur)
+                LockscreenZoomFix.EDGE -> stringResource(R.string.settings_zoom_fix_edge)
             }
         },
         onInfoClick = { showInfo = true }
@@ -47,20 +49,15 @@ fun LockscreenZoomFixSelector(
             onDismissRequest = { showInfo = false },
             confirmButton = {
                 TextButton(onClick = { showInfo = false }) {
-                    Text(text = "OK")
+                    Text(text = stringResource(R.string.settings_zoom_fix_dialog_ok))
                 }
             },
             title = {
-                Text(text = "Lockscreen zoom fix")
+                Text(text = stringResource(R.string.settings_zoom_fix_dialog_title))
             },
             text = {
                 Text(
-                    text = "Certain phone operating systems (like Nothing OS) automatically zoom " +
-                            "in on lockscreen wallpapers to create a parallax effect. This setting " +
-                            "adds hidden padding to your image, ensuring the OS crops the padding " +
-                            "rather than the wallpaper itself. Because this zoom behavior varies, " +
-                            "two padding styles are available: choose Blur for most wallpapers, or " +
-                            "Edge for sharper borders."
+                    text = stringResource(R.string.settings_zoom_fix_dialog_body)
                 )
             },
             containerColor = NothingBlack,
