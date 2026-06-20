@@ -112,7 +112,7 @@ class CollectionImageViewModel @Inject constructor(
 
         val toDelete = state.wallpapers.filter { it.id in state.selectedIds }
         viewModelScope.launch {
-            repository.deleteImagesById(toDelete)
+            repository.deleteImagesFromCollection(toDelete)
             exitSelectionMode()
         }
     }

@@ -9,7 +9,7 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
-import com.ninecsdev.wallpaperchanger.model.RotationFrequency
+import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.shouldRotateAt
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -31,7 +31,7 @@ class ScreenOffReceiver : BroadcastReceiver() {
 
     /**
      * Structured scope provided by the owning [WallpaperService].
-     * Using the service's scope ensures coroutines are cancelled when the
+     * Using the service's scope ensures coroutines are canceled when the
      * service is destroyed, preventing leaked work.
      */
     var serviceScope: CoroutineScope? = null

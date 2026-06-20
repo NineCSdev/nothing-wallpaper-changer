@@ -27,9 +27,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
-import com.ninecsdev.wallpaperchanger.model.LockscreenZoomFix
-import com.ninecsdev.wallpaperchanger.model.WallpaperDestination
+import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
+import com.ninecsdev.wallpaperchanger.model.enums.LockscreenZoomFix
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 

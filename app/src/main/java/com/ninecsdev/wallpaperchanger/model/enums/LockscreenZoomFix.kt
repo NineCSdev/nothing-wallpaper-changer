@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.model
+package com.ninecsdev.wallpaperchanger.model.enums
 
 enum class LockscreenZoomFix(val storedValue: Int) {
     OFF(0),

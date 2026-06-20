@@ -5,9 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
-import com.ninecsdev.wallpaperchanger.model.CollectionSortOrder
-import com.ninecsdev.wallpaperchanger.model.CropRule
-import com.ninecsdev.wallpaperchanger.model.RotationFrequency
+import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
+import com.ninecsdev.wallpaperchanger.model.enums.CropRule
+import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -99,7 +99,7 @@ class CollectionViewModel @Inject constructor(
         val uri = pendingFolderUri ?: return
         viewModelScope.launch {
             setProcessing(true)
-            repository.importFolderAsCollection(name, uri, rule)
+            repository.createFolderCollection(name, uri, rule)
             pendingFolderUri = null
             setProcessing(false)
             onComplete()

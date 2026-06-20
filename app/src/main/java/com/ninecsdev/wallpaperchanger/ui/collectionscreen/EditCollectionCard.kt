@@ -42,9 +42,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.ninecsdev.wallpaperchanger.R
-import com.ninecsdev.wallpaperchanger.model.CollectionType
-import com.ninecsdev.wallpaperchanger.model.CropRule
-import com.ninecsdev.wallpaperchanger.model.RotationFrequency
+import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
+import com.ninecsdev.wallpaperchanger.model.enums.CropRule
+import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.ui.components.CropRuleSelector
 import com.ninecsdev.wallpaperchanger.ui.components.DeleteConfirmationOverlay

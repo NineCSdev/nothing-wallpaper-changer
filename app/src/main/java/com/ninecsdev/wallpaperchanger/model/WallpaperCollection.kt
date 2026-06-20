@@ -3,14 +3,17 @@ package com.ninecsdev.wallpaperchanger.model
 import android.net.Uri
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
+import com.ninecsdev.wallpaperchanger.model.enums.CropRule
+import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import java.time.Instant
 import java.time.ZoneId
 
 /**
  * Represents a logical list of wallpapers created by the user.
  *
- * [CollectionType.FOLDER] types are synced with a physical directory on the device.
- * [CollectionType.MANUAL] types have images handpicked by the user and are not synced.
+ * [com.ninecsdev.wallpaperchanger.model.enums.CollectionType.FOLDER] types are synced with a physical directory on the device.
+ * [com.ninecsdev.wallpaperchanger.model.enums.CollectionType.MANUAL] types have images handpicked by the user and are not synced.
  */
 @Entity(tableName = "collections")
 data class WallpaperCollection(

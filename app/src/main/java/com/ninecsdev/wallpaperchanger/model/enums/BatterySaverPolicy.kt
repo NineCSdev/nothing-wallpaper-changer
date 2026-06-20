@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.model
+package com.ninecsdev.wallpaperchanger.model.enums
 
 /**
  * Defines how the app reacts when the device enters power-save (battery saver) mode.

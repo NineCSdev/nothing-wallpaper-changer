@@ -8,9 +8,9 @@ import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperDao
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
-import com.ninecsdev.wallpaperchanger.model.CollectionType
-import com.ninecsdev.wallpaperchanger.model.CropRule
-import com.ninecsdev.wallpaperchanger.model.RotationFrequency
+import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
+import com.ninecsdev.wallpaperchanger.model.enums.CropRule
+import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -23,7 +23,7 @@ import javax.inject.Singleton
 /**
  * Coordinates the data layer.
  *
- * Responsible exclusively for collection and wallpaper image CRUD,
+ * Responsible for collection and wallpaper image CRUD,
  * folder scanning, and rotation-engine coordination.
  * Service state is managed by [ServiceStateManager] and settings
  * by [com.ninecsdev.wallpaperchanger.data.local.AppDataStore],
@@ -48,12 +48,21 @@ class WallpaperRepository @Inject constructor(
     fun getImagesForCollection(collectionId: Long): Flow<List<WallpaperImage>> =
         dao.getImagesForCollection(collectionId)
 
-    suspend fun getCollectionById(collectionId: Long): WallpaperCollection? =
-        dao.getCollectionById(collectionId)
+    // Collection operations
 
-    // Collection Management
+    suspend fun updateCollection(
+        id: Long,
+        newName: String,
+        newRule: CropRule,
+        newFrequency: RotationFrequency
+    ) {
+        withContext(Dispatchers.IO) {
+            dao.updateCollection(id, newName, newRule, newFrequency)
+            refreshEngineIfActive(id)
+        }
+    }
 
-    suspend fun importFolderAsCollection(name: String, treeUri: Uri, rule: CropRule) {
+    suspend fun createFolderCollection(name: String, treeUri: Uri, rule: CropRule) {
         withContext(Dispatchers.IO) {
             val isFirst = dao.getActiveCollection() == null
 
@@ -117,52 +126,12 @@ class WallpaperRepository @Inject constructor(
                 )
             }
             dao.insertImages(images)
-
-            // Reload rotation engine if this is the active collection
-            if (collection.isActive) {
-                rotationEngine.loadMagazine()
-                rotationEngine.refillDiskBuffer()
-            }
+            refreshEngineIfActive(collectionId)
         }
     }
 
-    /**
-     * Deletes specific wallpaper images and cleans up their internal files.
-     */
-    suspend fun deleteImagesById(images: List<WallpaperImage>) {
-        withContext(Dispatchers.IO) {
-            val activeCollectionId = dao.getActiveCollection()?.id
-            val affectsActive = activeCollectionId != null && images.any { it.collectionId == activeCollectionId }
-
-            images.forEach { image ->
-                imageInternalizer.deleteInternalFile(image.uri.path)
-                imageInternalizer.deleteInternalFile(image.editedUri?.path)
-            }
-            dao.deleteImagesByIds(images.map { it.id })
-
-            if (affectsActive) {
-                rotationEngine.loadMagazine()
-                rotationEngine.refillDiskBuffer()
-            }
-        }
-    }
-
-    /**
-     * Sets the active collection and auto-syncs if it is a folder type.
-     */
-    suspend fun setActiveCollection(collectionId: Long) {
-        withContext(Dispatchers.IO) {
-            dao.setActiveCollection(collectionId)
-            val collection = dao.getCollectionById(collectionId)
-            if (collection?.type == CollectionType.FOLDER) {
-                Log.d(TAG, "Auto-syncing folder collection: ${collection.name}")
-                syncCollection(collectionId)
-            }
-            rotationEngine.clearMagazine()
-            rotationEngine.loadMagazine()
-            rotationEngine.refillDiskBuffer()
-        }
-    }
+    suspend fun getCollectionById(collectionId: Long): WallpaperCollection? =
+        dao.getCollectionById(collectionId)
 
     /**
      * Non-flow version of getActiveCollection() for use in background tasks.
@@ -181,71 +150,77 @@ class WallpaperRepository @Inject constructor(
     suspend fun getSizeOfCollection(collectionId: Long): Int =
         dao.getImageCountOfCollection(collectionId)
 
-    // Editor Operations
-
-    /** Fetches a single wallpaper for the editor. */
-    suspend fun getWallpaperById(wallpaperId: Long): WallpaperImage? =
-        dao.getWallpaperById(wallpaperId)
-
     /**
-     * Saves the edited wallpaper image and its edit parameters.
-     * Deletes the previous edited file if one existed.
-     * If this wallpaper belongs to the active collection, reloads the rotation engine
-     * and refills the disk buffer so the change is immediately respected.
+     * Sets the active collection and auto-syncs if it is a folder type.
      */
-    suspend fun saveWallpaperEdit(
-        wallpaper: WallpaperImage,
-        editedUri: Uri,
-        zoom: Float,
-        offsetX: Float,
-        offsetY: Float
-    ) {
+    suspend fun setActiveCollection(collectionId: Long) {
         withContext(Dispatchers.IO) {
-            imageInternalizer.deleteInternalFile(wallpaper.editedUri?.path)
-            dao.updateWallpaperEdit(wallpaper.id, editedUri.toString(), zoom, offsetX, offsetY)
-
-            val active = dao.getActiveCollection()
-            if (active?.id == wallpaper.collectionId) {
-                rotationEngine.loadMagazine()
-                rotationEngine.refillDiskBuffer()
+            dao.setActiveCollection(collectionId)
+            val collection = dao.getCollectionById(collectionId)
+            if (collection?.type == CollectionType.FOLDER) {
+                Log.d(TAG, "Auto-syncing folder collection: ${collection.name}")
+                syncCollection(collectionId)
             }
-        }
-    }
-
-    /**
-     * Resets a wallpaper edit: removes the edited file and clears all edit parameters.
-     * Falls back to the original URI for display and rotation.
-     */
-    suspend fun resetWallpaperEdit(wallpaper: WallpaperImage) {
-        withContext(Dispatchers.IO) {
-            imageInternalizer.deleteInternalFile(wallpaper.editedUri?.path)
-            dao.updateWallpaperEdit(wallpaper.id, null, null, null, null)
-
-            val active = dao.getActiveCollection()
-            if (active?.id == wallpaper.collectionId) {
-                rotationEngine.loadMagazine()
-                rotationEngine.refillDiskBuffer()
-            }
-        }
-    }
-
-    suspend fun updateCollection(
-        id: Long,
-        newName: String,
-        newRule: CropRule,
-        newFrequency: RotationFrequency
-    ) {
-        withContext(Dispatchers.IO) {
-            dao.updateCollection(id, newName, newRule, newFrequency)
-            if (dao.getActiveCollection()?.id == id) {
-                rotationEngine.refillDiskBuffer()
-            }
+            rotationEngine.clearMagazine()
+            rotationEngine.loadMagazine()
+            rotationEngine.refillDiskBuffer()
         }
     }
 
     suspend fun markWallpaperChanged(collectionId: Long) {
         withContext(Dispatchers.IO) {
             dao.updateLastWallpaperChangeAt(collectionId)
+        }
+    }
+
+    /**
+     * Syncs a folder collection with its physical directory.
+     * Uses diff-based approach: removes stale images, adds new ones,
+     * preserves manually added images.
+     */
+    suspend fun syncCollection(collectionId: Long) {
+        withContext(Dispatchers.IO) {
+            val collection = dao.getCollectionById(collectionId) ?: return@withContext
+
+            if (collection.type == CollectionType.FOLDER && collection.rootUri != null) {
+                try {
+                    Log.d(TAG, "Syncing physical folder for collection: ${collection.name}")
+
+                    val freshImages = getImageListFromFolder(collection.rootUri).map {
+                        it.copy(collectionId = collectionId)
+                    }
+
+                    val added = dao.syncFolderImages(collectionId, freshImages)
+                    Log.d(TAG, "Sync complete: ${freshImages.size} on disk, $added new images added.")
+
+                    if (collection.isActive) {
+                        rotationEngine.loadMagazine()
+                        Log.i(TAG, "Active collection synced. Magazine reloaded.")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Sync failed for collection ${collection.id}: ${e.message}")
+                }
+            }
+        }
+    }
+
+    /**
+     * Deletes specific wallpaper images and cleans up their internal files.
+     * PRE: All given wallpaper images are from the same collection
+     */
+    suspend fun deleteImagesFromCollection(images: List<WallpaperImage>) {
+        if (images.isEmpty()) return
+
+        withContext(Dispatchers.IO) {
+            val collectionId = images.first().collectionId
+
+            images.forEach { image ->
+                imageInternalizer.deleteInternalFile(image.uri.path)
+                imageInternalizer.deleteInternalFile(image.editedUri?.path)
+            }
+
+            dao.deleteImagesByIds(images.map { it.id })
+            refreshEngineIfActive(collectionId)
         }
     }
 
@@ -285,42 +260,63 @@ class WallpaperRepository @Inject constructor(
         }
     }
 
+    // Wallpaper operations
+
+    /** Fetches a single wallpaper */
+    suspend fun getWallpaperById(wallpaperId: Long): WallpaperImage? =
+        dao.getWallpaperById(wallpaperId)
+
     /**
-     * Syncs a folder collection with its physical directory.
-     * Uses diff-based approach: removes stale images, adds new ones,
-     * preserves manually added images.
+     * Saves the edited wallpaper image and its edit parameters.
+     * Deletes the previous edited file if one existed.
+     * If this wallpaper belongs to the active collection, reloads the rotation engine
+     * and refills the disk buffer so the change is immediately respected.
      */
-    suspend fun syncCollection(collectionId: Long) {
+    suspend fun saveWallpaperEdit(
+        wallpaper: WallpaperImage,
+        editedUri: Uri,
+        zoom: Float,
+        offsetX: Float,
+        offsetY: Float
+    ) {
         withContext(Dispatchers.IO) {
-            val collection = dao.getCollectionById(collectionId) ?: return@withContext
+            imageInternalizer.deleteInternalFile(wallpaper.editedUri?.path)
+            dao.updateWallpaperEdit(wallpaper.id, editedUri, zoom, offsetX, offsetY)
+            refreshEngineIfActive(wallpaper.collectionId)
+        }
+    }
 
-            if (collection.type == CollectionType.FOLDER && collection.rootUri != null) {
-                try {
-                    Log.d(TAG, "Syncing physical folder for collection: ${collection.name}")
+    /**
+     * Resets a wallpaper edit: removes the edited file and clears all edit parameters.
+     * Falls back to the original URI for display and rotation.
+     */
+    suspend fun resetWallpaperEdit(wallpaper: WallpaperImage) {
+        withContext(Dispatchers.IO) {
+            imageInternalizer.deleteInternalFile(wallpaper.editedUri?.path)
+            dao.updateWallpaperEdit(wallpaper.id, null, null, null, null)
+            refreshEngineIfActive(wallpaper.collectionId)
+        }
+    }
 
-                    val freshImages = getImageListFromFolder(collection.rootUri).map {
-                        it.copy(collectionId = collectionId)
-                    }
+    // Helpers
 
-                    val added = dao.syncFolderImages(collectionId, freshImages)
-                    Log.d(TAG, "Sync complete: ${freshImages.size} on disk, $added new images added.")
+    /**
+     * Refreshes the rotation engine if the changed collection is currently active.
+     */
+    private suspend fun refreshEngineIfActive(collectionId: Long) {
+        val activeCollection = dao.getActiveCollection()
 
-                    if (collection.isActive) {
-                        rotationEngine.loadMagazine()
-                        Log.i(TAG, "Active collection synced. Magazine reloaded.")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Sync failed for collection ${collection.id}: ${e.message}")
-                }
-            }
+        if (activeCollection?.id == collectionId) {
+            Log.d(TAG, "Refreshing rotation engine for active collection: ${activeCollection.name}")
+            rotationEngine.loadMagazine()
+            rotationEngine.refillDiskBuffer()
         }
     }
 
     // File System Utilities
     // TODO: Move folder scanning to a dedicated FolderScanner collaborator
-
     /**
-     * Scans the user-selected folder for images.
+     * Scans ONLY (no subfolders)  the user-selected folder for images.
      * @param rootFolderUri The top-level folder URI granted by the user.
      * @return A list of [WallpaperImage] objects with collectionId = 0 (caller must copy).
      */

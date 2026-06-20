@@ -25,10 +25,6 @@ import javax.inject.Singleton
 /**
  * Owns the service lifecycle state machine for the UI and tile consumers.
  *
- * Note: Extracted from [WallpaperRepository] to separate service-state concerns
- * from collection/image data management. Consumers that only need to read
- * or update service state inject this directly instead of the repository.
- *
  * Responsibilities:
  * - Holding the in-memory [serviceStateFlow] and [serviceEvent] broadcast
  * - Resolving the authoritative [ServiceState] from in-memory + persisted + live flags
@@ -118,7 +114,7 @@ class ServiceStateManager @Inject constructor(
                 stoppedState
             }
             isServiceMarkedActive -> ServiceState.Running
-            else -> stoppedState
+            else -> stoppedState // Should not be reachable, when statement asks for it
         }
     }
 

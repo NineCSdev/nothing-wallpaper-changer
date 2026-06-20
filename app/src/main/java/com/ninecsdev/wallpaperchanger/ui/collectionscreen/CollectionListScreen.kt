@@ -32,10 +32,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ninecsdev.wallpaperchanger.model.CollectionSortOrder
-import com.ninecsdev.wallpaperchanger.model.CollectionType
-import com.ninecsdev.wallpaperchanger.model.CropRule
-import com.ninecsdev.wallpaperchanger.model.RotationFrequency
+import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
+import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
+import com.ninecsdev.wallpaperchanger.model.enums.CropRule
+import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.ui.components.StatusLed

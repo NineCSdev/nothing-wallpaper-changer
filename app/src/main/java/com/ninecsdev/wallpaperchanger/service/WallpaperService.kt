@@ -15,7 +15,7 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
-import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
+import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -82,7 +82,6 @@ class WallpaperService : Service() {
         }
         val systemFilter = IntentFilter().apply {
             addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
-            addAction(Intent.ACTION_BATTERY_LOW)
         }
         registerReceiver(systemEventReceiver, systemFilter, RECEIVER_EXPORTED)
     }
@@ -203,7 +202,7 @@ class WallpaperService : Service() {
         if (screenOffReceiver != null) return
 
         val receiver = ScreenOffReceiver()
-        registerReceiver(receiver, IntentFilter(Intent.ACTION_SCREEN_OFF), RECEIVER_EXPORTED)
+        registerReceiver(receiver, IntentFilter(Intent.ACTION_SCREEN_OFF), RECEIVER_NOT_EXPORTED)
         receiver.serviceScope = serviceScope
         screenOffReceiver = receiver
     }
@@ -213,8 +212,6 @@ class WallpaperService : Service() {
         unregisterReceiver(receiver)
         screenOffReceiver = null
     }
-
-
 
     override fun onBind(intent: Intent): IBinder? = null
 }

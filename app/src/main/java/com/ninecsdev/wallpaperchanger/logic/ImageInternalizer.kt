@@ -30,7 +30,7 @@ class ImageInternalizer @Inject constructor(
     private companion object {
         const val TAG = "ImageInternalizer"
         const val INTERNAL_FOLDER = "internal_wallpapers"
-        const val LARGE_FILE_THRESHOLD = 2L * 1024 * 1024
+        const val LARGE_FILE_THRESHOLD = 2L * 1024 * 1024 // 2 MB
     }
 
     /**
@@ -39,7 +39,10 @@ class ImageInternalizer @Inject constructor(
      * processes all images concurrently.
      * @return List of internal file URIs.
      */
-    suspend fun internalizeImages(context: Context, uris: List<Uri>): List<Uri> {
+    suspend fun internalizeImages(
+        context: Context,
+        uris: List<Uri>
+    ): List<Uri> {
         return withContext(Dispatchers.IO) {
             val internalDir = File(context.filesDir, INTERNAL_FOLDER)
             if (!internalDir.exists()) internalDir.mkdirs()
@@ -52,9 +55,10 @@ class ImageInternalizer @Inject constructor(
             val qualityLow = appDataStore.getCompressionQualityLow()
 
             // Added a semaphore approach to avoid possible OOM errors thought in my testing the previous
-            // one process process per uri for pure speed didn't produce problems. Added it because I didn't
+            // one process per uri for pure speed didn't produce problems. Added it because I didn't
             // find a noticeable time increase between this and previous approach probably due to Android/Kotlin
             // guardrails
+            // Choose 10 as a high enough number for fast processing while not to high
             val batchSemaphore = Semaphore(10)
 
             coroutineScope {

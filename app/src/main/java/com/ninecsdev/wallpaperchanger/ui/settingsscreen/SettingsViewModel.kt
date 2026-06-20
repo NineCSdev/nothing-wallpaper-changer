@@ -4,9 +4,9 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
-import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
-import com.ninecsdev.wallpaperchanger.model.LockscreenZoomFix
-import com.ninecsdev.wallpaperchanger.model.WallpaperDestination
+import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
+import com.ninecsdev.wallpaperchanger.model.enums.LockscreenZoomFix
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted

@@ -5,7 +5,7 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
-import com.ninecsdev.wallpaperchanger.model.WallpaperDestination
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -13,7 +13,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Applies prepared images to the Android (lock for now) screen wallpaper.
+ * Applies prepared images to the Android screen wallpaper.
  */
 @Singleton
 class WallpaperApplier @Inject constructor(

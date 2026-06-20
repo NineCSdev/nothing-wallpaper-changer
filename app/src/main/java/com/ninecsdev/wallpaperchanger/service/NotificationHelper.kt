@@ -11,7 +11,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Centralises all notification-related logic for the foreground [WallpaperService]
+ * Centralizes all notification-related logic for the foreground [WallpaperService]
  *
  * Responsibilities:
  * - Creating the notification channel

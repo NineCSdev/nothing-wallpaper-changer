@@ -9,8 +9,9 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 
 /**
- * Main Database for the application.
+ * Main Database for the app.
  * Using Room to persist collections and image metadata.
+ * Includes [Migration] objects.
  */
 @Database(entities = [
     WallpaperCollection::class,

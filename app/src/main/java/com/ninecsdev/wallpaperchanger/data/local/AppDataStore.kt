@@ -14,9 +14,9 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
-import com.ninecsdev.wallpaperchanger.model.LockscreenZoomFix
-import com.ninecsdev.wallpaperchanger.model.WallpaperDestination
+import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
+import com.ninecsdev.wallpaperchanger.model.enums.LockscreenZoomFix
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -25,16 +25,8 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Manages simple key-value pairs for global application settings using
- * Jetpack DataStore. Replaces the legacy SharedPreferences-based AppPreferences.
- *
- * On first launch after migration, existing SharedPreferences values are
- * automatically imported and the old file is deleted.
- */
-
+// Migration things
 private const val OLD_PREFS_NAME = "smart_wallpaper_prefs"
-
 private val Context.dataStore by preferencesDataStore(
     name = "app_settings",
     produceMigrations = { context ->
@@ -53,6 +45,13 @@ private val KEY_BATTERY_SAVER_POLICY = stringPreferencesKey("battery_saver_polic
 private val KEY_LOCKSCREEN_ZOOM_FIX = intPreferencesKey("lockscreen_zoom_fix")
 private val KEY_WALLPAPER_DESTINATION = stringPreferencesKey("wallpaper_destination")
 
+/**
+ * Manages simple key-value pairs for global application settings using
+ * Jetpack DataStore. Replaces the legacy SharedPreferences-based AppPreferences.
+ *
+ * On first launch after migration, existing SharedPreferences values are
+ * automatically imported and the old file is deleted.
+ */
 @Singleton
 class AppDataStore @Inject constructor(
     @ApplicationContext context: Context
@@ -65,7 +64,7 @@ class AppDataStore @Inject constructor(
 
     /**
      * Shared safe data flow. Catches IO and corruption errors from the DataStore file
-     * and falls back to empty preferences returning to default instead of crashing
+     * and falls back to empty preferences returning to default instead of crashing.
      */
     private val safeData: Flow<Preferences> = dataStore.data
         .catch { e ->

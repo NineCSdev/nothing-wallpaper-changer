@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.model
+package com.ninecsdev.wallpaperchanger.model.enums
 
 /**
  * Rules for cropping the wallpaper.

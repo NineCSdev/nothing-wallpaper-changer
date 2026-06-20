@@ -1,6 +1,6 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionscreen
 
-import com.ninecsdev.wallpaperchanger.model.CollectionSortOrder
+import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 

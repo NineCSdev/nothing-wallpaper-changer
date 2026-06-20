@@ -1,8 +1,8 @@
 package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
-import com.ninecsdev.wallpaperchanger.model.BatterySaverPolicy
-import com.ninecsdev.wallpaperchanger.model.LockscreenZoomFix
-import com.ninecsdev.wallpaperchanger.model.WallpaperDestination
+import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
+import com.ninecsdev.wallpaperchanger.model.enums.LockscreenZoomFix
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 
 /**
  * Snapshot of the Settings screen state.

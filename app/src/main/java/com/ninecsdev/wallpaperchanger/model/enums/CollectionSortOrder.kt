@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.model
+package com.ninecsdev.wallpaperchanger.model.enums
 
 /**
  * Sorting criteria available for the Collection List screen.

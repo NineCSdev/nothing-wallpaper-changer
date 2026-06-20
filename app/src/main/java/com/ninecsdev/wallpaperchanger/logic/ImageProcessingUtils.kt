@@ -14,7 +14,7 @@ import java.io.FileOutputStream
 
 /**
  * Shared image processing utilities used by [BufferManager], [WallpaperEditRenderer],
- * and [ImageInternalizer]. Centralises bitmap decoding, compression, rendering, and
+ * and [ImageInternalizer]. Centralizes bitmap decoding, compression, rendering, and
  * screen-dimension helpers so the logic is not duplicated.
  */
 object ImageProcessingUtils {
@@ -49,7 +49,7 @@ object ImageProcessingUtils {
      * Two-pass decode: reads the image bounds first, computes an "inSampleSize"
      * targeting [targetW] × [targetH], then decodes at reduced resolution.
      *
-     * @return the sub-sampled [Bitmap], or null if decoding fails.
+     * @return the subsampled [Bitmap], or null if decoding fails.
      */
     fun decodeSampledBitmap(
         context: Context,

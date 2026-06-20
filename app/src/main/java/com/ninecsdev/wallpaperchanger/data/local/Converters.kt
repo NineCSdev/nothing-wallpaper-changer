@@ -3,9 +3,9 @@ package com.ninecsdev.wallpaperchanger.data.local
 import android.net.Uri
 import android.util.Log
 import androidx.room.TypeConverter
-import com.ninecsdev.wallpaperchanger.model.CollectionType
-import com.ninecsdev.wallpaperchanger.model.CropRule
-import com.ninecsdev.wallpaperchanger.model.RotationFrequency
+import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
+import com.ninecsdev.wallpaperchanger.model.enums.CropRule
+import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 
 /**
  * Type converters for Room Database.
