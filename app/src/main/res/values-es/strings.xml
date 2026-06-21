@@ -44,7 +44,7 @@
     <string name="status_label_inactive">INACTIVO</string>
     <string name="status_label_paused_battery">PAUSADO (BATERÍA)</string>
     <string name="status_label_power_save_on">AHORRO DE BATERÍA ACTIVADO</string>
-    <string name="status_label_setup_needed">REQUIERE CONFIGURACIÓN</string>
+    <string name="status_label_setup_needed">SIN CONFIGURAR</string>
     <string name="status_label_initializing">INICIALIZANDO</string>
 
     <!-- Wallpaper selection card -->
@@ -117,7 +117,7 @@
     <string name="create_list_processing">INTERNALIZANDO…</string>
 
     <!-- Edit collection card -->
-    <string name="edit_list_title">AJUSTES LISTA</string>
+    <string name="edit_list_title">AJUSTES DE LA LISTA</string>
     <string name="edit_list_field_name">NOMBRE DE LA LISTA</string>
     <string name="edit_list_rotation_title">FRECUENCIA DE ROTACIÓN</string>
     <string name="edit_list_rotation_per_lock">POR BLOQUEO</string>

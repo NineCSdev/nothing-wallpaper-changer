@@ -42,15 +42,20 @@ class MainViewModel @Inject constructor(
     private val _serviceRefresh = MutableStateFlow(0L)
 
     // For performance reasons the state flow has been separated into 3 flows
-    // depending on how much they update that are then combined
-    private val baseStateFlow = combine(
+    // depending on how much they update that are then combined.
+    // Service state is evaluated in the outer combine so it reacts to
+    // collection changes without needing imperative notifications.
+    private val settingsFlow = combine(
         appDataStore.defaultWallpaperUriFlow(),
         appDataStore.revertToDefaultFlow(),
+    ) { defaultUri, revert ->
+        Pair(defaultUri, revert)
+    }
+    private val serviceRefreshFlow = combine(
         serviceStateManager.serviceEvent.onStart { emit(Unit) },
         _serviceRefresh
-    ) { defaultUri, revert, _, _ ->
-        Triple(defaultUri, revert, serviceStateManager.getServiceState())
-    }
+    ) { _, _ -> }
+
     private val activeCollectionFlow = repository.getAllCollections()
         .map { it.find { coll -> coll.isActive } }
         .distinctUntilChangedBy { it?.id }
@@ -65,12 +70,13 @@ class MainViewModel @Inject constructor(
         }
 
     val uiState: StateFlow<MainUiState> = combine(
-        baseStateFlow,
+        settingsFlow,
+        serviceRefreshFlow,
         activeCollectionFlow,
         previewsFlow
-    ) { (defaultUri, revert, serviceState), active, previews ->
+    ) { (defaultUri, revert), _, active, previews ->
         MainUiState(
-            serviceState = serviceState,
+            serviceState = serviceStateManager.getServiceState(),
             activeCollection = active,
             previewImages = previews.take(3),
             activeCollectionSize = previews.size,
