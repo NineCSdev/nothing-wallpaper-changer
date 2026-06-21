@@ -31,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.ServiceState
+import com.ninecsdev.wallpaperchanger.ui.components.safeClick
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
@@ -77,7 +78,7 @@ fun MainScreen(
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(
-                        onClick = onSettingsClick,
+                        onClick = safeClick(onSettingsClick),
                         modifier = Modifier.offset(y = (-20).dp),
                     ) {
                         Icon(
@@ -89,7 +90,7 @@ fun MainScreen(
                     }
 
                     IconButton(
-                        onClick = onOpenCollectionsClick,
+                        onClick = safeClick(onOpenCollectionsClick),
                         modifier = Modifier.offset(y = (-20).dp),
                     ) {
                         Icon(
