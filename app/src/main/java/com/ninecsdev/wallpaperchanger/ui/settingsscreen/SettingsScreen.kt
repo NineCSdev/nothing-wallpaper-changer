@@ -157,6 +157,21 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                SectionLabel(stringResource(R.string.settings_section_general))
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                LanguageSelector()
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                HorizontalDivider(
+                    color = NothingWhite.copy(alpha = 0.10f),
+                    thickness = 1.dp
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 SectionLabel(stringResource(R.string.settings_section_quality))
 
                 Spacer(modifier = Modifier.height(16.dp))

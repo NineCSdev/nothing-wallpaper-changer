@@ -66,6 +66,10 @@
 
     <!-- Settings screen -->
     <string name="settings_title">SETTINGS</string>
+    <string name="settings_section_general">OTHERS</string>
+    <string name="settings_language_title">APP LANGUAGE</string>
+    <string name="settings_language_subtitle">CHOOSE YOUR PREFERRED LANGUAGE</string>
+    <string name="settings_language_system">System</string>
     <string name="settings_section_service">SERVICE</string>
     <string name="settings_section_quality">STORAGE IMAGE QUALITY</string>
     <string name="settings_battery_saver_title">BATTERY SAVER POLICY</string>

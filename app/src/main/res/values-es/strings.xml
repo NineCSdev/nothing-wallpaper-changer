@@ -64,6 +64,10 @@
 
     <!-- Settings screen -->
     <string name="settings_title">AJUSTES</string>
+    <string name="settings_section_general">OTROS</string>
+    <string name="settings_language_title">IDIOMA DE LA APP</string>
+    <string name="settings_language_subtitle">ELIGE TU IDIOMA PREFERIDO</string>
+    <string name="settings_language_system">Sistema</string>
     <string name="settings_section_service">SERVICIO</string>
     <string name="settings_section_quality">CALIDAD DE IMAGEN EN ALMACENAMIENTO</string>
     <string name="settings_battery_saver_title">POLÍTICA DE AHORRO DE BATERÍA</string>
