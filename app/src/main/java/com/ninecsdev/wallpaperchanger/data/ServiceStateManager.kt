@@ -62,6 +62,10 @@ class ServiceStateManager @Inject constructor(
         updateServiceState(ServiceState.Loading)
     }
 
+    fun markServiceStopping() {
+        updateServiceState(ServiceState.Stopping)
+    }
+
     fun markServiceRunning() {
         persistRunningState(true)
         updateServiceState(ServiceState.Running)
@@ -99,6 +103,7 @@ class ServiceStateManager @Inject constructor(
 
         return when {
             currentState is ServiceState.Loading -> ServiceState.Loading
+            currentState is ServiceState.Stopping -> ServiceState.Stopping
             currentState is ServiceState.Running || currentState is ServiceState.Paused -> {
                 if (isServiceMarkedActive) {
                     currentState

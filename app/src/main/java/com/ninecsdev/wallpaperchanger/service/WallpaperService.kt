@@ -92,6 +92,13 @@ class WallpaperService : Service() {
             return START_NOT_STICKY
         }
 
+        // If the service is still in the middle of its teardown, ignore the re-start
+        // to avoid the stop→start race condition where onDestroy clears the new instance's state.
+        if (serviceStateManager.serviceStateFlow.value is ServiceState.Stopping) {
+            Log.w(tag, "Start ignored: service is still stopping.")
+            return START_NOT_STICKY
+        }
+
         try {
             startForeground(
                 NotificationHelper.NOTIFICATION_ID,
@@ -134,7 +141,7 @@ class WallpaperService : Service() {
 
     private fun handleStopCommand() {
         Log.i(tag, "Stopping service via command.")
-        serviceStateManager.markServiceStopped()
+        serviceStateManager.markServiceStopping()
         notifyUi()
 
         serviceScope.launch {
@@ -194,6 +201,9 @@ class WallpaperService : Service() {
         rotationEngine.clearMagazine()
         serviceScope.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
+
+        serviceStateManager.markServiceStopped()
+        notifyUi()
     }
 
     private fun notifyUi() = serviceStateManager.notifyServiceStateChanged()

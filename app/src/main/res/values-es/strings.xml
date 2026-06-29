@@ -46,6 +46,7 @@
     <string name="status_label_power_save_on">AHORRO DE BATERÍA ACTIVADO</string>
     <string name="status_label_setup_needed">SIN CONFIGURAR</string>
     <string name="status_label_initializing">INICIALIZANDO</string>
+    <string name="status_label_stopping">PARANDO</string>
 
     <!-- Wallpaper selection card -->
     <string name="action_change">CAMBIAR</string>
@@ -172,6 +173,7 @@
     <string name="tile_label">Cambiador</string>
     <string name="tile_subtitle_active">Activo</string>
     <string name="tile_subtitle_initializing">Inicializando…</string>
+    <string name="tile_subtitle_stopping">Parando…</string>
     <string name="tile_subtitle_ready">Listo</string>
     <string name="tile_subtitle_no_list">Sin lista</string>
     <string name="tile_subtitle_power_save">Ahorro de batería</string>

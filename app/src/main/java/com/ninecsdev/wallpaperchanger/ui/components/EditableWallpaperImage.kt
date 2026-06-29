@@ -81,7 +81,7 @@ fun EditableWallpaperImage(
                 .onSizeChanged { viewSize = it }
                 .then(
                     if (hasEdit && viewSize != IntSize.Zero) {
-                        val zoom = wallpaper.editZoom ?: 1f
+                        val zoom = wallpaper.editZoom
                         val offsetX = wallpaper.editOffsetX ?: 0f
                         val offsetY = wallpaper.editOffsetY ?: 0f
                         Modifier.graphicsLayer {

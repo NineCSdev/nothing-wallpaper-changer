@@ -12,6 +12,9 @@ sealed class ServiceState {
     /** Temporal state for giving UI feedback while loading. */
     data object Loading : ServiceState()
 
+    /** Temporal state while the service is in the process of stopping. */
+    data object Stopping : ServiceState()
+
     /** The service is stopped and ready to be started. */
     data object Stopped : ServiceState()
 

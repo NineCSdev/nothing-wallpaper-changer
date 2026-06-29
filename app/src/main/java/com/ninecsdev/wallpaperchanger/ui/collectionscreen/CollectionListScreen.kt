@@ -97,7 +97,7 @@ fun CollectionListScreen(
                         val (ledColor, _) = getVisualsForState(uiState.serviceState)
                         StatusLed(
                             color = ledColor,
-                            isPulsing = uiState.serviceState is ServiceState.Loading,
+                            isPulsing = uiState.serviceState is ServiceState.Loading || uiState.serviceState is ServiceState.Stopping,
                             modifier = Modifier.padding(end = 16.dp)
                         )
                     },

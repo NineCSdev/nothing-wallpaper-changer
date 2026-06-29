@@ -53,7 +53,7 @@ fun ServiceStatusHeader(
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusLed(
                 color = color,
-                isPulsing = state is ServiceState.Loading
+                isPulsing = state is ServiceState.Loading || state is ServiceState.Stopping
             )
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -73,6 +73,7 @@ internal fun getVisualsForState(state: ServiceState): Pair<Color, Int> {
     return when (state) {
         is ServiceState.Running -> Color.Green to R.string.status_label_active
         is ServiceState.Stopped -> NothingRed to R.string.status_label_inactive
+        is ServiceState.Stopping -> NothingRed to R.string.status_label_stopping
         is ServiceState.Paused -> Color(0xFFFFA500) to R.string.status_label_paused_battery
         is ServiceState.DisabledPowerSave -> Color(0xFFFFA500) to R.string.status_label_power_save_on
         is ServiceState.DisabledNoCollection -> NothingGray to R.string.status_label_setup_needed

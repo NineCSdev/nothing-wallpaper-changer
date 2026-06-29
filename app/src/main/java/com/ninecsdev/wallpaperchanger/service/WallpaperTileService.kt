@@ -108,7 +108,12 @@ class WallpaperTileService : TileService() {
                     startService(intent)
                     updateTile()
                 }
-                else -> updateTile()
+                is ServiceState.Stopping -> {
+                    updateTile()
+                }
+                is ServiceState.Loading -> {
+                    updateTile()
+                }
             }
         }
     }
@@ -132,6 +137,10 @@ class WallpaperTileService : TileService() {
                 is ServiceState.Loading -> {
                     tile.state = Tile.STATE_ACTIVE
                     tile.subtitle = getString(R.string.tile_subtitle_initializing)
+                }
+                is ServiceState.Stopping -> {
+                    tile.state = Tile.STATE_INACTIVE
+                    tile.subtitle = getString(R.string.tile_subtitle_stopping)
                 }
                 is ServiceState.Stopped -> {
                     tile.state = Tile.STATE_INACTIVE

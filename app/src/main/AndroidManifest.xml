@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <!-- TODO: Decide if enableOnBackInvokedCallback should be true (lets the animations on screen
+    transition play while the user is doing gesture navigation (not yet released it)-->
     <application
         android:name=".WallpaperApp"
         android:allowBackup="true"

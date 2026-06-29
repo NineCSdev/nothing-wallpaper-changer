@@ -48,6 +48,7 @@
     <string name="status_label_power_save_on">POWER SAVE ON</string>
     <string name="status_label_setup_needed">SETUP NEEDED</string>
     <string name="status_label_initializing">INITIALIZING</string>
+    <string name="status_label_stopping">STOPPING</string>
 
     <!-- Wallpaper selection card -->
     <string name="action_change">CHANGE</string>
@@ -176,6 +177,7 @@
     <string name="tile_label">Changer</string>
     <string name="tile_subtitle_active">Active</string>
     <string name="tile_subtitle_initializing">Initializing…</string>
+    <string name="tile_subtitle_stopping">Stopping…</string>
     <string name="tile_subtitle_ready">Ready</string>
     <string name="tile_subtitle_no_list">No List</string>
     <string name="tile_subtitle_power_save">Power Save</string>
