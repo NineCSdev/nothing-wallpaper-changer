@@ -148,8 +148,8 @@
     <string name="image_screen_empty_hint">PULSA + PARA AÑADIR FONDOS</string>
     <string name="image_screen_delete_single_title">¿ELIMINAR FONDO?</string>
     <string name="image_screen_delete_multiple_title">¿ELIMINAR FONDOS?</string>
-    <string name="image_screen_delete_single_message">Esta acción no se puede deshacer.\nEl fondo de pantalla seleccionado será eliminado.</string>
-    <string name="image_screen_delete_multiple_message">Esta acción no se puede deshacer.\nLos fondos de pantalla seleccionados serán eliminados.</string>
+    <string name="image_screen_delete_single_message">Esta acción no se puede deshacer.\nEl fondo de pantalla será eliminado.</string>
+    <string name="image_screen_delete_multiple_message">Esta acción no se puede deshacer.\nLos fondos de pantalla serán eliminados.</string>
 
     <!-- Delete confirmation overlay -->
     <string name="action_delete">ELIMINAR</string>

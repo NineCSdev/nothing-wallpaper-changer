@@ -55,6 +55,7 @@ import com.ninecsdev.wallpaperchanger.ui.components.DeleteConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.ThumbnailSlot
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /**
@@ -326,7 +327,9 @@ private fun WallpaperThumbnail(
             contentDescription = null,
             modifier = Modifier
                 .fillMaxSize()
+                .padding(1.dp)
                 .clip(RoundedCornerShape(if (isSelectionMode && isSelected) 8.dp else 0.dp))
+                .background(NothingGray)
         )
 
         // Edited params badge (bottom-right of thumbnail)
