@@ -11,7 +11,7 @@ import javax.inject.Singleton
 /**
  * Owns the in-memory rotation state (the "magazine") and the shuffle-cycle algorithm.
  * Picks the next image, delegates disk-buffer preparation to [BufferManager],
- * and self-heals by removing images that fail to load
+ * and self-heals by removing images that fail to load.
  */
 @Singleton
 class RotationEngine @Inject constructor(
@@ -84,11 +84,6 @@ class RotationEngine @Inject constructor(
 
             when (preparation) {
                 is BufferPreparationResult.Success -> {
-                    if (preparation.source == BufferSource.ORIGINAL && nextImage.editedUri != null) {
-                        Log.w(TAG, "Edited wallpaper failed; reverting to original for ${nextImage.id}.")
-                        imageInternalizer.deleteInternalFile(nextImage.editedUri.path)
-                        dao.updateWallpaperEdit(nextImage.id, null, null, null, null)
-                    }
                     failureCounts.remove(nextImage.id)
                     return@withContext true
                 }
@@ -100,7 +95,6 @@ class RotationEngine @Inject constructor(
                     } else {
                         failureCounts.remove(nextImage.id)
                         Log.w(TAG, "Failed to load ${nextImage.uri}. Removing after $failures failures.")
-                        imageInternalizer.deleteInternalFile(nextImage.editedUri?.path)
                         if (nextImage.uri.toString().contains("internal_wallpapers")) {
                             imageInternalizer.deleteInternalFile(nextImage.uri.path)
                         }

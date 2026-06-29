@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Rect
@@ -27,19 +28,17 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import javax.inject.Inject
 import javax.inject.Singleton
 
-enum class BufferSource {
-    EDITED,
-    ORIGINAL
-}
-
 sealed class BufferPreparationResult {
-    data class Success(val source: BufferSource) : BufferPreparationResult()
+    object Success : BufferPreparationResult()
     object Failure : BufferPreparationResult()
 }
 
 /**
  * In charge of preparing the next wallpaper that will be set.
  * Handles downsampling, aspect-ratio cropping, and WebP compression.
+ *
+ * When a wallpaper has edit params (zoom/offsetX/offsetY), the collection's [CropRule] is
+ * bypassed entirely.
  */
 @Singleton
 class BufferManager @Inject constructor(
@@ -54,15 +53,11 @@ class BufferManager @Inject constructor(
         const val COMPRESSION_QUALITY = 95 // Quality left high as only 1 image will exist at any time
         const val LOCKSCREEN_ZOOM_INSET_FRACTION = 0.045f // Zoom that I observed in a 20:9 screen
         const val BLUR_DOWNSCALE_FACTOR = 24
+        const val EDIT_DECODE_SCALE = 2
     }
 
     private data class TargetSize(
         val width: Int, val height: Int
-    )
-
-    private data class DecodedWallpaper(
-        val bitmap: Bitmap,
-        val source: BufferSource
     )
 
     private data class BitmapPlacement(
@@ -90,24 +85,31 @@ class BufferManager @Inject constructor(
 
     /**
      * Prepares the next wallpaper file on disk.
-     * Prefers the user-edited version ([WallpaperImage.editedUri]) when available.
-     * Internal wallpapers are decoded directly because they have already been resized by the app.
-     * Processing writes to a temp file first, then replaces the active buffer file.
+     *
+     * If the wallpaper has edit params, the edit transform (fit + zoom + offset) is applied
+     * and the [cropRule] is **bypassed**.
+     * Otherwise, the standard [cropRule] pipeline is used.
      */
     suspend fun prepareNextWallpaper(wallpaper: WallpaperImage, cropRule: CropRule): BufferPreparationResult {
         return withContext(Dispatchers.IO) {
             try {
                 val targetSize = getTargetSize()
-                val decoded = decodeWallpaperSource(wallpaper, targetSize) ?: return@withContext BufferPreparationResult.Failure
                 val zoomFix = appDataStore.getLockscreenZoomFix()
-                var finalBitmap: Bitmap? = null
+                val hasEdit = wallpaper.editZoom != null
 
+                val sourceBitmap = decodeSourceBitmap(
+                    wallpaper.uri,
+                    targetSize,
+                    oversample = if (hasEdit) EDIT_DECODE_SCALE else 1
+                ) ?: return@withContext BufferPreparationResult.Failure
+
+                var finalBitmap: Bitmap? = null
                 try {
-                    finalBitmap = processBitmap(decoded.bitmap, targetSize, cropRule, zoomFix)
+                    finalBitmap = prepareFinalBitmap(wallpaper, sourceBitmap, targetSize, cropRule, zoomFix)
                     writeBuffer(finalBitmap, cropRule)
-                    BufferPreparationResult.Success(decoded.source)
+                    BufferPreparationResult.Success
                 } finally {
-                    recyclePreparedBitmaps(decoded.bitmap, finalBitmap)
+                    recyclePreparedBitmaps(sourceBitmap, finalBitmap)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to prepare buffer", e)
@@ -121,19 +123,9 @@ class BufferManager @Inject constructor(
         return TargetSize(width, height)
     }
 
-    private fun decodeWallpaperSource(wallpaper: WallpaperImage, targetSize: TargetSize): DecodedWallpaper? {
-        wallpaper.editedUri?.let { uri ->
-            decodeSourceBitmap(uri, targetSize)?.let { bitmap ->
-                return DecodedWallpaper(bitmap, BufferSource.EDITED)
-            }
-        }
-
-        return decodeSourceBitmap(wallpaper.uri, targetSize)?.let { bitmap ->
-            DecodedWallpaper(bitmap, BufferSource.ORIGINAL)
-        }
-    }
-
-    private fun decodeSourceBitmap(sourceUri: Uri, targetSize: TargetSize): Bitmap? {
+    private fun decodeSourceBitmap(sourceUri: Uri, targetSize: TargetSize, oversample: Int = 1): Bitmap? {
+        val reqW = targetSize.width * oversample
+        val reqH = targetSize.height * oversample
         return if (sourceUri.isInternalWallpaperUri()) {
             appContext.contentResolver.openInputStream(sourceUri)?.use {
                 BitmapFactory.decodeStream(it)
@@ -142,14 +134,96 @@ class BufferManager @Inject constructor(
             ImageProcessingUtils.decodeSampledBitmap(
                 appContext,
                 sourceUri,
-                targetSize.width,
-                targetSize.height
+                reqW,
+                reqH
             )
         }
     }
 
     private fun Uri.isInternalWallpaperUri(): Boolean {
         return pathSegments.contains(INTERNAL_WALLPAPERS_DIRECTORY)
+    }
+
+    private fun prepareFinalBitmap(
+        wallpaper: WallpaperImage,
+        sourceBitmap: Bitmap,
+        targetSize: TargetSize,
+        cropRule: CropRule,
+        zoomFix: LockscreenZoomFix
+    ): Bitmap {
+        val zoom = wallpaper.editZoom
+        return if (zoom != null) {
+            val edited = applyEditTransform(
+                source = sourceBitmap,
+                targetSize = targetSize,
+                zoom = zoom,
+                normalizedOffsetX = wallpaper.editOffsetX ?: 0f,
+                normalizedOffsetY = wallpaper.editOffsetY ?: 0f
+            )
+            if (zoomFix == LockscreenZoomFix.OFF) {
+                edited
+            } else {
+                val padded = addLockscreenPadding(edited, zoomFix)
+                if (padded !== edited) edited.recycle()
+                padded
+            }
+        } else {
+            processBitmap(sourceBitmap, targetSize, cropRule, zoomFix)
+        }
+    }
+
+    /**
+     * Applies the user's edit params to produce a screen-sized bitmap.
+     *
+     * Uses identical math to the editor preview (fit-based scaling + user zoom + normalized offsets),
+     * so the wallpaper on the lockscreen matches exactly what the user saw in the editor.
+     *
+     * @param source Decoded source bitmap (ideally at 2× screen resolution for quality headroom).
+     * @param zoom User zoom factor where 1.0 = cover/fill the screen.
+     * @param normalizedOffsetX Normalized X offset in -1..1.
+     * @param normalizedOffsetY Normalized Y offset in -1..1.
+     */
+    private fun applyEditTransform(
+        source: Bitmap,
+        targetSize: TargetSize,
+        zoom: Float,
+        normalizedOffsetX: Float,
+        normalizedOffsetY: Float
+    ): Bitmap {
+        val targetW = targetSize.width
+        val targetH = targetSize.height
+
+        // Base scale: fit the image inside the screen (same as the editor preview)
+        val baseScale = minOf(
+            targetW.toFloat() / source.width,
+            targetH.toFloat() / source.height
+        )
+        val scale = baseScale * zoom
+
+        val scaledW = source.width * scale
+        val scaledH = source.height * scale
+
+        // Center the scaled image
+        val centerX = (targetW - scaledW) / 2f
+        val centerY = (targetH - scaledH) / 2f
+
+        // Convert normalized offsets to pixel offsets
+        val maxPanX = (scaledW - targetW).coerceAtLeast(0f) / 2f
+        val maxPanY = (scaledH - targetH).coerceAtLeast(0f) / 2f
+        val pixelOffsetX = normalizedOffsetX * maxPanX
+        val pixelOffsetY = normalizedOffsetY * maxPanY
+
+        val output = createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(output)
+        canvas.drawColor(Color.BLACK)
+
+        val matrix = Matrix().apply {
+            postScale(scale, scale)
+            postTranslate(centerX + pixelOffsetX, centerY + pixelOffsetY)
+        }
+        canvas.drawBitmap(source, matrix, ImageProcessingUtils.createRenderPaint())
+
+        return output
     }
 
     private fun processBitmap(
@@ -234,7 +308,7 @@ class BufferManager @Inject constructor(
     private fun replaceBuffer(tempFile: File, bufferFile: File) {
         try {
             Files.move(tempFile.toPath(), bufferFile.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
-        } catch (e: AtomicMoveNotSupportedException) {
+        } catch (_: AtomicMoveNotSupportedException) {
             Files.move(tempFile.toPath(), bufferFile.toPath(), REPLACE_EXISTING)
         }
     }

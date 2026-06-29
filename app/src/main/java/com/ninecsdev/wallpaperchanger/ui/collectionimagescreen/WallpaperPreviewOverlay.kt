@@ -37,9 +37,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -102,9 +102,8 @@ fun WallpaperPreviewOverlay(
             modifier = Modifier.fillMaxSize()
         ) { page ->
             val wallpaper = wallpapers[page]
-            val displayUri = wallpaper.editedUri ?: wallpaper.uri
-            AsyncImage(
-                model = displayUri,
+            EditableWallpaperImage(
+                wallpaper = wallpaper,
                 contentDescription = stringResource(R.string.cd_wallpaper_preview),
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize()
@@ -178,7 +177,7 @@ fun WallpaperPreviewOverlay(
         }
 
         // Edited badge in the bottom-right
-        if (currentWallpaper?.editedUri != null) {
+        if (currentWallpaper?.editZoom != null) {
             EditedBadge(
                 size = 28,
                 modifier = Modifier
@@ -195,8 +194,7 @@ fun WallpaperPreviewOverlayPreview() {
     val sampleWallpaper = WallpaperImage(
         id = 1L,
         collectionId = 101,
-        uri = Uri.EMPTY,
-        editedUri = null
+        uri = Uri.EMPTY
     )
 
     MaterialTheme {
@@ -221,7 +219,7 @@ fun WallpaperPreviewOverlayEditedPreview() {
         id = 2L,
         collectionId = 101,
         uri = Uri.EMPTY,
-        editedUri = Uri.EMPTY
+        editZoom = 1.5f
     )
 
     MaterialTheme {

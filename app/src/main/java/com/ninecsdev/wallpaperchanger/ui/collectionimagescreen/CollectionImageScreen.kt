@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.DeleteConfirmationOverlay
+import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.ThumbnailSlot
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -312,8 +313,6 @@ private fun WallpaperThumbnail(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val displayUri = wallpaper.editedUri ?: wallpaper.uri
-
     Box(
         modifier = modifier
             .aspectRatio(1f)
@@ -322,16 +321,16 @@ private fun WallpaperThumbnail(
                 onLongClick = onLongClick
             )
     ) {
-        ThumbnailSlot(
-            uri = displayUri,
-            shape = RoundedCornerShape(0.dp),
+        EditableWallpaperImage(
+            wallpaper = wallpaper,
+            contentDescription = null,
             modifier = Modifier
                 .fillMaxSize()
                 .clip(RoundedCornerShape(if (isSelectionMode && isSelected) 8.dp else 0.dp))
         )
 
-        // Edited-URI pencil badge (bottom-right of thumbnail)
-        if (wallpaper.editedUri != null) {
+        // Edited params badge (bottom-right of thumbnail)
+        if (wallpaper.editZoom != null) {
             EditedBadge(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -378,7 +377,7 @@ fun CollectionImageScreenPreview() {
             id = id,
             collectionId = 1,
             uri = Uri.EMPTY,
-            editedUri = if (id == 3L || id == 7L) Uri.EMPTY else null
+            editZoom = if (id == 3L || id == 7L) 1.5f else null
         )
     }
 

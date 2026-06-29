@@ -95,15 +95,14 @@ interface WallpaperDao {
     @Query("SELECT * FROM wallpapers WHERE id = :wallpaperId LIMIT 1")
     suspend fun getWallpaperById(wallpaperId: Long): WallpaperImage?
 
-    /** Persists the edited URI and edit parameters for a wallpaper. */
+    /** Persists the edit parameters for a wallpaper. */
     @Query("""
         UPDATE wallpapers 
-        SET editedUri = :editedUri, editZoom = :zoom, editOffsetX = :offsetX, editOffsetY = :offsetY 
+        SET editZoom = :zoom, editOffsetX = :offsetX, editOffsetY = :offsetY 
         WHERE id = :wallpaperId
     """)
     suspend fun updateWallpaperEdit(
         wallpaperId: Long,
-        editedUri: Uri?,
         zoom: Float?,
         offsetX: Float?,
         offsetY: Float?

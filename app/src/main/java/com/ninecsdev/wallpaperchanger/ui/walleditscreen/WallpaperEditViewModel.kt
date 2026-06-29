@@ -4,7 +4,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
-import com.ninecsdev.wallpaperchanger.logic.WallpaperEditRenderer
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +17,7 @@ import javax.inject.Inject
  * ViewModel for the Wallpaper Edit screen.
  *
  * Loads the wallpaper to edit, exposes save/reset actions,
- * and coordinates with the renderer and repository.
+ * and coordinates with the repository.
  *
  * The actual zoom/offset state lives in the composable (gesture-driven),
  * and is passed to [save] only when the user confirms.
@@ -27,7 +26,6 @@ import javax.inject.Inject
 class WallpaperEditViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: WallpaperRepository,
-    private val renderer: WallpaperEditRenderer
 ) : ViewModel() {
 
     private val wallpaperId: Long = checkNotNull(savedStateHandle["wallpaperId"])
@@ -47,8 +45,8 @@ class WallpaperEditViewModel @Inject constructor(
     }
 
     /**
-     * Renders the edited wallpaper from the original image and saves it.
-     * On failure, sets [WallpaperEditUiState.saveError] instead of exiting.
+     * Persists the edit params (zoom + offset) for this wallpaper.
+     * If the params are unchanged (no-op edit), exits immediately without writing.
      *
      * @param zoom Zoom factor (1.0 = cover/fill).
      * @param offsetX Normalized X offset (-1..1).
@@ -65,16 +63,8 @@ class WallpaperEditViewModel @Inject constructor(
         _uiState.update { it.copy(isSaving = true, saveError = false) }
 
         viewModelScope.launch {
-            // Always render from the ORIGINAL uri to avoid quality loss
-            val editedUri = renderer.renderAndSave(wp.uri, zoom, offsetX, offsetY)
-
-            if (editedUri != null) {
-                repository.saveWallpaperEdit(wp, editedUri, zoom, offsetX, offsetY)
-                _uiState.update { it.copy(isSaving = false, shouldExit = true) }
-            } else {
-                // Render failed -> stay in the editor and show error
-                _uiState.update { it.copy(isSaving = false, saveError = true) }
-            }
+            repository.saveWallpaperEdit(wp, zoom, offsetX, offsetY)
+            _uiState.update { it.copy(isSaving = false, shouldExit = true) }
         }
     }
 
@@ -94,7 +84,7 @@ class WallpaperEditViewModel @Inject constructor(
     }
 
     /**
-     * Resets the edit: deletes the edited file and clears all edit parameters.
+     * Resets the edit: clears all edit parameters.
      * The wallpaper falls back to displaying the original URI.
      *
      * Note: not used due to new exit after undoing edit revise deletion

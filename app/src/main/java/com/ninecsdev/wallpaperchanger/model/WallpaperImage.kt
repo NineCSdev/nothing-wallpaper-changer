@@ -29,7 +29,6 @@ data class WallpaperImage(
     val id: Long = 0,
     val collectionId: Long,
     val uri: Uri,
-    val editedUri: Uri? = null,
     val editZoom: Float? = null,
     val editOffsetX: Float? = null,
     val editOffsetY: Float? = null,

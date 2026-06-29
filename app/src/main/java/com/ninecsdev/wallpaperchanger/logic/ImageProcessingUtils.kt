@@ -13,8 +13,8 @@ import java.io.File
 import java.io.FileOutputStream
 
 /**
- * Shared image processing utilities used by [BufferManager], [WallpaperEditRenderer],
- * and [ImageInternalizer]. Centralizes bitmap decoding, compression, rendering, and
+ * Shared image processing utilities used by [BufferManager] and [ImageInternalizer].
+ * Centralizes bitmap decoding, compression, rendering, and
  * screen-dimension helpers so the logic is not duplicated.
  */
 object ImageProcessingUtils {
@@ -98,7 +98,7 @@ object ImageProcessingUtils {
     /**
      * Returns a [Paint] configured for high-quality bitmap rendering.
      * Shared by all render paths to avoid constructing identical [Paint]
-     * objects in [BufferManager] and [WallpaperEditRenderer].
+     * objects in [BufferManager].
      */
     fun createRenderPaint(): Paint = Paint().apply {
         isAntiAlias = true

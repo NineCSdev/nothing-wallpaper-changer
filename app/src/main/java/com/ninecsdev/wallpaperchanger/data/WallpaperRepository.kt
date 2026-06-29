@@ -216,7 +216,6 @@ class WallpaperRepository @Inject constructor(
 
             images.forEach { image ->
                 imageInternalizer.deleteInternalFile(image.uri.path)
-                imageInternalizer.deleteInternalFile(image.editedUri?.path)
             }
 
             dao.deleteImagesByIds(images.map { it.id })
@@ -242,7 +241,6 @@ class WallpaperRepository @Inject constructor(
                 if (collection.type == CollectionType.MANUAL || image.isManuallyAdded) {
                     imageInternalizer.deleteInternalFile(image.uri.path)
                 }
-                imageInternalizer.deleteInternalFile(image.editedUri?.path)
             }
 
             // Release the persisted folder permission if this is a folder collection
@@ -267,33 +265,29 @@ class WallpaperRepository @Inject constructor(
         dao.getWallpaperById(wallpaperId)
 
     /**
-     * Saves the edited wallpaper image and its edit parameters.
-     * Deletes the previous edited file if one existed.
+     * Saves the edit parameters for a wallpaper.
+     * The edit (zoom/offset) is applied on-the-fly during rotation — no file is written to disk.
      * If this wallpaper belongs to the active collection, reloads the rotation engine
      * and refills the disk buffer so the change is immediately respected.
      */
     suspend fun saveWallpaperEdit(
         wallpaper: WallpaperImage,
-        editedUri: Uri,
         zoom: Float,
         offsetX: Float,
         offsetY: Float
     ) {
         withContext(Dispatchers.IO) {
-            imageInternalizer.deleteInternalFile(wallpaper.editedUri?.path)
-            dao.updateWallpaperEdit(wallpaper.id, editedUri, zoom, offsetX, offsetY)
+            dao.updateWallpaperEdit(wallpaper.id, zoom, offsetX, offsetY)
             refreshEngineIfActive(wallpaper.collectionId)
         }
     }
 
     /**
-     * Resets a wallpaper edit: removes the edited file and clears all edit parameters.
-     * Falls back to the original URI for display and rotation.
+     * Resets a wallpaper edit: clears all edit parameters.
      */
     suspend fun resetWallpaperEdit(wallpaper: WallpaperImage) {
         withContext(Dispatchers.IO) {
-            imageInternalizer.deleteInternalFile(wallpaper.editedUri?.path)
-            dao.updateWallpaperEdit(wallpaper.id, null, null, null, null)
+            dao.updateWallpaperEdit(wallpaper.id, null, null, null)
             refreshEngineIfActive(wallpaper.collectionId)
         }
     }

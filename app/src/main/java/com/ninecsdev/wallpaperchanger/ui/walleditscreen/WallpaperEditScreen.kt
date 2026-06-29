@@ -64,44 +64,10 @@ private const val MinOffset = -1f
 private const val MaxOffset = 1f
 private const val PanSensitivity = 0.003f
 private const val PanSensitivityXMultiplier = 1.25f
-
-private data class TransformResult(
-    val scale: Float,
-    val translationX: Float,
-    val translationY: Float
-)
-
 private fun coerceZoom(value: Float): Float = value.coerceIn(MinZoom, MaxZoom)
 
 private fun coerceOffset(value: Float): Float = value.coerceIn(MinOffset, MaxOffset)
 
-private fun calculateTransform(
-    viewWidth: Float,
-    viewHeight: Float,
-    imageAspectRatio: Float,
-    zoom: Float,
-    offsetX: Float,
-    offsetY: Float,
-): TransformResult {
-    val viewAspect = viewWidth / viewHeight
-
-    val (fitW, fitH) = if (imageAspectRatio > viewAspect) {
-        viewWidth to (viewWidth / imageAspectRatio)
-    } else {
-        (viewHeight * imageAspectRatio) to viewHeight
-    }
-    val imgScaledW = fitW * zoom
-    val imgScaledH = fitH * zoom
-
-    val maxPanX = ((imgScaledW - viewWidth) / 2f).coerceAtLeast(0f)
-    val maxPanY = ((imgScaledH - viewHeight) / 2f).coerceAtLeast(0f)
-
-    return TransformResult(
-        scale = zoom,
-        translationX = offsetX * maxPanX,
-        translationY = offsetY * maxPanY
-    )
-}
 
 private fun calculateFitHeightZoom(
     imageAspectRatio: Float,
@@ -349,7 +315,7 @@ private fun WallpaperEditContent(
         )
 
         WallpaperEditTopBar(
-            hasSavedEdits = wallpaper.editedUri != null,
+            hasSavedEdits = wallpaper.editZoom != null,
             hasUnsavedChanges = hasUnsavedChanges,
             showControls = showControls,
             onBack = onBack,
@@ -614,7 +580,7 @@ private fun WallpaperEditScreenResetPreview() {
         id = 1L,
         collectionId = 1,
         uri = Uri.EMPTY,
-        editedUri = Uri.EMPTY
+        editZoom = 1.5f
     )
 
     MaterialTheme {
