@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.PowerManager
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperDao
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.service.ServiceLifecycleTracker
@@ -99,7 +100,8 @@ class ServiceStateManager @Inject constructor(
         val isPersistedRunning = withContext(Dispatchers.IO) { appDataStore.isServiceRunning() }
         val isServiceAlive = lifecycleTracker.isAlive.value
         val isServiceMarkedActive = isServiceAlive || isPersistedRunning
-        val stoppedState = resolveStoppedVisualState(isPowerSave)
+        val batterySaverPolicy = withContext(Dispatchers.IO) { appDataStore.getBatterySaverPolicy() }
+        val stoppedState = if (isPowerSave && batterySaverPolicy != BatterySaverPolicy.IGNORE) ServiceState.DisabledPowerSave else ServiceState.Stopped
 
         return when {
             currentState is ServiceState.Loading -> ServiceState.Loading
@@ -133,7 +135,4 @@ class ServiceStateManager @Inject constructor(
     private fun persistRunningState(isRunning: Boolean) {
         scope.launch { appDataStore.setServiceRunning(isRunning) }
     }
-
-    private fun resolveStoppedVisualState(isPowerSave: Boolean): ServiceState =
-        if (isPowerSave) ServiceState.DisabledPowerSave else ServiceState.Stopped
 }
