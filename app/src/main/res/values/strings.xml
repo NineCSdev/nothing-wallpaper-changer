@@ -172,6 +172,10 @@
     <string name="edit_controls_zoom">ZOOM</string>
     <string name="edit_controls_cancel">CANCEL</string>
     <string name="edit_controls_save">SAVE</string>
+    <string name="edit_discard_title">DISCARD CHANGES?</string>
+    <string name="edit_discard_message">Your changes will be lost if you go back now.</string>
+    <string name="edit_discard_confirm">DISCARD</string>
+    <string name="edit_discard_cancel">CONTINUE</string>
 
     <!-- Quick settings tile -->
     <string name="tile_label">Changer</string>

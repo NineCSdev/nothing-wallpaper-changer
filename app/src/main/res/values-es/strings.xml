@@ -168,6 +168,10 @@
     <string name="edit_controls_zoom">ZOOM</string>
     <string name="edit_controls_cancel">CANCELAR</string>
     <string name="edit_controls_save">GUARDAR</string>
+    <string name="edit_discard_title">¿DESCARTAR CAMBIOS?</string>
+    <string name="edit_discard_message">Los cambios se perderán si vuelves atrás ahora.</string>
+    <string name="edit_discard_confirm">DESCARTAR</string>
+    <string name="edit_discard_cancel">SEGUIR</string>
 
     <!-- Quick settings tile -->
     <string name="tile_label">Cambiador</string>

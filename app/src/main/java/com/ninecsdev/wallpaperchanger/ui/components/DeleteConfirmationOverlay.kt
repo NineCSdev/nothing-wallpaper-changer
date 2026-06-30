@@ -15,6 +15,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -100,10 +101,9 @@ fun DeleteConfirmationOverlay(
                             contentColor = NothingWhite
                         )
                     ) {
-                        Text(confirmLabel, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                        Text(confirmLabel, fontWeight = FontWeight.Black)
                     }
                 }
-
             }
         }
     }
@@ -113,14 +113,16 @@ fun DeleteConfirmationOverlay(
 @Composable
 fun DeleteConfirmationOverlayPreview() {
     MaterialTheme {
-        DeleteConfirmationOverlay(
-            modifier = Modifier.padding(16.dp),
-            onConfirm = {},
-            onCancel = {},
-            title = "Title",
-            message = "Description",
-            confirmLabel = "Confirm",
-            cancelLabel = "Cancel"
-        )
+        Scaffold(containerColor = NothingBlack){ padding ->
+            DeleteConfirmationOverlay(
+                modifier = Modifier.padding(16.dp),
+                onConfirm = {},
+                onCancel = {},
+                title = "Title",
+                message = "Description",
+                confirmLabel = "Confirm",
+                cancelLabel = "Cancel"
+            )
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.ninecsdev.wallpaperchanger.ui.walleditscreen
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -53,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.ui.components.DeleteConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.ProcessingOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -115,6 +117,9 @@ fun WallpaperEditScreen(
     // Controls panel visibility
     var showControls by remember { mutableStateOf(false) }
 
+    // Discard confirmation dialog visibility
+    var showDiscardDialog by remember { mutableStateOf(false) }
+
     // Restore saved edit params when wallpaper loads
     LaunchedEffect(wallpaper) {
         wallpaper?.let { wp ->
@@ -149,6 +154,15 @@ fun WallpaperEditScreen(
         offsetY = initialOffsetY
     }
 
+    val guardedBack: () -> Unit = {
+        if (hasUnsavedChanges) showDiscardDialog = true else onBack()
+    }
+
+    // Intercept the system back gesture when there are unsaved changes
+    BackHandler(enabled = hasUnsavedChanges) {
+        showDiscardDialog = true
+    }
+
     if (wallpaper == null) {
         WallpaperLoadingState(isLoading = uiState.isLoading)
     } else {
@@ -167,12 +181,24 @@ fun WallpaperEditScreen(
             onSave = { onSave(zoom, offsetX, offsetY) },
             onUndo = undoChanges,
             onReset = onReset,
-            onBack = onBack
+            onBack = guardedBack
         )
     }
 
     SavingOverlay(isSaving = uiState.isSaving)
     SaveErrorBanner(show = uiState.saveError)
+
+    // Discard confirmation dialog
+    if (showDiscardDialog) {
+        DeleteConfirmationOverlay(
+            title = stringResource(R.string.edit_discard_title),
+            message = stringResource(R.string.edit_discard_message),
+            confirmLabel = stringResource(R.string.edit_discard_confirm),
+            cancelLabel = stringResource(R.string.edit_discard_cancel),
+            onConfirm = { showDiscardDialog = false; onBack() },
+            onCancel = { showDiscardDialog = false }
+        )
+    }
 }
 
 //TODO: Extract the composable into separate files for readability
