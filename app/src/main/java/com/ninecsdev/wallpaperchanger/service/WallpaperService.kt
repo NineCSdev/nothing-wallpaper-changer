@@ -83,7 +83,7 @@ class WallpaperService : Service() {
         val systemFilter = IntentFilter().apply {
             addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
         }
-        registerReceiver(systemEventReceiver, systemFilter, RECEIVER_EXPORTED)
+        registerReceiver(systemEventReceiver, systemFilter, RECEIVER_NOT_EXPORTED)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

@@ -39,6 +39,13 @@ class MainViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context
 ) : ViewModel() {
 
+    // TODO(v0.3.3): temporary cleanup, remove this init block along with
+    // WallpaperRepository.releaseOrphanedFolderUriPermissions() once installs
+    // have had a chance to run it
+    init {
+        viewModelScope.launch { repository.releaseOrphanedFolderUriPermissions() }
+    }
+
     private val _serviceRefresh = MutableStateFlow(0L)
 
     // For performance reasons the state flow has been separated into 3 flows

@@ -16,6 +16,7 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -245,16 +246,45 @@ class WallpaperRepository @Inject constructor(
 
             // Release the persisted folder permission if this is a folder collection
             if (collection.type == CollectionType.FOLDER && collection.rootUri != null) {
-                try {
-                    appContext.contentResolver.releasePersistableUriPermission(
-                        collection.rootUri, Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-                } catch (e: SecurityException) {
-                    Log.w(TAG, "Permission already released for: ${collection.rootUri}", e)
-                }
+                releaseFolderUriPermission(collection.rootUri)
             }
 
             dao.deleteCollection(collection)
+        }
+    }
+
+    /**
+     * Releases a persisted folder-tree URI permission previously taken via
+     * `takePersistableUriPermission`. Safe to call even if already released.
+     */
+    fun releaseFolderUriPermission(uri: Uri) {
+        try {
+            appContext.contentResolver.releasePersistableUriPermission(
+                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Permission already released for: $uri", e)
+        }
+    }
+
+    // TODO(v0.3.3): temporary cleanup, remove this method and its call site in
+    // MainViewModel's init block once installs have had a chance to run it.
+    // It exists only to release folder-URI grants leaked by the pre-fix
+    // "cancel create modal" bug.
+    /**
+     * Releases any persisted folder-tree URI grants that no longer belong to
+     * an existing FOLDER collection. Safe to call repeatedly.
+     */
+    suspend fun releaseOrphanedFolderUriPermissions() {
+        withContext(Dispatchers.IO) {
+            val activeRootUris = dao.getAllCollections().first()
+                .mapNotNull { it.rootUri }
+                .toSet()
+
+            appContext.contentResolver.persistedUriPermissions
+                .map { it.uri }
+                .filter { it !in activeRootUris }
+                .forEach { releaseFolderUriPermission(it) }
         }
     }
 

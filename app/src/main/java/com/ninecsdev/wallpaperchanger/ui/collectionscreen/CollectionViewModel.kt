@@ -182,6 +182,10 @@ class CollectionViewModel @Inject constructor(
     }
 
     fun toggleCreateModal(show: Boolean) {
+        if (!show && pendingFolderUri != null) {
+            repository.releaseFolderUriPermission(pendingFolderUri!!)
+            pendingFolderUri = null
+        }
         _screenState.update {
             if (show) it.copy(isShowingCreateModal = true)
             else it.copy(isShowingCreateModal = false, hasPendingFolder = false, hasPendingPhotos = false)
