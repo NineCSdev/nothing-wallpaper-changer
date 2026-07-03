@@ -136,9 +136,4 @@ class MainActivity : ComponentActivity() {
     private fun startWallpaperServiceNow() {
         startForegroundService(Intent(this, WallpaperService::class.java))
     }
-
-    override fun onResume() {
-        super.onResume()
-        mainViewModel.refreshServiceState()
-    }
 }

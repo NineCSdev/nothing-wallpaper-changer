@@ -1,11 +1,7 @@
 package com.ninecsdev.wallpaperchanger.service
 
 import android.app.AlertDialog
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
-import android.os.PowerManager
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.util.Log
@@ -19,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -32,43 +29,21 @@ class WallpaperTileService : TileService() {
     @Inject lateinit var serviceStateManager: ServiceStateManager
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
-    private var serviceEventJob: Job? = null
-
-    /**
-     * A BroadcastReceiver that listens for system-level power save mode changes
-     * to update the tile state accordingly.
-     */
-    private val systemReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            Log.d(tag, "System event: ${intent?.action}")
-            updateTile()
-        }
-    }
+    private var stateJob: Job? = null
 
     override fun onStartListening() {
         super.onStartListening()
 
-        registerReceiver(
-            systemReceiver,
-            IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED),
-            RECEIVER_NOT_EXPORTED
-        )
-
-        serviceEventJob = serviceScope.launch {
-            serviceStateManager.serviceEvent.collect { updateTile() }
+        // Single source of truth: render the tile from the manager's derived state flow.
+        // This replaces the old serviceEvent collection + separate power-save BroadcastReceiver.
+        stateJob = serviceScope.launch {
+            serviceStateManager.serviceState.collectLatest { render(it) }
         }
-
-        updateTile()
     }
 
     override fun onStopListening() {
         super.onStopListening()
-        serviceEventJob?.cancel()
-        try {
-            unregisterReceiver(systemReceiver)
-        } catch (e: Exception) {
-            Log.e(tag, "Error unregistering receiver", e)
-        }
+        stateJob?.cancel()
     }
 
     override fun onDestroy() {
@@ -82,86 +57,66 @@ class WallpaperTileService : TileService() {
     override fun onClick() {
         super.onClick()
 
-        serviceScope.launch {
-            val currentState = serviceStateManager.getServiceState()
-
-            when (currentState) {
-                is ServiceState.DisabledNoCollection -> {
-                    showTileMessage(getString(R.string.tile_no_collection_message))
+        when (serviceStateManager.serviceState.value) {
+            is ServiceState.DisabledNoCollection -> {
+                showTileMessage(getString(R.string.tile_no_collection_message))
+            }
+            is ServiceState.DisabledPowerSave -> Unit
+            is ServiceState.Stopping -> Unit
+            is ServiceState.Loading -> Unit
+            is ServiceState.Stopped -> {
+                serviceStateManager.markServiceLoading()
+                startForegroundService(Intent(this, WallpaperService::class.java))
+            }
+            is ServiceState.Running, is ServiceState.Paused -> {
+                val intent = Intent(this, WallpaperService::class.java).apply {
+                    action = WallpaperService.ACTION_STOP_SERVICE
                 }
-                is ServiceState.DisabledPowerSave -> {
-                    updateTile()
-                }
-                is ServiceState.Paused -> {
-                    updateTile()
-                }
-                is ServiceState.Stopped -> {
-                    serviceStateManager.markServiceLoading()
-                    updateTile()
-                    val intent = Intent(this@WallpaperTileService, WallpaperService::class.java)
-                    startForegroundService(intent)
-                }
-                is ServiceState.Running -> {
-                    val intent = Intent(this@WallpaperTileService, WallpaperService::class.java).apply {
-                        action = WallpaperService.ACTION_STOP_SERVICE
-                    }
-                    startService(intent)
-                    updateTile()
-                }
-                is ServiceState.Stopping -> {
-                    updateTile()
-                }
-                is ServiceState.Loading -> {
-                    updateTile()
-                }
+                startService(intent)
             }
         }
     }
 
     /**
-     * Updates the Tile visual state based on the app state.
+     * Renders the tile's visual state from a resolved [ServiceState].
      */
-    private fun updateTile() {
+    private fun render(state: ServiceState) {
         val tile = qsTile ?: return
 
-        serviceScope.launch {
-            val state = serviceStateManager.getServiceState()
+        tile.label = getString(R.string.tile_label)
 
-            tile.label = getString(R.string.tile_label)
-
-            when (state) {
-                is ServiceState.Running -> {
-                    tile.state = Tile.STATE_ACTIVE
-                    tile.subtitle = getString(R.string.tile_subtitle_active)
-                }
-                is ServiceState.Loading -> {
-                    tile.state = Tile.STATE_ACTIVE
-                    tile.subtitle = getString(R.string.tile_subtitle_initializing)
-                }
-                is ServiceState.Stopping -> {
-                    tile.state = Tile.STATE_INACTIVE
-                    tile.subtitle = getString(R.string.tile_subtitle_stopping)
-                }
-                is ServiceState.Stopped -> {
-                    tile.state = Tile.STATE_INACTIVE
-                    tile.subtitle = getString(R.string.tile_subtitle_ready)
-                }
-                is ServiceState.DisabledNoCollection -> {
-                    tile.state = Tile.STATE_UNAVAILABLE
-                    tile.subtitle = getString(R.string.tile_subtitle_no_list)
-                }
-                is ServiceState.DisabledPowerSave -> {
-                    tile.state = Tile.STATE_UNAVAILABLE
-                    tile.subtitle = getString(R.string.tile_subtitle_power_save)
-                }
-                is ServiceState.Paused -> {
-                    tile.state = Tile.STATE_ACTIVE
-                    tile.subtitle = getString(R.string.tile_subtitle_paused)
-                }
+        when (state) {
+            is ServiceState.Running -> {
+                tile.state = Tile.STATE_ACTIVE
+                tile.subtitle = getString(R.string.tile_subtitle_active)
             }
-            tile.updateTile()
-            Log.d(tag, "Tile updated: state=${tile.state}")
+            is ServiceState.Loading -> {
+                tile.state = Tile.STATE_ACTIVE
+                tile.subtitle = getString(R.string.tile_subtitle_initializing)
+            }
+            is ServiceState.Stopping -> {
+                tile.state = Tile.STATE_INACTIVE
+                tile.subtitle = getString(R.string.tile_subtitle_stopping)
+            }
+            is ServiceState.Stopped -> {
+                tile.state = Tile.STATE_INACTIVE
+                tile.subtitle = getString(R.string.tile_subtitle_ready)
+            }
+            is ServiceState.DisabledNoCollection -> {
+                tile.state = Tile.STATE_UNAVAILABLE
+                tile.subtitle = getString(R.string.tile_subtitle_no_list)
+            }
+            is ServiceState.DisabledPowerSave -> {
+                tile.state = Tile.STATE_UNAVAILABLE
+                tile.subtitle = getString(R.string.tile_subtitle_power_save)
+            }
+            is ServiceState.Paused -> {
+                tile.state = Tile.STATE_ACTIVE
+                tile.subtitle = getString(R.string.tile_subtitle_paused)
+            }
         }
+        tile.updateTile()
+        Log.d(tag, "Tile updated: state=${tile.state}")
     }
 
     /**

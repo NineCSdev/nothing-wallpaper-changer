@@ -90,7 +90,7 @@ class WallpaperApplier @Inject constructor(
     private fun WallpaperDestination.toFlags(): Int = when (this) {
         WallpaperDestination.LOCK -> WallpaperManager.FLAG_LOCK
         WallpaperDestination.HOME -> WallpaperManager.FLAG_SYSTEM
-        // As WallpaperManger checks the bits we do an or to activate both (01 or 10 = 11)
+        // As WallpaperManager checks the bits we do an or to activate both (01 or 10 = 11)
         WallpaperDestination.BOTH -> WallpaperManager.FLAG_LOCK or WallpaperManager.FLAG_SYSTEM
     }
 }

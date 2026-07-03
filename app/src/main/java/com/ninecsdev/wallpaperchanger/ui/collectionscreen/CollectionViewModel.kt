@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -50,8 +49,8 @@ class CollectionViewModel @Inject constructor(
         _previewStates,
         _screenState,
         _sortOrder,
-        serviceStateManager.serviceEvent.onStart { emit(Unit) }
-    ) { collections, previews, modal, sort, _ ->
+        serviceStateManager.serviceState
+    ) { collections, previews, modal, sort, serviceState ->
         val sorted = when (sort) {
             CollectionSortOrder.NAME -> collections.sortedBy { it.name.lowercase() }
             CollectionSortOrder.LAST_USED -> collections.sortedByDescending { it.lastUsedAt }
@@ -61,7 +60,7 @@ class CollectionViewModel @Inject constructor(
         CollectionUiState(
             allCollections = sorted,
             previewStates = previews,
-            serviceState = serviceStateManager.getServiceState(),
+            serviceState = serviceState,
             sortOrder = sort,
             isPickerMode = modal.isPickerMode,
             isShowingCreateModal = modal.isShowingCreateModal,

@@ -34,6 +34,10 @@ interface WallpaperDao {
     @Query("SELECT * FROM collections WHERE isActive = 1 LIMIT 1")
     suspend fun getActiveCollection(): WallpaperCollection?
 
+    /** Flow sibling of [getActiveCollection]; re-emits whenever the active collection changes. */
+    @Query("SELECT * FROM collections WHERE isActive = 1 LIMIT 1")
+    fun observeActiveCollection(): Flow<WallpaperCollection?>
+
     /** Updates the name and default crop rule of a collection. */
     @Query("UPDATE collections SET name = :newName, defaultCropRule = :newRule, rotationFrequency = :newFrequency WHERE id = :collectionId")
     suspend fun updateCollection(

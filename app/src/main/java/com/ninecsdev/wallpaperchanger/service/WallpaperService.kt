@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
+import com.ninecsdev.wallpaperchanger.data.ServiceLifecycleTracker
 import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
@@ -94,7 +95,7 @@ class WallpaperService : Service() {
 
         // If the service is still in the middle of its teardown, ignore the re-start
         // to avoid the stop→start race condition where onDestroy clears the new instance's state.
-        if (serviceStateManager.serviceStateFlow.value is ServiceState.Stopping) {
+        if (serviceStateManager.rawServiceState.value is ServiceState.Stopping) {
             Log.w(tag, "Start ignored: service is still stopping.")
             return START_NOT_STICKY
         }
@@ -116,11 +117,8 @@ class WallpaperService : Service() {
 
         serviceScope.launch {
             serviceStateManager.markServiceLoading()
-            notifyUi()
 
-            val state = serviceStateManager.getServiceState()
-
-            if (state is ServiceState.DisabledNoCollection) {
+            if (repository.getActiveCollectionOnce() == null) {
                 Log.w(tag, "Abort startup: No collection found.")
                 serviceStateManager.markServiceStopped()
                 handleStopCommand()
@@ -145,7 +143,6 @@ class WallpaperService : Service() {
                 pauseEngine()
             } else {
                 serviceStateManager.markServiceRunning()
-                notifyUi()
 
                 val activeName = repository.getActiveCollectionOnce()?.name
                 notificationHelper.showCycling(activeName)
@@ -158,7 +155,6 @@ class WallpaperService : Service() {
     private fun handleStopCommand() {
         Log.i(tag, "Stopping service via command.")
         serviceStateManager.markServiceStopping()
-        notifyUi()
 
         serviceScope.launch {
             if (appDataStore.shouldRevertToDefault()) {
@@ -173,7 +169,7 @@ class WallpaperService : Service() {
      * The foreground service stays alive so it can auto-resume.
      */
     private fun pauseEngine() {
-        if (serviceStateManager.serviceStateFlow.value is ServiceState.Paused) return
+        if (serviceStateManager.rawServiceState.value is ServiceState.Paused) return
         Log.i(tag, "Pausing engine (Power Save ON)")
         serviceStateManager.markServicePaused()
 
@@ -186,14 +182,13 @@ class WallpaperService : Service() {
         }
 
         notificationHelper.showPausedPowerSave()
-        notifyUi()
     }
 
     /**
      * Resumes the wallpaper changing by re-registering the ScreenOffReceiver.
      */
     private fun resumeEngine() {
-        if (serviceStateManager.serviceStateFlow.value !is ServiceState.Paused) return
+        if (serviceStateManager.rawServiceState.value !is ServiceState.Paused) return
         Log.i(tag, "Resuming engine (Power Save OFF)")
         serviceStateManager.markServiceRunning()
 
@@ -203,7 +198,6 @@ class WallpaperService : Service() {
             val activeName = repository.getActiveCollectionOnce()?.name
             notificationHelper.showCycling(activeName)
         }
-        notifyUi()
     }
 
     override fun onDestroy() {
@@ -219,10 +213,7 @@ class WallpaperService : Service() {
         stopForeground(STOP_FOREGROUND_REMOVE)
 
         serviceStateManager.markServiceStopped()
-        notifyUi()
     }
-
-    private fun notifyUi() = serviceStateManager.notifyServiceStateChanged()
 
     private fun registerScreenOffReceiver() {
         if (screenOffReceiver != null) return
