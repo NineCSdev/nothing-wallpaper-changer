@@ -88,18 +88,6 @@ class WallpaperService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP_SERVICE) {
-            handleStopCommand()
-            return START_NOT_STICKY
-        }
-
-        // If the service is still in the middle of its teardown, ignore the re-start
-        // to avoid the stop→start race condition where onDestroy clears the new instance's state.
-        if (serviceStateManager.rawServiceState.value is ServiceState.Stopping) {
-            Log.w(tag, "Start ignored: service is still stopping.")
-            return START_NOT_STICKY
-        }
-
         try {
             startForeground(
                 NotificationHelper.NOTIFICATION_ID,
@@ -113,6 +101,19 @@ class WallpaperService : Service() {
                 return START_NOT_STICKY
             }
             throw e
+        }
+
+        if (intent?.action == ACTION_STOP_SERVICE) {
+            handleStopCommand()
+            return START_NOT_STICKY
+        }
+
+        // If the service is still in the middle of its teardown, ignore the re-start
+        // to avoid the stop→start race condition where onDestroy clears the new instance's state.
+        if (serviceStateManager.rawServiceState.value is ServiceState.Stopping) {
+            Log.w(tag, "Start ignored: service is still stopping.")
+            stopSelf()
+            return START_NOT_STICKY
         }
 
         serviceScope.launch {

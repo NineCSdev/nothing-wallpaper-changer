@@ -5,6 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Log
+import androidx.room.withTransaction
+import com.ninecsdev.wallpaperchanger.data.local.AppDatabase
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperDao
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
@@ -33,6 +35,7 @@ import javax.inject.Singleton
 @Singleton
 class WallpaperRepository @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
+    private val database: AppDatabase,
     private val dao: WallpaperDao,
     private val rotationEngine: RotationEngine,
     private val imageInternalizer: ImageInternalizer,
@@ -40,6 +43,9 @@ class WallpaperRepository @Inject constructor(
 ) {
     private companion object {
         const val TAG = "WallpaperRepository"
+
+        /** Kept well under SQLite's per-statement bind-variable limit for chunked IN(...) ops. */
+        const val SYNC_CHUNK_SIZE = 900
     }
 
     // UI Data Access (Flows)
@@ -65,8 +71,10 @@ class WallpaperRepository @Inject constructor(
 
     suspend fun createFolderCollection(name: String, treeUri: Uri, rule: CropRule) {
         withContext(Dispatchers.IO) {
-            val isFirst = dao.getActiveCollection() == null
+            // Scan first to avoid creating an orphan empty collection (or one with a partial/empty image set) on a transient scan failure.
+            val scanned = getImageListFromFolder(treeUri)
 
+            val isFirst = dao.getActiveCollection() == null
             val collectionId = dao.insertCollection(
                 WallpaperCollection(
                     name = name,
@@ -77,9 +85,7 @@ class WallpaperRepository @Inject constructor(
                 )
             )
 
-            val images = getImageListFromFolder(treeUri).map {
-                it.copy(collectionId = collectionId)
-            }
+            val images = scanned.map { it.copy(collectionId = collectionId) }
             dao.insertImages(images)
             Log.d(TAG, "Imported ${images.size} images to collection: $name")
         }
@@ -191,7 +197,7 @@ class WallpaperRepository @Inject constructor(
                         it.copy(collectionId = collectionId)
                     }
 
-                    val added = dao.syncFolderImages(collectionId, freshImages)
+                    val added = syncFolderImages(collectionId, freshImages)
                     Log.d(TAG, "Sync complete: ${freshImages.size} on disk, $added new images added.")
 
                     if (collection.isActive) {
@@ -204,6 +210,24 @@ class WallpaperRepository @Inject constructor(
             }
         }
     }
+
+    /**
+     * Applies a folder-sync diff atomically: computes what changed in Kotlin via
+     * [computeFolderSyncDiff], then deletes stale rows and inserts new ones inside a single Room
+     * transaction (so a crash mid-sync commits nothing). Both operations are chunked to stay under
+     * SQLite's per-statement bind-variable limit on large folders. Returns the number of new images.
+     *
+     * Callers must not pass a [freshImages] list produced by a *failed* scan — an empty list marks
+     * every existing image stale. [getImageListFromFolder] throws on failure for exactly this reason.
+     */
+    private suspend fun syncFolderImages(collectionId: Long, freshImages: List<WallpaperImage>): Int =
+        database.withTransaction {
+            val existing = dao.getFolderImagesForCollection(collectionId)
+            val diff = computeFolderSyncDiff(existing, freshImages)
+            diff.staleIds.chunked(SYNC_CHUNK_SIZE).forEach { dao.deleteImagesByIds(it) }
+            diff.newImages.chunked(SYNC_CHUNK_SIZE).forEach { dao.insertImages(it) }
+            diff.newImages.size
+        }
 
     /**
      * Deletes specific wallpaper images and cleans up their internal files.
@@ -376,7 +400,12 @@ class WallpaperRepository @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Folder scan failed: $e")
+                // Propagate instead of returning an empty list. An empty result is treated by the
+                // folder-sync diff as "delete everything", so a transient ContentResolver error or
+                // revoked permission would silently wipe the collection's images. Aborting the sync
+                // is the safe outcome; a genuinely empty folder still returns [] and syncs normally.
+                Log.e(TAG, "Folder scan failed, aborting: $e")
+                throw e
             }
             Log.d(TAG, "Folder scan found ${imageList.size} valid images.")
             imageList

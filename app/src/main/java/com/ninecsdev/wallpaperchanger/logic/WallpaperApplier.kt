@@ -2,7 +2,6 @@ package com.ninecsdev.wallpaperchanger.logic
 
 import android.app.WallpaperManager
 import android.content.Context
-import android.graphics.BitmapFactory
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
@@ -30,26 +29,26 @@ class WallpaperApplier @Inject constructor(
         val destination = appDataStore.getWallpaperDestination()
 
         try {
-            appContext.contentResolver.openInputStream(uri)?.use { stream ->
-                val bitmap = BitmapFactory.decodeStream(stream) ?: return@withContext false
-                var processed = bitmap
+            val (screenW, screenH) = ImageProcessingUtils.getScreenDimensions(appContext)
+            val bitmap = ImageProcessingUtils.decodeSampledBitmap(appContext, uri, screenW * 2, screenH * 2)
+                ?: return@withContext false
+            var processed = bitmap
 
-                try {
-                    processed = bufferManager.applyZoomFixIfNeeded(bitmap)
-                    WallpaperManager.getInstance(appContext).setBitmap(
-                        processed,
-                        null,
-                        true,
-                        destination.toFlags()
-                    )
+            try {
+                processed = bufferManager.applyZoomFixIfNeeded(bitmap)
+                WallpaperManager.getInstance(appContext).setBitmap(
+                    processed,
+                    null,
+                    true,
+                    destination.toFlags()
+                )
 
-                    Log.i(TAG, "Successfully applied default wallpaper to $destination.")
-                    true
-                } finally {
-                    if (processed !== bitmap) processed.recycle()
-                    bitmap.recycle()
-                }
-            } ?: false
+                Log.i(TAG, "Successfully applied default wallpaper to $destination.")
+                true
+            } finally {
+                if (processed !== bitmap) processed.recycle()
+                bitmap.recycle()
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to apply default wallpaper to $destination", e)
             false

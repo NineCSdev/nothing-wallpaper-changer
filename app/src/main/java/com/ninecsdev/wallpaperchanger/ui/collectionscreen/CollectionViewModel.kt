@@ -1,6 +1,7 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionscreen
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
@@ -28,6 +29,10 @@ class CollectionViewModel @Inject constructor(
     private val repository: WallpaperRepository,
     private val serviceStateManager: ServiceStateManager
 ) : ViewModel() {
+
+    private companion object {
+        const val TAG = "CollectionViewModel"
+    }
 
     // Internal mutable state
 
@@ -98,10 +103,15 @@ class CollectionViewModel @Inject constructor(
         val uri = pendingFolderUri ?: return
         viewModelScope.launch {
             setProcessing(true)
-            repository.createFolderCollection(name, uri, rule)
-            pendingFolderUri = null
-            setProcessing(false)
-            onComplete()
+            try {
+                repository.createFolderCollection(name, uri, rule)
+                pendingFolderUri = null
+                onComplete()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to create folder collection: ${e.message}")
+            } finally {
+                setProcessing(false)
+            }
         }
     }
 

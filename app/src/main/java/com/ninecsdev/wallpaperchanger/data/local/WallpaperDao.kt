@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.data.local
 
-import android.net.Uri
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -117,37 +116,5 @@ interface WallpaperDao {
 
     @Query("DELETE FROM wallpapers WHERE id IN (:ids)")
     suspend fun deleteImagesByIds(ids: List<Long>)
-
-    /** Deletes folder-sourced images whose URIs are no longer present on disk. */
-    @Query("DELETE FROM wallpapers WHERE collectionId = :collectionId AND isManuallyAdded = 0 AND uri NOT IN (:retainedUris)")
-    suspend fun deleteRemovedFolderImages(collectionId: Long, retainedUris: List<Uri>)
-
-    /**
-     * Syncs a folder collection efficiently by diffing against the physical folder.
-     * Removes stale folder-sourced images, inserts new ones, and preserves manually added images.
-     */
-    @Transaction
-    suspend fun syncFolderImages(
-        collectionId: Long,
-        freshImages: List<WallpaperImage>
-    ): Int {
-        // Although this is business logic and should live in the repository it was left here so it
-        // can be performed as a db transaction easily
-        val freshUris = freshImages.map { it.uri }
-
-        // Remove images that are no longer on disk (only folder-sourced)
-        deleteRemovedFolderImages(collectionId, freshUris)
-
-        // Find which URIs already exist so we don't duplicate them
-        val existingUris = getFolderImagesForCollection(collectionId)
-            .map { it.uri }
-            .toSet()
-
-        val newImages = freshImages.filter { it.uri !in existingUris }
-        if (newImages.isNotEmpty()) {
-            insertImages(newImages)
-        }
-        return newImages.size
-    }
 
 }
