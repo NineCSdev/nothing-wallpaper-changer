@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.DeleteConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.ProcessingOverlay
@@ -123,9 +124,9 @@ fun WallpaperEditScreen(
     // Restore saved edit params when wallpaper loads
     LaunchedEffect(wallpaper) {
         wallpaper?.let { wp ->
-            val savedZoom = wp.editZoom ?: 1f
-            val savedOffsetX = wp.editOffsetX ?: 0f
-            val savedOffsetY = wp.editOffsetY ?: 0f
+            val savedZoom = wp.editParams?.zoom ?: 1f
+            val savedOffsetX = wp.editParams?.offsetX ?: 0f
+            val savedOffsetY = wp.editParams?.offsetY ?: 0f
 
             zoom = savedZoom
             offsetX = savedOffsetX
@@ -341,7 +342,7 @@ private fun WallpaperEditContent(
         )
 
         WallpaperEditTopBar(
-            hasSavedEdits = wallpaper.editZoom != null,
+            hasSavedEdits = wallpaper.editParams != null,
             hasUnsavedChanges = hasUnsavedChanges,
             showControls = showControls,
             onBack = onBack,
@@ -606,7 +607,7 @@ private fun WallpaperEditScreenResetPreview() {
         id = 1L,
         collectionId = 1,
         uri = Uri.EMPTY,
-        editZoom = 1.5f
+        editParams = EditParams(zoom = 1.5f, offsetX = 0f, offsetY = 0f)
     )
 
     MaterialTheme {

@@ -38,6 +38,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -177,7 +178,7 @@ fun WallpaperPreviewOverlay(
         }
 
         // Edited badge in the bottom-right
-        if (currentWallpaper?.editZoom != null) {
+        if (currentWallpaper?.editParams != null) {
             EditedBadge(
                 size = 28,
                 modifier = Modifier
@@ -219,7 +220,7 @@ fun WallpaperPreviewOverlayEditedPreview() {
         id = 2L,
         collectionId = 101,
         uri = Uri.EMPTY,
-        editZoom = 1.5f
+        editParams = EditParams(zoom = 1.5f, offsetX = 0f, offsetY = 0f)
     )
 
     MaterialTheme {

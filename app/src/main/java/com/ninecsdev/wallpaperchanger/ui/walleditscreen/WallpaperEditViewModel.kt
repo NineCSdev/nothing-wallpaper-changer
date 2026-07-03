@@ -74,9 +74,9 @@ class WallpaperEditViewModel @Inject constructor(
         offsetX: Float,
         offsetY: Float
     ): Boolean {
-        val baseZoom = wallpaper.editZoom ?: 1f
-        val baseOffsetX = wallpaper.editOffsetX ?: 0f
-        val baseOffsetY = wallpaper.editOffsetY ?: 0f
+        val baseZoom = wallpaper.editParams?.zoom ?: 1f
+        val baseOffsetX = wallpaper.editParams?.offsetX ?: 0f
+        val baseOffsetY = wallpaper.editParams?.offsetY ?: 0f
 
         return isCloseEnough(zoom, baseZoom) &&
             isCloseEnough(offsetX, baseOffsetX) &&

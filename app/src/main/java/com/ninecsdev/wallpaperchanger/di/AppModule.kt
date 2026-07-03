@@ -21,7 +21,6 @@ object AppModule {
 
     @Provides
     @Singleton
-    @Suppress("unused") // Lint is giving warning as "unused" for some reason should check it later
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
         return Room.databaseBuilder(
             context,
@@ -50,7 +49,6 @@ object AppModule {
     }
 
     @Provides
-    @Suppress("unused") // Lint is giving warning as "unused" for some reason should check it later
     fun provideWallpaperDao(database: AppDatabase): WallpaperDao {
         return database.wallpaperDao()
     }

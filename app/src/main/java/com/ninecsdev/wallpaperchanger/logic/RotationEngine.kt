@@ -95,7 +95,7 @@ class RotationEngine @Inject constructor(
                     } else {
                         failureCounts.remove(nextImage.id)
                         Log.w(TAG, "Failed to load ${nextImage.uri}. Removing after $failures failures.")
-                        if (nextImage.uri.toString().contains("internal_wallpapers")) {
+                        if (ImageInternalizer.isInternalUri(nextImage.uri)) {
                             imageInternalizer.deleteInternalFile(nextImage.uri.path)
                         }
                         dao.deleteImageById(nextImage.id)

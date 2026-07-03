@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -64,87 +65,77 @@ class AppDataStore @Inject constructor(
 
     /**
      * Shared safe data flow. Catches IO and corruption errors from the DataStore file
-     * and falls back to empty preferences returning to default instead of crashing.
+     * (CorruptionException is an IOException) and falls back to empty preferences,
+     * returning defaults instead of crashing. Any other error propagates.
      */
     private val safeData: Flow<Preferences> = dataStore.data
         .catch { e ->
-            Log.e(TAG, "DataStore read failed, falling back to defaults", e)
-            emit(emptyPreferences())
+            if (e is IOException) {
+                Log.e(TAG, "DataStore read failed, falling back to defaults", e)
+                emit(emptyPreferences())
+            } else {
+                throw e
+            }
         }
+
+    // Generic helpers, every setting below is one of these
+
+    private fun <T> settingFlow(key: Preferences.Key<T>, default: T): Flow<T> =
+        safeData.map { prefs -> prefs[key] ?: default }
+
+    /** For settings whose stored type differs from the exposed type (enums, Uri). */
+    private fun <S, T> mappedSettingFlow(
+        key: Preferences.Key<S>,
+        default: T,
+        read: (S) -> T
+    ): Flow<T> =
+        safeData.map { prefs -> prefs[key]?.let(read) ?: default }
+
+    private suspend fun <T> set(key: Preferences.Key<T>, value: T) {
+        dataStore.edit { prefs -> prefs[key] = value }
+    }
+
+    /** Enum-by-name parse that treats a corrupted/unknown stored value as the default. */
+    private inline fun <reified T : Enum<T>> enumByName(raw: String, default: T): T =
+        enumValues<T>().firstOrNull { it.name == raw } ?: default
 
     // Flows (reactive reads)
 
     fun defaultWallpaperUriFlow(): Flow<Uri?> =
-        safeData.map { prefs ->
-            prefs[KEY_DEFAULT_WALLPAPER_URI]?.toUri()
-        }
+        mappedSettingFlow(KEY_DEFAULT_WALLPAPER_URI, null) { it.toUri() }
 
     fun revertToDefaultFlow(): Flow<Boolean> =
-        safeData.map { prefs ->
-            prefs[KEY_REVERT_TO_DEFAULT] ?: true
-        }
+        settingFlow(KEY_REVERT_TO_DEFAULT, true)
 
     fun serviceRunningFlow(): Flow<Boolean> =
-        safeData.map { prefs ->
-            prefs[KEY_SERVICE_RUNNING] ?: false
-        }
+        settingFlow(KEY_SERVICE_RUNNING, false)
 
     fun startOnBootFlow(): Flow<Boolean> =
-        safeData.map { prefs ->
-            prefs[KEY_START_ON_BOOT] ?: true
-        }
+        settingFlow(KEY_START_ON_BOOT, true)
 
     fun screenOffDelayFlow(): Flow<Long> =
-        safeData.map { prefs ->
-            prefs[KEY_SCREEN_OFF_DELAY] ?: 250L
-        }
+        settingFlow(KEY_SCREEN_OFF_DELAY, 250L)
 
     fun compressionQualityHighFlow(): Flow<Int> =
-        safeData.map { prefs ->
-            prefs[KEY_COMPRESSION_QUALITY_HIGH] ?: 95
-        }
+        settingFlow(KEY_COMPRESSION_QUALITY_HIGH, 95)
 
     fun compressionQualityLowFlow(): Flow<Int> =
-        safeData.map { prefs ->
-            prefs[KEY_COMPRESSION_QUALITY_LOW] ?: 80
-        }
+        settingFlow(KEY_COMPRESSION_QUALITY_LOW, 80)
 
     fun batterySaverPolicyFlow(): Flow<BatterySaverPolicy> =
-        safeData.map { prefs ->
-            val raw = prefs[KEY_BATTERY_SAVER_POLICY]
-            // For first install we default to PAUSE
-            if (raw != null) {
-                // In case the data has been corrupted we fix to PAUSE
-                try { BatterySaverPolicy.valueOf(raw) } catch (_: Exception) { BatterySaverPolicy.PAUSE }
-            } else {
-                BatterySaverPolicy.PAUSE
-            }
+        mappedSettingFlow(KEY_BATTERY_SAVER_POLICY, BatterySaverPolicy.PAUSE) {
+            enumByName(it, BatterySaverPolicy.PAUSE)
         }
 
     fun lockscreenZoomFixFlow(): Flow<LockscreenZoomFix> =
-        safeData.map { prefs ->
-            val raw = prefs[KEY_LOCKSCREEN_ZOOM_FIX]
-            if (raw != null) {
-                LockscreenZoomFix.fromStoredValue(raw)
-            } else {
-                LockscreenZoomFix.OFF
-            }
+        mappedSettingFlow(KEY_LOCKSCREEN_ZOOM_FIX, LockscreenZoomFix.OFF) {
+            LockscreenZoomFix.fromStoredValue(it)
         }
 
     fun wallpaperDestinationFlow(): Flow<WallpaperDestination> =
-        safeData.map { prefs ->
-            val raw = prefs[KEY_WALLPAPER_DESTINATION]
-            if (raw != null) {
-                try {
-                    WallpaperDestination.valueOf(raw)
-                } catch (_: Exception) {
-                    WallpaperDestination.LOCK
-                }
-            } else {
-                WallpaperDestination.LOCK
-            }
+        mappedSettingFlow(KEY_WALLPAPER_DESTINATION, WallpaperDestination.LOCK) {
+            enumByName(it, WallpaperDestination.LOCK)
         }
-    
 
     // Suspend reads (suspend, one-shot)
 
@@ -180,63 +171,33 @@ class AppDataStore @Inject constructor(
 
     // Writes (suspend)
 
-    suspend fun saveDefaultWallpaperUri(uri: Uri) {
-        dataStore.edit { prefs ->
-            prefs[KEY_DEFAULT_WALLPAPER_URI] = uri.toString()
-        }
-    }
+    suspend fun saveDefaultWallpaperUri(uri: Uri) =
+        set(KEY_DEFAULT_WALLPAPER_URI, uri.toString())
 
-    suspend fun setRevertToDefault(revert: Boolean) {
-        dataStore.edit { prefs ->
-            prefs[KEY_REVERT_TO_DEFAULT] = revert
-        }
-    }
+    suspend fun setRevertToDefault(revert: Boolean) =
+        set(KEY_REVERT_TO_DEFAULT, revert)
 
-    suspend fun setServiceRunning(isRunning: Boolean) {
-        dataStore.edit { prefs ->
-            prefs[KEY_SERVICE_RUNNING] = isRunning
-        }
-    }
+    suspend fun setServiceRunning(isRunning: Boolean) =
+        set(KEY_SERVICE_RUNNING, isRunning)
 
-    suspend fun setStartOnBoot(enabled: Boolean) {
-        dataStore.edit { prefs ->
-            prefs[KEY_START_ON_BOOT] = enabled
-        }
-    }
+    suspend fun setStartOnBoot(enabled: Boolean) =
+        set(KEY_START_ON_BOOT, enabled)
 
-    suspend fun setScreenOffDelay(delayMs: Long) {
-        dataStore.edit { prefs ->
-            prefs[KEY_SCREEN_OFF_DELAY] = delayMs
-        }
-    }
+    suspend fun setScreenOffDelay(delayMs: Long) =
+        set(KEY_SCREEN_OFF_DELAY, delayMs)
 
-    suspend fun setCompressionQualityHigh(quality: Int) {
-        dataStore.edit { prefs ->
-            prefs[KEY_COMPRESSION_QUALITY_HIGH] = quality
-        }
-    }
+    suspend fun setCompressionQualityHigh(quality: Int) =
+        set(KEY_COMPRESSION_QUALITY_HIGH, quality)
 
-    suspend fun setCompressionQualityLow(quality: Int) {
-        dataStore.edit { prefs ->
-            prefs[KEY_COMPRESSION_QUALITY_LOW] = quality
-        }
-    }
+    suspend fun setCompressionQualityLow(quality: Int) =
+        set(KEY_COMPRESSION_QUALITY_LOW, quality)
 
-    suspend fun setBatterySaverPolicy(policy: BatterySaverPolicy) {
-        dataStore.edit { prefs ->
-            prefs[KEY_BATTERY_SAVER_POLICY] = policy.name
-        }
-    }
+    suspend fun setBatterySaverPolicy(policy: BatterySaverPolicy) =
+        set(KEY_BATTERY_SAVER_POLICY, policy.name)
 
-    suspend fun setLockscreenZoomFix(zoomFix: LockscreenZoomFix) {
-        dataStore.edit { prefs ->
-            prefs[KEY_LOCKSCREEN_ZOOM_FIX] = zoomFix.storedValue
-        }
-    }
+    suspend fun setLockscreenZoomFix(zoomFix: LockscreenZoomFix) =
+        set(KEY_LOCKSCREEN_ZOOM_FIX, zoomFix.storedValue)
 
-    suspend fun setWallpaperDestination(target: WallpaperDestination) {
-        dataStore.edit { prefs ->
-            prefs[KEY_WALLPAPER_DESTINATION] = target.name
-        }
-    }
+    suspend fun setWallpaperDestination(target: WallpaperDestination) =
+        set(KEY_WALLPAPER_DESTINATION, target.name)
 }

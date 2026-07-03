@@ -49,7 +49,6 @@ class BufferManager @Inject constructor(
         const val TAG = "BufferManager"
         const val BUFFER_FILENAME = "buffer_next.webp"
         const val TEMP_FILENAME = "buffer_temp.webp"
-        const val INTERNAL_WALLPAPERS_DIRECTORY = "internal_wallpapers"
         const val COMPRESSION_QUALITY = 95 // Quality left high as only 1 image will exist at any time
         const val LOCKSCREEN_ZOOM_INSET_FRACTION = 0.045f // Zoom that I observed in a 20:9 screen
         const val BLUR_DOWNSCALE_FACTOR = 24
@@ -95,7 +94,7 @@ class BufferManager @Inject constructor(
             try {
                 val targetSize = getTargetSize()
                 val zoomFix = appDataStore.getLockscreenZoomFix()
-                val hasEdit = wallpaper.editZoom != null
+                val hasEdit = wallpaper.editParams != null
 
                 val sourceBitmap = decodeSourceBitmap(
                     wallpaper.uri,
@@ -126,7 +125,7 @@ class BufferManager @Inject constructor(
     private fun decodeSourceBitmap(sourceUri: Uri, targetSize: TargetSize, oversample: Int = 1): Bitmap? {
         val reqW = targetSize.width * oversample
         val reqH = targetSize.height * oversample
-        return if (sourceUri.isInternalWallpaperUri()) {
+        return if (ImageInternalizer.isInternalUri(sourceUri)) {
             appContext.contentResolver.openInputStream(sourceUri)?.use {
                 BitmapFactory.decodeStream(it)
             }
@@ -140,10 +139,6 @@ class BufferManager @Inject constructor(
         }
     }
 
-    private fun Uri.isInternalWallpaperUri(): Boolean {
-        return pathSegments.contains(INTERNAL_WALLPAPERS_DIRECTORY)
-    }
-
     private fun prepareFinalBitmap(
         wallpaper: WallpaperImage,
         sourceBitmap: Bitmap,
@@ -151,14 +146,14 @@ class BufferManager @Inject constructor(
         cropRule: CropRule,
         zoomFix: LockscreenZoomFix
     ): Bitmap {
-        val zoom = wallpaper.editZoom
-        return if (zoom != null) {
+        val editParams = wallpaper.editParams
+        return if (editParams != null) {
             val edited = applyEditTransform(
                 source = sourceBitmap,
                 targetSize = targetSize,
-                zoom = zoom,
-                normalizedOffsetX = wallpaper.editOffsetX ?: 0f,
-                normalizedOffsetY = wallpaper.editOffsetY ?: 0f
+                zoom = editParams.zoom,
+                normalizedOffsetX = editParams.offsetX,
+                normalizedOffsetY = editParams.offsetY
             )
             if (zoomFix == LockscreenZoomFix.OFF) {
                 edited

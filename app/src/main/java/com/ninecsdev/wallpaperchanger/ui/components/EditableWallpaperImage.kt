@@ -45,14 +45,14 @@ fun EditableWallpaperImage(
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop
 ) {
-    val hasEdit = wallpaper.editZoom != null
+    val edit = wallpaper.editParams
+    val hasEdit = edit != null
     var imageAspectRatio by remember(wallpaper.uri) { mutableFloatStateOf(1f) }
     var viewSize by remember { mutableStateOf(IntSize.Zero) }
     val context = LocalContext.current
 
     val model = if (hasEdit && viewSize != IntSize.Zero) {
-        val zoom = wallpaper.editZoom
-        val zoomFactor = ceil(zoom).toInt().coerceAtLeast(1)
+        val zoomFactor = ceil(edit.zoom).toInt().coerceAtLeast(1)
         val metrics = LocalResources.current.displayMetrics
         val targetW = (viewSize.width * zoomFactor).coerceAtMost(metrics.widthPixels)
         val targetH = (viewSize.height * zoomFactor).coerceAtMost(metrics.heightPixels)
@@ -81,17 +81,14 @@ fun EditableWallpaperImage(
                 .onSizeChanged { viewSize = it }
                 .then(
                     if (hasEdit && viewSize != IntSize.Zero) {
-                        val zoom = wallpaper.editZoom
-                        val offsetX = wallpaper.editOffsetX ?: 0f
-                        val offsetY = wallpaper.editOffsetY ?: 0f
                         Modifier.graphicsLayer {
                             val t = calculateTransform(
                                 viewWidth = viewSize.width.toFloat(),
                                 viewHeight = viewSize.height.toFloat(),
                                 imageAspectRatio = imageAspectRatio,
-                                zoom = zoom,
-                                offsetX = offsetX,
-                                offsetY = offsetY,
+                                zoom = edit.zoom,
+                                offsetX = edit.offsetX,
+                                offsetY = edit.offsetY,
                             )
                             scaleX = t.scale
                             scaleY = t.scale

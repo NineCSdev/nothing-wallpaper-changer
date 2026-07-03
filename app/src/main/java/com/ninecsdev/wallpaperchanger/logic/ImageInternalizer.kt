@@ -27,10 +27,13 @@ class ImageInternalizer @Inject constructor(
     // Though injecting the datastore here is not the best practice it was done for simplicity
     private val appDataStore: AppDataStore
 ) {
-    private companion object {
-        const val TAG = "ImageInternalizer"
+    companion object {
+        private const val TAG = "ImageInternalizer"
+        private const val LARGE_FILE_THRESHOLD = 2L * 1024 * 1024 // 2 MB
         const val INTERNAL_FOLDER = "internal_wallpapers"
-        const val LARGE_FILE_THRESHOLD = 2L * 1024 * 1024 // 2 MB
+
+        /** True if [uri] points inside the app-private internal wallpapers' folder. */
+        fun isInternalUri(uri: Uri): Boolean = uri.pathSegments.contains(INTERNAL_FOLDER)
     }
 
     /**
@@ -58,7 +61,7 @@ class ImageInternalizer @Inject constructor(
             // one process per uri for pure speed didn't produce problems. Added it because I didn't
             // find a noticeable time increase between this and previous approach probably due to Android/Kotlin
             // guardrails
-            // Choose 10 as a high enough number for fast processing while not to high
+            // Although on my Phone 1 it takes the same with 4 than 10 keep it high for higher performance phones
             val batchSemaphore = Semaphore(10)
 
             coroutineScope {

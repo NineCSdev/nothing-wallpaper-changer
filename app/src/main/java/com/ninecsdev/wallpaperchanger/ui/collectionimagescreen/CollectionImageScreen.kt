@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.DeleteConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
@@ -333,7 +334,7 @@ private fun WallpaperThumbnail(
         )
 
         // Edited params badge (bottom-right of thumbnail)
-        if (wallpaper.editZoom != null) {
+        if (wallpaper.editParams != null) {
             EditedBadge(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -380,7 +381,7 @@ fun CollectionImageScreenPreview() {
             id = id,
             collectionId = 1,
             uri = Uri.EMPTY,
-            editZoom = if (id == 3L || id == 7L) 1.5f else null
+            editParams = if (id == 3L || id == 7L) EditParams(zoom = 1.5f, offsetX = 0f, offsetY = 0f) else null
         )
     }
 
