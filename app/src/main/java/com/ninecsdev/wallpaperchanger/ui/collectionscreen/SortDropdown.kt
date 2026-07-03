@@ -60,7 +60,7 @@ fun SortDropdown(
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
             Text(
-                text = stringResource(R.string.sort_by_prefix, stringResource(selected.labelRes)),
+                text = stringResource(R.string.sort_by_prefix, selected.label()),
                 style = MaterialTheme.typography.labelSmall,
                 color = NothingWhite,
                 fontWeight = FontWeight.Bold,
@@ -83,7 +83,7 @@ fun SortDropdown(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = stringResource(option.labelRes),
+                            text = option.label(),
                             style = MaterialTheme.typography.labelSmall,
                             color = if (option == selected)
                                 NothingWhite
@@ -101,6 +101,13 @@ fun SortDropdown(
             }
         }
     }
+}
+
+@Composable
+private fun CollectionSortOrder.label(): String = when (this) {
+    CollectionSortOrder.NAME -> stringResource(R.string.sort_order_name)
+    CollectionSortOrder.LAST_USED -> stringResource(R.string.sort_order_last_used)
+    CollectionSortOrder.DATE_CREATED -> stringResource(R.string.sort_order_date_created)
 }
 
 @Preview(name = "Name", showBackground = true, backgroundColor = 0xFF000000)

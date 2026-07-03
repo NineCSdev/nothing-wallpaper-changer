@@ -42,7 +42,7 @@ class ServiceStateManager @Inject constructor(
         const val TAG = "ServiceStateManager"
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
 
     private val _serviceEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     /** Emits whenever service state changes. UI and TileService follow this. */

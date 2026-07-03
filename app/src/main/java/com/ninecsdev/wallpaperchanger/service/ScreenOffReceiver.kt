@@ -20,7 +20,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class ScreenOffReceiver : BroadcastReceiver() {
+class ScreenOffReceiver(
+    /**
+     * Structured scope provided by the owning [WallpaperService].
+     * Using the service's scope ensures coroutines are canceled when the
+     * service is destroyed, preventing leaked work.
+     */
+    private val serviceScope: CoroutineScope
+) : BroadcastReceiver() {
 
     private val tag = "ScreenOffReceiver"
 
@@ -28,13 +35,6 @@ class ScreenOffReceiver : BroadcastReceiver() {
     @Inject lateinit var appDataStore: AppDataStore
     @Inject lateinit var rotationEngine: RotationEngine
     @Inject lateinit var wallpaperApplier: WallpaperApplier
-
-    /**
-     * Structured scope provided by the owning [WallpaperService].
-     * Using the service's scope ensures coroutines are canceled when the
-     * service is destroyed, preventing leaked work.
-     */
-    var serviceScope: CoroutineScope? = null
 
     companion object {
         // Prevents multiple concurrent swaps if the power button is clicked many times
@@ -67,17 +67,10 @@ class ScreenOffReceiver : BroadcastReceiver() {
         }
         workStartedAt = System.currentTimeMillis()
 
-        val scope = serviceScope
-        if (scope == null) {
-            Log.w(tag, "No service scope available. Skipping.")
-            isWorkInProgress.set(false)
-            return
-        }
-
         val pendingResult = goAsync()
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
 
-        scope.launch(Dispatchers.IO) {
+        serviceScope.launch(Dispatchers.IO) {
             try {
                 // Configurable delay (default 250ms for Nothing Phone animation)
                 val delayMs = appDataStore.getScreenOffDelay()

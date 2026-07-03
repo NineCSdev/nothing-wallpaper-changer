@@ -120,19 +120,35 @@ class WallpaperService : Service() {
 
             val state = serviceStateManager.getServiceState()
 
-            if (state !is ServiceState.DisabledNoCollection){
-                rotationEngine.loadMagazine()
-                rotationEngine.refillDiskBuffer()
+            if (state is ServiceState.DisabledNoCollection) {
+                Log.w(tag, "Abort startup: No collection found.")
+                serviceStateManager.markServiceStopped()
+                handleStopCommand()
+                return@launch
+            }
 
+            // Battery Saver may already be active on a cold start (e.g. boot restart),
+            // so the policy must be evaluated here rather than only on the next transition.
+            val pm = getSystemService(POWER_SERVICE) as PowerManager
+            val policy = appDataStore.getBatterySaverPolicy()
+
+            if (pm.isPowerSaveMode && policy == BatterySaverPolicy.STOP) {
+                Log.w(tag, "Abort startup: Battery Saver active with STOP policy.")
+                handleStopCommand()
+                return@launch
+            }
+
+            rotationEngine.loadMagazine()
+            rotationEngine.refillDiskBuffer()
+
+            if (pm.isPowerSaveMode && policy == BatterySaverPolicy.PAUSE) {
+                pauseEngine()
+            } else {
                 serviceStateManager.markServiceRunning()
                 notifyUi()
 
                 val activeName = repository.getActiveCollectionOnce()?.name
                 notificationHelper.showCycling(activeName)
-            }else{
-                Log.w(tag, "Abort startup: No collection found.")
-                serviceStateManager.markServiceStopped()
-                handleStopCommand()
             }
         }
 
@@ -211,9 +227,8 @@ class WallpaperService : Service() {
     private fun registerScreenOffReceiver() {
         if (screenOffReceiver != null) return
 
-        val receiver = ScreenOffReceiver()
+        val receiver = ScreenOffReceiver(serviceScope)
         registerReceiver(receiver, IntentFilter(Intent.ACTION_SCREEN_OFF), RECEIVER_NOT_EXPORTED)
-        receiver.serviceScope = serviceScope
         screenOffReceiver = receiver
     }
 
