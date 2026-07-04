@@ -223,11 +223,33 @@ class WallpaperRepository @Inject constructor(
     private suspend fun syncFolderImages(collectionId: Long, freshImages: List<WallpaperImage>): Int =
         database.withTransaction {
             val existing = dao.getFolderImagesForCollection(collectionId)
-            val diff = computeFolderSyncDiff(existing, freshImages)
-            diff.staleIds.chunked(SYNC_CHUNK_SIZE).forEach { dao.deleteImagesByIds(it) }
-            diff.newImages.chunked(SYNC_CHUNK_SIZE).forEach { dao.insertImages(it) }
-            diff.newImages.size
+            val (staleIds, newImages) = computeFolderSyncDiff(existing, freshImages)
+            staleIds.chunked(SYNC_CHUNK_SIZE).forEach { dao.deleteImagesByIds(it) }
+            newImages.chunked(SYNC_CHUNK_SIZE).forEach { dao.insertImages(it) }
+            newImages.size
         }
+
+    /**
+     * Pure folder-sync diff: compares the currently persisted folder-sourced [existing] images against
+     * a [fresh] disk scan and reports what to delete and what to insert. Matching is by
+     * [WallpaperImage.uri].
+     *
+     * Note: an empty [fresh] list marks *every* existing image stale so callers must ensure a **failed**
+     * scan never reaches here. A genuinely empty folder still returns everything as stale.
+     *
+     * @return
+     */
+    private fun computeFolderSyncDiff(
+        existing: List<WallpaperImage>,
+        fresh: List<WallpaperImage>
+    ): Pair<List<Long>, List<WallpaperImage>> {
+        val freshUris = fresh.map { it.uri }.toSet()
+        val existingUris = existing.map { it.uri }.toSet()
+        return Pair(
+            existing.filter { it.uri !in freshUris }.map { it.id },
+            fresh.filter { it.uri !in existingUris }
+        )
+    }
 
     /**
      * Deletes specific wallpaper images and cleans up their internal files.

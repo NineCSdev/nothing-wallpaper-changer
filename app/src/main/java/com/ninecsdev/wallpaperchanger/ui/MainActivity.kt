@@ -38,8 +38,9 @@ class MainActivity : ComponentActivity() {
     // Notification permission
     private val notificationLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) requestBatteryExemptionThenStartService()
+    ) {
+        // The service starts even if denied: POST_NOTIFICATIONS only gates drawer display
+        requestBatteryExemptionThenStartService()
     }
 
     // Folder picker

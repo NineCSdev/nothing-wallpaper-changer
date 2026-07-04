@@ -2,6 +2,7 @@ package com.ninecsdev.wallpaperchanger.ui.mainscreen
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
@@ -38,6 +39,10 @@ class MainViewModel @Inject constructor(
     private val imageInternalizer: ImageInternalizer,
     @param:ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    companion object {
+        const val TAG = "MainViewModel"
+    }
 
     // TODO(v0.3.3): temporary cleanup, remove this init block along with
     // WallpaperRepository.releaseOrphanedFolderUriPermissions() once installs
@@ -110,10 +115,17 @@ class MainViewModel @Inject constructor(
 
     fun internalizeAndSaveDefaultWallpaper(uri: Uri) {
         viewModelScope.launch {
-            val previousUri = appDataStore.getDefaultWallpaperUri()
-            if (previousUri != null) imageInternalizer.deleteInternalFile(previousUri.path)
+            // Internalize and persist the new default before deleting the old file, so a
+            // failed internalization keeps the previous default working.
             val internalized = imageInternalizer.internalizeImages(context, listOf(uri))
-            internalized.firstOrNull()?.let { appDataStore.saveDefaultWallpaperUri(it) }
+            val newUri = internalized.firstOrNull()
+            if (newUri == null) {
+                Log.e(TAG, "Failed to internalize new default wallpaper, keeping previous one")
+                return@launch
+            }
+            val previousUri = appDataStore.getDefaultWallpaperUri()
+            appDataStore.saveDefaultWallpaperUri(newUri)
+            if (previousUri != null) imageInternalizer.deleteInternalFile(previousUri.path)
         }
     }
 }
