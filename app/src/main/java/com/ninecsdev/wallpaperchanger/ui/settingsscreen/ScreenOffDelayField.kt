@@ -25,6 +25,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.data.local.DeviceDefaults
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -45,7 +46,10 @@ fun ScreenOffDelayField(
             letterSpacing = 1.sp
         )
         Text(
-            text = stringResource(R.string.settings_screen_off_delay_subtitle),
+            text = stringResource(
+                R.string.settings_screen_off_delay_subtitle,
+                DeviceDefaults.forThisDevice()
+            ),
             style = MaterialTheme.typography.labelSmall,
             color = NothingWhite.copy(alpha = 0.4f),
             letterSpacing = 0.5.sp

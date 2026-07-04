@@ -91,8 +91,8 @@
     <string name="settings_autostart_subtitle">REANUDAR EL SERVICIO TRAS REINICIAR</string>
 
     <!-- Screen off delay -->
-    <string name="settings_screen_off_delay_title">RETARDO MIENTRAS PANTALLA SE APAGA</string>
-    <string name="settings_screen_off_delay_subtitle">POR ANIMACIÓN DE PANTALLA APAGADA - 250ms POR DEFECTO</string>
+    <string name="settings_screen_off_delay_title">RETARDO MIENTRAS SE APAGA PANTALLA</string>
+    <string name="settings_screen_off_delay_subtitle">POR ANIMACIÓN DE APAGADO DE PANTALLA - %1$dms POR DEFECTO</string>
 
     <!-- Lockscreen zoom fix -->
     <string name="settings_zoom_fix_title">CORRECIÓN DEL ZOOM DE PANTALLA DE BLOQUEO</string>

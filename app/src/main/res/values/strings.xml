@@ -94,7 +94,7 @@
 
     <!-- Screen off delay -->
     <string name="settings_screen_off_delay_title">SCREEN OFF DELAY</string>
-    <string name="settings_screen_off_delay_subtitle">DELAY FOR SCREEN OFF ANIMATION - 250ms BY DEFAULT</string>
+    <string name="settings_screen_off_delay_subtitle">DELAY FOR SCREEN OFF ANIMATION - %1$dms BY DEFAULT</string>
     <string name="settings_screen_off_delay_unit" translatable="false">ms</string>
 
     <!-- Lockscreen zoom fix -->

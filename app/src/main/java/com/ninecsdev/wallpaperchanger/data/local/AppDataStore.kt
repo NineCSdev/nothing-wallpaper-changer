@@ -114,7 +114,7 @@ class AppDataStore @Inject constructor(
         settingFlow(KEY_START_ON_BOOT, true)
 
     fun screenOffDelayFlow(): Flow<Long> =
-        settingFlow(KEY_SCREEN_OFF_DELAY, 250L)
+        settingFlow(KEY_SCREEN_OFF_DELAY, DeviceDefaults.forThisDevice())
 
     fun compressionQualityHighFlow(): Flow<Int> =
         settingFlow(KEY_COMPRESSION_QUALITY_HIGH, 95)
