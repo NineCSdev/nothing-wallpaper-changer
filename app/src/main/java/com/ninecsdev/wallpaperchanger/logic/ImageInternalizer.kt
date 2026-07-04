@@ -68,9 +68,14 @@ class ImageInternalizer @Inject constructor(
                 uris.map { uri ->
                     async {
                         batchSemaphore.withPermit {
-                            val fileSize = context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
-                            val quality = if (fileSize > LARGE_FILE_THRESHOLD) qualityLow else qualityHigh
-                            internalizeImage(context, uri, internalDir, screenW, screenH, quality)
+                            try {
+                                val fileSize = context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
+                                val quality = if (fileSize > LARGE_FILE_THRESHOLD) qualityLow else qualityHigh
+                                internalizeImage(context, uri, internalDir, screenW, screenH, quality)
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed to access image for internalization: $uri", e)
+                                null
+                            }
                         }
                     }
                 }.awaitAll().filterNotNull()

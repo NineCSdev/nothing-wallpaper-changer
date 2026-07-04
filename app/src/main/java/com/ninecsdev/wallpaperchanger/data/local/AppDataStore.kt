@@ -174,6 +174,11 @@ class AppDataStore @Inject constructor(
     suspend fun saveDefaultWallpaperUri(uri: Uri) =
         set(KEY_DEFAULT_WALLPAPER_URI, uri.toString())
 
+    // TODO(v0.3.3): temporary cleanup
+    suspend fun clearDefaultWallpaperUri() {
+        dataStore.edit { prefs -> prefs.remove(KEY_DEFAULT_WALLPAPER_URI) }
+    }
+
     suspend fun setRevertToDefault(revert: Boolean) =
         set(KEY_REVERT_TO_DEFAULT, revert)
 
