@@ -14,8 +14,10 @@ import com.ninecsdev.wallpaperchanger.model.shouldRotateAt
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
@@ -40,32 +42,22 @@ class ScreenOffReceiver(
         // Prevents multiple concurrent swaps if the power button is clicked many times
         private val isWorkInProgress = AtomicBoolean(false)
 
-        /** Timestamp of when work started. Used as a safety net to reset the
-         *  guard if a coroutine hangs longer than [WORK_TIMEOUT_MS]. 
-         *  Although I have not seen this happen and goAsync() should handle it
-         *  I have decided to add another layer of protection.
+        /**
+         * Upper bound on the whole swap pipeline. [withTimeout] cancels the coroutine body if it
+         * exceeds this, so a wedged read (e.g. a stuck ContentResolver) can't leave [isWorkInProgress]
+         * latched forever. Replaces the old force-reset watchdog, which reset the flag without
+         * cancelling the stuck work (risking two concurrent pipelines).
          */
-        @Volatile private var workStartedAt = 0L
         private const val WORK_TIMEOUT_MS = 30_000L
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
         if (context == null || intent?.action != Intent.ACTION_SCREEN_OFF) return
 
-        // If a previous coroutine got stuck, reset the guard after the timeout
-        if (isWorkInProgress.get()) {
-            val elapsed = System.currentTimeMillis() - workStartedAt
-            if (elapsed > WORK_TIMEOUT_MS) {
-                Log.w(tag, "Work guard stuck for ${elapsed}ms. Force-resetting.")
-                isWorkInProgress.set(false)
-            }
-        }
-
         if (!isWorkInProgress.compareAndSet(false, true)) {
             Log.d(tag, "Work already in progress. Skipping.")
             return
         }
-        workStartedAt = System.currentTimeMillis()
 
         val pendingResult = goAsync()
         val broadcastFinished = AtomicBoolean(false)
@@ -74,39 +66,43 @@ class ScreenOffReceiver(
 
         serviceScope.launch(Dispatchers.IO) {
             try {
-                // Configurable delay (default 250ms for Nothing Phone animation)
-                val delayMs = appDataStore.getScreenOffDelay()
-                delay(delayMs)
+                withTimeout(WORK_TIMEOUT_MS) {
+                    // Configurable delay (default 250ms for Nothing Phone animation)
+                    val delayMs = appDataStore.getScreenOffDelay()
+                    delay(delayMs)
 
-                // Safety check: if the user woke the screen during the delay abort
-                if (powerManager.isInteractive) {
-                    Log.w(tag, "Screen woke up. Aborting.")
-                    return@launch
-                }
-
-                val activeCollection = repository.getActiveCollectionOnce()
-                if (activeCollection == null) {
-                    Log.w(tag, "No active collection found. Skipping wallpaper change.")
-                    return@launch
-                }
-
-                if (!activeCollection.shouldRotateAt()) {
-                    val frequencyLabel = when (activeCollection.rotationFrequency) {
-                        RotationFrequency.PER_LOCK -> "per lock"
-                        RotationFrequency.HOURLY -> "hourly"
-                        RotationFrequency.PER_DAY -> "daily"
+                    // Safety check: if the user woke the screen during the delay abort
+                    if (powerManager.isInteractive) {
+                        Log.w(tag, "Screen woke up. Aborting.")
+                        return@withTimeout
                     }
-                    Log.d(tag, "Rotation skipped. Timer for $frequencyLabel not met yet.")
-                    return@launch
-                }
 
-                // Apply the pre-processed buffer image and prepare next image
-                val applied = wallpaperApplier.applyBufferWallpaper()
-                if (applied) {
-                    repository.markWallpaperChanged(activeCollection.id)
-                    if (broadcastFinished.compareAndSet(false, true)) pendingResult.finish()
-                    rotationEngine.refillDiskBuffer()
+                    val activeCollection = repository.getActiveCollectionOnce()
+                    if (activeCollection == null) {
+                        Log.w(tag, "No active collection found. Skipping wallpaper change.")
+                        return@withTimeout
+                    }
+
+                    if (!activeCollection.shouldRotateAt()) {
+                        val frequencyLabel = when (activeCollection.rotationFrequency) {
+                            RotationFrequency.PER_LOCK -> "per lock"
+                            RotationFrequency.HOURLY -> "hourly"
+                            RotationFrequency.PER_DAY -> "daily"
+                        }
+                        Log.d(tag, "Rotation skipped. Timer for $frequencyLabel not met yet.")
+                        return@withTimeout
+                    }
+
+                    // Apply the pre-processed buffer image and prepare next image
+                    val applied = wallpaperApplier.applyBufferWallpaper()
+                    if (applied) {
+                        repository.markWallpaperChanged(activeCollection.id)
+                        if (broadcastFinished.compareAndSet(false, true)) pendingResult.finish()
+                        rotationEngine.refillDiskBuffer()
+                    }
                 }
+            } catch (_: TimeoutCancellationException) {
+                Log.w(tag, "Wallpaper change timed out after ${WORK_TIMEOUT_MS}ms. Cancelled.")
             } catch (e: Exception) {
                 Log.e(tag, "Error during wallpaper change", e)
             } finally {

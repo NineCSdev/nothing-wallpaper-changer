@@ -126,7 +126,6 @@ fun AppNavigation(
             ) {
                 CollectionListScreen(
                     uiState = collectionState,
-                    onRequestPreview = collectionViewModel::loadPreview,
                     onCollectionClick = { id ->
                         if (collectionState.isPickerMode) {
                             mainViewModel.setActiveCollection(id)
@@ -134,9 +133,7 @@ fun AppNavigation(
                                 navController.popBackStack()
                             }
                         } else {
-                            collectionState.allCollections
-                                .find { it.id == id }
-                                ?.let { collectionViewModel.openEditModal(it) }
+                            collectionViewModel.openEditModal(id)
                         }
                     },
                     onSortOrderChange = collectionViewModel::setSortOrder,
@@ -158,9 +155,9 @@ fun AppNavigation(
                         onLaunchPhotosPicker()
                     },
                     onCreateCollection = { name, rule ->
-                        val onComplete = {
+                        val onComplete: (Boolean) -> Unit = { shouldStartService ->
                             collectionViewModel.toggleCreateModal(false)
-                            if (collectionState.allCollections.isEmpty()) onStartClick()
+                            if (shouldStartService) onStartClick()
                         }
                         if (collectionViewModel.hasPendingFolder()) {
                             collectionViewModel.finalizeFolderCollection(name, rule, onComplete)
@@ -172,29 +169,15 @@ fun AppNavigation(
                     // Edit modal callbacks
                     onDismissEditModal = collectionViewModel::closeEditModal,
                     onEditCollection = { newName, rule, freq ->
-                        collectionState.editingCollection?.let {
-                            collectionViewModel.updateCollection(it.id, newName, rule, freq)
-                        }
+                        collectionViewModel.updateEditingCollection(newName, rule, freq)
                     },
-                    onSetActiveCollection = {
-                        collectionState.editingCollection?.let {
-                            mainViewModel.setActiveCollection(it.id)
-                        }
-                    },
+                    onSetActiveCollection = collectionViewModel::setActiveEditingCollection,
                     onDeleteCollection = {
-                        collectionState.editingCollection?.let { collection ->
-                            val wasActive = collection.isActive
-                            collectionViewModel.deleteCollection(collection) {
-                                collectionViewModel.closeEditModal()
-                                if (wasActive) onStopService()
-                            }
+                        collectionViewModel.deleteEditingCollection { wasActive ->
+                            if (wasActive) onStopService()
                         }
                     },
-                    onSyncCollection = {
-                        collectionState.editingCollection?.let {
-                            collectionViewModel.syncCollection(it.id) {}
-                        }
-                    },
+                    onSyncCollection = collectionViewModel::syncEditingCollection,
                     onViewImages = {
                         collectionState.editingCollection?.let {
                             navController.navigate(Route.collectionImages(it.id))
@@ -209,8 +192,7 @@ fun AppNavigation(
             arguments = listOf(
                 navArgument("collectionId") { type = NavType.LongType }
             )
-        ) { entry ->
-            val collectionId = entry.arguments?.getLong("collectionId")
+        ) {
             val collectionImageViewModel: CollectionImageViewModel = hiltViewModel()
             val collectionImageState by collectionImageViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -225,7 +207,6 @@ fun AppNavigation(
             CollectionImageScreen(
                 uiState = collectionImageState,
                 onBackClick = {
-                    collectionId?.let { id -> collectionViewModel.invalidatePreview(id) }
                     if (navController.previousBackStackEntry != null) {
                         navController.popBackStack()
                     }

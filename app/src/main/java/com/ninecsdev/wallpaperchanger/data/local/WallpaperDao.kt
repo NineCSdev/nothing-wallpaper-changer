@@ -83,16 +83,20 @@ interface WallpaperDao {
     @Query("SELECT * FROM wallpapers WHERE collectionId = :collectionId")
     suspend fun getImagesForCollectionOnce(collectionId: Long): List<WallpaperImage>
 
+    /** Flow of the newest few images for a collection, used to build the grid preview reactively. */
+    @Query("SELECT * FROM wallpapers WHERE collectionId = :collectionId ORDER BY addedAt DESC LIMIT :limit")
+    fun observePreviewImages(collectionId: Long, limit: Int): Flow<List<WallpaperImage>>
+
+    /** Flow of the image count for a collection, used for the grid preview's "+N" badge. */
+    @Query("SELECT COUNT(*) FROM wallpapers WHERE collectionId = :collectionId")
+    fun observeImageCount(collectionId: Long): Flow<Int>
+
     /**
      * Returns only the folder-sourced (non-manually-added) images for a collection.
      * Used during folder sync to compute diffs without touching manually added images.
      */
     @Query("SELECT * FROM wallpapers WHERE collectionId = :collectionId AND isManuallyAdded = 0")
     suspend fun getFolderImagesForCollection(collectionId: Long): List<WallpaperImage>
-
-    /** Returns the total number of wallpapers in a specific collection */
-    @Query("SELECT COUNT(*) FROM wallpapers WHERE collectionId = :collectionId")
-    suspend fun getImageCountOfCollection(collectionId: Long): Int
 
     /** Fetches a single wallpaper by ID. */
     @Query("SELECT * FROM wallpapers WHERE id = :wallpaperId LIMIT 1")

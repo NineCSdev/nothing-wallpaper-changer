@@ -11,10 +11,16 @@ import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -22,7 +28,7 @@ import javax.inject.Inject
 
 /**
  * ViewModel for the Collection List screen.
- * Owns [CollectionUiState] and handles imports, edits, and preview loading.
+ * Owns [CollectionUiState] and handles imports, edits, and reactive preview loading.
  */
 @HiltViewModel
 class CollectionViewModel @Inject constructor(
@@ -39,19 +45,42 @@ class CollectionViewModel @Inject constructor(
     private var pendingFolderUri: Uri? = null
     private var pendingPhotosUris: List<Uri> = emptyList()
 
-    /** Preview thumbnails loaded on-demand for visible grid items. */
-    private val _previewStates = MutableStateFlow<Map<Long, CollectionPreviewState>>(emptyMap())
-
     /** Current sort order for the collection list. */
     private val _sortOrder = MutableStateFlow(CollectionSortOrder.LAST_USED)
 
     /** Modal/processing state managed by this screen. */
     private val _screenState = MutableStateFlow(ScreenModalState())
 
+    /**
+     * Grid previews, derived reactively from the DB. Each collection's 2×2 thumbnails and total
+     * count update on their own when images are added/removed.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val previewsFlow: Flow<Map<Long, CollectionPreviewState>> =
+        repository.getAllCollections()
+            .map { collections -> collections.map { it.id } }
+            .distinctUntilChanged()
+            .flatMapLatest { ids ->
+                if (ids.isEmpty()) {
+                    flowOf(emptyMap())
+                } else {
+                    combine(
+                        ids.map { id ->
+                            combine(
+                                repository.observePreviewImages(id),
+                                repository.observeImageCount(id)
+                            ) { images, count ->
+                                id to CollectionPreviewState(images.map { it.uri }, count)
+                            }
+                        }
+                    ) { entries -> entries.toMap() }
+                }
+            }
+
     /** Combined public state built reactively. */
     val uiState: StateFlow<CollectionUiState> = combine(
         repository.getAllCollections(),
-        _previewStates,
+        previewsFlow,
         _screenState,
         _sortOrder,
         serviceStateManager.serviceState
@@ -99,14 +128,14 @@ class CollectionViewModel @Inject constructor(
 
     // Collection CRUD
 
-    fun finalizeFolderCollection(name: String, rule: CropRule, onComplete: () -> Unit) {
+    fun finalizeFolderCollection(name: String, rule: CropRule, onComplete: (shouldStartService: Boolean) -> Unit) {
         val uri = pendingFolderUri ?: return
         viewModelScope.launch {
             setProcessing(true)
             try {
-                repository.createFolderCollection(name, uri, rule)
+                val shouldStartService = repository.createFolderCollection(name, uri, rule)
                 pendingFolderUri = null
-                onComplete()
+                onComplete(shouldStartService)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to create folder collection: ${e.message}")
             } finally {
@@ -115,67 +144,59 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    fun finalizeManualCollection(name: String, rule: CropRule, onComplete: () -> Unit) {
+    fun finalizeManualCollection(name: String, rule: CropRule, onComplete: (shouldStartService: Boolean) -> Unit) {
         if (pendingPhotosUris.isEmpty()) return
         viewModelScope.launch {
             setProcessing(true)
-            repository.createManualCollection(name, pendingPhotosUris, rule)
+            val shouldStartService = repository.createManualCollection(name, pendingPhotosUris, rule)
             pendingPhotosUris = emptyList()
             setProcessing(false)
-            onComplete()
+            onComplete(shouldStartService)
         }
     }
 
-    fun deleteCollection(collection: WallpaperCollection, onComplete: () -> Unit) {
+    /**
+     * Deletes the collection currently open in the edit modal. [onDeleted] receives whether it was
+     * the active collection.
+     */
+    fun deleteEditingCollection(onDeleted: (wasActive: Boolean) -> Unit) {
+        val collection = _screenState.value.editingCollection ?: return
+        val wasActive = collection.isActive
         viewModelScope.launch {
             repository.deleteCollection(collection)
-            onComplete()
+            closeEditModal()
+            onDeleted(wasActive)
         }
     }
 
-    fun updateCollection(
-        collectionId: Long,
+    /** Updates the collection currently open in the edit modal. */
+    fun updateEditingCollection(
         newName: String,
         cropRule: CropRule,
         rotationFrequency: RotationFrequency
     ) {
+        val collection = _screenState.value.editingCollection ?: return
         viewModelScope.launch {
-            repository.updateCollection(collectionId, newName, cropRule, rotationFrequency)
+            repository.updateCollection(collection.id, newName, cropRule, rotationFrequency)
         }
     }
 
-    fun syncCollection(collectionId: Long, onComplete: () -> Unit) {
+    /** Makes the collection currently open in the edit modal the active one. */
+    fun setActiveEditingCollection() {
+        val collection = _screenState.value.editingCollection ?: return
+        viewModelScope.launch {
+            repository.setActiveCollection(collection.id)
+        }
+    }
+
+    /** Manually re-syncs the **folder** collection currently open in the edit modal. */
+    fun syncEditingCollection() {
+        val collection = _screenState.value.editingCollection ?: return
         viewModelScope.launch {
             setProcessing(true)
-            repository.syncCollection(collectionId)
+            repository.syncCollection(collection.id)
             setProcessing(false)
-            onComplete()
         }
-    }
-
-    /**
-     * Loads (or refreshes) the 2×2 thumbnail previews for a collection.
-     * Called by the grid when a collection item becomes visible.
-     */
-    fun loadPreview(collectionId: Long) {
-        if (_previewStates.value.containsKey(collectionId)) return
-        viewModelScope.launch {
-            val uris = repository.getImagesForCollectionOnce(collectionId)
-                .take(4)
-                .map { it.uri }
-            val size = repository.getSizeOfCollection(collectionId)
-            _previewStates.update { current ->
-                current + (collectionId to CollectionPreviewState(uris, size))
-            }
-        }
-    }
-
-    /**
-     * Evicts the cached preview for [collectionId] so the next [loadPreview] call
-     * fetches fresh data. Call this when returning from the CollectionImageScreen.
-     */
-    fun invalidatePreview(collectionId: Long) {
-        _previewStates.update { it - collectionId }
     }
 
     // Sort order
@@ -201,7 +222,9 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    fun openEditModal(collection: WallpaperCollection) {
+    /** Opens the edit modal for the collection with [collectionId], if it exists. */
+    fun openEditModal(collectionId: Long) {
+        val collection = uiState.value.allCollections.find { it.id == collectionId } ?: return
         _screenState.update { it.copy(editingCollection = collection) }
     }
 

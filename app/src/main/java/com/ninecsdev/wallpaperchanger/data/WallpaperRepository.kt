@@ -9,7 +9,6 @@ import androidx.room.withTransaction
 import com.ninecsdev.wallpaperchanger.data.local.AppDatabase
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperDao
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
-import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
@@ -17,8 +16,13 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -37,7 +41,6 @@ class WallpaperRepository @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
     private val database: AppDatabase,
     private val dao: WallpaperDao,
-    private val rotationEngine: RotationEngine,
     private val imageInternalizer: ImageInternalizer,
     private val serviceStateManager: ServiceStateManager
 ) {
@@ -55,6 +58,31 @@ class WallpaperRepository @Inject constructor(
     fun getImagesForCollection(collectionId: Long): Flow<List<WallpaperImage>> =
         dao.getImagesForCollection(collectionId)
 
+    /**
+     * Reactive source the [RotationEngine][com.ninecsdev.wallpaperchanger.logic.RotationEngine]
+     * subscribes to so it reloads its magazine whenever the active collection or its images change.
+     *
+     * Emits the active collection paired with its images, or `null` when there is no active
+     * collection. Deliberately re-emits only when the active collection's **identity or crop rule**
+     * changes.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun activeCollectionImagesFlow(): Flow<Pair<WallpaperCollection, List<WallpaperImage>>?> =
+        dao.observeActiveCollection()
+            .distinctUntilChangedBy { it?.id to it?.defaultCropRule }
+            .flatMapLatest { collection ->
+                if (collection == null) flowOf(null)
+                else dao.getImagesForCollection(collection.id).map { collection to it }
+            }
+
+    /** Preview thumbnails (newest first) for a collection's grid item, observed reactively. */
+    fun observePreviewImages(collectionId: Long, limit: Int = 4): Flow<List<WallpaperImage>> =
+        dao.observePreviewImages(collectionId, limit)
+
+    /** Total image count for a collection's grid item, observed reactively. */
+    fun observeImageCount(collectionId: Long): Flow<Int> =
+        dao.observeImageCount(collectionId)
+
     // Collection operations
 
     suspend fun updateCollection(
@@ -65,12 +93,14 @@ class WallpaperRepository @Inject constructor(
     ) {
         withContext(Dispatchers.IO) {
             dao.updateCollection(id, newName, newRule, newFrequency)
-            refreshEngineIfActive(id)
         }
     }
 
-    suspend fun createFolderCollection(name: String, treeUri: Uri, rule: CropRule) {
-        withContext(Dispatchers.IO) {
+    /**
+     * Creates a folder collection. Returns `true` if it became the active collection.
+     */
+    suspend fun createFolderCollection(name: String, treeUri: Uri, rule: CropRule): Boolean {
+        return withContext(Dispatchers.IO) {
             // Scan first to avoid creating an orphan empty collection (or one with a partial/empty image set) on a transient scan failure.
             val scanned = getImageListFromFolder(treeUri)
 
@@ -88,11 +118,15 @@ class WallpaperRepository @Inject constructor(
             val images = scanned.map { it.copy(collectionId = collectionId) }
             dao.insertImages(images)
             Log.d(TAG, "Imported ${images.size} images to collection: $name")
+            isFirst
         }
     }
 
-    suspend fun createManualCollection(name: String, uris: List<Uri>, rule: CropRule) {
-        withContext(Dispatchers.IO) {
+    /**
+     * Creates a manual collection. Returns `true` if it became the active collection.
+     */
+    suspend fun createManualCollection(name: String, uris: List<Uri>, rule: CropRule): Boolean {
+        return withContext(Dispatchers.IO) {
             val isFirst = dao.getActiveCollection() == null
             val internalizedUris = imageInternalizer.internalizeImages(appContext, uris)
 
@@ -111,6 +145,7 @@ class WallpaperRepository @Inject constructor(
             }
 
             dao.insertImages(images)
+            isFirst
         }
     }
 
@@ -133,7 +168,6 @@ class WallpaperRepository @Inject constructor(
                 )
             }
             dao.insertImages(images)
-            refreshEngineIfActive(collectionId)
         }
     }
 
@@ -152,12 +186,6 @@ class WallpaperRepository @Inject constructor(
         dao.getImagesForCollectionOnce(collectionId)
 
     /**
-     * Returns the image count of a collection in a non-flow way.
-     */
-    suspend fun getSizeOfCollection(collectionId: Long): Int =
-        dao.getImageCountOfCollection(collectionId)
-
-    /**
      * Sets the active collection and auto-syncs if it is a folder type.
      */
     suspend fun setActiveCollection(collectionId: Long) {
@@ -168,9 +196,6 @@ class WallpaperRepository @Inject constructor(
                 Log.d(TAG, "Auto-syncing folder collection: ${collection.name}")
                 syncCollection(collectionId)
             }
-            rotationEngine.clearMagazine()
-            rotationEngine.loadMagazine()
-            rotationEngine.refillDiskBuffer()
         }
     }
 
@@ -199,11 +224,6 @@ class WallpaperRepository @Inject constructor(
 
                     val added = syncFolderImages(collectionId, freshImages)
                     Log.d(TAG, "Sync complete: ${freshImages.size} on disk, $added new images added.")
-
-                    if (collection.isActive) {
-                        rotationEngine.loadMagazine()
-                        Log.i(TAG, "Active collection synced. Magazine reloaded.")
-                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "Sync failed for collection ${collection.id}: ${e.message}")
                 }
@@ -237,7 +257,8 @@ class WallpaperRepository @Inject constructor(
      * Note: an empty [fresh] list marks *every* existing image stale so callers must ensure a **failed**
      * scan never reaches here. A genuinely empty folder still returns everything as stale.
      *
-     * @return
+     * @return A Pair where the first element is a list of IDs for images to be deleted (stale),
+     * and the second element is a list of new [WallpaperImage] objects to be inserted.
      */
     private fun computeFolderSyncDiff(
         existing: List<WallpaperImage>,
@@ -254,31 +275,30 @@ class WallpaperRepository @Inject constructor(
     /**
      * Deletes specific wallpaper images and cleans up their internal files.
      * PRE: All given wallpaper images are from the same collection
+     *
+     * Note: This is the single deletion path.
      */
     suspend fun deleteImagesFromCollection(images: List<WallpaperImage>) {
         if (images.isEmpty()) return
 
         withContext(Dispatchers.IO) {
-            val collectionId = images.first().collectionId
-
             images.forEach { image ->
-                imageInternalizer.deleteInternalFile(image.uri.path)
+                if (ImageInternalizer.isInternalUri(image.uri)) {
+                    imageInternalizer.deleteInternalFile(image.uri.path)
+                }
             }
 
             dao.deleteImagesByIds(images.map { it.id })
-            refreshEngineIfActive(collectionId)
         }
     }
 
     /**
      * Deletes a collection and cleans up associated files and permissions.
-     * If the deleted collection was active, clears the rotation magazine and
-     * marks the service as stopped via [ServiceStateManager].
+     * If the deleted collection was active, marks the service as stopped via [ServiceStateManager]
      */
     suspend fun deleteCollection(collection: WallpaperCollection) {
         withContext(Dispatchers.IO) {
             if (collection.isActive) {
-                rotationEngine.clearMagazine()
                 serviceStateManager.markServiceStopped()
             }
 
@@ -342,9 +362,7 @@ class WallpaperRepository @Inject constructor(
 
     /**
      * Saves the edit parameters for a wallpaper.
-     * The edit (zoom/offset) is applied on-the-fly during rotation — no file is written to disk.
-     * If this wallpaper belongs to the active collection, reloads the rotation engine
-     * and refills the disk buffer so the change is immediately respected.
+     * The edit (zoom/offset) is applied on-the-fly during rotation.
      */
     suspend fun saveWallpaperEdit(
         wallpaper: WallpaperImage,
@@ -354,7 +372,6 @@ class WallpaperRepository @Inject constructor(
     ) {
         withContext(Dispatchers.IO) {
             dao.updateWallpaperEdit(wallpaper.id, zoom, offsetX, offsetY)
-            refreshEngineIfActive(wallpaper.collectionId)
         }
     }
 
@@ -364,22 +381,6 @@ class WallpaperRepository @Inject constructor(
     suspend fun resetWallpaperEdit(wallpaper: WallpaperImage) {
         withContext(Dispatchers.IO) {
             dao.updateWallpaperEdit(wallpaper.id, null, null, null)
-            refreshEngineIfActive(wallpaper.collectionId)
-        }
-    }
-
-    // Helpers
-
-    /**
-     * Refreshes the rotation engine if the changed collection is currently active.
-     */
-    private suspend fun refreshEngineIfActive(collectionId: Long) {
-        val activeCollection = dao.getActiveCollection()
-
-        if (activeCollection?.id == collectionId) {
-            Log.d(TAG, "Refreshing rotation engine for active collection: ${activeCollection.name}")
-            rotationEngine.loadMagazine()
-            rotationEngine.refillDiskBuffer()
         }
     }
 

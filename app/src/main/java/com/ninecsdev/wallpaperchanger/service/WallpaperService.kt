@@ -139,8 +139,9 @@ class WallpaperService : Service() {
                 return@launch
             }
 
-            rotationEngine.loadMagazine()
-            rotationEngine.refillDiskBuffer()
+            // Subscribes the engine to the active collection's images and blocks until the first
+            // buffer is prepared, so we only mark Running once a wallpaper is ready to apply.
+            rotationEngine.start(serviceScope)
 
             if (pm.isPowerSaveMode && policy == BatterySaverPolicy.PAUSE) {
                 pauseEngine()
@@ -215,8 +216,9 @@ class WallpaperService : Service() {
         unregisterScreenOffReceiver()
         systemEventReceiver?.let { unregisterReceiver(it) }
 
-        rotationEngine.clearMagazine()
+        // Cancel the scope first so the engine's reactive collector stops before we clear its state.
         serviceScope.cancel()
+        rotationEngine.clearMagazine()
         stopForeground(STOP_FOREGROUND_REMOVE)
 
         serviceStateManager.markServiceStopped()

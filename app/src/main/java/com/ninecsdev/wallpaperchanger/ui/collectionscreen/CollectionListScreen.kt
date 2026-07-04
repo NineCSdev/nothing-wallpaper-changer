@@ -25,7 +25,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -54,7 +53,6 @@ import com.ninecsdev.wallpaperchanger.R
 @Composable
 fun CollectionListScreen(
     uiState: CollectionUiState,
-    onRequestPreview: (Long) -> Unit,
     onCollectionClick: (Long) -> Unit,
     onSortOrderChange: (CollectionSortOrder) -> Unit,
     onAddClick: () -> Unit,
@@ -146,16 +144,9 @@ fun CollectionListScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(uiState.allCollections, key = { it.id }) { collection ->
-                            val previewState = uiState.previewStates[collection.id]
-                            LaunchedEffect(collection.id, previewState) {
-                                if (previewState == null) {
-                                    onRequestPreview(collection.id)
-                                }
-                            }
-
                             CollectionGridItem(
                                 collection = collection,
-                                state = previewState ?: CollectionPreviewState(),
+                                state = uiState.previewStates[collection.id] ?: CollectionPreviewState(),
                                 onClick = { onCollectionClick(collection.id) }
                             )
                         }
@@ -235,7 +226,6 @@ fun CollectionListScreenPopulatedPreview() {
                     4L to CollectionPreviewState(previewUris = emptyList(), totalCount = 2)
                 )
             ),
-            onRequestPreview = {},
             onCollectionClick = {},
             onSortOrderChange = {},
             onAddClick = {},
@@ -260,7 +250,6 @@ fun CollectionListScreenEmptyPreview() {
     MaterialTheme {
         CollectionListScreen(
             uiState = CollectionUiState(),
-            onRequestPreview = {},
             onCollectionClick = {},
             onSortOrderChange = {},
             onAddClick = {},
