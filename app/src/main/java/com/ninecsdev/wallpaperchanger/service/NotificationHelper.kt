@@ -3,9 +3,12 @@ package com.ninecsdev.wallpaperchanger.service
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.ui.MainActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -79,8 +82,18 @@ class NotificationHelper @Inject constructor(
             .setSilent(true)
             .setLocalOnly(true)
             .setOngoing(true)
+            .setContentIntent(openAppPendingIntent())
             .build()
     }
+
+    /** Opens the app when the notification body is tapped */
+    private fun openAppPendingIntent(): PendingIntent =
+        PendingIntent.getActivity(
+            context,
+            0,
+            Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE
+        )
 
     /** Posts (or updates) the foreground notification with new [text] */
     private fun updateNotification(text: String) {

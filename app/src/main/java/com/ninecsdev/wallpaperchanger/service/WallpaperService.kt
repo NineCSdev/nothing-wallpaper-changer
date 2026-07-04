@@ -21,9 +21,11 @@ import com.ninecsdev.wallpaperchanger.model.ServiceState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
@@ -158,8 +160,10 @@ class WallpaperService : Service() {
         serviceStateManager.markServiceStopping()
 
         serviceScope.launch {
-            if (appDataStore.shouldRevertToDefault()) {
-                wallpaperApplier.applyDefaultWallpaper()
+            withContext(NonCancellable) {
+                if (appDataStore.shouldRevertToDefault()) {
+                    wallpaperApplier.applyDefaultWallpaper()
+                }
             }
             stopSelf()
         }
@@ -177,8 +181,10 @@ class WallpaperService : Service() {
         unregisterScreenOffReceiver()
 
         serviceScope.launch {
-            if (appDataStore.shouldRevertToDefault()) {
-                wallpaperApplier.applyDefaultWallpaper()
+            withContext(NonCancellable) {
+                if (appDataStore.shouldRevertToDefault()) {
+                    wallpaperApplier.applyDefaultWallpaper()
+                }
             }
         }
 

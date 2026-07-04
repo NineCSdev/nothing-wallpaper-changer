@@ -68,6 +68,8 @@ class ScreenOffReceiver(
         workStartedAt = System.currentTimeMillis()
 
         val pendingResult = goAsync()
+        val broadcastFinished = AtomicBoolean(false)
+
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
 
         serviceScope.launch(Dispatchers.IO) {
@@ -102,13 +104,14 @@ class ScreenOffReceiver(
                 val applied = wallpaperApplier.applyBufferWallpaper()
                 if (applied) {
                     repository.markWallpaperChanged(activeCollection.id)
+                    if (broadcastFinished.compareAndSet(false, true)) pendingResult.finish()
                     rotationEngine.refillDiskBuffer()
                 }
             } catch (e: Exception) {
                 Log.e(tag, "Error during wallpaper change", e)
             } finally {
                 isWorkInProgress.set(false)
-                pendingResult.finish()
+                if (broadcastFinished.compareAndSet(false, true)) pendingResult.finish()
             }
         }
     }
