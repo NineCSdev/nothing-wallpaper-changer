@@ -4,14 +4,14 @@
   <h1>Wallpaper Changer for Nothing OS</h1>
 
   <p align="center">
-    <img src="https://img.shields.io/badge/Status-v0.3.1--beta-blue.svg" alt="Status">
+    <img src="https://img.shields.io/badge/Status-v0.3.2--beta-blue.svg" alt="Status">
     <img src="https://img.shields.io/badge/Android-13%2B-green.svg" alt="Android 13+">
-    <img src="https://img.shields.io/badge/Kotlin-2.1-purple.svg" alt="Kotlin">
+    <img src="https://img.shields.io/badge/Kotlin-2.3-purple.svg" alt="Kotlin">
     <img src="https://img.shields.io/badge/Jetpack%20Compose-Material%203-teal.svg" alt="Compose">
   </p>
 
   <p>
-    <b>A lightweight lock screen wallpaper changer.<br>Built by a Nothing user, for Nothing users.</b>
+    <b>A lightweight wallpaper changer for your lock screen, home screen, or both.<br>Built by a Nothing user, for Nothing users.</b>
   </p>
   <p>
     <sub>Disclaimer: This is an independent, community-made tool. Not affiliated with or endorsed by Nothing Technology Limited.</sub>
@@ -31,6 +31,8 @@ There weren't many solutions on the Play Store and the ones I found were either 
 ##  Key Features
 
 - **Instant Wallpaper Swap:** Each wallpaper is pre-processed and ready to go before you lock your phone resulting in no lag or  no loading screens. *(Achieved via a disk-buffered pipeline: downsample → crop → WebP.)*
+- **Configurable Wallpaper Destination:** Apply the rotation to the lock screen, the home screen, or both.
+- **Language Selection:** Switch the app's language from Settings. English and Spanish are fully supported today.
 - **Wallpaper Collections/Lists:** Organize wallpapers in two ways:
     - **Folder-based:** Point the app at a folder on your device and it picks up all the images inside, with re-sync on demand.
     - **Manual:** Hand-pick individual photos; they're safely copied into the app's private storage so they're always available.
@@ -41,7 +43,7 @@ There weren't many solutions on the Play Store and the ones I found were either 
 - **Flexible Cropping:** Choose how images fit your screen per collection: center, left-aligned, right-aligned, or fit-to-screen.
 - **Lockscreen Zoom Fix:** Counteracts the auto-zoom some phones (especially Nothing OS) apply to lock screen wallpapers. Choose between blurred-edge or sharp-edge padding modes, or turn it off. Applied to both rotating and default wallpapers.
 - **Rotation Timer Modes:** Configure each collection to rotate on every lock, every 1 hour, or once per day.
-- **Settings Screen:** Tune the screen-off debounce delay, boot behavior, manual-image compression quality, Battery Saver behavior, and lockscreen zoom fix from inside the app.
+- **Settings Screen:** Tune the screen-off debounce delay (with a device-appropriate default out of the box), boot behavior, wallpaper destination, manual-image compression quality, Battery Saver behavior, lockscreen zoom fix, and app language from inside the app.
 - **Quick Settings Tile:** Start, stop, or check status right from the notification shade letting you control it while doing something else.
 - **Default Wallpaper Fallback:** Pick a fallback lock screen image that's automatically restored when the service stops or pauses.
 - **Survives Reboots:** If the service was running before a restart, it picks right back up.
@@ -111,7 +113,7 @@ No. The app doesn't run on a timer or poll in the background, it simply waits fo
 <details>
 <summary><b>Why is there a permanent notification?</b></summary>
 
-Android requires any app doing background work to show a notification, it's a system rule, not a design choice. The notification is as minimal as possible and lets you see the service is running and which collection is active.
+Android requires any app doing background work to show a notification, it's a system rule, not a design choice. The notification is as minimal as possible, lets you see the service is running and which collection is active, and tapping it opens the app.
 </details>
 
 <details>
@@ -129,7 +131,7 @@ While in Nothing OS this shouldn't happen, other phone manufacturers (Xiaomi, Sa
 <details>
 <summary><b>Does this change my home screen wallpaper too?</b></summary>
 
-Currently, the app only changes the **lock screen** wallpaper. Home screen support may be added in a future update.
+It can. Go to Settings and choose whether the rotation applies to the lock screen, the home screen, or both. Lock screen only is the default.
 </details>
 
 <details>
@@ -178,8 +180,8 @@ The current implementation uses Hilt-injected app-level dependencies, plain `@Hi
 1. **User creates a collection** (folder or manual) → images are stored in Room.
 2. **User browses and edits wallpapers** → the collection image gallery shows all images in a grid; tapping opens a full-screen preview with swipe-through; the per-image editor lets you crop and position with gestures and precision sliders.
 3. **User presses Start** → `WallpaperService` starts as a foreground service, loads & shuffles the active collection into an in-memory magazine, and pre-processes the first wallpaper into a WebP disk buffer. Edited images are preferred over originals.
-4. **Screen turns off** → `ScreenOffReceiver` fires, streams the buffer to `WallpaperManager.setStream()` on the lock screen flag, then triggers the repository to prepare the next image.
-5. **Battery Saver ON** -> The configured policy is applied: stop the service, pause by unregistering the receiver and auto-resume later, or ignore Battery Saver.
+4. **Screen turns off** → `ScreenOffReceiver` fires, streams the buffer to `WallpaperManager.setStream()` on whichever surface(s) the wallpaper destination setting targets (lock screen, home screen, or both), then triggers the repository to prepare the next image.
+5. **Battery Saver ON** → The configured policy is applied: stop the service, pause by unregistering the receiver and auto-resume later, or ignore Battery Saver.
 6. **User presses Stop** → Service stops; if "revert to default" is enabled, the saved default wallpaper is restored (including lockscreen zoom fix if enabled).
 7. **Device reboots** → `BootReceiver` checks persisted state and restarts the service if it was previously active.
 
@@ -189,10 +191,10 @@ The current implementation uses Hilt-injected app-level dependencies, plain `@Hi
 
 | Category      | Library / API                       |
 |---------------|-------------------------------------|
-| Language      | Kotlin 2.1 (JVM 17)                 |
+| Language      | Kotlin 2.3 (JVM 17)                 |
 | UI            | Jetpack Compose + Material 3        |
 | Image loading | Coil 2.7                            |
-| Database      | Room 2.7 (KSP)                      |
+| Database      | Room 2.8 (KSP)                      |
 | Preferences   | Jetpack Preferences DataStore       |
 | DI            | Hilt                                |
 | Async         | Kotlin Coroutines + `SupervisorJob` |
@@ -224,9 +226,9 @@ This is my first native Android project, built while actively learning about bac
 
 ## Status
 
-**v0.3.1-beta** focuses on polish and resilience.
+**v0.3.2-beta** is a customization and reliability release.
 
-It adds editor quality-of-life (undo, fit-to-height, sub-1x zoom), applies the lockscreen zoom fix to the default wallpaper, strengthens rotation self-healing with retries and fallbacks, and adds confirmation before deleting selected wallpapers.
+It adds per-screen wallpaper destinations (lock screen, home screen, or both) and full Spanish language support, fixes three user-reported bugs (duplicate screens on rapid taps, a stuck "Setup needed" status, and sluggish screen-off timing), and closes out a round of service-layer stability fixes including a data-loss bug in folder sync, a startup crash, and an out-of-memory risk on the default wallpaper.
 
 ---
 
