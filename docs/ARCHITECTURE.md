@@ -11,7 +11,7 @@ The app architecture is a pragmatic Android 13+ implementation centered on seven
 3. A **data layer** with Room and `WallpaperRepository` for collections/rotation, plus `AppDataStore` for settings flows.
 4. A **service state manager** (`ServiceStateManager` + `ServiceLifecycleTracker`) that resolves and publishes a single reactive service state.
 5. A **foreground service + broadcast receivers** layer that reacts to screen-off, Battery Saver, and boot events.
-6. A lightweight **image-processing pipeline** that prepares the next wallpaper ahead of time, including lockscreen zoom fix padding and configurable-destination application.
+6. A lightweight **image-processing pipeline** that prepares the next wallpaper ahead of time, including wallpaper zoom fix padding and configurable-destination application.
 7. A **per-image editing pipeline** that renders cropped/zoomed wallpapers on-the-fly from the original source, using edit parameters persisted in Room.
 
 ---
@@ -48,7 +48,7 @@ com.ninecsdev.wallpaperchanger/
 |       |-- CollectionSortOrder.kt   # NAME | LAST_USED | DATE_CREATED
 |       |-- CollectionType.kt        # FOLDER | MANUAL
 |       |-- CropRule.kt              # CENTER | LEFT | RIGHT | FIT
-|       |-- LockscreenZoomFix.kt     # OFF | BLURRED | EDGE
+|       |-- WallpaperZoomFix.kt     # OFF | BLURRED | EDGE
 |       |-- RotationFrequency.kt     # PER_LOCK | HOURLY | PER_DAY
 |       `-- WallpaperDestination.kt  # LOCK | HOME | BOTH
 |-- service/
@@ -119,7 +119,7 @@ com.ninecsdev.wallpaperchanger/
 - Hilt injects the repository, rotation engine, and service state helpers into the service.
 - `ServiceLifecycleTracker` (in `data/`) marks the service alive/dead, and `ServiceStateManager` resolves and exposes a single `serviceState: StateFlow<ServiceState>`.
 - `RotationEngine.start(scope)` subscribes to `WallpaperRepository.activeCollectionImagesFlow()` and builds the in-memory shuffled "magazine" reactively — the repository no longer needs to manually poke the engine after every database write.
-- `BufferManager` prepares the next wallpaper by applying the on-the-fly edit transform (if present) or the collection's crop rule, downsampling, optionally adding lockscreen zoom fix padding, and atomically renaming a temporary WebP file into the active buffer.
+- `BufferManager` prepares the next wallpaper by applying the on-the-fly edit transform (if present) or the collection's crop rule, downsampling, optionally adding wallpaper zoom fix padding, and atomically renaming a temporary WebP file into the active buffer.
 
 ### 6. Screen-Off Rotation
 
@@ -146,11 +146,11 @@ com.ninecsdev.wallpaperchanger/
 
 ### 9. Settings
 
-- `SettingsScreen` exposes screen-off delay, start-on-boot, Battery Saver policy, wallpaper destination, lockscreen zoom fix, app language, and manual-image compression quality controls.
+- `SettingsScreen` exposes screen-off delay, start-on-boot, Battery Saver policy, wallpaper destination, wallpaper zoom fix, app language, and manual-image compression quality controls.
 - Settings are stored in Preferences DataStore through `AppDataStore` and surfaced by `SettingsViewModel` as a single `SettingsUiState`.
 - DataStore reads use a shared safe flow that falls back to defaults on IO/corruption errors.
 - The **wallpaper destination** setting (LOCK / HOME / BOTH) determines which `WallpaperManager` flag(s) `WallpaperApplier` targets when streaming the buffer or the default wallpaper.
-- The **lockscreen zoom fix** setting (OFF / BLURRED / EDGE) is applied by `BufferManager` during wallpaper preparation, adding padding around the rendered image so the OS zoom consumes padding instead of cropping the wallpaper.
+- The **wallpaper zoom fix** setting (OFF / BLURRED / EDGE) is applied by `BufferManager` during wallpaper preparation, adding padding around the rendered image so the OS zoom consumes padding instead of cropping the wallpaper.
 - The **language** setting is backed by a per-app locale (`AndroidManifest` `locales_config.xml` lists `en`/`es`); `LanguageSelector` lets the user override the system locale from inside the app, and the choice is persisted via `AppDataStore`.
 
 ---
@@ -159,15 +159,15 @@ com.ninecsdev.wallpaperchanger/
 
 ### Persistence
 
-| Concern | Current implementation |
-|---|---|
-| Collections and wallpapers | Room |
-| Active collection metadata | Room fields on `WallpaperCollection` |
-| Per-image edit parameters | Single `@Embedded EditParams?` (`zoom`, `offsetX`, `offsetY`) on `WallpaperImage` |
-| Default wallpaper, revert toggle, boot toggle, soft running flag | Preferences DataStore via `AppDataStore` |
-| Screen-off delay, compression quality, Battery Saver policy, lockscreen zoom fix, wallpaper destination, language | Preferences DataStore via `AppDataStore` |
-| Prepared next wallpaper | WebP file in `cacheDir` |
-| Manual collection source images | App-private files in `files/internal_wallpapers` |
+| Concern                                                                                                          | Current implementation |
+|------------------------------------------------------------------------------------------------------------------|---|
+| Collections and wallpapers                                                                                       | Room |
+| Active collection metadata                                                                                       | Room fields on `WallpaperCollection` |
+| Per-image edit parameters                                                                                        | Single `@Embedded EditParams?` (`zoom`, `offsetX`, `offsetY`) on `WallpaperImage` |
+| Default wallpaper, revert toggle, boot toggle, soft running flag                                                 | Preferences DataStore via `AppDataStore` |
+| Screen-off delay, compression quality, Battery Saver policy, wallpaper zoom fix, wallpaper destination, language | Preferences DataStore via `AppDataStore` |
+| Prepared next wallpaper                                                                                          | WebP file in `cacheDir` |
+| Manual collection source images                                                                                  | App-private files in `files/internal_wallpapers` |
 
 ### UI State
 
@@ -199,22 +199,22 @@ com.ninecsdev.wallpaperchanger/
 
 ## Key Design Decisions
 
-| Concern | Current approach | Why it exists |
-|---|---|---|
-| Dependency wiring | Hilt + constructor injection for app services and ViewModels | Removes manual startup initialization and improves testability |
+| Concern                    | Current approach | Why it exists |
+|----------------------------|---|---|
+| Dependency wiring          | Hilt + constructor injection for app services and ViewModels | Removes manual startup initialization and improves testability |
 | Service/UI synchronization | Single derived `ServiceStateManager.serviceState` flow | Centralizes state resolution without polling contracts or manual refresh triggers |
-| Rotation engine | Reactive in-memory shuffled magazine, driven by `WallpaperRepository.activeCollectionImagesFlow()` | Guarantees full-cycle playback before reshuffle and removes the DB→engine poke, closing races around concurrent screen-off events and edits |
-| Folder sync | Diffed in Kotlin against the current disk snapshot, applied in chunked transactions | Prevents duplicate inserts, preserves manual additions, and avoids SQLite's bind-variable limit on very large folders |
-| Wallpaper application | `WallpaperApplier` streams the buffer or default image into `WallpaperManager.setStream()` for the configured destination(s) | Avoids decoding a full bitmap at apply time and keeps zoom-fix and destination targeting consistent |
-| Buffer writes | Temp file then rename | Prevents half-written wallpaper buffers |
-| Manual image storage | Internal WebP copies with configurable compression | Keeps user-picked images available and controls storage size |
-| Edit persistence | Single embedded `EditParams` value, always rendered on-the-fly from the original URI | Encodes the all-or-nothing invariant in the type system and prevents cumulative quality degradation across repeated edits |
-| Lockscreen zoom fix | Padding with blurred or edge-stretched borders | Counters Nothing OS auto-zoom without scaling the wallpaper down |
-| Screen-off delay defaults | Per-device default keyed by `Build.DEVICE` codename (`DeviceDefaults`) | A single fixed delay felt sluggish on some models; codenames are stable across OS updates/regions, unlike `Build.MODEL` |
-| Failure handling | Retry failed images, then purge after repeated failures | Keeps the service alive even with invalid sources |
-| Concurrency | Coroutines + `SupervisorJob` + a single `Mutex` guarding rotation state + `AtomicBoolean` screen-off guard | Isolates failures and prevents a screen-off refill and a reactive reload from interleaving |
-| Gallery navigation | `SavedStateHandle` for route arguments | Wallpaper ID and collection ID pass safely through navigation |
-| UI click handling | `safeClick` debouncing utility on navigation-triggering buttons | Prevents duplicate stacked screens from rapid repeated taps |
+| Rotation engine            | Reactive in-memory shuffled magazine, driven by `WallpaperRepository.activeCollectionImagesFlow()` | Guarantees full-cycle playback before reshuffle and removes the DB→engine poke, closing races around concurrent screen-off events and edits |
+| Folder sync                | Diffed in Kotlin against the current disk snapshot, applied in chunked transactions | Prevents duplicate inserts, preserves manual additions, and avoids SQLite's bind-variable limit on very large folders |
+| Wallpaper application      | `WallpaperApplier` streams the buffer or default image into `WallpaperManager.setStream()` for the configured destination(s) | Avoids decoding a full bitmap at apply time and keeps zoom-fix and destination targeting consistent |
+| Buffer writes              | Temp file then rename | Prevents half-written wallpaper buffers |
+| Manual image storage       | Internal WebP copies with configurable compression | Keeps user-picked images available and controls storage size |
+| Edit persistence           | Single embedded `EditParams` value, always rendered on-the-fly from the original URI | Encodes the all-or-nothing invariant in the type system and prevents cumulative quality degradation across repeated edits |
+| Wallpaper zoom fix         | Padding with blurred or edge-stretched borders | Counters Nothing OS auto-zoom without scaling the wallpaper down |
+| Screen-off delay defaults  | Per-device default keyed by `Build.DEVICE` codename (`DeviceDefaults`) | A single fixed delay felt sluggish on some models; codenames are stable across OS updates/regions, unlike `Build.MODEL` |
+| Failure handling           | Retry failed images, then purge after repeated failures | Keeps the service alive even with invalid sources |
+| Concurrency                | Coroutines + `SupervisorJob` + a single `Mutex` guarding rotation state + `AtomicBoolean` screen-off guard | Isolates failures and prevents a screen-off refill and a reactive reload from interleaving |
+| Gallery navigation         | `SavedStateHandle` for route arguments | Wallpaper ID and collection ID pass safely through navigation |
+| UI click handling          | `safeClick` debouncing utility on navigation-triggering buttons | Prevents duplicate stacked screens from rapid repeated taps |
 
 ---
 

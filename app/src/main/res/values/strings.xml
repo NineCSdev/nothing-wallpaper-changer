@@ -87,6 +87,9 @@
     <string name="settings_quality_high_subtitle">FOR MOST IMAGES - RECOMMENDED 95%</string>
     <string name="settings_quality_low_label">REDUCED QUALITY</string>
     <string name="settings_quality_low_subtitle">FOR HEAVY IMAGES - RECOMMENDED 80%</string>
+    <string name="settings_section_storage">STORAGE</string>
+    <string name="settings_keep_local_copies_title">KEEP LOCAL COPIES</string>
+    <string name="settings_keep_local_copies_subtitle">COPY ADDED PHOTOS INTO APP STORAGE</string>
 
     <!-- Boot toggle -->
     <string name="settings_autostart_title">AUTOSTART ON BOOT</string>
@@ -98,14 +101,14 @@
     <string name="settings_screen_off_delay_unit" translatable="false">ms</string>
 
     <!-- Lockscreen zoom fix -->
-    <string name="settings_zoom_fix_title">LOCKSCREEN ZOOM FIX</string>
+    <string name="settings_zoom_fix_title">WALLPAPER ZOOM FIX</string>
     <string name="settings_zoom_fix_subtitle">FIXES NOTHING OS WALLPAPER AUTOZOOM</string>
     <string name="settings_zoom_fix_off">OFF</string>
     <string name="settings_zoom_fix_blur">BLUR</string>
     <string name="settings_zoom_fix_edge">EDGE</string>
-    <string name="settings_zoom_fix_dialog_title">Lockscreen zoom fix</string>
+    <string name="settings_zoom_fix_dialog_title">Wallpaper zoom fix</string>
     <string name="settings_zoom_fix_dialog_body">
-        Certain phone operating systems (like Nothing OS) automatically zoom in on lockscreen wallpapers to create a parallax effect.
+        Certain phone operating systems (like Nothing OS) automatically zoom in on wallpapers to create a parallax effect.
         This setting adds hidden padding to your image, ensuring the OS crops the padding rather than the wallpaper itself.
         Because this zoom behavior varies, two padding styles are available: choose Blur for most wallpapers, or Edge for sharper borders.
     </string>
@@ -123,7 +126,7 @@
     <string name="create_list_field_name">LIST NAME</string>
     <string name="create_list_action_cancel">CANCEL</string>
     <string name="create_list_action_create">CREATE</string>
-    <string name="create_list_processing">INTERNALIZING…</string>
+    <string name="create_list_processing">ADDING PHOTOS…</string>
 
     <!-- Edit collection card -->
     <string name="edit_list_title">MANAGE LIST</string>
@@ -155,6 +158,13 @@
     <string name="image_screen_delete_multiple_title">DELETE WALLPAPERS?</string>
     <string name="image_screen_delete_single_message">This action cannot be undone.\nThe selected wallpaper will be removed.</string>
     <string name="image_screen_delete_multiple_message">This action cannot be undone.\nThe selected wallpapers will be removed.</string>
+
+    <!-- Pick import summary -->
+    <string name="import_summary_referenced">%1$d ADDED AS REFERENCES</string>
+    <string name="import_summary_internalized">%1$d COPIED LOCALLY</string>
+    <string name="import_summary_skipped">%1$d SKIPPED</string>
+    <string name="cd_unavailable_wallpaper">Unavailable</string>
+    <string name="cd_edited_wallpaper">Edited</string>
 
     <!-- Delete confirmation overlay -->
     <string name="action_delete">DELETE</string>

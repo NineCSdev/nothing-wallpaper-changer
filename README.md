@@ -32,22 +32,21 @@ There weren't many solutions on the Play Store and the ones I found were either 
 
 - **Instant Wallpaper Swap:** Each wallpaper is pre-processed and ready to go before you lock your phone resulting in no lag or  no loading screens. *(Achieved via a disk-buffered pipeline: downsample → crop → WebP.)*
 - **Configurable Wallpaper Destination:** Apply the rotation to the lock screen, the home screen, or both.
-- **Language Selection:** Switch the app's language from Settings. English and Spanish are fully supported today.
 - **Wallpaper Collections/Lists:** Organize wallpapers in two ways:
     - **Folder-based:** Point the app at a folder on your device and it picks up all the images inside, with re-sync on demand.
     - **Manual:** Hand-pick individual photos; they're safely copied into the app's private storage so they're always available.
 - **Collection Image Gallery:** Browse all wallpapers in a collection with a 3-column grid, full-screen preview with swipe-through, and multi-select for batch operations.
-- **Delete Confirmation:** Confirm before removing selected wallpapers from a collection.
 - **Per-Image Wallpaper Editor:** Crop, zoom, and position individual wallpapers with pinch-to-zoom gestures, precision sliders, undo, and a fit-to-height control. Edits are rendered from the original image to avoid quality loss, and parameters are persisted so you can adjust them later.
 - **Smart Shuffle:** Every image is shown exactly once before the collection reshuffles in order to never getting any individual wallpaper too often.
 - **Flexible Cropping:** Choose how images fit your screen per collection: center, left-aligned, right-aligned, or fit-to-screen.
-- **Lockscreen Zoom Fix:** Counteracts the auto-zoom some phones (especially Nothing OS) apply to lock screen wallpapers. Choose between blurred-edge or sharp-edge padding modes, or turn it off. Applied to both rotating and default wallpapers.
+- **Wallpaper Zoom Fix:** Counteracts the auto-zoom some phones (especially Nothing OS) apply to screen wallpapers. Choose between blurred-edge or sharp-edge padding modes, or turn it off. Applied to both rotating and default wallpapers.
 - **Rotation Timer Modes:** Configure each collection to rotate on every lock, every 1 hour, or once per day.
-- **Settings Screen:** Tune the screen-off debounce delay (with a device-appropriate default out of the box), boot behavior, wallpaper destination, manual-image compression quality, Battery Saver behavior, lockscreen zoom fix, and app language from inside the app.
+- **Settings Screen:** Tune the screen-off debounce delay (with a device-appropriate default out of the box), boot behavior, wallpaper destination, manual-image compression quality, Battery Saver behavior, wallpaper zoom fix, and app language from inside the app.
 - **Quick Settings Tile:** Start, stop, or check status right from the notification shade letting you control it while doing something else.
 - **Default Wallpaper Fallback:** Pick a fallback lock screen image that's automatically restored when the service stops or pauses.
 - **Survives Reboots:** If the service was running before a restart, it picks right back up.
 - **Battery Aware:** Choose what happens during Battery Saver: stop the service, pause and auto-resume, or keep running.
+- **Language Selection:** Switch the app's language from Settings. English and Spanish are fully supported today.
 - **Self-Healing:** Failed images are retried, edited files can fall back to originals, and broken entries are removed after repeated failures.
 - **Privacy First:** No internet permissions. Your images never leave your device.
 
@@ -98,16 +97,16 @@ There weren't many solutions on the Play Store and the ones I found were either 
 <details>
 <summary><b>Will this drain my battery?</b></summary>
 
-No. The app doesn't run on a timer or poll in the background, it simply waits for the screen to turn off, then swaps the wallpaper. The actual work (processing one image) takes a fraction of a second. It also automatically pauses during Battery Saver mode.
+No. The app doesn't run on a timer or poll in the background, it simply waits for the screen to turn off, then swaps the wallpaper. The actual work (processing one image) takes a fraction of a second. It also *(depending on user configuration)* automatically pauses during Battery Saver mode.
 </details>
 
 <details>
 <summary><b>How much storage does it use?</b></summary>
 
-- **Folder collections:** Almost none. The app just references the images where they already are on your device.
+- **Folder collections:** None. The app just references the images where they already are on your device.
 - **Manual collections:** Images are copied into the app's private storage as compressed WebP files at screen resolution. Expect roughly **0.2–1 MB per image**, so a 100-image collection might use around 20–100 MB.
-- **Edited wallpapers:** Each per-image edit saves a screen-resolution WebP (~0.5–1.5 MB) into app-private storage.
 - A single **buffer file** (~1 MB) is kept in cache for the next wallpaper. That's it.
+- Adding extra wallpaper to an already existing Folder or Manual collection also copies this image so expect the same **0.2–1 MB per image**.
 </details>
 
 <details>
@@ -141,9 +140,9 @@ No. When you select a folder, you're granting access to only that specific folde
 </details>
 
 <details>
-<summary><b>What is the lockscreen zoom fix?</b></summary>
+<summary><b>What is the wallpaper zoom fix?</b></summary>
 
-Some phones (especially Nothing OS) automatically zoom/crop the lockscreen wallpaper for a parallax effect. The lockscreen zoom fix adds hidden padding around your wallpaper so the zoom crops the padding instead of your image. Choose "Blur" for a blurred-edge extension or "Edge" for sharp edge-stretching in case the zoom isn´t applied (it sometimes happen), or leave it off if you don´t mind the zoom or your phone doesn´t apply it.
+Some phones (especially Nothing OS) automatically zoom/crop the wallpaper for a parallax effect. The wallpaper zoom fix adds hidden padding around your wallpaper so the zoom crops the padding instead of your image. Choose "Blur" for a blurred-edge extension or "Edge" for sharp edge-stretching in case the zoom isn´t applied (it sometimes happen), or leave it off if you don´t mind the zoom or your phone doesn´t apply it.
 </details>
 
 ---
@@ -154,7 +153,7 @@ Some phones (especially Nothing OS) automatically zoom/crop the lockscreen wallp
 1.  Go to the [Releases Page](https://github.com/NineCSdev/nothing-wallpaper-changer/releases).
 2.  Download the latest `.apk` file.
 3.  Install on your Android device (you may need to allow "Install from Unknown Sources").
-4.  **Grant Permissions:** Allow "Notifications" (required to keep the service alive in the background). The app may also ask to disable battery optimization — this improves reliability of the background service and boot-start.
+4.  **Grant Permissions:** Allow "Notifications" (required to keep the service alive in the background). The app may also ask to disable battery optimization, this improves reliability of the background service and boot-start.
 5.  **Create a collection:** Open the app and create a collection either by selecting a folder or individual photos.
 
 ### Build from Source
@@ -182,7 +181,7 @@ The current implementation uses Hilt-injected app-level dependencies, plain `@Hi
 3. **User presses Start** → `WallpaperService` starts as a foreground service, loads & shuffles the active collection into an in-memory magazine, and pre-processes the first wallpaper into a WebP disk buffer. Edited images are preferred over originals.
 4. **Screen turns off** → `ScreenOffReceiver` fires, streams the buffer to `WallpaperManager.setStream()` on whichever surface(s) the wallpaper destination setting targets (lock screen, home screen, or both), then triggers the repository to prepare the next image.
 5. **Battery Saver ON** → The configured policy is applied: stop the service, pause by unregistering the receiver and auto-resume later, or ignore Battery Saver.
-6. **User presses Stop** → Service stops; if "revert to default" is enabled, the saved default wallpaper is restored (including lockscreen zoom fix if enabled).
+6. **User presses Stop** → Service stops; if "revert to default" is enabled, the saved default wallpaper is restored (including wallpaper zoom fix if enabled).
 7. **Device reboots** → `BootReceiver` checks persisted state and restarts the service if it was previously active.
 
 ---
@@ -228,7 +227,7 @@ This is my first native Android project, built while actively learning about bac
 
 **v0.3.2-beta** is a customization and reliability release.
 
-It adds per-screen wallpaper destinations (lock screen, home screen, or both) and full Spanish language support, fixes three user-reported bugs (duplicate screens on rapid taps, a stuck "Setup needed" status, and sluggish screen-off timing), and closes out a round of service-layer stability fixes including a data-loss bug in folder sync, a startup crash, and an out-of-memory risk on the default wallpaper.
+It adds on-the-fly edited processing (editing a wallpaper no longer creates a new file with the edits, saving storage), adds per-screen wallpaper destinations (lock screen, home screen, or both) and full Spanish language support, fixes three user-reported bugs (duplicate screens on rapid taps, a stuck "Setup needed" status, and sluggish screen-off timing), and closes out a round of service-layer stability fixes including a data-loss bug in folder sync, a startup crash, and an out-of-memory risk on the default wallpaper.
 
 ---
 

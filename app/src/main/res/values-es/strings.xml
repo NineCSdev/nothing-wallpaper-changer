@@ -85,6 +85,9 @@
     <string name="settings_quality_high_subtitle">PARA LA MAYORÍA DE IMÁGENES - RECOMENDADO 95%</string>
     <string name="settings_quality_low_label">CALIDAD REDUCIDAD</string>
     <string name="settings_quality_low_subtitle">PARA IMÁGENES PESADAS - RECOMENDADO 80%</string>
+    <string name="settings_section_storage">ALMACENAMIENTO</string>
+    <string name="settings_keep_local_copies_title">MANTENER COPIAS LOCALES</string>
+    <string name="settings_keep_local_copies_subtitle">COPIAR LAS FOTOS AÑADIDAS AL ALMACENAMIENTO DE LA APP EN VEZ DE ENLAZARLAS</string>
 
     <!-- Boot toggle -->
     <string name="settings_autostart_title">INICIO AUTOMÁTICO AL ARRANCAR</string>
@@ -95,14 +98,14 @@
     <string name="settings_screen_off_delay_subtitle">POR ANIMACIÓN DE APAGADO DE PANTALLA - %1$dms POR DEFECTO</string>
 
     <!-- Lockscreen zoom fix -->
-    <string name="settings_zoom_fix_title">CORRECIÓN DEL ZOOM DE PANTALLA DE BLOQUEO</string>
+    <string name="settings_zoom_fix_title">CORRECIÓN DEL ZOOM DEL FONDO DE PANTALLA</string>
     <string name="settings_zoom_fix_subtitle">CORRIGE EL ZOOM AUTOMÁTICO DE NOTHING OS</string>
     <string name="settings_zoom_fix_off">DESACTIVADO</string>
     <string name="settings_zoom_fix_blur">DESENFOQUE</string>
     <string name="settings_zoom_fix_edge">BORDE</string>
-    <string name="settings_zoom_fix_dialog_title">Corrección de zoom en pantalla de bloqueo</string>
+    <string name="settings_zoom_fix_dialog_title">Corrección de zoom en fondo de pantalla</string>
     <string name="settings_zoom_fix_dialog_body">
-        Algunos sistemas operativos de móviles (como Nothing OS) hacen un zoom automático al fondo de pantalla de la pantalla de bloqueo para crear efecto "parallax".
+        Algunos sistemas operativos de móviles (como Nothing OS) hacen un zoom automático al fondo de pantalla para crear efecto "parallax".
         Este ajuste añade un margen oculto al fondo para que el SO recorte este margen en vez del fondo de pantalla en sí.
         Dado que el comportamiento del zoom varia hay dos estilos de margen: elige Desenfoque para la mayoría, o Borde para bordes más marcado.
     </string>
@@ -119,7 +122,7 @@
     <string name="create_list_field_name">NOMBRE DE LA LISTA</string>
     <string name="create_list_action_cancel">CANCELAR</string>
     <string name="create_list_action_create">CREAR</string>
-    <string name="create_list_processing">INTERNALIZANDO…</string>
+    <string name="create_list_processing">AÑADIENDO FOTOS…</string>
 
     <!-- Edit collection card -->
     <string name="edit_list_title">AJUSTES DE LA LISTA</string>
@@ -151,6 +154,13 @@
     <string name="image_screen_delete_multiple_title">¿ELIMINAR FONDOS?</string>
     <string name="image_screen_delete_single_message">Esta acción no se puede deshacer.\nEl fondo de pantalla será eliminado.</string>
     <string name="image_screen_delete_multiple_message">Esta acción no se puede deshacer.\nLos fondos de pantalla serán eliminados.</string>
+
+    <!-- Pick import summary -->
+    <string name="import_summary_referenced">%1$d AÑADIDAS COMO REFERENCIA</string>
+    <string name="import_summary_internalized">%1$d COPIADAS LOCALMENTE</string>
+    <string name="import_summary_skipped">%1$d OMITIDAS</string>
+    <string name="cd_unavailable_wallpaper">No disponible</string>
+    <string name="cd_edited_wallpaper">Editado</string>
 
     <!-- Delete confirmation overlay -->
     <string name="action_delete">ELIMINAR</string>
