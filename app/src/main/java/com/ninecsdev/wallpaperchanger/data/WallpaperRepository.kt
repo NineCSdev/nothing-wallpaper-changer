@@ -41,6 +41,15 @@ data class PickImportResult(
 )
 
 /**
+ * Outcome of re-linking an unavailable image to a freshly picked source (see
+ * [WallpaperRepository.relinkUnavailableFile]).
+ * [RELINKED] rebound the existing file row in place.
+ * [MERGED] folded it into an already-registered row (the picked uri was a known file).
+ * [FAILED] means the pick couldn't be referenced or internalized and the image stays unavailable.
+ */
+enum class RelinkResult { RELINKED, MERGED, FAILED }
+
+/**
  * Coordinates the data layer.
  *
  * Responsible for collection and wallpaper image CRUD,
@@ -295,6 +304,67 @@ class WallpaperRepository @Inject constructor(
                         dao.setFileAvailability(image.fileId, true)
                     }
                 }
+        }
+    }
+
+    /**
+     * Manually re-links an [image] whose source became unreadable to a freshly picked [pickedUri],
+     * preserving the file's identity (collection membership and edit params).
+     *
+     * The picked uri runs through the normal import pipeline ([importPickedUris]) so it follows the
+     * keep-local-copies setting and the reference-grant-or-internalize fallback. Then, in one
+     * transaction:
+     *  - picker returned the same uri → just clears the unavailable flag,
+     *  - uri is new → rebinds the existing file row in place ([WallpaperDao.rebindFile]),
+     *  - uri already exists as another row → merges the old row's memberships into it, dropping any
+     *    that would duplicate an existing (collection, file) membership.
+     * When the source actually changed, the old backing resource is reclaimed (internal copy deleted
+     * / stale picker grant released), mirroring [gcOrphanFiles].
+     *
+     * Returns [RelinkResult.FAILED] (leaving the image unavailable) if the pick can't be imported.
+     */
+    suspend fun relinkUnavailableFile(image: WallpaperImage, pickedUri: Uri): RelinkResult {
+        return withContext(Dispatchers.IO) {
+            val imported = importPickedUris(listOf(pickedUri))
+            val (finalUri, newSourceType) = imported.files.firstOrNull() ?: return@withContext RelinkResult.FAILED
+
+            val oldFileId = image.fileId
+            val oldUri = image.uri
+            val oldSourceType = image.sourceType
+
+            val result = database.withTransaction {
+                val existing = dao.getFileByUri(finalUri)
+                when {
+                    // Picker returned the same source that was probed just now: nothing to rebind.
+                    existing?.id == oldFileId -> {
+                        dao.setFileAvailability(oldFileId, true)
+                        RelinkResult.RELINKED
+                    }
+                    // Picked uri is already a different registered file: fold memberships into it.
+                    existing != null -> {
+                        dao.deleteJoinRowsDuplicatedByMerge(oldFileId, existing.id)
+                        dao.repointJoinRows(oldFileId, existing.id)
+                        dao.deleteFilesByIds(listOf(oldFileId))
+                        dao.setFileAvailability(existing.id, true)
+                        RelinkResult.MERGED
+                    }
+                    // Brand-new source: rebind the existing row in place, keeping join rows intact.
+                    else -> {
+                        dao.rebindFile(oldFileId, finalUri, newSourceType)
+                        RelinkResult.RELINKED
+                    }
+                }
+            }
+
+            // Reclaim the old backing resource only when the source really changed.
+            if (finalUri != oldUri) {
+                when (oldSourceType) {
+                    SourceType.INTERNALIZED -> imageInternalizer.deleteInternalFile(oldUri.path)
+                    SourceType.PICKER_GRANT -> releasePersistedUriPermission(oldUri)
+                    SourceType.FOLDER_DOC -> Unit
+                }
+            }
+            result
         }
     }
 

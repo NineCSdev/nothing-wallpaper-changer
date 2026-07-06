@@ -155,6 +155,13 @@
     <string name="image_screen_delete_single_message">Esta acción no se puede deshacer.\nEl fondo de pantalla será eliminado.</string>
     <string name="image_screen_delete_multiple_message">Esta acción no se puede deshacer.\nLos fondos de pantalla serán eliminados.</string>
 
+    <!-- Re-enlazar imagen no disponible -->
+    <string name="relink_dialog_title">IMAGEN NO DISPONIBLE</string>
+    <string name="relink_dialog_message">Esta imagen ya no se puede leer.\nVuelve a seleccionarla desde tus fotos.\nSe conservan los ajustes.</string>
+    <string name="relink_dialog_confirm">REELEGIR</string>
+    <string name="relink_dialog_cancel">CANCELAR</string>
+    <string name="relink_failed_snackbar">No se pudo re-enlazar la imagen</string>
+
     <!-- Pick import summary -->
     <string name="import_summary_referenced">%1$d AÑADIDAS COMO REFERENCIA</string>
     <string name="import_summary_internalized">%1$d COPIADAS LOCALMENTE</string>

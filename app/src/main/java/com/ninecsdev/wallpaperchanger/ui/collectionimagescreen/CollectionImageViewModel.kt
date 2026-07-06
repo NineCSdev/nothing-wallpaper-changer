@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ninecsdev.wallpaperchanger.data.RelinkResult
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -81,6 +82,44 @@ class CollectionImageViewModel @Inject constructor(
     /** Clears the pick-import summary once the UI has shown it. */
     fun clearImportSummary() {
         _uiState.update { it.copy(importSummary = null) }
+    }
+
+    // Re-link unavailable image
+
+    /** Marks [wallpaper] as the re-link target, opening the confirm dialog. */
+    fun requestRelink(wallpaper: WallpaperImage) {
+        _uiState.update { it.copy(relinkTarget = wallpaper) }
+    }
+
+    fun cancelRelink() {
+        _uiState.update { it.copy(relinkTarget = null) }
+    }
+
+    /**
+     * Handles the photo-picker result for a re-link. A null [uri] (picker canceled) just closes the
+     * flow; otherwise the picked source is rebound onto the target's file row.
+     * A failure raises a one-shot snackbar flag.
+     */
+    fun onRelinkPicked(uri: Uri?) {
+        val target = _uiState.value.relinkTarget
+        if (uri == null || target == null) {
+            _uiState.update { it.copy(relinkTarget = null) }
+            return
+        }
+        viewModelScope.launch {
+            val result = repository.relinkUnavailableFile(target, uri)
+            _uiState.update {
+                it.copy(
+                    relinkTarget = null,
+                    relinkFailed = result == RelinkResult.FAILED
+                )
+            }
+        }
+    }
+
+    /** Clears the re-link failure flag once the UI has shown the snackbar. */
+    fun clearRelinkFailed() {
+        _uiState.update { it.copy(relinkFailed = false) }
     }
 
     // Selection mode

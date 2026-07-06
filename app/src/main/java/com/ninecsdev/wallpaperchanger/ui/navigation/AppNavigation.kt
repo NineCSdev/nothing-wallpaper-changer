@@ -205,6 +205,13 @@ fun AppNavigation(
                 }
             }
 
+            // Single-select picker for re-linking an unavailable image; uri is null if canceled.
+            val relinkPickerLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.PickVisualMedia()
+            ) { uri ->
+                collectionImageViewModel.onRelinkPicked(uri)
+            }
+
             CollectionImageScreen(
                 uiState = collectionImageState,
                 onBackClick = {
@@ -218,6 +225,7 @@ fun AppNavigation(
                     )
                 },
                 onWallpaperTap = collectionImageViewModel::openPreview,
+                onUnavailableTap = collectionImageViewModel::requestRelink,
                 onWallpaperLongPress = collectionImageViewModel::enterSelectionMode,
                 onToggleSelection = collectionImageViewModel::toggleSelection,
                 onExitSelectionMode = collectionImageViewModel::exitSelectionMode,
@@ -230,7 +238,14 @@ fun AppNavigation(
                 },
                 onPreviewPageChanged = collectionImageViewModel::openPreview,
                 onClosePreview = collectionImageViewModel::closePreview,
-                onImportSummaryShown = collectionImageViewModel::clearImportSummary
+                onImportSummaryShown = collectionImageViewModel::clearImportSummary,
+                onRelinkConfirm = {
+                    relinkPickerLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                },
+                onRelinkCancel = collectionImageViewModel::cancelRelink,
+                onRelinkFailedShown = collectionImageViewModel::clearRelinkFailed
             )
         }
 

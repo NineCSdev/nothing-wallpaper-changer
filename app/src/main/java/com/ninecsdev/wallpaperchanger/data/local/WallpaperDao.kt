@@ -122,6 +122,28 @@ interface WallpaperDao {
     @Query("UPDATE wallpaper_files SET isAvailable = :available WHERE id = :fileId")
     suspend fun setFileAvailability(fileId: Long, available: Boolean)
 
+    /**
+     * Repoints a file row to a freshly picked source and restores it to available. Used to re-link
+     * an unavailable image keeping its edit params.
+     *
+     * Note: Caller must guarantee [uri] isn't already held by a different file row (uri is unique).
+     */
+    @Query("UPDATE wallpaper_files SET uri = :uri, sourceType = :sourceType, isAvailable = 1 WHERE id = :fileId")
+    suspend fun rebindFile(fileId: Long, uri: Uri, sourceType: SourceType)
+
+    /**
+     * Merge step for re-link when the picked uri already exists as a different file row: drops the
+     * old file's join rows for collections that already reference [newFileId], so the subsequent
+     * [repointJoinRows] can't violate the unique (collectionId, fileId) index. The pre-existing
+     * membership wins; the unavailable duplicate is discarded.
+     */
+    @Query("DELETE FROM wallpapers WHERE fileId = :oldFileId AND collectionId IN (SELECT collectionId FROM wallpapers WHERE fileId = :newFileId)")
+    suspend fun deleteJoinRowsDuplicatedByMerge(oldFileId: Long, newFileId: Long)
+
+    /** Merge step for re-link: moves the old file's remaining join rows onto the existing file row. */
+    @Query("UPDATE wallpapers SET fileId = :newFileId WHERE fileId = :oldFileId")
+    suspend fun repointJoinRows(oldFileId: Long, newFileId: Long)
+
     @Query("DELETE FROM wallpaper_files WHERE id IN (:ids)")
     suspend fun deleteFilesByIds(ids: List<Long>)
 

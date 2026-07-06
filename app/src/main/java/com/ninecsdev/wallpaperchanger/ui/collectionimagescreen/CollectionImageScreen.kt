@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,6 +77,7 @@ fun CollectionImageScreen(
     onBackClick: () -> Unit,
     onAddWallpapers: () -> Unit,
     onWallpaperTap: (WallpaperImage) -> Unit,
+    onUnavailableTap: (WallpaperImage) -> Unit = {},
     onWallpaperLongPress: (Long) -> Unit,
     onToggleSelection: (Long) -> Unit,
     onExitSelectionMode: () -> Unit,
@@ -84,12 +86,23 @@ fun CollectionImageScreen(
     onEditFromPreview: (WallpaperImage) -> Unit,
     onPreviewPageChanged: (WallpaperImage) -> Unit,
     onClosePreview: () -> Unit,
-    onImportSummaryShown: () -> Unit = {}
+    onImportSummaryShown: () -> Unit = {},
+    onRelinkConfirm: () -> Unit = {},
+    onRelinkCancel: () -> Unit = {},
+    onRelinkFailedShown: () -> Unit = {}
 ) {
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     ImportSummarySnackbarEffect(uiState.importSummary, snackbarHostState, onImportSummaryShown)
+
+    val relinkFailedMessage = stringResource(R.string.relink_failed_snackbar)
+    LaunchedEffect(uiState.relinkFailed) {
+        if (uiState.relinkFailed) {
+            snackbarHostState.showSnackbar(relinkFailedMessage)
+            onRelinkFailedShown()
+        }
+    }
 
     // Handle back press: exit selection mode first, then close preview, then navigate back
     // TODO: Do a better handling of this
@@ -229,6 +242,8 @@ fun CollectionImageScreen(
                         onClick = {
                             if (uiState.isSelectionMode) {
                                 onToggleSelection(wallpaper.id)
+                            } else if (!wallpaper.isAvailable) {
+                                onUnavailableTap(wallpaper)
                             } else {
                                 onWallpaperTap(wallpaper)
                             }
@@ -271,6 +286,19 @@ fun CollectionImageScreen(
                 if (selectedCount > 0) onDeleteSelected()
             },
             onCancel = { showDeleteConfirmation = false }
+        )
+    }
+
+    // Re-link confirmation for a tapped unavailable image.
+    if (uiState.relinkTarget != null) {
+        ConfirmationOverlay(
+            title = stringResource(R.string.relink_dialog_title),
+            message = stringResource(R.string.relink_dialog_message),
+            confirmLabel = stringResource(R.string.relink_dialog_confirm),
+            cancelLabel = stringResource(R.string.relink_dialog_cancel),
+            accentColor = NothingWhite,
+            onConfirm = onRelinkConfirm,
+            onCancel = onRelinkCancel
         )
     }
 }

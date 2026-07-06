@@ -159,6 +159,13 @@
     <string name="image_screen_delete_single_message">This action cannot be undone.\nThe selected wallpaper will be removed.</string>
     <string name="image_screen_delete_multiple_message">This action cannot be undone.\nThe selected wallpapers will be removed.</string>
 
+    <!-- Re-link unavailable image -->
+    <string name="relink_dialog_title">IMAGE UNAVAILABLE</string>
+    <string name="relink_dialog_message">This image can no longer be read.\nRe-select it from your photos to restore it.\nAny edits are kept.</string>
+    <string name="relink_dialog_confirm">RESELECT</string>
+    <string name="relink_dialog_cancel">CANCEL</string>
+    <string name="relink_failed_snackbar">Couldn\'t re-link the image</string>
+
     <!-- Pick import summary -->
     <string name="import_summary_referenced">%1$d ADDED AS REFERENCES</string>
     <string name="import_summary_internalized">%1$d COPIED LOCALLY</string>

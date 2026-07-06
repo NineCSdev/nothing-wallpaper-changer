@@ -15,6 +15,10 @@ data class CollectionImageUiState(
     val selectedIds: Set<Long> = emptySet(),
     val previewWallpaper: WallpaperImage? = null,
     /** One-shot summary of the last pick import; cleared via [CollectionImageViewModel.clearImportSummary]. */
-    val importSummary: PickImportResult? = null
+    val importSummary: PickImportResult? = null,
+    /** The unavailable image the user tapped to re-link; Null when no re-link is in progress. */
+    val relinkTarget: WallpaperImage? = null,
+    /** One-shot flag: the last re-link attempt failed; drives the error snackbar. */
+    val relinkFailed: Boolean = false
 )
 
