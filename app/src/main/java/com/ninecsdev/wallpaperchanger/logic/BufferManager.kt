@@ -184,11 +184,11 @@ class BufferManager @Inject constructor(
     /**
      * Applies the user's edit params to produce a screen-sized bitmap.
      *
-     * Uses identical math to the editor preview (fit-based scaling + user zoom + normalized offsets),
-     * so the wallpaper on the lockscreen matches exactly what the user saw in the editor.
+     * The geometry comes from [computeEditTransform] so the wallpaper
+     * matches exactly what the user saw in the editor.
      *
      * @param source Decoded source bitmap (ideally at 2× screen resolution for quality headroom).
-     * @param zoom User zoom factor where 1.0 = cover/fill the screen.
+     * @param zoom User zoom factor where 1.0 = fit inside the screen.
      * @param normalizedOffsetX Normalized X offset in -1..1.
      * @param normalizedOffsetY Normalized Y offset in -1..1.
      */
@@ -199,36 +199,23 @@ class BufferManager @Inject constructor(
         normalizedOffsetX: Float,
         normalizedOffsetY: Float
     ): Bitmap {
-        val targetW = targetSize.width
-        val targetH = targetSize.height
-
-        // Base scale: fit the image inside the screen (same as the editor preview)
-        val baseScale = minOf(
-            targetW.toFloat() / source.width,
-            targetH.toFloat() / source.height
+        val transform = computeEditTransform(
+            contentWidth = source.width.toFloat(),
+            contentHeight = source.height.toFloat(),
+            containerWidth = targetSize.width.toFloat(),
+            containerHeight = targetSize.height.toFloat(),
+            zoom = zoom,
+            offsetX = normalizedOffsetX,
+            offsetY = normalizedOffsetY
         )
-        val scale = baseScale * zoom
 
-        val scaledW = source.width * scale
-        val scaledH = source.height * scale
-
-        // Center the scaled image
-        val centerX = (targetW - scaledW) / 2f
-        val centerY = (targetH - scaledH) / 2f
-
-        // Convert normalized offsets to pixel offsets
-        val maxPanX = (scaledW - targetW).coerceAtLeast(0f) / 2f
-        val maxPanY = (scaledH - targetH).coerceAtLeast(0f) / 2f
-        val pixelOffsetX = normalizedOffsetX * maxPanX
-        val pixelOffsetY = normalizedOffsetY * maxPanY
-
-        val output = createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888)
+        val output = createBitmap(targetSize.width, targetSize.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)
         canvas.drawColor(Color.BLACK)
 
         val matrix = Matrix().apply {
-            postScale(scale, scale)
-            postTranslate(centerX + pixelOffsetX, centerY + pixelOffsetY)
+            postScale(transform.scale, transform.scale)
+            postTranslate(transform.drawX, transform.drawY)
         }
         canvas.drawBitmap(source, matrix, ImageProcessingUtils.createRenderPaint())
 

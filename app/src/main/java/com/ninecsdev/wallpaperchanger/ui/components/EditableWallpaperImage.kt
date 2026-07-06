@@ -20,8 +20,8 @@ import androidx.compose.ui.unit.IntSize
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Scale
+import com.ninecsdev.wallpaperchanger.logic.computeEditTransform
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
-import com.ninecsdev.wallpaperchanger.ui.walleditscreen.calculateTransform
 import kotlin.math.ceil
 
 /**
@@ -30,8 +30,10 @@ import kotlin.math.ceil
  *
  * When no edit params exist the image is displayed normally using [contentScale].
  * When edit params exist [ContentScale.Fit] is used as the base and the zoom/offset
- * is applied as a graphics layer transform — matching the math in the editor preview
- * and in [BufferManager][com.ninecsdev.wallpaperchanger.logic.BufferManager].
+ * is applied as a graphics layer transform — sharing
+ * [computeEditTransform][com.ninecsdev.wallpaperchanger.logic.computeEditTransform] with the
+ * editor preview and [BufferManager][com.ninecsdev.wallpaperchanger.logic.BufferManager]'s
+ * render path.
  *
  * @param wallpaper The wallpaper to display.
  * @param contentDescription Accessibility description.
@@ -82,18 +84,19 @@ fun EditableWallpaperImage(
                 .then(
                     if (hasEdit && viewSize != IntSize.Zero) {
                         Modifier.graphicsLayer {
-                            val t = calculateTransform(
-                                viewWidth = viewSize.width.toFloat(),
-                                viewHeight = viewSize.height.toFloat(),
-                                imageAspectRatio = imageAspectRatio,
+                            val t = computeEditTransform(
+                                contentWidth = imageAspectRatio,
+                                contentHeight = 1f,
+                                containerWidth = viewSize.width.toFloat(),
+                                containerHeight = viewSize.height.toFloat(),
                                 zoom = edit.zoom,
                                 offsetX = edit.offsetX,
                                 offsetY = edit.offsetY,
                             )
-                            scaleX = t.scale
-                            scaleY = t.scale
-                            translationX = t.translationX
-                            translationY = t.translationY
+                            scaleX = edit.zoom
+                            scaleY = edit.zoom
+                            translationX = t.panX
+                            translationY = t.panY
                         }
                     } else {
                         Modifier

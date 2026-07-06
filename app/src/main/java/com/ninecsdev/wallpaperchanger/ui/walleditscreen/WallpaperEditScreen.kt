@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.logic.computeEditTransform
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.ConfirmationOverlay
@@ -248,19 +249,20 @@ private fun WallpaperCanvas(
                 }
             }
             .graphicsLayer {
-                val transform = calculateTransform(
-                    viewWidth = size.width,
-                    viewHeight = size.height,
-                    imageAspectRatio = imageAspectRatio,
+                val transform = computeEditTransform(
+                    contentWidth = imageAspectRatio,
+                    contentHeight = 1f,
+                    containerWidth = size.width,
+                    containerHeight = size.height,
                     zoom = zoom,
                     offsetX = offsetX,
                     offsetY = offsetY
                 )
 
-                scaleX = transform.scale
-                scaleY = transform.scale
-                translationX = transform.translationX
-                translationY = transform.translationY
+                scaleX = zoom
+                scaleY = zoom
+                translationX = transform.panX
+                translationY = transform.panY
             }
     )
 }
