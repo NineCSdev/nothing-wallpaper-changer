@@ -40,7 +40,10 @@ import javax.inject.Singleton
  *   the persisted running flag, live service liveness, power-save mode, battery policy,
  *   and active-collection availability
  * - Persisting the running flag to [AppDataStore] on state transitions, and self-healing
- *   a stale-true flag so [BootReceiver][com.ninecsdev.wallpaperchanger.service.BootReceiver] does not wrongly restart after a crash
+ *   a stale-true `service_running` flag (after a crash/kill without onDestroy) so the
+ *   resolved [serviceState] does not keep reporting `Running` for a dead service. The
+ *   parallel `service_desired` flag is deliberately left untouched — it records the user's
+ *   last intent and drives [ServiceRestartReceiver][com.ninecsdev.wallpaperchanger.service.ServiceRestartReceiver].
  */
 @Singleton
 class ServiceStateManager @Inject constructor(
@@ -106,8 +109,10 @@ class ServiceStateManager @Inject constructor(
 
     init {
         // Self-heal the persisted running flag: if it says "running" but the service is not
-        // actually alive (e.g. after a crash/kill without onDestroy), clear it so BootReceiver
-        // does not restart the service on next boot. Idempotent with the normal stop sequence.
+        // actually alive (e.g. after a crash/kill without onDestroy), clear it so the resolved
+        // serviceState stops reporting Running for a dead service. Only service_running is
+        // cleared; service_desired is left intact so a service the user never chose to stop is
+        // still restarted on the next boot/update. Idempotent with the normal stop sequence.
         combine(appDataStore.serviceRunningFlow(), lifecycleTracker.isAlive) { persisted, alive ->
             persisted && !alive
         }.distinctUntilChanged()
@@ -171,7 +176,16 @@ class ServiceStateManager @Inject constructor(
         Log.d(TAG, "Service state → $state")
     }
 
+    /**
+     * Persists both the running flag (used for UI-state resolution and self-heal) and the
+     * desired-intent flag (used by ServiceRestartReceiver). They diverge only when the
+     * self-heal above clears a stale `service_running` without touching `service_desired`,
+     * so the user's last intent survives an ungraceful kill such as a package replace.
+     */
     private fun persistRunningState(isRunning: Boolean) {
-        scope.launch { appDataStore.setServiceRunning(isRunning) }
+        scope.launch {
+            appDataStore.setServiceRunning(isRunning)
+            appDataStore.setServiceDesired(isRunning)
+        }
     }
 }

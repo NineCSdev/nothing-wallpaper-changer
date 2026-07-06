@@ -38,6 +38,7 @@ private val Context.dataStore by preferencesDataStore(
 private val KEY_DEFAULT_WALLPAPER_URI = stringPreferencesKey("default_wallpaper_uri")
 private val KEY_REVERT_TO_DEFAULT = booleanPreferencesKey("revert_to_default_on_stop")
 private val KEY_SERVICE_RUNNING = booleanPreferencesKey("service_running")
+private val KEY_SERVICE_DESIRED = booleanPreferencesKey("service_desired")
 private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
 private val KEY_SCREEN_OFF_DELAY = longPreferencesKey("screen_off_delay_ms")
 private val KEY_COMPRESSION_QUALITY_HIGH = intPreferencesKey("compression_quality_high")
@@ -111,6 +112,19 @@ class AppDataStore @Inject constructor(
     fun serviceRunningFlow(): Flow<Boolean> =
         settingFlow(KEY_SERVICE_RUNNING, false)
 
+    /**
+     * Persisted user intent — "the service was last left on." Unlike [serviceRunningFlow],
+     * this is never cleared by [ServiceStateManager][com.ninecsdev.wallpaperchanger.data.ServiceStateManager]'s
+     * stale-flag self-heal, so it survives an ungraceful kill (e.g. package replace, where
+     * `onDestroy` never runs) and drives the restart decision in
+     * [ServiceRestartReceiver][com.ninecsdev.wallpaperchanger.service.ServiceRestartReceiver].
+     *
+     * Migration: for installs predating this key, fall back to the old `service_running`
+     * value so the very update that ships this feature still restarts the service.
+     */
+    fun serviceDesiredFlow(): Flow<Boolean> =
+        safeData.map { prefs -> prefs[KEY_SERVICE_DESIRED] ?: prefs[KEY_SERVICE_RUNNING] ?: false }
+
     fun startOnBootFlow(): Flow<Boolean> =
         settingFlow(KEY_START_ON_BOOT, true)
 
@@ -149,8 +163,8 @@ class AppDataStore @Inject constructor(
     suspend fun shouldRevertToDefault(): Boolean =
         revertToDefaultFlow().first()
 
-    suspend fun isServiceRunning(): Boolean =
-        serviceRunningFlow().first()
+    suspend fun isServiceDesired(): Boolean =
+        serviceDesiredFlow().first()
 
     suspend fun shouldStartOnBoot(): Boolean =
         startOnBootFlow().first()
@@ -186,6 +200,9 @@ class AppDataStore @Inject constructor(
 
     suspend fun setServiceRunning(isRunning: Boolean) =
         set(KEY_SERVICE_RUNNING, isRunning)
+
+    suspend fun setServiceDesired(desired: Boolean) =
+        set(KEY_SERVICE_DESIRED, desired)
 
     suspend fun setStartOnBoot(enabled: Boolean) =
         set(KEY_START_ON_BOOT, enabled)

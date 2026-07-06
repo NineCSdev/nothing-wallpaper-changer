@@ -8,8 +8,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
-    <!-- TODO: Decide if enableOnBackInvokedCallback should be true (lets the animations on screen
-    transition play while the user is doing gesture navigation (not yet released it)-->
     <application
         android:name=".WallpaperApp"
         android:allowBackup="true"
@@ -24,12 +22,13 @@
         android:theme="@style/Theme.WallpaperChanger">
 
         <receiver
-            android:name=".service.BootReceiver"
+            android:name=".service.ServiceRestartReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 
