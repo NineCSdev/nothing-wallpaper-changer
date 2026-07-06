@@ -48,7 +48,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.ui.components.CropRuleSelector
-import com.ninecsdev.wallpaperchanger.ui.components.DeleteConfirmationOverlay
+import com.ninecsdev.wallpaperchanger.ui.components.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.NothingTextField
 import com.ninecsdev.wallpaperchanger.ui.components.ProcessingOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
@@ -151,7 +151,7 @@ fun EditCollectionCard(
                 }
 
                 if(showDeleteConfirmation) {
-                    DeleteConfirmationOverlay(
+                    ConfirmationOverlay(
                         title = stringResource(R.string.edit_list_delete_title),
                         message = stringResource(R.string.edit_list_delete_message),
                         onConfirm = {
@@ -257,7 +257,7 @@ private fun EditCardHeader(
                     Icon(
                         painter = painterResource(R.drawable.icon_sync),
                         contentDescription = stringResource(R.string.cd_sync),
-                        tint = NothingWhite.copy(alpha = 0.6f),
+                        tint = NothingWhite,
                         modifier = Modifier.size(20.dp)
                     )
                 }

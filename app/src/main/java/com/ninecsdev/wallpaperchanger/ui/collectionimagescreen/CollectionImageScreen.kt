@@ -53,7 +53,7 @@ import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
-import com.ninecsdev.wallpaperchanger.ui.components.DeleteConfirmationOverlay
+import com.ninecsdev.wallpaperchanger.ui.components.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.ThumbnailSlot
 import com.ninecsdev.wallpaperchanger.ui.components.ImportSummarySnackbarEffect
@@ -258,15 +258,14 @@ fun CollectionImageScreen(
         }
     }
 
+    // Delete confirmation
     if (showDeleteConfirmation) {
         val selectedCount = uiState.selectedIds.size
-        DeleteConfirmationOverlay(
-            title = if (selectedCount == 1) stringResource(R.string.image_screen_delete_single_title) else stringResource(R.string.image_screen_delete_multiple_title),
-            message = if (selectedCount == 1) {
-                stringResource(R.string.image_screen_delete_single_message)
-            } else {
-                stringResource(R.string.image_screen_delete_multiple_message)
-            },
+        ConfirmationOverlay(
+            title = if (selectedCount == 1) stringResource(R.string.image_screen_delete_single_title)
+                    else stringResource(R.string.image_screen_delete_multiple_title),
+            message = if (selectedCount == 1) stringResource(R.string.image_screen_delete_single_message)
+                    else stringResource(R.string.image_screen_delete_multiple_message),
             onConfirm = {
                 showDeleteConfirmation = false
                 if (selectedCount > 0) onDeleteSelected()

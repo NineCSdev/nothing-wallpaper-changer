@@ -163,11 +163,14 @@ interface WallpaperDao {
     suspend fun getUnavailableImagesForCollection(collectionId: Long): List<WallpaperImage>
 
     /**
-     * Returns only the folder-sourced (non-manually-added) images for a collection.
-     * Used during folder sync to compute diffs without touching manually added images.
+     * Returns only the folder-sourced images for a collection ([SourceType.FOLDER_DOC]).
+     * Used during folder sync to compute diffs without touching manually added/re-linked images
      */
-    @Query("$SELECT_WALLPAPER_IMAGES WHERE w.collectionId = :collectionId AND w.isManuallyAdded = 0")
-    suspend fun getFolderImagesForCollection(collectionId: Long): List<WallpaperImage>
+    @Query("$SELECT_WALLPAPER_IMAGES WHERE w.collectionId = :collectionId AND w.isManuallyAdded = 0 AND f.sourceType = :sourceType")
+    suspend fun getFolderImagesForCollection(
+        collectionId: Long,
+        sourceType: SourceType = SourceType.FOLDER_DOC
+    ): List<WallpaperImage>
 
     /** Fetches a single wallpaper by ID. */
     @Query("$SELECT_WALLPAPER_IMAGES WHERE w.id = :wallpaperId LIMIT 1")

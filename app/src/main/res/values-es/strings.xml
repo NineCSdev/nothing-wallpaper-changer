@@ -42,7 +42,7 @@
     <!-- Service status labels -->
     <string name="status_label_active">ACTIVO</string>
     <string name="status_label_inactive">INACTIVO</string>
-    <string name="status_label_paused_battery">PAUSADO (BATERÍA)</string>
+    <string name="status_label_paused_battery">PAUSA (BATERÍA)</string>
     <string name="status_label_power_save_on">AHORRO DE BATERÍA ACTIVADO</string>
     <string name="status_label_setup_needed">SIN CONFIGURAR</string>
     <string name="status_label_initializing">INICIALIZANDO</string>
@@ -87,7 +87,7 @@
     <string name="settings_quality_low_subtitle">PARA IMÁGENES PESADAS - RECOMENDADO 80%</string>
     <string name="settings_section_storage">ALMACENAMIENTO</string>
     <string name="settings_keep_local_copies_title">MANTENER COPIAS LOCALES</string>
-    <string name="settings_keep_local_copies_subtitle">COPIAR LAS FOTOS AÑADIDAS AL ALMACENAMIENTO DE LA APP EN VEZ DE ENLAZARLAS</string>
+    <string name="settings_keep_local_copies_subtitle">COPIAR LAS FOTOS AL ALMACENAMIENTO DE LA APP</string>
 
     <!-- Boot toggle -->
     <string name="settings_autostart_title">INICIO AUTOMÁTICO AL ARRANCAR</string>

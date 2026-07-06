@@ -20,6 +20,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -31,13 +33,21 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
+/**
+ * Generic two-button confirmation dialog in the app's black-card styling.
+ *
+ * [accentColor] tints the border, title, and confirm button, it signals intent, so pass the
+ * default [NothingRed] for destructive actions (delete, discard) and a neutral color like
+ * [NothingWhite] for constructive/recovery ones (e.g. re-linking an unavailable image).
+ */
 @Composable
-fun DeleteConfirmationOverlay(
+fun ConfirmationOverlay(
     modifier: Modifier = Modifier,
     title: String,
     message: String,
     confirmLabel: String = "DELETE",
     cancelLabel: String = "CANCEL",
+    accentColor: Color = NothingRed,
     onConfirm: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -49,7 +59,7 @@ fun DeleteConfirmationOverlay(
             modifier = modifier,
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = NothingBlack),
-            border = BorderStroke(1.dp, NothingRed.copy(alpha = 0.4f))
+            border = BorderStroke(1.dp, accentColor.copy(alpha = 0.4f))
         ) {
             Column(
                 modifier = Modifier
@@ -64,7 +74,7 @@ fun DeleteConfirmationOverlay(
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp,
-                    color = NothingRed
+                    color = accentColor
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -72,7 +82,7 @@ fun DeleteConfirmationOverlay(
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodySmall,
-                    color = NothingWhite.copy(alpha = 0.6f),
+                    color = NothingWhite,
                     textAlign = TextAlign.Center
                 )
 
@@ -97,8 +107,8 @@ fun DeleteConfirmationOverlay(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = NothingRed,
-                            contentColor = NothingWhite
+                            containerColor = accentColor,
+                            contentColor = if (accentColor.luminance() > 0.5f) NothingBlack else NothingWhite
                         )
                     ) {
                         Text(confirmLabel, fontWeight = FontWeight.Black)
@@ -109,12 +119,12 @@ fun DeleteConfirmationOverlay(
     }
 }
 
-@Preview(name = "Delete Confirmation Overlay", backgroundColor = 0xFF000000, showBackground = true)
+@Preview(name = "Confirmation Overlay", backgroundColor = 0xFF000000, showBackground = true)
 @Composable
-fun DeleteConfirmationOverlayPreview() {
+fun ConfirmationOverlayPreview() {
     MaterialTheme {
         Scaffold(containerColor = NothingBlack){ padding ->
-            DeleteConfirmationOverlay(
+            ConfirmationOverlay(
                 modifier = Modifier.padding(16.dp),
                 onConfirm = {},
                 onCancel = {},

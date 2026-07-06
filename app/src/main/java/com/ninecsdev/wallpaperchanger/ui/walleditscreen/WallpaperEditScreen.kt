@@ -55,7 +55,7 @@ import coil.compose.AsyncImage
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
-import com.ninecsdev.wallpaperchanger.ui.components.DeleteConfirmationOverlay
+import com.ninecsdev.wallpaperchanger.ui.components.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.ProcessingOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -191,7 +191,7 @@ fun WallpaperEditScreen(
 
     // Discard confirmation dialog
     if (showDiscardDialog) {
-        DeleteConfirmationOverlay(
+        ConfirmationOverlay(
             title = stringResource(R.string.edit_discard_title),
             message = stringResource(R.string.edit_discard_message),
             confirmLabel = stringResource(R.string.edit_discard_confirm),
@@ -202,7 +202,7 @@ fun WallpaperEditScreen(
     }
 }
 
-//TODO: Extract the composable into separate files for readability
+//TODO: Extract the composable into separate files for readability if needed
 
 @Composable
 private fun WallpaperCanvas(
