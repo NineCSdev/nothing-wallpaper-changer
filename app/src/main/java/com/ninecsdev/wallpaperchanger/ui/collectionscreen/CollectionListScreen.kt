@@ -21,10 +21,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -39,6 +41,8 @@ import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.ui.components.StatusLed
+import com.ninecsdev.wallpaperchanger.ui.components.ImportSummarySnackbarEffect
+import com.ninecsdev.wallpaperchanger.ui.components.NothingSnackbarHost
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.getVisualsForState
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -68,10 +72,16 @@ fun CollectionListScreen(
     onSetActiveCollection: () -> Unit,
     onDeleteCollection: () -> Unit,
     onSyncCollection: () -> Unit,
-    onViewImages: () -> Unit
+    onViewImages: () -> Unit,
+    onImportSummaryShown: () -> Unit = {}
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    ImportSummarySnackbarEffect(uiState.importSummary, snackbarHostState, onImportSummaryShown)
+
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
+            snackbarHost = { NothingSnackbarHost(snackbarHostState) },
             topBar = {
                 TopAppBar(
                     title = {
@@ -239,7 +249,8 @@ fun CollectionListScreenPopulatedPreview() {
             onSetActiveCollection = {},
             onDeleteCollection = {},
             onSyncCollection = {},
-            onViewImages = {}
+            onViewImages = {},
+            onImportSummaryShown = {}
         )
     }
 }

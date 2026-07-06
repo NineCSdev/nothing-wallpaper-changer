@@ -30,8 +30,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
-import com.ninecsdev.wallpaperchanger.model.enums.LockscreenZoomFix
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
+import com.ninecsdev.wallpaperchanger.ui.components.SettingsToggleRow
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
@@ -47,9 +48,10 @@ fun SettingsScreen(
     onStartOnBootChange: (Boolean) -> Unit,
     onBatterySaverPolicyChange: (BatterySaverPolicy) -> Unit,
     onWallpaperDestinationChange: (WallpaperDestination) -> Unit,
-    onLockscreenZoomFixChange: (LockscreenZoomFix) -> Unit,
+    onWallpaperZoomFixChange: (WallpaperZoomFix) -> Unit,
     onCompressionQualityHighChange: (Int) -> Unit,
-    onCompressionQualityLowChange: (Int) -> Unit
+    onCompressionQualityLowChange: (Int) -> Unit,
+    onKeepLocalCopiesChange: (Boolean) -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -102,7 +104,9 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                BootToggle(
+                SettingsToggleRow(
+                    title = stringResource(R.string.settings_autostart_title),
+                    subtitle = stringResource(R.string.settings_autostart_subtitle),
                     checked = uiState.startOnBoot,
                     onCheckedChange = onStartOnBootChange
                 )
@@ -143,9 +147,9 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                LockscreenZoomFixSelector(
-                    selected = uiState.lockscreenZoomFix,
-                    onZoomFixChange = onLockscreenZoomFixChange
+                WallpaperZoomFixSelector(
+                    selected = uiState.wallpaperZoomFix,
+                    onZoomFixChange = onWallpaperZoomFixChange
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -172,6 +176,19 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                SectionLabel(stringResource(R.string.settings_section_storage))
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                SettingsToggleRow(
+                    title = stringResource(R.string.settings_keep_local_copies_title),
+                    subtitle = stringResource(R.string.settings_keep_local_copies_subtitle),
+                    checked = uiState.keepLocalCopies,
+                    onCheckedChange = onKeepLocalCopiesChange
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 SectionLabel(stringResource(R.string.settings_section_quality))
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -190,6 +207,13 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_quality_low_subtitle),
                     value = uiState.compressionQualityLow,
                     onValueChange = onCompressionQualityLowChange
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                HorizontalDivider(
+                    color = NothingWhite.copy(alpha = 0.10f),
+                    thickness = 1.dp
                 )
             }
 
@@ -226,7 +250,7 @@ private fun SectionLabel(text: String) {
 
 // Previews
 
-@Preview(showSystemUi = true, name = "Settings", backgroundColor = 0xFF000000, device = "spec:width=411dp,height=1010dp,dpi=420")
+@Preview(showSystemUi = true, name = "Settings", backgroundColor = 0xFF000000, device = "spec:width=411dp,height=1210dp,dpi=420")
 @Composable
 fun SettingsScreenPreview() {
     MaterialTheme {
@@ -235,19 +259,20 @@ fun SettingsScreenPreview() {
                 screenOffDelayMs = 250,
                 startOnBoot = true,
                 batterySaverPolicy = BatterySaverPolicy.PAUSE,
-                lockscreenZoomFix = LockscreenZoomFix.BLURRED,
+                wallpaperZoomFix = WallpaperZoomFix.BLURRED,
                 compressionQualityHigh = 95,
                 compressionQualityLow = 80,
-                appVersion = "0.3.0-beta"
+                appVersion = "0.3.3-beta"
             ),
             onBackClick = {},
             onScreenOffDelayChange = {},
             onStartOnBootChange = {},
             onBatterySaverPolicyChange = {},
-            onLockscreenZoomFixChange = {},
+            onWallpaperZoomFixChange = {},
             onCompressionQualityHighChange = {},
             onCompressionQualityLowChange = {},
-            onWallpaperDestinationChange = {}
+            onWallpaperDestinationChange = {},
+            onKeepLocalCopiesChange = {}
         )
     }
 }

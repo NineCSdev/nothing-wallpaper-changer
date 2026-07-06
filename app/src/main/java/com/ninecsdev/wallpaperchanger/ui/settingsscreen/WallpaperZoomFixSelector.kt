@@ -17,28 +17,28 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
-import com.ninecsdev.wallpaperchanger.model.enums.LockscreenZoomFix
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 @Composable
-fun LockscreenZoomFixSelector(
-    selected: LockscreenZoomFix,
-    onZoomFixChange: (LockscreenZoomFix) -> Unit
+fun WallpaperZoomFixSelector(
+    selected: WallpaperZoomFix,
+    onZoomFixChange: (WallpaperZoomFix) -> Unit
 ) {
     var showInfo by remember { mutableStateOf(false) }
 
     SettingsSegmentedSelector(
         title = stringResource(R.string.settings_zoom_fix_title),
         subtitle = stringResource(R.string.settings_zoom_fix_subtitle),
-        options = LockscreenZoomFix.entries,
+        options = WallpaperZoomFix.entries,
         selected = selected,
         onOptionChange = onZoomFixChange,
         optionLabel = { zoomFix ->
             when (zoomFix) {
-                LockscreenZoomFix.OFF -> stringResource(R.string.settings_zoom_fix_off)
-                LockscreenZoomFix.BLURRED -> stringResource(R.string.settings_zoom_fix_blur)
-                LockscreenZoomFix.EDGE -> stringResource(R.string.settings_zoom_fix_edge)
+                WallpaperZoomFix.OFF -> stringResource(R.string.settings_zoom_fix_off)
+                WallpaperZoomFix.BLURRED -> stringResource(R.string.settings_zoom_fix_blur)
+                WallpaperZoomFix.EDGE -> stringResource(R.string.settings_zoom_fix_edge)
             }
         },
         onInfoClick = { showInfo = true }
@@ -69,15 +69,15 @@ fun LockscreenZoomFixSelector(
 
 @Preview
 @Composable
-private fun LockscreenZoomFixSelectorPreview() {
+private fun WallpaperZoomFixSelectorPreview() {
     MaterialTheme {
         Box(
             modifier = Modifier
                 .background(NothingBlack)
                 .padding(16.dp)
         ) {
-            LockscreenZoomFixSelector(
-                selected = LockscreenZoomFix.BLURRED,
+            WallpaperZoomFixSelector(
+                selected = WallpaperZoomFix.BLURRED,
                 onZoomFixChange = {}
             )
         }

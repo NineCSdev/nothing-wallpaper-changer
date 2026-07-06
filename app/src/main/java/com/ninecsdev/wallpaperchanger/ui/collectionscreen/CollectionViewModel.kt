@@ -4,6 +4,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ninecsdev.wallpaperchanger.data.PickImportResult
 import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
@@ -33,7 +34,7 @@ import javax.inject.Inject
 @HiltViewModel
 class CollectionViewModel @Inject constructor(
     private val repository: WallpaperRepository,
-    private val serviceStateManager: ServiceStateManager
+    serviceStateManager: ServiceStateManager
 ) : ViewModel() {
 
     private companion object {
@@ -101,7 +102,8 @@ class CollectionViewModel @Inject constructor(
             hasPendingFolder = modal.hasPendingFolder,
             hasPendingPhotos = modal.hasPendingPhotos,
             editingCollection = modal.editingCollection,
-            isProcessing = modal.isProcessing
+            isProcessing = modal.isProcessing,
+            importSummary = modal.importSummary
         )
     }.stateIn(
         scope = viewModelScope,
@@ -124,7 +126,6 @@ class CollectionViewModel @Inject constructor(
     }
 
     fun hasPendingFolder(): Boolean = pendingFolderUri != null
-    fun hasPendingPhotos(): Boolean = pendingPhotosUris.isNotEmpty()
 
     // Collection CRUD
 
@@ -148,11 +149,17 @@ class CollectionViewModel @Inject constructor(
         if (pendingPhotosUris.isEmpty()) return
         viewModelScope.launch {
             setProcessing(true)
-            val shouldStartService = repository.createManualCollection(name, pendingPhotosUris, rule)
+            val (shouldStartService, importResult) = repository.createManualCollection(name, pendingPhotosUris, rule)
             pendingPhotosUris = emptyList()
             setProcessing(false)
+            _screenState.update { it.copy(importSummary = importResult) }
             onComplete(shouldStartService)
         }
+    }
+
+    /** Clears the pick-import summary once the UI has shown it. */
+    fun clearImportSummary() {
+        _screenState.update { it.copy(importSummary = null) }
     }
 
     /**
@@ -213,7 +220,7 @@ class CollectionViewModel @Inject constructor(
 
     fun toggleCreateModal(show: Boolean) {
         if (!show && pendingFolderUri != null) {
-            repository.releaseFolderUriPermission(pendingFolderUri!!)
+            repository.releasePersistedUriPermission(pendingFolderUri!!)
             pendingFolderUri = null
         }
         _screenState.update {
@@ -244,5 +251,6 @@ private data class ScreenModalState(
     val hasPendingFolder: Boolean = false,
     val hasPendingPhotos: Boolean = false,
     val editingCollection: WallpaperCollection? = null,
-    val isProcessing: Boolean = false
+    val isProcessing: Boolean = false,
+    val importSummary: PickImportResult? = null
 )

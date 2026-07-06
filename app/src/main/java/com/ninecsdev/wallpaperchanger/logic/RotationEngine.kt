@@ -34,14 +34,12 @@ class RotationEngine @Inject constructor(
 ) {
     private companion object {
         const val TAG = "RotationEngine"
-        const val MAX_FAILURES_BEFORE_PURGE = 2
     }
 
     private val mutex = Mutex()
     private val imageMagazine = mutableListOf<WallpaperImage>()
     private var currentPointer = -1
     private var activeCropRule: CropRule = CropRule.FIT
-    private val failureCounts = mutableMapOf<Long, Int>()
 
     private var collectorJob: Job? = null
 
@@ -92,15 +90,16 @@ class RotationEngine @Inject constructor(
         imageMagazine.addAll(images.shuffled())
         currentPointer = -1
         activeCropRule = cropRule
-        failureCounts.clear()
         Log.d(TAG, "Magazine loaded: ${imageMagazine.size} items.")
     }
 
     /**
      * Advances to the next image and pre-renders it into the disk buffer. Called both by the
      * reactive reload (already holding the lock via [reloadAndRefill]) and by `ScreenOffReceiver`
-     * after each rotation (via the public [refillDiskBuffer]). Self-heals by purging images that
-     * fail to load repeatedly.
+     * after each rotation (via the public [refillDiskBuffer]). Self-heals by marking a file
+     * unavailable the moment its source is definitively gone (see [BufferPreparationResult.Failure]),
+     * rather than deleting the wallpaper/collection entry so the user's curation is never destroyed by
+     * a background failure, and [WallpaperRepository.reprobeUnavailableFiles] can restore it later.
      */
     suspend fun refillDiskBuffer(): Boolean = mutex.withLock { refillDiskBufferLocked() }
 
@@ -108,47 +107,50 @@ class RotationEngine @Inject constructor(
         val maxAttempts = imageMagazine.size
         if (maxAttempts == 0) return false
 
-        // Added multiple tries before deleting for being more permissive in case there was an issue
-        // and the file wasn't actually deleted, not sure if it is better than trying once for UX so may
-        // revert in the future
         for (attempt in 0 until maxAttempts) {
             if (imageMagazine.isEmpty()) break
 
             currentPointer++
             if (currentPointer >= imageMagazine.size) {
                 Log.d(TAG, "Cycle complete. Reshuffling for new sequence.")
-                imageMagazine.shuffle()
+                reshuffleMagazineLocked()
                 currentPointer = 0
             }
             val nextImage = imageMagazine[currentPointer]
 
-            when (bufferManager.prepareNextWallpaper(nextImage, activeCropRule)) {
-                is BufferPreparationResult.Success -> {
-                    failureCounts.remove(nextImage.id)
-                    return true
-                }
+            when (val result = bufferManager.prepareNextWallpaper(nextImage, activeCropRule)) {
+                is BufferPreparationResult.Success -> return true
                 is BufferPreparationResult.Failure -> {
-                    val failures = (failureCounts[nextImage.id] ?: 0) + 1
-                    if (failures < MAX_FAILURES_BEFORE_PURGE) {
-                        failureCounts[nextImage.id] = failures
-                        Log.w(TAG, "Failed to load ${nextImage.uri}. Will retry later ($failures/$MAX_FAILURES_BEFORE_PURGE).")
-                    } else {
-                        failureCounts.remove(nextImage.id)
-                        Log.w(TAG, "Failed to load ${nextImage.uri}. Removing after $failures failures.")
-                        repository.deleteImagesFromCollection(listOf(nextImage))
+                    if (result.definitive) {
+                        Log.w(TAG, "Source definitively unavailable, marking unavailable: ${nextImage.uri}")
+                        repository.markFileUnavailable(nextImage.fileId)
 
-                        imageMagazine.remove(nextImage)
-                        if (imageMagazine.isEmpty()) {
-                            currentPointer = -1
-                        } else if (currentPointer >= imageMagazine.size) {
-                            currentPointer = imageMagazine.lastIndex
-                        }
+                        imageMagazine.removeAt(currentPointer)
+                        // Step back so the next iteration's increment lands on the element that
+                        // shifted into this slot instead of skipping it. Empties end at -1 naturally.
+                        currentPointer--
+                    } else {
+                        Log.w(TAG, "Transient failure loading ${nextImage.uri}, will retry on a later rotation.")
                     }
                 }
             }
         }
 
         return false
+    }
+
+    /**
+     * Reshuffles the magazine for a new cycle, ensuring the image that just closed the previous
+     * cycle (at [imageMagazine]'s last index when called) doesn't land first.
+     */
+    private fun reshuffleMagazineLocked() {
+        val lastShown = imageMagazine.last()
+        imageMagazine.shuffle()
+        if (imageMagazine.size > 1 && imageMagazine[0] == lastShown) {
+            val swapIndex = (1..imageMagazine.lastIndex).random()
+            imageMagazine[0] = imageMagazine[swapIndex]
+            imageMagazine[swapIndex] = lastShown
+        }
     }
 
     /**
@@ -160,6 +162,5 @@ class RotationEngine @Inject constructor(
     fun clearMagazine() {
         imageMagazine.clear()
         currentPointer = -1
-        failureCounts.clear()
     }
 }

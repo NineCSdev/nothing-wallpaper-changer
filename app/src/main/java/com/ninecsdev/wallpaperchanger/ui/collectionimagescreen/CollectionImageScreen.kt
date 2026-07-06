@@ -31,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -55,6 +56,8 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.DeleteConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.ThumbnailSlot
+import com.ninecsdev.wallpaperchanger.ui.components.ImportSummarySnackbarEffect
+import com.ninecsdev.wallpaperchanger.ui.components.NothingSnackbarHost
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -80,9 +83,13 @@ fun CollectionImageScreen(
     onEditSelected: (WallpaperImage) -> Unit,
     onEditFromPreview: (WallpaperImage) -> Unit,
     onPreviewPageChanged: (WallpaperImage) -> Unit,
-    onClosePreview: () -> Unit
+    onClosePreview: () -> Unit,
+    onImportSummaryShown: () -> Unit = {}
 ) {
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    ImportSummarySnackbarEffect(uiState.importSummary, snackbarHostState, onImportSummaryShown)
 
     // Handle back press: exit selection mode first, then close preview, then navigate back
     // TODO: Do a better handling of this
@@ -94,6 +101,7 @@ fun CollectionImageScreen(
     }
 
     Scaffold(
+        snackbarHost = { NothingSnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -338,6 +346,15 @@ private fun WallpaperThumbnail(
             EditedBadge(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
+                    .padding(4.dp)
+            )
+        }
+
+        // Unavailable badge (bottom-left of thumbnail)
+        if (!wallpaper.isAvailable) {
+            UnavailableBadge(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
                     .padding(4.dp)
             )
         }

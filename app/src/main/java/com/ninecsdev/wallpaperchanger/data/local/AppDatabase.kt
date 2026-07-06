@@ -5,8 +5,9 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.ninecsdev.wallpaperchanger.model.Wallpaper
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
-import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.model.WallpaperFile
 
 /**
  * Main Database for the app.
@@ -15,8 +16,9 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
  */
 @Database(entities = [
     WallpaperCollection::class,
-    WallpaperImage::class],
-    version = 4,
+    WallpaperFile::class,
+    Wallpaper::class],
+    version = 5,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -77,6 +79,75 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("DROP TABLE wallpapers")
                 db.execSQL("ALTER TABLE wallpapers_new RENAME TO wallpapers")
                 db.execSQL("CREATE INDEX index_wallpapers_collectionId ON wallpapers(collectionId)")
+            }
+        }
+
+        /**
+         * v4 → v5: split the flat `wallpapers` table into an M:N model.
+         *
+         * The old table stored the image `uri` inline on every row. We extract a device-wide
+         * `wallpaper_files` registry (one row per distinct uri) and rewrite `wallpapers` into a join
+         * table that references a file by `fileId`. A photo shared across collections now maps to a
+         * single file row.
+         *
+         * `sourceType` is derived from the uri: anything under `internal_wallpapers/` is an app-owned
+         * copy (INTERNALIZED); everything else is a folder document URI (FOLDER_DOC). No PICKER_GRANT
+         * rows can exist yet, reference-mode manual picks are introduced in a later step.
+         *
+         * Join rows keep their original ids, edit params, `isManuallyAdded`, and `addedAt`. The file
+         * row's `addedAt` is the earliest membership timestamp for that uri.
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. File registry, deduped by uri.
+                db.execSQL("""
+                    CREATE TABLE wallpaper_files (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        uri TEXT NOT NULL,
+                        sourceType TEXT NOT NULL,
+                        isAvailable INTEGER NOT NULL DEFAULT 1,
+                        addedAt INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE UNIQUE INDEX index_wallpaper_files_uri ON wallpaper_files(uri)")
+
+                db.execSQL("""
+                    INSERT INTO wallpaper_files (uri, sourceType, isAvailable, addedAt)
+                    SELECT uri,
+                           CASE WHEN uri LIKE '%/internal_wallpapers/%' THEN 'INTERNALIZED' ELSE 'FOLDER_DOC' END,
+                           1,
+                           MIN(addedAt)
+                    FROM wallpapers
+                    GROUP BY uri
+                """.trimIndent())
+
+                // 2. Rebuild wallpapers as a join table (uri column replaced by fileId).
+                db.execSQL("""
+                    CREATE TABLE wallpapers_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        collectionId INTEGER NOT NULL,
+                        fileId INTEGER NOT NULL,
+                        editZoom REAL,
+                        editOffsetX REAL,
+                        editOffsetY REAL,
+                        isManuallyAdded INTEGER NOT NULL DEFAULT 0,
+                        addedAt INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY(collectionId) REFERENCES collections(id) ON DELETE CASCADE,
+                        FOREIGN KEY(fileId) REFERENCES wallpaper_files(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+
+                db.execSQL("""
+                    INSERT INTO wallpapers_new (id, collectionId, fileId, editZoom, editOffsetX, editOffsetY, isManuallyAdded, addedAt)
+                    SELECT w.id, w.collectionId, f.id, w.editZoom, w.editOffsetX, w.editOffsetY, w.isManuallyAdded, w.addedAt
+                    FROM wallpapers w JOIN wallpaper_files f ON w.uri = f.uri
+                """.trimIndent())
+
+                db.execSQL("DROP TABLE wallpapers")
+                db.execSQL("ALTER TABLE wallpapers_new RENAME TO wallpapers")
+                db.execSQL("CREATE INDEX index_wallpapers_collectionId ON wallpapers(collectionId)")
+                db.execSQL("CREATE INDEX index_wallpapers_fileId ON wallpapers(fileId)")
+                db.execSQL("CREATE UNIQUE INDEX index_wallpapers_collectionId_fileId ON wallpapers(collectionId, fileId)")
             }
         }
     }

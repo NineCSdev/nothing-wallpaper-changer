@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
+import com.ninecsdev.wallpaperchanger.data.StartupMaintenance
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
@@ -34,9 +35,10 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val repository: WallpaperRepository,
-    private val serviceStateManager: ServiceStateManager,
+    serviceStateManager: ServiceStateManager,
     private val appDataStore: AppDataStore,
     private val imageInternalizer: ImageInternalizer,
+    startupMaintenance: StartupMaintenance,
     @param:ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -45,31 +47,8 @@ class MainViewModel @Inject constructor(
     }
 
     init {
-        // TODO(v0.3.3): temporary cleanup, remove this launch along with
-        // WallpaperRepository.releaseOrphanedFolderUriPermissions() once installs
-        // have had a chance to run it
-        viewModelScope.launch { repository.releaseOrphanedFolderUriPermissions() }
-
-        // TODO(v0.3.3): temporary cleanup, remove this launch and migrateLegacyDefaultWallpaperUri() once installs have had a chance to run it.
-        // Before "use better picker for default wallpaper" (911088a), the default wallpaper
-        // was saved as a raw external content:// URI without internalizing it. Those grants
-        // aren't reliably retained across app updates, so any surviving non-internal URI can
-        // start throwing SecurityException on every apply/preview. Try to salvage it by
-        // internalizing now; if it's no longer accessible, clear it so the app stops retrying.
-        viewModelScope.launch { migrateLegacyDefaultWallpaperUri() }
-    }
-
-    private suspend fun migrateLegacyDefaultWallpaperUri() {
-        val uri = appDataStore.getDefaultWallpaperUri() ?: return
-        if (ImageInternalizer.isInternalUri(uri)) return
-
-        val internalized = imageInternalizer.internalizeImages(context, listOf(uri)).firstOrNull()
-        if (internalized != null) {
-            appDataStore.saveDefaultWallpaperUri(internalized)
-        } else {
-            Log.w(TAG, "Legacy default wallpaper URI is no longer accessible, clearing: $uri")
-            appDataStore.clearDefaultWallpaperUri()
-        }
+        // One-shot app-startup housekeeping (orphan file-registry GC + internal-file disk sweep).
+        startupMaintenance.runOnce()
     }
 
     // For performance reasons the state is split into narrower flows that update at different

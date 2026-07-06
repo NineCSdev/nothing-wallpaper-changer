@@ -15,12 +15,13 @@ import androidx.core.graphics.createBitmap
 import kotlin.math.roundToInt
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
-import com.ninecsdev.wallpaperchanger.model.enums.LockscreenZoomFix
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileNotFoundException
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
@@ -30,7 +31,14 @@ import javax.inject.Singleton
 
 sealed class BufferPreparationResult {
     object Success : BufferPreparationResult()
-    object Failure : BufferPreparationResult()
+
+    /**
+     * @param definitive true when the failure proves the source is gone (file deleted, permission
+     * revoked) — [RotationEngine][com.ninecsdev.wallpaperchanger.logic.RotationEngine] marks the file
+     * unavailable rather than retrying it. false for any other failure (decode error, transient IO) —
+     * the image is simply skipped for this rotation and retried later, no side effects.
+     */
+    data class Failure(val definitive: Boolean) : BufferPreparationResult()
 }
 
 /**
@@ -50,7 +58,7 @@ class BufferManager @Inject constructor(
         const val BUFFER_FILENAME = "buffer_next.webp"
         const val TEMP_FILENAME = "buffer_temp.webp"
         const val COMPRESSION_QUALITY = 95 // Quality left high as only 1 image will exist at any time
-        const val LOCKSCREEN_ZOOM_INSET_FRACTION = 0.045f // Zoom that I observed in a 20:9 screen
+        const val ZOOM_INSET_FRACTION = 0.045f // Zoom that I observed in a 20:9 screen
         const val BLUR_DOWNSCALE_FACTOR = 24
         const val EDIT_DECODE_SCALE = 2
     }
@@ -68,16 +76,16 @@ class BufferManager @Inject constructor(
     fun getBufferFile(): File = File(appContext.cacheDir, BUFFER_FILENAME)
 
     /**
-     * Applies the lockscreen zoom-fix padding to the given [bitmap] if the
+     * Applies the wallpaper zoom-fix padding to the given [bitmap] if the
      * user has the setting enabled. Returns the original bitmap unchanged
-     * when the zoom-fix is [LockscreenZoomFix.OFF].
+     * when the zoom-fix is [WallpaperZoomFix.OFF].
      */
     suspend fun applyZoomFixIfNeeded(bitmap: Bitmap): Bitmap {
         // Used in WallpaperApplier for default wallpaper
-        val zoomFix = appDataStore.getLockscreenZoomFix()
-        if (zoomFix == LockscreenZoomFix.OFF) return bitmap
+        val zoomFix = appDataStore.getWallpaperZoomFix()
+        if (zoomFix == WallpaperZoomFix.OFF) return bitmap
 
-        val padded = addLockscreenPadding(bitmap, zoomFix)
+        val padded = addZoomFixPadding(bitmap, zoomFix)
         // Don't recycle the input as caller owns it
         return padded
     }
@@ -93,14 +101,14 @@ class BufferManager @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 val targetSize = getTargetSize()
-                val zoomFix = appDataStore.getLockscreenZoomFix()
+                val zoomFix = appDataStore.getWallpaperZoomFix()
                 val hasEdit = wallpaper.editParams != null
 
                 val sourceBitmap = decodeSourceBitmap(
                     wallpaper.uri,
                     targetSize,
                     oversample = if (hasEdit) EDIT_DECODE_SCALE else 1
-                ) ?: return@withContext BufferPreparationResult.Failure
+                ) ?: return@withContext BufferPreparationResult.Failure(definitive = false)
 
                 var finalBitmap: Bitmap? = null
                 try {
@@ -110,9 +118,15 @@ class BufferManager @Inject constructor(
                 } finally {
                     recyclePreparedBitmaps(sourceBitmap, finalBitmap)
                 }
+            } catch (e: FileNotFoundException) {
+                Log.w(TAG, "Source unreadable, likely deleted: ${wallpaper.uri}", e)
+                BufferPreparationResult.Failure(definitive = true)
+            } catch (e: SecurityException) {
+                Log.w(TAG, "Permission revoked for source: ${wallpaper.uri}", e)
+                BufferPreparationResult.Failure(definitive = true)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to prepare buffer", e)
-                BufferPreparationResult.Failure
+                BufferPreparationResult.Failure(definitive = false)
             }
         }
     }
@@ -144,7 +158,7 @@ class BufferManager @Inject constructor(
         sourceBitmap: Bitmap,
         targetSize: TargetSize,
         cropRule: CropRule,
-        zoomFix: LockscreenZoomFix
+        zoomFix: WallpaperZoomFix
     ): Bitmap {
         val editParams = wallpaper.editParams
         return if (editParams != null) {
@@ -155,10 +169,10 @@ class BufferManager @Inject constructor(
                 normalizedOffsetX = editParams.offsetX,
                 normalizedOffsetY = editParams.offsetY
             )
-            if (zoomFix == LockscreenZoomFix.OFF) {
+            if (zoomFix == WallpaperZoomFix.OFF) {
                 edited
             } else {
-                val padded = addLockscreenPadding(edited, zoomFix)
+                val padded = addZoomFixPadding(edited, zoomFix)
                 if (padded !== edited) edited.recycle()
                 padded
             }
@@ -225,17 +239,17 @@ class BufferManager @Inject constructor(
         source: Bitmap,
         targetSize: TargetSize,
         rule: CropRule,
-        zoomFix: LockscreenZoomFix
+        zoomFix: WallpaperZoomFix
     ): Bitmap {
         val screenBitmap = renderScreenBitmap(source, targetSize, rule)
 
-        if (zoomFix == LockscreenZoomFix.OFF) {
+        if (zoomFix == WallpaperZoomFix.OFF) {
             return screenBitmap
         }
 
         var paddedBitmap: Bitmap? = null
         try {
-            val padded = addLockscreenPadding(screenBitmap, zoomFix)
+            val padded = addZoomFixPadding(screenBitmap, zoomFix)
             paddedBitmap = padded
             return padded
         } finally {
@@ -316,18 +330,18 @@ class BufferManager @Inject constructor(
         }
     }
 
-    private fun addLockscreenPadding(screenBitmap: Bitmap, zoomFix: LockscreenZoomFix): Bitmap {
+    private fun addZoomFixPadding(screenBitmap: Bitmap, zoomFix: WallpaperZoomFix): Bitmap {
         val targetW = screenBitmap.width
         val targetH = screenBitmap.height
 
-        // Nothing OS sometimes zooms the lockscreen presentation after the wallpaper is set.
+        // Nothing OS sometimes zooms the wallpaper presentation after it is set.
         // Keep the wallpaper at full resolution and add tunable padding around it for zoom to consume.
         val insetX = calculateZoomInset(targetW)
         val insetY = calculateZoomInset(targetH)
         val paddedW = targetW + insetX * 2
         val paddedH = targetH + insetY * 2
 
-        Log.d(TAG, "Adding lockscreen padding: $paddedW x $paddedH with insets $insetX x $insetY")
+        Log.d(TAG, "Adding zoom-fix padding: $paddedW x $paddedH with insets $insetX x $insetY")
 
         val padded = createBitmap(paddedW, paddedH, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(padded)
@@ -345,7 +359,7 @@ class BufferManager @Inject constructor(
     }
 
     private fun calculateZoomInset(size: Int, extraPx: Int = 0): Int {
-        return ((size * LOCKSCREEN_ZOOM_INSET_FRACTION).roundToInt() + extraPx)
+        return ((size * ZOOM_INSET_FRACTION).roundToInt() + extraPx)
             .coerceAtLeast(0)
             .coerceAtMost((size - 1) / 2)
     }
@@ -358,12 +372,12 @@ class BufferManager @Inject constructor(
         insetX: Int,
         insetY: Int,
         paint: Paint,
-        zoomFix: LockscreenZoomFix
+        zoomFix: WallpaperZoomFix
     ) {
         when (zoomFix) {
-            LockscreenZoomFix.BLURRED -> drawBlurredPadding(source, canvas, paddedW, paddedH, paint)
-            LockscreenZoomFix.EDGE -> drawEdgePadding(source, canvas, insetX, insetY, paint)
-            LockscreenZoomFix.OFF -> Unit
+            WallpaperZoomFix.BLURRED -> drawBlurredPadding(source, canvas, paddedW, paddedH, paint)
+            WallpaperZoomFix.EDGE -> drawEdgePadding(source, canvas, insetX, insetY, paint)
+            WallpaperZoomFix.OFF -> Unit
         }
     }
 

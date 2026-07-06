@@ -32,6 +32,9 @@ class CollectionImageViewModel @Inject constructor(
     init {
         loadCollectionMetadata()
         observeImages()
+        // Silent re-probe: files marked unavailable may be readable again (source restored,
+        // permission re-granted, connectivity back), clear the flag if so.
+        viewModelScope.launch { repository.reprobeUnavailableFiles(collectionId) }
     }
 
     private fun loadCollectionMetadata() {
@@ -64,13 +67,20 @@ class CollectionImageViewModel @Inject constructor(
     // Add wallpapers
 
     /**
-     * Adds wallpapers from the photo picker to this collection.
-     * Images are always internalized since picked URIs are temporary.
+     * Adds wallpapers from the photo picker to this collection. Each image is kept as an external
+     * reference or internalized depending on the "keep local copies" setting and probe success;
+     * the resulting counts are surfaced as a one-shot summary.
      */
     fun addWallpapers(uris: List<Uri>) {
         viewModelScope.launch {
-            repository.addImagesToCollection(collectionId, uris)
+            val result = repository.addImagesToCollection(collectionId, uris)
+            _uiState.update { it.copy(importSummary = result) }
         }
+    }
+
+    /** Clears the pick-import summary once the UI has shown it. */
+    fun clearImportSummary() {
+        _uiState.update { it.copy(importSummary = null) }
     }
 
     // Selection mode
@@ -125,25 +135,5 @@ class CollectionImageViewModel @Inject constructor(
 
     fun closePreview() {
         _uiState.update { it.copy(previewWallpaper = null) }
-    }
-
-    fun showPreviousPreview() {
-        movePreviewBy(-1)
-    }
-
-    fun showNextPreview() {
-        movePreviewBy(1)
-    }
-
-    private fun movePreviewBy(step: Int) {
-        val state = _uiState.value
-        val currentPreviewId = state.previewWallpaper?.id ?: return
-        val currentIndex = state.wallpapers.indexOfFirst { it.id == currentPreviewId }
-        if (currentIndex == -1) return
-
-        val nextIndex = currentIndex + step
-        if (nextIndex !in state.wallpapers.indices) return
-
-        _uiState.update { it.copy(previewWallpaper = it.wallpapers[nextIndex]) }
     }
 }

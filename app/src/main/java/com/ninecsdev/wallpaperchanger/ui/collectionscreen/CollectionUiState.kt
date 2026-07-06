@@ -1,5 +1,6 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionscreen
 
+import com.ninecsdev.wallpaperchanger.data.PickImportResult
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
@@ -18,5 +19,7 @@ data class CollectionUiState(
     val hasPendingFolder: Boolean = false,
     val hasPendingPhotos: Boolean = false,
     val editingCollection: WallpaperCollection? = null,
-    val isProcessing: Boolean = false
+    val isProcessing: Boolean = false,
+    /** One-shot summary of the last manual-collection pick import; cleared via [CollectionViewModel.clearImportSummary]. */
+    val importSummary: PickImportResult? = null
 )

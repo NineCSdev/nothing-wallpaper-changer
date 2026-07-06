@@ -2,10 +2,12 @@
   <dictionary name="project">
     <words>
       <w>Metroid</w>
+      <w>Snackbar</w>
       <w>Spacewar</w>
       <w>ninecsdev</w>
       <w>poweron</w>
       <w>quickboot</w>
+      <w>snackbar</w>
       <w>wallpaperchanger</w>
     </words>
   </dictionary>

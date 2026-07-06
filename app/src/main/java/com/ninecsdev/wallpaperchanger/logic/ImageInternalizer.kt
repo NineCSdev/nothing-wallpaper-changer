@@ -32,6 +32,9 @@ class ImageInternalizer @Inject constructor(
         private const val LARGE_FILE_THRESHOLD = 2L * 1024 * 1024 // 2 MB
         const val INTERNAL_FOLDER = "internal_wallpapers"
 
+        /** Skip files younger than this so a scan never races a file mid-registration. */
+        private const val ORPHAN_GRACE_PERIOD_MS = 10 * 60 * 1000L // 10 minutes
+
         /** True if [uri] points inside the app-private internal wallpapers' folder. */
         fun isInternalUri(uri: Uri): Boolean = uri.pathSegments.contains(INTERNAL_FOLDER)
     }
@@ -128,18 +131,41 @@ class ImageInternalizer @Inject constructor(
     }
 
     /**
-     * Safely deletes internal wallpaper files.
+     * Safely deletes internal wallpaper files. Non-internal files won't be deleted.
      */
     fun deleteInternalFile(path: String?) {
-        // IMPORTANT: if we ever store external uris (changing how we store wallpapers)
-        //  we have to protect against deleting the actual image in the user storage as it would
-        //  be lost
         if (path == null) return
         try {
             val file = File(path)
+            // Safety rail: never delete anything that isn't one of our internalized files.
+            if (file.parentFile?.name != INTERNAL_FOLDER) {
+                Log.w(TAG, "Refusing to delete non-internal file: $path")
+                return
+            }
             if (file.exists()) file.delete()
         } catch (e: Exception) {
             Log.e(TAG, "Cleanup failed for: $path", e)
         }
+    }
+
+    /**
+     * Deletes any file under [INTERNAL_FOLDER] whose name isn't in [keepFileNames], reclaiming
+     * files orphaned. Files younger than [ORPHAN_GRACE_PERIOD_MS] are skipped so an in-progress
+     * import is never caught mid-write.
+     * @return the number of files deleted.
+     */
+    fun deleteOrphanInternalFiles(context: Context, keepFileNames: Set<String>): Int {
+        val internalDir = File(context.filesDir, INTERNAL_FOLDER)
+        val files = internalDir.listFiles() ?: return 0
+        val graceCutoff = System.currentTimeMillis() - ORPHAN_GRACE_PERIOD_MS
+
+        var deleted = 0
+        for (file in files) {
+            if (file.name !in keepFileNames && file.lastModified() < graceCutoff) {
+                if (file.delete()) deleted++
+            }
+        }
+        if (deleted > 0) Log.d(TAG, "Deleted $deleted orphaned internal wallpaper file(s)")
+        return deleted
     }
 }

@@ -6,6 +6,7 @@ import androidx.room.TypeConverter
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
+import com.ninecsdev.wallpaperchanger.model.enums.SourceType
 
 /**
  * Type converters for Room Database.
@@ -56,5 +57,18 @@ class Converters {
         } catch (e: IllegalArgumentException) {
             Log.e("Converters", "Invalid RotationFrequency: $value", e)
             RotationFrequency.PER_LOCK
+        }
+
+    // SourceType Converters
+    @TypeConverter
+    fun fromSourceType(sourceType: SourceType): String = sourceType.name
+
+    @TypeConverter
+    fun toSourceType(value: String): SourceType =
+        try {
+            SourceType.valueOf(value)
+        } catch (e: IllegalArgumentException) {
+            Log.e("Converters", "Invalid SourceType: $value", e)
+            SourceType.FOLDER_DOC
         }
 }

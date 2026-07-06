@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.ui.settingsscreen
+package com.ninecsdev.wallpaperchanger.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -14,34 +14,35 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 @Composable
-fun BootToggle(
+fun SettingsToggleRow(
+    title: String,
+    subtitle: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = stringResource(R.string.settings_autostart_title),
+                text = title,
                 style = MaterialTheme.typography.bodySmall,
                 color = NothingWhite,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
             Text(
-                text = stringResource(R.string.settings_autostart_subtitle),
+                text = subtitle,
                 style = MaterialTheme.typography.labelSmall,
                 color = NothingWhite.copy(alpha = 0.4f),
                 letterSpacing = 0.5.sp
@@ -65,14 +66,16 @@ fun BootToggle(
 
 @Preview
 @Composable
-private fun BootTogglePreview() {
+private fun SettingsToggleRowPreview() {
     MaterialTheme {
         Box(
             modifier = Modifier
                 .background(NothingBlack)
                 .padding(16.dp)
         ) {
-            BootToggle(
+            SettingsToggleRow(
+                title = "TOGGLE TITLE",
+                subtitle = "Toggle subtitle",
                 checked = true,
                 onCheckedChange = {}
             )

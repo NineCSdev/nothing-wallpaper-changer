@@ -182,7 +182,8 @@ fun AppNavigation(
                         collectionState.editingCollection?.let {
                             navController.navigate(Route.collectionImages(it.id))
                         }
-                    }
+                    },
+                    onImportSummaryShown = collectionViewModel::clearImportSummary
                 )
             }
         }
@@ -228,7 +229,8 @@ fun AppNavigation(
                     navController.navigate(Route.wallpaperEdit(wallpaper.id))
                 },
                 onPreviewPageChanged = collectionImageViewModel::openPreview,
-                onClosePreview = collectionImageViewModel::closePreview
+                onClosePreview = collectionImageViewModel::closePreview,
+                onImportSummaryShown = collectionImageViewModel::clearImportSummary
             )
         }
 
@@ -270,9 +272,10 @@ fun AppNavigation(
                 onStartOnBootChange = settingsViewModel::setStartOnBoot,
                 onBatterySaverPolicyChange = settingsViewModel::setBatterySaverPolicy,
                 onWallpaperDestinationChange = settingsViewModel::setWallpaperDestination,
-                onLockscreenZoomFixChange = settingsViewModel::setLockscreenZoomFix,
+                onWallpaperZoomFixChange = settingsViewModel::setWallpaperZoomFix,
                 onCompressionQualityHighChange = settingsViewModel::setCompressionQualityHigh,
-                onCompressionQualityLowChange = settingsViewModel::setCompressionQualityLow
+                onCompressionQualityLowChange = settingsViewModel::setCompressionQualityLow,
+                onKeepLocalCopiesChange = settingsViewModel::setKeepLocalCopies
             )
         }
     }

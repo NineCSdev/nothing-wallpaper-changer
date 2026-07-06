@@ -1,8 +1,8 @@
 package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
-import com.ninecsdev.wallpaperchanger.model.enums.LockscreenZoomFix
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 
 /**
  * Snapshot of the Settings screen state.
@@ -13,8 +13,9 @@ data class SettingsUiState(
     val startOnBoot: Boolean = true,
     val batterySaverPolicy: BatterySaverPolicy = BatterySaverPolicy.PAUSE,
     val wallpaperDestination: WallpaperDestination = WallpaperDestination.LOCK,
-    val lockscreenZoomFix: LockscreenZoomFix = LockscreenZoomFix.OFF,
+    val wallpaperZoomFix: WallpaperZoomFix = WallpaperZoomFix.OFF,
     val compressionQualityHigh: Int = 95,
     val compressionQualityLow: Int = 80,
+    val keepLocalCopies: Boolean = false,
     val appVersion: String = ""
 )

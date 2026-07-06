@@ -5,8 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
-import com.ninecsdev.wallpaperchanger.model.enums.LockscreenZoomFix
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
@@ -39,27 +39,34 @@ class SettingsViewModel @Inject constructor(
     // Separate in 2 flows as combine max is 5
     private val lockscreenSettingsFlow = combine(
         appDataStore.batterySaverPolicyFlow(),
-        appDataStore.lockscreenZoomFixFlow(),
+        appDataStore.wallpaperZoomFixFlow(),
         appDataStore.wallpaperDestinationFlow()
-    ) { batterySaverPolicy, lockscreenZoomFix, wallpaperDestination ->
-        Triple(batterySaverPolicy, lockscreenZoomFix, wallpaperDestination)
+    ) { batterySaverPolicy, wallpaperZoomFix, wallpaperDestination ->
+        Triple(batterySaverPolicy, wallpaperZoomFix, wallpaperDestination)
     }
+
+    // Nested so the outer combine (5-arg max) still has a free slot for keepLocalCopies.
+    private val lockscreenAndStorageSettingsFlow = combine(
+        lockscreenSettingsFlow,
+        appDataStore.keepLocalCopiesFlow()
+    ) { lockscreenSettings, keepLocalCopies -> lockscreenSettings to keepLocalCopies }
 
     val uiState: StateFlow<SettingsUiState> = combine(
         appDataStore.screenOffDelayFlow(),
         appDataStore.startOnBootFlow(),
         appDataStore.compressionQualityHighFlow(),
         appDataStore.compressionQualityLowFlow(),
-        lockscreenSettingsFlow
-    ) { delay, boot, qualityHigh, qualityLow, lockscreenSettings ->
+        lockscreenAndStorageSettingsFlow
+    ) { delay, boot, qualityHigh, qualityLow, (lockscreenSettings, keepLocalCopies) ->
         SettingsUiState(
             screenOffDelayMs = delay,
             startOnBoot = boot,
             batterySaverPolicy = lockscreenSettings.first,
-            lockscreenZoomFix = lockscreenSettings.second,
+            wallpaperZoomFix = lockscreenSettings.second,
             wallpaperDestination = lockscreenSettings.third,
             compressionQualityHigh = qualityHigh,
             compressionQualityLow = qualityLow,
+            keepLocalCopies = keepLocalCopies,
             appVersion = appVersion
         )
     }.stateIn(
@@ -94,7 +101,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { appDataStore.setWallpaperDestination(destination) }
     }
 
-    fun setLockscreenZoomFix(zoomFix: LockscreenZoomFix) {
-        viewModelScope.launch { appDataStore.setLockscreenZoomFix(zoomFix) }
+    fun setWallpaperZoomFix(zoomFix: WallpaperZoomFix) {
+        viewModelScope.launch { appDataStore.setWallpaperZoomFix(zoomFix) }
+    }
+
+    fun setKeepLocalCopies(enabled: Boolean) {
+        viewModelScope.launch { appDataStore.setKeepLocalCopies(enabled) }
     }
 }

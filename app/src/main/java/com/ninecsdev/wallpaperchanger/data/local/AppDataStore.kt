@@ -15,8 +15,8 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
-import com.ninecsdev.wallpaperchanger.model.enums.LockscreenZoomFix
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -43,8 +43,9 @@ private val KEY_SCREEN_OFF_DELAY = longPreferencesKey("screen_off_delay_ms")
 private val KEY_COMPRESSION_QUALITY_HIGH = intPreferencesKey("compression_quality_high")
 private val KEY_COMPRESSION_QUALITY_LOW = intPreferencesKey("compression_quality_low")
 private val KEY_BATTERY_SAVER_POLICY = stringPreferencesKey("battery_saver_policy")
-private val KEY_LOCKSCREEN_ZOOM_FIX = intPreferencesKey("lockscreen_zoom_fix")
+private val KEY_WALLPAPER_ZOOM_FIX = intPreferencesKey("lockscreen_zoom_fix")
 private val KEY_WALLPAPER_DESTINATION = stringPreferencesKey("wallpaper_destination")
+private val KEY_KEEP_LOCAL_COPIES = booleanPreferencesKey("keep_local_copies")
 
 /**
  * Manages simple key-value pairs for global application settings using
@@ -127,15 +128,18 @@ class AppDataStore @Inject constructor(
             enumByName(it, BatterySaverPolicy.PAUSE)
         }
 
-    fun lockscreenZoomFixFlow(): Flow<LockscreenZoomFix> =
-        mappedSettingFlow(KEY_LOCKSCREEN_ZOOM_FIX, LockscreenZoomFix.OFF) {
-            LockscreenZoomFix.fromStoredValue(it)
+    fun wallpaperZoomFixFlow(): Flow<WallpaperZoomFix> =
+        mappedSettingFlow(KEY_WALLPAPER_ZOOM_FIX, WallpaperZoomFix.OFF) {
+            WallpaperZoomFix.fromStoredValue(it)
         }
 
     fun wallpaperDestinationFlow(): Flow<WallpaperDestination> =
         mappedSettingFlow(KEY_WALLPAPER_DESTINATION, WallpaperDestination.LOCK) {
             enumByName(it, WallpaperDestination.LOCK)
         }
+
+    fun keepLocalCopiesFlow(): Flow<Boolean> =
+        settingFlow(KEY_KEEP_LOCAL_COPIES, false)
 
     // Suspend reads (suspend, one-shot)
 
@@ -163,21 +167,19 @@ class AppDataStore @Inject constructor(
     suspend fun getBatterySaverPolicy(): BatterySaverPolicy =
         batterySaverPolicyFlow().first()
 
-    suspend fun getLockscreenZoomFix(): LockscreenZoomFix =
-        lockscreenZoomFixFlow().first()
+    suspend fun getWallpaperZoomFix(): WallpaperZoomFix =
+        wallpaperZoomFixFlow().first()
 
     suspend fun getWallpaperDestination(): WallpaperDestination =
         wallpaperDestinationFlow().first()
+
+    suspend fun getKeepLocalCopies(): Boolean =
+        keepLocalCopiesFlow().first()
 
     // Writes (suspend)
 
     suspend fun saveDefaultWallpaperUri(uri: Uri) =
         set(KEY_DEFAULT_WALLPAPER_URI, uri.toString())
-
-    // TODO(v0.3.3): temporary cleanup
-    suspend fun clearDefaultWallpaperUri() {
-        dataStore.edit { prefs -> prefs.remove(KEY_DEFAULT_WALLPAPER_URI) }
-    }
 
     suspend fun setRevertToDefault(revert: Boolean) =
         set(KEY_REVERT_TO_DEFAULT, revert)
@@ -200,9 +202,12 @@ class AppDataStore @Inject constructor(
     suspend fun setBatterySaverPolicy(policy: BatterySaverPolicy) =
         set(KEY_BATTERY_SAVER_POLICY, policy.name)
 
-    suspend fun setLockscreenZoomFix(zoomFix: LockscreenZoomFix) =
-        set(KEY_LOCKSCREEN_ZOOM_FIX, zoomFix.storedValue)
+    suspend fun setWallpaperZoomFix(zoomFix: WallpaperZoomFix) =
+        set(KEY_WALLPAPER_ZOOM_FIX, zoomFix.storedValue)
 
     suspend fun setWallpaperDestination(target: WallpaperDestination) =
         set(KEY_WALLPAPER_DESTINATION, target.name)
+
+    suspend fun setKeepLocalCopies(enabled: Boolean) =
+        set(KEY_KEEP_LOCAL_COPIES, enabled)
 }
