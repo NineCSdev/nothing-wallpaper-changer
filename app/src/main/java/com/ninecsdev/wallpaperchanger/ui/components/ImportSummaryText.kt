@@ -5,7 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.res.stringResource
 import com.ninecsdev.wallpaperchanger.R
-import com.ninecsdev.wallpaperchanger.data.PickImportResult
+import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
 
 /**
  * Shows the one-shot [summary] notice in [hostState] and reports back via [onShown] so the owning

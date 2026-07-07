@@ -4,9 +4,10 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ninecsdev.wallpaperchanger.data.PickImportResult
 import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
+import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
+import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
@@ -34,6 +35,7 @@ import javax.inject.Inject
 @HiltViewModel
 class CollectionViewModel @Inject constructor(
     private val repository: WallpaperRepository,
+    private val wallpaperSources: WallpaperSources,
     serviceStateManager: ServiceStateManager
 ) : ViewModel() {
 
@@ -220,7 +222,7 @@ class CollectionViewModel @Inject constructor(
 
     fun toggleCreateModal(show: Boolean) {
         if (!show && pendingFolderUri != null) {
-            repository.releasePersistedUriPermission(pendingFolderUri!!)
+            wallpaperSources.releasePersistedGrant(pendingFolderUri!!)
             pendingFolderUri = null
         }
         _screenState.update {

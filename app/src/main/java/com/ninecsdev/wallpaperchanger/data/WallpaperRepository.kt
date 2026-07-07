@@ -1,15 +1,15 @@
 package com.ninecsdev.wallpaperchanger.data
 
-import android.content.Context
-import android.content.Intent
 import android.net.Uri
-import android.provider.DocumentsContract
 import android.util.Log
 import androidx.room.withTransaction
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.local.AppDatabase
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperDao
-import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
+import com.ninecsdev.wallpaperchanger.data.source.FolderScanner
+import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
+import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
+import com.ninecsdev.wallpaperchanger.data.source.computeFolderSyncDiff
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
@@ -17,7 +17,6 @@ import com.ninecsdev.wallpaperchanger.model.enums.SourceType
 import com.ninecsdev.wallpaperchanger.model.Wallpaper
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -28,17 +27,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
-
-/**
- * Summary of importing a batch of picked URIs into a collection: how many were kept as external
- * references (photo-picker grant), how many were internalized (user setting or a failed reference
- * probe), and how many failed both and were dropped. Surfaced to the UI as a post-add notice.
- */
-data class PickImportResult(
-    val referenced: Int = 0,
-    val internalized: Int = 0,
-    val skipped: Int = 0
-)
 
 /**
  * Outcome of re-linking an unavailable image to a freshly picked source (see
@@ -52,21 +40,22 @@ enum class RelinkResult { RELINKED, MERGED, FAILED }
 /**
  * Coordinates the data layer.
  *
- * Responsible for collection and wallpaper image CRUD,
- * folder scanning, and rotation-engine coordination.
- * Service state is managed by [ServiceStateManager] and settings
- * by [AppDataStore] — mostly injected directly by
- * consumers that need them, though this class also reads [AppDataStore] for the
- * keep-local-copies preference, matching how [ImageInternalizer] already does for simplicity.
+ * Responsible for collection and wallpaper image CRUD, folder-sync orchestration, and
+ * rotation-engine coordination. The split with `data/source/`: DB rows and transactions live here;
+ * a source's backing resource (picker grants, internal copies) is acquired/probed/reclaimed by
+ * [WallpaperSources], and folder scanning by [FolderScanner].
+ * Service state is managed by [ServiceStateManager] and settings by [AppDataStore] mostly
+ * injected directly by consumers that need them, though this class also reads [AppDataStore] for
+ * the default-wallpaper uri when computing the internal-files keep set.
  */
 @Singleton
 class WallpaperRepository @Inject constructor(
-    @param:ApplicationContext private val appContext: Context,
     private val database: AppDatabase,
     private val dao: WallpaperDao,
-    private val imageInternalizer: ImageInternalizer,
     private val appDataStore: AppDataStore,
-    private val serviceStateManager: ServiceStateManager
+    private val serviceStateManager: ServiceStateManager,
+    private val wallpaperSources: WallpaperSources,
+    private val folderScanner: FolderScanner
 ) {
     private companion object {
         const val TAG = "WallpaperRepository"
@@ -126,7 +115,7 @@ class WallpaperRepository @Inject constructor(
     suspend fun createFolderCollection(name: String, treeUri: Uri, rule: CropRule): Boolean {
         return withContext(Dispatchers.IO) {
             // Scan first to avoid creating an orphan empty collection (or one with a partial/empty image set) on a transient scan failure.
-            val scannedUris = getImageListFromFolder(treeUri)
+            val scannedUris = folderScanner.scan(treeUri)
 
             val isFirst = dao.getActiveCollection() == null
             val collectionId = dao.insertCollection(
@@ -147,12 +136,12 @@ class WallpaperRepository @Inject constructor(
 
     /**
      * Creates a manual collection. Returns whether it became the active collection, plus a summary
-     * of how the picked images were imported (see [importPickedUris]).
+     * of how the picked images were imported (see [WallpaperSources.acquirePicked]).
      */
     suspend fun createManualCollection(name: String, uris: List<Uri>, rule: CropRule): Pair<Boolean, PickImportResult> {
         return withContext(Dispatchers.IO) {
             val isFirst = dao.getActiveCollection() == null
-            val imported = importPickedUris(uris)
+            val imported = wallpaperSources.acquirePicked(uris)
 
             val collectionId = dao.insertCollection(
                 WallpaperCollection(
@@ -171,91 +160,19 @@ class WallpaperRepository @Inject constructor(
 
     /**
      * Adds wallpapers to an existing collection. Returns a summary of how the picked images were
-     * imported (see [importPickedUris]).
+     * imported (see [WallpaperSources.acquirePicked]).
      * For FOLDER collections the new images are marked [Wallpaper.isManuallyAdded]
      * so they survive folder-sync diffs.
      */
     suspend fun addImagesToCollection(collectionId: Long, uris: List<Uri>): PickImportResult {
         return withContext(Dispatchers.IO) {
             val collection = dao.getCollectionById(collectionId) ?: return@withContext PickImportResult()
-            val imported = importPickedUris(uris)
+            val imported = wallpaperSources.acquirePicked(uris)
 
             val isFolder = collection.type == CollectionType.FOLDER
             addFilesToCollection(collectionId, imported.files, isManuallyAdded = isFolder)
             imported.result
         }
-    }
-
-    private data class PickImportOutcome(
-        val files: List<Pair<Uri, SourceType>>,
-        val result: PickImportResult
-    )
-
-    /**
-     * Decides how to import each picked [uris]: if the user's "keep local copies" setting is on,
-     * everything is internalized. Otherwise, each uri is kept as an external
-     * reference by taking a persistable read grant and probing it's actually readable; a uri that
-     * fails the probe (or the grant itself) falls back to internalizing just that image, and a uri
-     * that fails internalization too is dropped. See [tryTakeReferenceGrant].
-     */
-    private suspend fun importPickedUris(uris: List<Uri>): PickImportOutcome {
-        if (uris.isEmpty()) return PickImportOutcome(emptyList(), PickImportResult())
-
-        if (appDataStore.getKeepLocalCopies()) {
-            val internalizedUris = imageInternalizer.internalizeImages(appContext, uris)
-            return PickImportOutcome(
-                files = internalizedUris.map { it to SourceType.INTERNALIZED },
-                result = PickImportResult(
-                    internalized = internalizedUris.size,
-                    skipped = uris.size - internalizedUris.size
-                )
-            )
-        }
-
-        val referenced = uris.filter { tryTakeReferenceGrant(it) }
-        val toInternalize = uris - referenced.toSet()
-
-        val internalizedUris = if (toInternalize.isNotEmpty()) {
-            imageInternalizer.internalizeImages(appContext, toInternalize)
-        } else {
-            emptyList()
-        }
-
-        val files = referenced.map { it to SourceType.PICKER_GRANT } +
-            internalizedUris.map { it to SourceType.INTERNALIZED }
-
-        return PickImportOutcome(
-            files = files,
-            result = PickImportResult(
-                referenced = referenced.size,
-                internalized = internalizedUris.size,
-                skipped = toInternalize.size - internalizedUris.size
-            )
-        )
-    }
-
-    /**
-     * Takes a persistable read grant for a photo-picker [uri] and verifies it's actually usable
-     * before committing to it as a reference. Releases the grant immediately on a failed probe so a
-     * dead grant doesn't sit around consuming the system's persisted-grant budget.
-     */
-    private fun tryTakeReferenceGrant(uri: Uri): Boolean {
-        return try {
-            appContext.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            val readable = isUriReadable(uri)
-            if (!readable) releasePersistedUriPermission(uri)
-            readable
-        } catch (e: Exception) {
-            Log.w(TAG, "Reference grant failed for $uri, falling back to internalizing", e)
-            false
-        }
-    }
-
-    /** True if [uri] can currently be opened for reading. */
-    private fun isUriReadable(uri: Uri): Boolean = try {
-        appContext.contentResolver.openAssetFileDescriptor(uri, "r")?.use { true } ?: false
-    } catch (_: Exception) {
-        false
     }
 
     /**
@@ -300,7 +217,7 @@ class WallpaperRepository @Inject constructor(
             dao.getUnavailableImagesForCollection(collectionId)
                 .distinctBy { it.fileId }
                 .forEach { image ->
-                    if (isUriReadable(image.uri)) {
+                    if (wallpaperSources.isReadable(image.uri)) {
                         dao.setFileAvailability(image.fileId, true)
                     }
                 }
@@ -311,21 +228,21 @@ class WallpaperRepository @Inject constructor(
      * Manually re-links an [image] whose source became unreadable to a freshly picked [pickedUri],
      * preserving the file's identity (collection membership and edit params).
      *
-     * The picked uri runs through the normal import pipeline ([importPickedUris]) so it follows the
-     * keep-local-copies setting and the reference-grant-or-internalize fallback. Then, in one
-     * transaction:
+     * The picked uri runs through the normal import pipeline ([WallpaperSources.acquirePicked]) so
+     * it follows the keep-local-copies setting and the reference-grant-or-internalize fallback.
+     * Then, in one transaction:
      *  - picker returned the same uri → just clears the unavailable flag,
      *  - uri is new → rebinds the existing file row in place ([WallpaperDao.rebindFile]),
      *  - uri already exists as another row → merges the old row's memberships into it, dropping any
      *    that would duplicate an existing (collection, file) membership.
-     * When the source actually changed, the old backing resource is reclaimed (internal copy deleted
-     * / stale picker grant released), mirroring [gcOrphanFiles].
+     * When the source actually changed, the old backing resource is reclaimed
+     * ([WallpaperSources.reclaim]), same as [gcOrphanFiles] does.
      *
      * Returns [RelinkResult.FAILED] (leaving the image unavailable) if the pick can't be imported.
      */
     suspend fun relinkUnavailableFile(image: WallpaperImage, pickedUri: Uri): RelinkResult {
         return withContext(Dispatchers.IO) {
-            val imported = importPickedUris(listOf(pickedUri))
+            val imported = wallpaperSources.acquirePicked(listOf(pickedUri))
             val (finalUri, newSourceType) = imported.files.firstOrNull() ?: return@withContext RelinkResult.FAILED
 
             val oldFileId = image.fileId
@@ -358,11 +275,7 @@ class WallpaperRepository @Inject constructor(
 
             // Reclaim the old backing resource only when the source really changed.
             if (finalUri != oldUri) {
-                when (oldSourceType) {
-                    SourceType.INTERNALIZED -> imageInternalizer.deleteInternalFile(oldUri.path)
-                    SourceType.PICKER_GRANT -> releasePersistedUriPermission(oldUri)
-                    SourceType.FOLDER_DOC -> Unit
-                }
+                wallpaperSources.reclaim(oldUri, oldSourceType)
             }
             result
         }
@@ -411,7 +324,7 @@ class WallpaperRepository @Inject constructor(
                 try {
                     Log.d(TAG, "Syncing physical folder for collection: ${collection.name}")
 
-                    val freshUris = getImageListFromFolder(collection.rootUri)
+                    val freshUris = folderScanner.scan(collection.rootUri)
 
                     val added = syncFolderImages(collectionId, freshUris)
                     Log.d(TAG, "Sync complete: ${freshUris.size} on disk, $added new images added.")
@@ -453,28 +366,6 @@ class WallpaperRepository @Inject constructor(
     }
 
     /**
-     * Pure folder-sync diff: compares the currently persisted folder-sourced [existing] images against
-     * a [fresh] disk scan and reports what to delete and what to insert. Matching is by uri.
-     *
-     * Note: an empty [fresh] list marks *every* existing image stale so callers must ensure a **failed**
-     * scan never reaches here. A genuinely empty folder still returns everything as stale.
-     *
-     * @return A Pair where the first element is a list of join-row IDs to delete (stale), and the
-     * second element is a list of new URIs to register and link.
-     */
-    private fun computeFolderSyncDiff(
-        existing: List<WallpaperImage>,
-        fresh: List<Uri>
-    ): Pair<List<Long>, List<Uri>> {
-        val freshUris = fresh.toSet()
-        val existingUris = existing.map { it.uri }.toSet()
-        return Pair(
-            existing.filter { it.uri !in freshUris }.map { it.id },
-            fresh.filter { it !in existingUris }
-        )
-    }
-
-    /**
      * Removes wallpapers (join rows) from a collection, then garbage-collects any file that is left
      * unreferenced (deleting the app-private copy or releasing the picker grant as appropriate).
      * A file shared with another collection is kept.
@@ -508,14 +399,14 @@ class WallpaperRepository @Inject constructor(
 
             // Release the persisted folder permission if this is a folder collection
             if (collection.type == CollectionType.FOLDER && collection.rootUri != null) {
-                releasePersistedUriPermission(collection.rootUri)
+                wallpaperSources.releasePersistedGrant(collection.rootUri)
             }
         }
     }
 
     /**
-     * Deletes file-registry rows referenced by no collection and reclaims their backing resource:
-     * app-private copies are deleted, picker grants are released, folder documents are left alone.
+     * Deletes file-registry rows referenced by no collection and reclaims their backing resource
+     * via [WallpaperSources.reclaim].
      *
      * File rows are removed inside a transaction, then the physical cleanup runs.
      */
@@ -526,11 +417,7 @@ class WallpaperRepository @Inject constructor(
             found
         }
         orphans.forEach { file ->
-            when (file.sourceType) {
-                SourceType.INTERNALIZED -> imageInternalizer.deleteInternalFile(file.uri.path)
-                SourceType.PICKER_GRANT -> releasePersistedUriPermission(file.uri)
-                SourceType.FOLDER_DOC -> Unit
-            }
+            wallpaperSources.reclaim(file.uri, file.sourceType)
         }
     }
 
@@ -547,8 +434,8 @@ class WallpaperRepository @Inject constructor(
      * Reconciles disk with the DB: deletes any file under `internal_wallpapers/` that isn't
      * referenced by a [SourceType.INTERNALIZED] file row and isn't the current default wallpaper
      * (which lives outside the DB, in [AppDataStore]). Safe to call on every app start; a no-op
-     * when nothing is orphaned. See [ImageInternalizer.deleteOrphanInternalFiles] for the grace-period
-     * guard against racing an in-progress import.
+     * when nothing is orphaned. The keep set is computed here (it needs the DAO); the sweep itself
+     * is [WallpaperSources.sweepInternalFiles].
      */
     suspend fun cleanupOrphanInternalFiles() {
         withContext(Dispatchers.IO) {
@@ -557,21 +444,7 @@ class WallpaperRepository @Inject constructor(
                 .toMutableSet()
             appDataStore.getDefaultWallpaperUri()?.lastPathSegment?.let { keep.add(it) }
 
-            imageInternalizer.deleteOrphanInternalFiles(appContext, keep)
-        }
-    }
-
-    /**
-     * Releases a persisted READ URI permission previously taken via `takePersistableUriPermission`
-     * (a folder tree grant or a photo-picker media grant). Safe to call even if already released.
-     */
-    fun releasePersistedUriPermission(uri: Uri) {
-        try {
-            appContext.contentResolver.releasePersistableUriPermission(
-                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-        } catch (e: SecurityException) {
-            Log.w(TAG, "Permission already released for: $uri", e)
+            wallpaperSources.sweepInternalFiles(keep)
         }
     }
 
@@ -602,57 +475,6 @@ class WallpaperRepository @Inject constructor(
     suspend fun resetWallpaperEdit(wallpaper: WallpaperImage) {
         withContext(Dispatchers.IO) {
             dao.updateWallpaperEdit(wallpaper.id, null, null, null)
-        }
-    }
-
-    // File System Utilities
-    // TODO: Move folder scanning to a dedicated FolderScanner collaborator
-    /**
-     * Scans ONLY (no subfolders)  the user-selected folder for images.
-     * @param rootFolderUri The top-level folder URI granted by the user.
-     * @return The document URIs of the images found in the folder.
-     */
-    private suspend fun getImageListFromFolder(rootFolderUri: Uri): List<Uri> {
-        return withContext(Dispatchers.IO) {
-            val imageList = mutableListOf<Uri>()
-            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
-                rootFolderUri, DocumentsContract.getTreeDocumentId(rootFolderUri)
-            )
-
-            try {
-                appContext.contentResolver.query(
-                    childrenUri,
-                    arrayOf(
-                        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                        DocumentsContract.Document.COLUMN_MIME_TYPE
-                    ),
-                    null,
-                    null,
-                    null
-                )?.use { cursor ->
-                    val idCol = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-                    val mimeTypeCol = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE)
-
-                    while (cursor.moveToNext()) {
-                        val mimeType = cursor.getString(mimeTypeCol)
-
-                        if (mimeType != null && mimeType.startsWith("image/")) {
-                            val docId = cursor.getString(idCol)
-                            val docUri = DocumentsContract.buildDocumentUriUsingTree(rootFolderUri, docId)
-                            imageList.add(docUri)
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                // Propagate instead of returning an empty list. An empty result is treated by the
-                // folder-sync diff as "delete everything", so a transient ContentResolver error or
-                // revoked permission would silently wipe the collection's images. Aborting the sync
-                // is the safe outcome; a genuinely empty folder still returns [] and syncs normally.
-                Log.e(TAG, "Folder scan failed, aborting: $e")
-                throw e
-            }
-            Log.d(TAG, "Folder scan found ${imageList.size} valid images.")
-            imageList
         }
     }
 }

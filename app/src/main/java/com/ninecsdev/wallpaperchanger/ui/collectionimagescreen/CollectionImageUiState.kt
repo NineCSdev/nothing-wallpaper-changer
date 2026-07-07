@@ -1,6 +1,6 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen
 
-import com.ninecsdev.wallpaperchanger.data.PickImportResult
+import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 
 /**
