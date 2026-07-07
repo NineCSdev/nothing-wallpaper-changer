@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
-import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
+import com.ninecsdev.wallpaperchanger.ui.walleditscreen.EditableWallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -48,11 +48,11 @@ import kotlinx.coroutines.flow.distinctUntilChanged
  * Full-screen wallpaper preview overlay.
  * Tap anywhere to dismiss. Shows edited badge if applicable.
  * Features an edit button to navigate to the wallpaper editor.
- * Lets swipe back and forth between wallpapers.
+ * Let's swipe back and forth between wallpapers.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun WallpaperPreviewOverlay(
+internal fun WallpaperPreviewOverlay(
     wallpapers: List<WallpaperImage>,
     initialIndex: Int,
     onDismiss: () -> Unit,

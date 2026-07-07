@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.ui.components
+package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -26,7 +26,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  * contentDescription) sized to match [size].
  */
 @Composable
-fun StatusBadge(
+internal fun StatusBadge(
     backgroundColor: Color,
     modifier: Modifier = Modifier,
     size: Int = 14,
@@ -52,7 +52,7 @@ private fun StatusBadgePreview() {
     ) {
         StatusBadge(backgroundColor = NothingRed) {
             Icon(
-                imageVector = Icons.Default.Warning,
+                imageVector = Icons.Default.Check,
                 contentDescription = null,
                 tint = NothingWhite,
                 modifier = Modifier.size(14.dp)

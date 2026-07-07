@@ -31,7 +31,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 @Composable
-fun <T> SettingsSegmentedSelector(
+internal fun <T> SettingsSegmentedSelector(
     title: String,
     subtitle: String,
     options: List<T>,

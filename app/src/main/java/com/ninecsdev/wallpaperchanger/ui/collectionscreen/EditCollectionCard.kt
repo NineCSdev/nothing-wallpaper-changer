@@ -1,6 +1,7 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionscreen
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,10 +48,9 @@ import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
-import com.ninecsdev.wallpaperchanger.ui.components.CropRuleSelector
-import com.ninecsdev.wallpaperchanger.ui.components.ConfirmationOverlay
+import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.NothingTextField
-import com.ninecsdev.wallpaperchanger.ui.components.ProcessingOverlay
+import com.ninecsdev.wallpaperchanger.ui.components.overlay.ProcessingOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -59,7 +59,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  * Card pop-up for editing or deleting a collection.
  */
 @Composable
-fun EditCollectionCard(
+internal fun EditCollectionCard(
     collection: WallpaperCollection,
     isProcessing: Boolean = false,
     onDismiss: () -> Unit,
@@ -78,89 +78,127 @@ fun EditCollectionCard(
         onDismissRequest = if (isProcessing) ({}) else onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .clickable(enabled = false) { },
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = NothingBlack),
-            border = BorderStroke(1.dp, NothingWhite.copy(alpha = 0.2f))
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Column(modifier = Modifier.padding(24.dp)) {
+        EditCollectionCardContent(
+            collection = collection,
+            isProcessing = isProcessing,
+            nameText = nameText,
+            onNameChange = { nameText = it },
+            selectedRule = selectedRule,
+            onRuleSelected = { selectedRule = it },
+            selectedRotationFrequency = selectedRotationFrequency,
+            onFrequencySelected = { selectedRotationFrequency = it },
+            showDeleteConfirmation = showDeleteConfirmation,
+            onDeleteRequest = { showDeleteConfirmation = true },
+            onDeleteConfirm = {
+                showDeleteConfirmation = false
+                onDelete()
+            },
+            onDeleteCancel = { showDeleteConfirmation = false },
+            onDismiss = onDismiss,
+            onSyncClick = onSyncClick,
+            onViewImages = onViewImages,
+            onSetActive = onSetActive,
+            onSave = { onEdit(nameText, selectedRule, selectedRotationFrequency) }
+        )
+    }
+}
 
-                    EditCardHeader(
-                        collectionType = collection.type,
-                        onSyncClick = onSyncClick,
-                        onDismiss = onDismiss
-                    )
+@Composable
+private fun EditCollectionCardContent(
+    collection: WallpaperCollection,
+    isProcessing: Boolean,
+    nameText: String,
+    onNameChange: (String) -> Unit,
+    selectedRule: CropRule,
+    onRuleSelected: (CropRule) -> Unit,
+    selectedRotationFrequency: RotationFrequency,
+    onFrequencySelected: (RotationFrequency) -> Unit,
+    showDeleteConfirmation: Boolean,
+    onDeleteRequest: () -> Unit,
+    onDeleteConfirm: () -> Unit,
+    onDeleteCancel: () -> Unit,
+    onDismiss: () -> Unit,
+    onSyncClick: () -> Unit,
+    onViewImages: () -> Unit,
+    onSetActive: () -> Unit,
+    onSave: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth(0.9f)
+            .clickable(enabled = false) { },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = NothingBlack),
+        border = BorderStroke(1.dp, NothingWhite.copy(alpha = 0.2f))
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Column(modifier = Modifier.padding(24.dp)) {
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                EditCardHeader(
+                    collectionType = collection.type,
+                    onSyncClick = onSyncClick,
+                    onDismiss = onDismiss
+                )
 
-                    NothingTextField(
-                        value = nameText,
-                        onValueChange = { nameText = it },
-                        label = stringResource(R.string.edit_list_field_name)
-                    )
+                Spacer(modifier = Modifier.height(24.dp))
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                NothingTextField(
+                    value = nameText,
+                    onValueChange = onNameChange,
+                    label = stringResource(R.string.edit_list_field_name)
+                )
 
-                    CropRuleSelector(
-                        selectedRule = selectedRule,
-                        onRuleSelected = { selectedRule = it }
-                    )
+                Spacer(modifier = Modifier.height(16.dp))
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                CropRuleSelector(
+                    selectedRule = selectedRule,
+                    onRuleSelected = onRuleSelected
+                )
 
-                    RotationFrequencySelector(
-                        selectedFrequency = selectedRotationFrequency,
-                        onFrequencySelected = { selectedRotationFrequency = it }
-                    )
+                Spacer(modifier = Modifier.height(16.dp))
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                RotationFrequencySelector(
+                    selectedFrequency = selectedRotationFrequency,
+                    onFrequencySelected = onFrequencySelected
+                )
 
-                    ManagementButtons(
-                        onDeleteRequest = { showDeleteConfirmation = true },
-                        onViewImages = {
-                            onDismiss()
-                            onViewImages()
-                        }
-                    )
+                Spacer(modifier = Modifier.height(24.dp))
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                ManagementButtons(
+                    onDeleteRequest = onDeleteRequest,
+                    onViewImages = {
+                        onDismiss()
+                        onViewImages()
+                    }
+                )
 
-                    EditCardActions(
-                        isActive = collection.isActive,
-                        isChanged = nameText != collection.name ||
-                            selectedRule != collection.defaultCropRule ||
-                            selectedRotationFrequency != collection.rotationFrequency,
-                        onSetActive = onSetActive,
-                        onSave = {
-                            onEdit(nameText, selectedRule, selectedRotationFrequency)
-                            onDismiss()
-                        },
-                        onDismiss = onDismiss
-                    )
-                }
+                Spacer(modifier = Modifier.height(32.dp))
 
-                if (isProcessing) {
-                    ProcessingOverlay(
-                        message = stringResource(R.string.edit_list_processing),
-                        modifier = Modifier.matchParentSize()
-                    )
-                }
+                EditCardActions(
+                    isActive = collection.isActive,
+                    isChanged = nameText != collection.name ||
+                        selectedRule != collection.defaultCropRule ||
+                        selectedRotationFrequency != collection.rotationFrequency,
+                    onSetActive = { onSetActive(); onDismiss() },
+                    onSave = { onSave(); onDismiss() },
+                    onDismiss = onDismiss
+                )
+            }
 
-                if(showDeleteConfirmation) {
-                    ConfirmationOverlay(
-                        title = stringResource(R.string.edit_list_delete_title),
-                        message = stringResource(R.string.edit_list_delete_message),
-                        onConfirm = {
-                            showDeleteConfirmation = false
-                            onDelete()
-                        },
-                        onCancel = { showDeleteConfirmation = false }
-                    )
-                }
+            if (isProcessing) {
+                ProcessingOverlay(
+                    message = stringResource(R.string.edit_list_processing),
+                    modifier = Modifier.matchParentSize()
+                )
+            }
+
+            if (showDeleteConfirmation) {
+                ConfirmationOverlay(
+                    title = stringResource(R.string.edit_list_delete_title),
+                    message = stringResource(R.string.edit_list_delete_message),
+                    onConfirm = onDeleteConfirm,
+                    onCancel = onDeleteCancel
+                )
             }
         }
     }
@@ -345,87 +383,160 @@ private fun EditCardActions(
     }
 }
 
-@Preview(name = "Folder Collection", showBackground = true, backgroundColor = 0xFF000000)
+// Previews
+
+private val previewFolderCollection = WallpaperCollection(
+    id = 1,
+    name = "Amoled Dark",
+    type = CollectionType.FOLDER
+)
+
+private val previewManualCollection = WallpaperCollection(
+    id = 2,
+    name = "Custom Favorites",
+    type = CollectionType.MANUAL
+)
+
+/** Simulates the Dialog scrim so previews look identical to the in-app experience. */
 @Composable
-fun EditCollectionCardPreview() {
-    MaterialTheme {
-        EditCollectionCard(
-            collection = WallpaperCollection(
-                id = 1,
-                name = "Amoled Dark",
-                type = CollectionType.FOLDER
-            ),
-            onDismiss = {},
-            onEdit = { _, _, _ -> },
-            onDelete = {},
-            onSetActive = {},
-            onSyncClick = {},
-            onViewImages = {}
-        )
+private fun DialogScrim(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.Black.copy(alpha = 0.6f)),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
     }
 }
 
-@Preview(name = "Manual Collection", showBackground = true, backgroundColor = 0xFF000000)
+@Preview(
+    name = "Folder Collection",
+    showBackground = true,
+    backgroundColor = 0xFF1A1A2E,
+    device = "spec:width=411dp,height=891dp,dpi=420"
+)
 @Composable
-fun EditCollectionCardManualPreview() {
+private fun PreviewEditCollectionCardFolder() {
     MaterialTheme {
-        Box(Modifier.padding(16.dp)) {
-            EditCollectionCard(
-                collection = WallpaperCollection(
-                    id = 2,
-                    name = "Custom Favorites",
-                    type = CollectionType.MANUAL
-                ),
+        DialogScrim {
+            EditCollectionCardContent(
+                collection = previewFolderCollection,
+                isProcessing = false,
+                nameText = previewFolderCollection.name,
+                onNameChange = {},
+                selectedRule = previewFolderCollection.defaultCropRule,
+                onRuleSelected = {},
+                selectedRotationFrequency = previewFolderCollection.rotationFrequency,
+                onFrequencySelected = {},
+                showDeleteConfirmation = false,
+                onDeleteRequest = {},
+                onDeleteConfirm = {},
+                onDeleteCancel = {},
                 onDismiss = {},
-                onEdit = { _, _, _ -> },
-                onDelete = {},
-                onSetActive = {},
                 onSyncClick = {},
-                onViewImages = {}
+                onViewImages = {},
+                onSetActive = {},
+                onSave = {}
             )
         }
     }
 }
 
-@Preview(name = "Active Collection", showBackground = true, backgroundColor = 0xFF000000)
+@Preview(
+    name = "Manual Collection",
+    showBackground = true,
+    backgroundColor = 0xFF1A1A2E,
+    device = "spec:width=411dp,height=891dp,dpi=420"
+)
 @Composable
-fun EditCollectionCardActivePreview() {
+private fun PreviewEditCollectionCardManual() {
     MaterialTheme {
-        EditCollectionCard(
-            collection = WallpaperCollection(
-                id = 1,
-                name = "Amoled Dark",
-                type = CollectionType.FOLDER,
-                isActive = true
-            ),
-            onDismiss = {},
-            onEdit = { _, _, _ -> },
-            onDelete = {},
-            onSetActive = {},
-            onSyncClick = {},
-            onViewImages = {}
-        )
+        DialogScrim {
+            EditCollectionCardContent(
+                collection = previewManualCollection,
+                isProcessing = false,
+                nameText = previewManualCollection.name,
+                onNameChange = {},
+                selectedRule = previewManualCollection.defaultCropRule,
+                onRuleSelected = {},
+                selectedRotationFrequency = previewManualCollection.rotationFrequency,
+                onFrequencySelected = {},
+                showDeleteConfirmation = false,
+                onDeleteRequest = {},
+                onDeleteConfirm = {},
+                onDeleteCancel = {},
+                onDismiss = {},
+                onSyncClick = {},
+                onViewImages = {},
+                onSetActive = {},
+                onSave = {}
+            )
+        }
     }
 }
 
-@Preview(name = "Syncing", showBackground = true, backgroundColor = 0xFF000000)
+@Preview(
+    name = "Active Collection",
+    showBackground = true,
+    backgroundColor = 0xFF1A1A2E,
+    device = "spec:width=411dp,height=891dp,dpi=420"
+)
 @Composable
-fun EditCollectionCardSyncingPreview() {
+private fun PreviewEditCollectionCardActive() {
     MaterialTheme {
-        Box(Modifier.padding(16.dp)) {
-            EditCollectionCard(
-                collection = WallpaperCollection(
-                    id = 1,
-                    name = "Amoled Nature",
-                    type = CollectionType.FOLDER
-                ),
-                isProcessing = true,
+        DialogScrim {
+            EditCollectionCardContent(
+                collection = previewFolderCollection.copy(isActive = true),
+                isProcessing = false,
+                nameText = previewFolderCollection.name,
+                onNameChange = {},
+                selectedRule = previewFolderCollection.defaultCropRule,
+                onRuleSelected = {},
+                selectedRotationFrequency = previewFolderCollection.rotationFrequency,
+                onFrequencySelected = {},
+                showDeleteConfirmation = false,
+                onDeleteRequest = {},
+                onDeleteConfirm = {},
+                onDeleteCancel = {},
                 onDismiss = {},
-                onEdit = { _, _, _ -> },
-                onDelete = {},
-                onSetActive = {},
                 onSyncClick = {},
-                onViewImages = {}
+                onViewImages = {},
+                onSetActive = {},
+                onSave = {}
+            )
+        }
+    }
+}
+
+@Preview(
+    name = "Processing",
+    showBackground = true,
+    backgroundColor = 0xFF1A1A2E,
+    device = "spec:width=411dp,height=891dp,dpi=420"
+)
+@Composable
+private fun PreviewEditCollectionCardProcessing() {
+    MaterialTheme {
+        DialogScrim {
+            EditCollectionCardContent(
+                collection = previewFolderCollection,
+                isProcessing = true,
+                nameText = previewFolderCollection.name,
+                onNameChange = {},
+                selectedRule = previewFolderCollection.defaultCropRule,
+                onRuleSelected = {},
+                selectedRotationFrequency = previewFolderCollection.rotationFrequency,
+                onFrequencySelected = {},
+                showDeleteConfirmation = false,
+                onDeleteRequest = {},
+                onDeleteConfirm = {},
+                onDeleteCancel = {},
+                onDismiss = {},
+                onSyncClick = {},
+                onViewImages = {},
+                onSetActive = {},
+                onSave = {}
             )
         }
     }

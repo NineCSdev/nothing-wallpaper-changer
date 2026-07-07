@@ -47,7 +47,7 @@ data class CollectionPreviewState(
  * Shows the first 4 wallpapers in a 2x2 with the 4th blurred out.
  */
 @Composable
-fun CollectionGridItem(
+internal fun CollectionGridItem(
     collection: WallpaperCollection,
     state: CollectionPreviewState,
     onClick: () -> Unit,

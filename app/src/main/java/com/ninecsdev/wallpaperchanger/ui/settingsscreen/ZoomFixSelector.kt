@@ -22,7 +22,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 @Composable
-fun WallpaperZoomFixSelector(
+internal fun WallpaperZoomFixSelector(
     selected: WallpaperZoomFix,
     onZoomFixChange: (WallpaperZoomFix) -> Unit
 ) {
@@ -46,9 +46,9 @@ fun WallpaperZoomFixSelector(
 
     if (showInfo) {
         AlertDialog(
-            onDismissRequest = { showInfo = false },
+            onDismissRequest = { showInfo = true },
             confirmButton = {
-                TextButton(onClick = { showInfo = false }) {
+                TextButton(onClick = { showInfo = true }) {
                     Text(text = stringResource(R.string.settings_zoom_fix_dialog_ok))
                 }
             },

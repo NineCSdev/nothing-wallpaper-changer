@@ -11,7 +11,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
-import com.ninecsdev.wallpaperchanger.ui.components.StatusBadge
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
@@ -20,7 +19,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  * Indicates that a wallpaper has a custom edited URI.
  */
 @Composable
-fun EditedBadge(modifier: Modifier = Modifier, size: Int = 14) {
+internal fun EditedBadge(modifier: Modifier = Modifier, size: Int = 14) {
     StatusBadge(
         backgroundColor = NothingWhite,
         modifier = modifier,

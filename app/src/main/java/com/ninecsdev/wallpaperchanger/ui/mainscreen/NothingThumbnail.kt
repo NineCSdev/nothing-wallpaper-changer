@@ -23,7 +23,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  * Used in Grids, Selection Cards, and Default Wallpaper settings.
  */
 @Composable
-fun NothingThumbnail(
+internal fun NothingThumbnail(
     uri: Uri?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,

@@ -28,7 +28,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 @Composable
-fun QualitySlider(
+internal fun QualitySlider(
     label: String,
     subtitle: String,
     value: Int,

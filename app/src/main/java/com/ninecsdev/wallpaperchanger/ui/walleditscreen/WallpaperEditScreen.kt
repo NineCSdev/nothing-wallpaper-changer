@@ -10,23 +10,10 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,14 +25,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -56,8 +39,8 @@ import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.logic.computeEditTransform
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
-import com.ninecsdev.wallpaperchanger.ui.components.ConfirmationOverlay
-import com.ninecsdev.wallpaperchanger.ui.components.ProcessingOverlay
+import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
+import com.ninecsdev.wallpaperchanger.ui.components.overlay.ProcessingOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
@@ -69,9 +52,7 @@ private const val MaxOffset = 1f
 private const val PanSensitivity = 0.003f
 private const val PanSensitivityXMultiplier = 1.25f
 private fun coerceZoom(value: Float): Float = value.coerceIn(MinZoom, MaxZoom)
-
 private fun coerceOffset(value: Float): Float = value.coerceIn(MinOffset, MaxOffset)
-
 
 private fun calculateFitHeightZoom(
     imageAspectRatio: Float,
@@ -203,7 +184,17 @@ fun WallpaperEditScreen(
     }
 }
 
-//TODO: Extract the composable into separate files for readability if needed
+@Composable
+private fun HandleExit(
+    shouldExit: Boolean,
+    onBack: () -> Unit,
+) {
+    LaunchedEffect(shouldExit) {
+        if (shouldExit) {
+            onBack()
+        }
+    }
+}
 
 @Composable
 private fun WallpaperCanvas(
@@ -265,18 +256,6 @@ private fun WallpaperCanvas(
                 translationY = transform.panY
             }
     )
-}
-
-@Composable
-private fun HandleExit(
-    shouldExit: Boolean,
-    onBack: () -> Unit,
-) {
-    LaunchedEffect(shouldExit) {
-        if (shouldExit) {
-            onBack()
-        }
-    }
 }
 
 @Composable
@@ -380,162 +359,6 @@ private fun WallpaperEditContent(
 }
 
 @Composable
-private fun WallpaperEditTopBar(
-    hasSavedEdits: Boolean,
-    hasUnsavedChanges: Boolean,
-    showControls: Boolean,
-    onBack: () -> Unit,
-    onUndo: () -> Unit,
-    onResetSaved: () -> Unit,
-    onToggleControls: () -> Unit,
-    onFitHeight: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val canResetSaved = !hasUnsavedChanges && hasSavedEdits
-    val resetEnabled = hasUnsavedChanges || canResetSaved
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.7f),
-                        Color.Transparent
-                    )
-                )
-            )
-            .padding(top = 40.dp, bottom = 24.dp, start = 4.dp, end = 4.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.cd_back),
-                    tint = NothingWhite
-                )
-            }
-
-            Text(
-                text = stringResource(R.string.edit_screen_title),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 2.sp,
-                color = NothingWhite,
-                modifier = Modifier.weight(1f)
-            )
-
-            if (resetEnabled) {
-                IconButton(
-                    onClick = {
-                        when {
-                            hasUnsavedChanges -> onUndo()
-                            canResetSaved -> onResetSaved()
-                        }
-                    }
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.icon_undo),
-                        contentDescription = when {
-                            hasUnsavedChanges -> stringResource(R.string.cd_undo_changes)
-                            canResetSaved -> stringResource(R.string.cd_reset_edit)
-                            else -> stringResource(R.string.cd_reset_edit)
-                        },
-                        tint = NothingWhite,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-
-            IconButton(onClick = onFitHeight) {
-                Icon(
-                    painter = painterResource(R.drawable.icon_fit_height),
-                    contentDescription = stringResource(R.string.cd_fit_height),
-                    tint = NothingWhite,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            IconButton(onClick = onToggleControls) {
-                Icon(
-                    imageVector = Icons.Outlined.Settings,
-                    contentDescription = if (showControls) stringResource(R.string.cd_hide_controls) else stringResource(R.string.cd_show_controls),
-                    tint = if (showControls) NothingWhite else NothingWhite.copy(alpha = 0.5f),
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun WallpaperEditControlsPanel(
-    visible: Boolean,
-    zoom: Float,
-    offsetX: Float,
-    offsetY: Float,
-    onZoomChange: (Float) -> Unit,
-    onOffsetXChange: (Float) -> Unit,
-    onOffsetYChange: (Float) -> Unit,
-    isSaveEnabled: Boolean,
-    onSave: () -> Unit,
-    onCancel: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    AnimatedVisibility(
-        visible = visible,
-        modifier = modifier,
-        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-    ) {
-        ControlsPanel(
-            zoom = zoom,
-            offsetX = offsetX,
-            offsetY = offsetY,
-            onZoomChange = onZoomChange,
-            onOffsetXChange = onOffsetXChange,
-            onOffsetYChange = onOffsetYChange,
-            isSaveEnabled = isSaveEnabled,
-            onSave = onSave,
-            onCancel = onCancel
-        )
-    }
-}
-
-@Composable
-private fun FloatingSaveButton(
-    onSave: () -> Unit,
-    enabled: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(bottom = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        IconButton(
-            onClick = onSave,
-            enabled = enabled,
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(if (enabled) NothingWhite else NothingWhite.copy(alpha = 0.2f))
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.icon_save),
-                contentDescription = stringResource(R.string.cd_save),
-                tint = if (enabled) NothingBlack else NothingWhite.copy(alpha = 0.4f),
-                modifier = Modifier.size(24.dp)
-            )
-        }
-    }
-}
-
-@Composable
 private fun SavingOverlay(isSaving: Boolean) {
     AnimatedVisibility(
         visible = isSaving,
@@ -576,11 +399,47 @@ private fun SaveErrorBanner(show: Boolean) {
     }
 }
 
+/**
+ * Animated wrapper that slides [ControlsPanel] in and out from the bottom
+ * of the screen based on [visible].
+ */
+@Composable
+private fun WallpaperEditControlsPanel(
+    visible: Boolean,
+    zoom: Float,
+    offsetX: Float,
+    offsetY: Float,
+    onZoomChange: (Float) -> Unit,
+    onOffsetXChange: (Float) -> Unit,
+    onOffsetYChange: (Float) -> Unit,
+    isSaveEnabled: Boolean,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        modifier = modifier,
+        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+    ) {
+        ControlsPanel(
+            zoom = zoom,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            onZoomChange = onZoomChange,
+            onOffsetXChange = onOffsetXChange,
+            onOffsetYChange = onOffsetYChange,
+            isSaveEnabled = isSaveEnabled,
+            onSave = onSave,
+            onCancel = onCancel
+        )
+    }
+}
+
 // Previews
 
-@Preview(showSystemUi = true, name = "Wallpaper Editor", backgroundColor = 0xFF000000,
-    showBackground = false
-)
+@Preview(showSystemUi = true, name = "Wallpaper Editor", backgroundColor = 0xFF000000, showBackground = false)
 @Composable
 private fun WallpaperEditScreenPreview() {
     val sampleWallpaper = WallpaperImage(

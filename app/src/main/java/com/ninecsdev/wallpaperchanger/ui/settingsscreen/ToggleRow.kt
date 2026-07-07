@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.ui.components
+package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -22,7 +22,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 @Composable
-fun SettingsToggleRow(
+internal fun SettingsToggleRow(
     title: String,
     subtitle: String,
     checked: Boolean,

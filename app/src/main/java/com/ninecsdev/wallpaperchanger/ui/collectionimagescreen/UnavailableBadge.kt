@@ -12,7 +12,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
-import com.ninecsdev.wallpaperchanger.ui.components.StatusBadge
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -23,7 +22,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  * revoked, offline) — it is excluded from rotation until it becomes readable again.
  */
 @Composable
-fun UnavailableBadge(modifier: Modifier = Modifier, size: Int = 14) {
+internal fun UnavailableBadge(modifier: Modifier = Modifier, size: Int = 14) {
     StatusBadge(
         backgroundColor = NothingRed,
         modifier = modifier,

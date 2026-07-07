@@ -36,7 +36,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  * Has a dark gradient background so it's readable over any wallpaper.
  */
 @Composable
-fun ControlsPanel(
+internal fun ControlsPanel(
     zoom: Float,
     offsetX: Float,
     offsetY: Float,

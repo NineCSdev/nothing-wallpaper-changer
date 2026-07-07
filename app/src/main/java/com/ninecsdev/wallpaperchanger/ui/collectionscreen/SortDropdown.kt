@@ -1,5 +1,6 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionscreen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,19 +33,19 @@ import androidx.compose.ui.res.stringResource
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
-import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /**
  * Dropdown for choosing the collection sort order.
  */
 @Composable
-fun SortDropdown(
+internal fun SortDropdown(
     selected: CollectionSortOrder,
     onSelected: (CollectionSortOrder) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    initialExpanded: Boolean = false
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(initialExpanded) }
     val shape = RoundedCornerShape(50)
 
     Box(
@@ -77,7 +78,8 @@ fun SortDropdown(
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            containerColor = NothingGray
+            containerColor = NothingBlack,
+            border = BorderStroke(1.dp, NothingWhite.copy(alpha = 0.15f))
         ) {
             CollectionSortOrder.entries.forEach { option ->
                 DropdownMenuItem(
@@ -88,8 +90,8 @@ fun SortDropdown(
                             color = if (option == selected)
                                 NothingWhite
                             else
-                                NothingWhite.copy(alpha = 0.5f),
-                            fontWeight = if (option == selected) FontWeight.Bold else FontWeight.Normal,
+                                NothingWhite.copy(alpha = 0.6f),
+                            fontWeight = if (option == selected) FontWeight.Black else FontWeight.Normal,
                             letterSpacing = 1.sp
                         )
                     },
@@ -135,7 +137,7 @@ private fun SortDropdownDatePreview() {
         }
     }
 }
-@Preview(name = "Last used",showBackground = true, backgroundColor = 0xFF000000)
+@Preview(name = "Last used", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 private fun SortDropdownUsedPreview() {
     MaterialTheme {

@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.ui.components
+package com.ninecsdev.wallpaperchanger.ui.collectionscreen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -26,7 +26,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 @Composable
-fun CropRuleSelector(
+internal fun CropRuleSelector(
     selectedRule: CropRule,
     onRuleSelected: (CropRule) -> Unit,
     modifier: Modifier = Modifier

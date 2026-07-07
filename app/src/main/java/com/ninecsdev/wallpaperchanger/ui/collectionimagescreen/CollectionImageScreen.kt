@@ -54,11 +54,11 @@ import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
-import com.ninecsdev.wallpaperchanger.ui.components.ConfirmationOverlay
-import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
+import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
+import com.ninecsdev.wallpaperchanger.ui.walleditscreen.EditableWallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.ThumbnailSlot
-import com.ninecsdev.wallpaperchanger.ui.components.ImportSummarySnackbarEffect
-import com.ninecsdev.wallpaperchanger.ui.components.NothingSnackbarHost
+import com.ninecsdev.wallpaperchanger.ui.components.overlay.ImportSummarySnackbarEffect
+import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite

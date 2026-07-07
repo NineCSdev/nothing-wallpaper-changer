@@ -30,7 +30,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  * Header for showing the app status.
  */
 @Composable
-fun ServiceStatusHeader(
+internal fun ServiceStatusHeader(
     state: ServiceState,
     modifier: Modifier = Modifier
 ) {

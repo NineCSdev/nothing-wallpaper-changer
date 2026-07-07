@@ -65,7 +65,7 @@ private data class Language(
  * the side effect is properly scoped to the Compose lifecycle.
  */
 @Composable
-fun LanguageSelector() {
+internal fun LanguageSelector() {
     val context = LocalContext.current
     val isPreview = LocalInspectionMode.current
     val density = LocalDensity.current

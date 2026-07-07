@@ -19,7 +19,7 @@ import com.ninecsdev.wallpaperchanger.ui.components.NothingButtonVariant
  * Control panel buttons for starting and stopping the service.
  */
 @Composable
-fun ServiceControlButtons(
+internal fun ServiceControlButtons(
     isStartEnabled: Boolean,
     isStopEnabled: Boolean,
     onStartClick: () -> Unit,

@@ -31,7 +31,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 @Composable
-fun ScreenOffDelayField(
+internal fun ScreenOffDelayField(
     currentDelayMs: Long,
     onDelayChange: (Long) -> Unit
 ) {

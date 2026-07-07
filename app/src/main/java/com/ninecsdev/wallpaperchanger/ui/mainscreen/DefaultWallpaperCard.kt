@@ -43,7 +43,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  * Expands to show the selected wallpaper and change it.
  */
 @Composable
-fun DefaultWallpaperCard(
+internal fun DefaultWallpaperCard(
     revertToDefault: Boolean,
     defaultUri: Uri?,
     onToggleRevert: (Boolean) -> Unit,

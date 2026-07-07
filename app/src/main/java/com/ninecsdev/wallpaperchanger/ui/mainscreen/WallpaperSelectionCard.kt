@@ -46,7 +46,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  * Shows a preview of the first 3 wallpapers of the collection.
  */
 @Composable
-fun WallpaperSelectionCard(
+internal fun WallpaperSelectionCard(
     activeCollection: WallpaperCollection?,
     previewImages: List<WallpaperImage>,
     totalImages: Int,

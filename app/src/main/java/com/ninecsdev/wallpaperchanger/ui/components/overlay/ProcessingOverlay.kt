@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.ui.components
+package com.ninecsdev.wallpaperchanger.ui.components.overlay
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.ui.components
+package com.ninecsdev.wallpaperchanger.ui.walleditscreen
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,7 +31,7 @@ import kotlin.math.ceil
  * When no edit params exist the image is displayed normally using [contentScale].
  * When edit params exist [ContentScale.Fit] is used as the base and the zoom/offset
  * is applied as a graphics layer transform — sharing
- * [computeEditTransform][com.ninecsdev.wallpaperchanger.logic.computeEditTransform] with the
+ * [computeEditTransform][computeEditTransform] with the
  * editor preview and [BufferManager][com.ninecsdev.wallpaperchanger.logic.BufferManager]'s
  * render path.
  *
@@ -41,7 +41,7 @@ import kotlin.math.ceil
  * @param modifier Modifier applied to the outer clipping Box.
  */
 @Composable
-fun EditableWallpaperImage(
+internal fun EditableWallpaperImage(
     wallpaper: WallpaperImage,
     contentDescription: String?,
     modifier: Modifier = Modifier,

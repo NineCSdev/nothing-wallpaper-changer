@@ -43,11 +43,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
-import com.ninecsdev.wallpaperchanger.ui.components.CropRuleSelector
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButton
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButtonVariant
 import com.ninecsdev.wallpaperchanger.ui.components.NothingTextField
-import com.ninecsdev.wallpaperchanger.ui.components.ProcessingOverlay
+import com.ninecsdev.wallpaperchanger.ui.components.overlay.ProcessingOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
@@ -55,7 +54,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  * Card pop-up for creating a new collection.
  */
 @Composable
-fun CreateListCard(
+internal fun CreateListCard(
     isProcessing: Boolean = false,
     hasPendingFolder: Boolean,
     hasPendingPhotos: Boolean,
@@ -71,74 +70,103 @@ fun CreateListCard(
         onDismissRequest = if (isProcessing) ({}) else onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = NothingBlack),
-            border = BorderStroke(1.dp, NothingWhite.copy(alpha = 0.2f))
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+        CreateListCardContent(
+            isProcessing = isProcessing,
+            hasPendingFolder = hasPendingFolder,
+            hasPendingPhotos = hasPendingPhotos,
+            listName = listName,
+            onListNameChange = { listName = it },
+            selectedRule = selectedRule,
+            onRuleSelected = { selectedRule = it },
+            onDismiss = onDismiss,
+            onFolderSelect = onFolderSelect,
+            onPhotosSelect = onPhotosSelect,
+            onCreateClick = { onCreateClick(listName, selectedRule) }
+        )
+    }
+}
+
+@Composable
+private fun CreateListCardContent(
+    isProcessing: Boolean,
+    hasPendingFolder: Boolean,
+    hasPendingPhotos: Boolean,
+    listName: String,
+    onListNameChange: (String) -> Unit,
+    selectedRule: CropRule,
+    onRuleSelected: (CropRule) -> Unit,
+    onDismiss: () -> Unit,
+    onFolderSelect: () -> Unit,
+    onPhotosSelect: () -> Unit,
+    onCreateClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = NothingBlack),
+        border = BorderStroke(1.dp, NothingWhite.copy(alpha = 0.2f))
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CreateCardHeader(onDismiss)
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    CreateCardHeader(onDismiss)
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        SourceButton(
-                            modifier = Modifier.weight(1f),
-                            icon = painterResource(R.drawable.icon_filled_folder),
-                            label = stringResource(R.string.create_list_label_folder),
-                            isSelected = hasPendingFolder,
-                            onClick = onFolderSelect
-                        )
-                        SourceButton(
-                            modifier = Modifier.weight(1f),
-                            icon = painterResource(R.drawable.icon_collection),
-                            label = stringResource(R.string.create_list_label_photos),
-                            isSelected = hasPendingPhotos,
-                            onClick = onPhotosSelect
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    NothingTextField(
-                        value = listName,
-                        onValueChange = { listName = it },
-                        label = stringResource(R.string.create_list_field_name)
+                    SourceButton(
+                        modifier = Modifier.weight(1f),
+                        icon = painterResource(R.drawable.icon_filled_folder),
+                        label = stringResource(R.string.create_list_label_folder),
+                        isSelected = hasPendingFolder,
+                        onClick = onFolderSelect
                     )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    CropRuleSelector(
-                        selectedRule = selectedRule,
-                        onRuleSelected = { selectedRule = it }
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    CreateCardActions(
-                        onDismiss = onDismiss,
-                        isProcessing = isProcessing,
-                        enabled = listName.isNotBlank() && (hasPendingFolder || hasPendingPhotos),
-                        onCreate = { onCreateClick(listName, selectedRule) }
+                    SourceButton(
+                        modifier = Modifier.weight(1f),
+                        icon = painterResource(R.drawable.icon_collection),
+                        label = stringResource(R.string.create_list_label_photos),
+                        isSelected = hasPendingPhotos,
+                        onClick = onPhotosSelect
                     )
                 }
 
-                if (isProcessing) {
-                    ProcessingOverlay(
-                        message = stringResource(R.string.create_list_processing),
-                        modifier = Modifier.matchParentSize()
-                    )
-                }
+                Spacer(modifier = Modifier.height(32.dp))
+
+                NothingTextField(
+                    value = listName,
+                    onValueChange = onListNameChange,
+                    label = stringResource(R.string.create_list_field_name)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                CropRuleSelector(
+                    selectedRule = selectedRule,
+                    onRuleSelected = onRuleSelected
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                CreateCardActions(
+                    onDismiss = onDismiss,
+                    isProcessing = isProcessing,
+                    enabled = listName.isNotBlank() && (hasPendingFolder || hasPendingPhotos),
+                    onCreate = onCreateClick
+                )
+            }
+
+            if (isProcessing) {
+                ProcessingOverlay(
+                    message = stringResource(R.string.create_list_processing),
+                    modifier = Modifier.matchParentSize()
+                )
             }
         }
     }
@@ -223,33 +251,86 @@ private fun CreateCardActions(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF000000)
+// ---------------------------------------------------------------------------
+// Previews — target CreateListCardContent to avoid Dialog rendering limits
+// ---------------------------------------------------------------------------
+
+@Preview(name = "CreateListCard – Idle", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
-fun CreateListCardPreview() {
+private fun PreviewCreateListCardIdle() {
     MaterialTheme {
-        CreateListCard(
+        CreateListCardContent(
+            isProcessing = false,
+            hasPendingFolder = false,
+            hasPendingPhotos = false,
+            listName = "",
+            onListNameChange = {},
+            selectedRule = CropRule.CENTER,
+            onRuleSelected = {},
             onDismiss = {},
             onFolderSelect = {},
             onPhotosSelect = {},
-            onCreateClick = { _, _ -> },
-            hasPendingFolder = true,
-            hasPendingPhotos = false
+            onCreateClick = {}
         )
     }
 }
 
-@Preview(name = "Processing", showBackground = true, backgroundColor = 0xFF000000)
+@Preview(name = "CreateListCard – Folder Selected", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
-fun CreateListCardProcessingPreview() {
+private fun PreviewCreateListCardFolderSelected() {
     MaterialTheme {
-        CreateListCard(
+        CreateListCardContent(
+            isProcessing = false,
+            hasPendingFolder = true,
+            hasPendingPhotos = false,
+            listName = "",
+            onListNameChange = {},
+            selectedRule = CropRule.CENTER,
+            onRuleSelected = {},
             onDismiss = {},
             onFolderSelect = {},
             onPhotosSelect = {},
-            onCreateClick = { _, _ -> },
+            onCreateClick = {}
+        )
+    }
+}
+
+@Preview(name = "CreateListCard – Ready to Create", showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun PreviewCreateListCardReady() {
+    MaterialTheme {
+        CreateListCardContent(
+            isProcessing = false,
+            hasPendingFolder = true,
+            hasPendingPhotos = true,
+            listName = "Morning Vibes",
+            onListNameChange = {},
+            selectedRule = CropRule.FIT,
+            onRuleSelected = {},
+            onDismiss = {},
+            onFolderSelect = {},
+            onPhotosSelect = {},
+            onCreateClick = {}
+        )
+    }
+}
+
+@Preview(name = "CreateListCard – Processing", showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+private fun PreviewCreateListCardProcessing() {
+    MaterialTheme {
+        CreateListCardContent(
             isProcessing = true,
-            hasPendingFolder = false,
-            hasPendingPhotos = true
+            hasPendingFolder = true,
+            hasPendingPhotos = false,
+            listName = "Morning Vibes",
+            onListNameChange = {},
+            selectedRule = CropRule.CENTER,
+            onRuleSelected = {},
+            onDismiss = {},
+            onFolderSelect = {},
+            onPhotosSelect = {},
+            onCreateClick = {}
         )
     }
 }

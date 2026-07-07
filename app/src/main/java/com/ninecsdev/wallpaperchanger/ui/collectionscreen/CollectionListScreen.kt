@@ -41,8 +41,8 @@ import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.ui.components.StatusLed
-import com.ninecsdev.wallpaperchanger.ui.components.ImportSummarySnackbarEffect
-import com.ninecsdev.wallpaperchanger.ui.components.NothingSnackbarHost
+import com.ninecsdev.wallpaperchanger.ui.components.overlay.ImportSummarySnackbarEffect
+import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.getVisualsForState
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
