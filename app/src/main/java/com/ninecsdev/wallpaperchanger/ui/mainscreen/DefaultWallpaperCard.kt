@@ -1,6 +1,11 @@
 package com.ninecsdev.wallpaperchanger.ui.mainscreen
 
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,12 +66,18 @@ internal fun DefaultWallpaperCard(
         Column {
             DefaultCardHeader(revertToDefault, onToggleRevert)
 
-            if (revertToDefault) {
-                HorizontalDivider(
-                    color = NothingWhite.copy(alpha = 0.5f),
-                    thickness = 2.dp
-                )
-                DefaultCardContent(defaultUri, onSelectDefaultClick)
+            AnimatedVisibility(
+                visible = revertToDefault,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column {
+                    HorizontalDivider(
+                        color = NothingWhite.copy(alpha = 0.5f),
+                        thickness = 2.dp
+                    )
+                    DefaultCardContent(defaultUri, onSelectDefaultClick)
+                }
             }
         }
     }
