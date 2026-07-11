@@ -104,7 +104,7 @@ class WallpaperTileService : TileService() {
             }
             is ServiceState.DisabledNoCollection -> {
                 tile.state = Tile.STATE_UNAVAILABLE
-                tile.subtitle = getString(R.string.tile_subtitle_no_list)
+                tile.subtitle = getString(R.string.tile_subtitle_no_collection)
             }
             is ServiceState.DisabledPowerSave -> {
                 tile.state = Tile.STATE_UNAVAILABLE

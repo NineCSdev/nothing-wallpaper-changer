@@ -51,7 +51,7 @@ import com.ninecsdev.wallpaperchanger.R
 /**
  * Screen for displaying all the user's collections in a
  * 2-column grid with a collection creation button at the bottom.
- * Owns and renders the CreateListCard and EditCollectionCard modals.
+ * Owns and renders the CreateCollectionCard and EditCollectionCard modals.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -122,7 +122,7 @@ fun CollectionListScreen(
                     contentColor = NothingBlack,
                     shape = MaterialTheme.shapes.large
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_list))
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_collection))
                 }
             },
             containerColor = NothingBlack
@@ -167,7 +167,7 @@ fun CollectionListScreen(
 
         // Cards that appear on top of the screen
         if (uiState.isShowingCreateModal) {
-            CreateListCard(
+            CreateCollectionCard(
                 isProcessing = uiState.isProcessing,
                 hasPendingFolder = uiState.hasPendingFolder,
                 hasPendingPhotos = uiState.hasPendingPhotos,

@@ -3,7 +3,7 @@
     <string name="status_running">El servicio está ACTIVO</string>
     <string name="status_stopped">El servicio está PARADO</string>
     <string name="status_disabled_power">Servicio deshabilitado (Ahorro de batería)</string>
-    <string name="status_disabled_folder">Servicio deshabilitado (Ninguna lista seleccionada)</string>
+    <string name="status_disabled_folder">Servicio deshabilitado (Ninguna colección seleccionada)</string>
     <string name="status_loading">Cargando…</string>
     <string name="notification_channel_name">ESTADO DEL SERVICIO</string>
     <string name="notification_initializing">INICIALIZANDO…</string>
@@ -13,9 +13,9 @@
 
     <!-- Content descriptions -->
     <string name="cd_settings">Ajustes</string>
-    <string name="cd_collections">Listas</string>
+    <string name="cd_collections">Colecciones</string>
     <string name="cd_back">Atrás</string>
-    <string name="cd_add_list">Añadir lista</string>
+    <string name="cd_add_collection">Añadir colección</string>
     <string name="cd_add_wallpapers">Añadir fondo de pantalla</string>
     <string name="cd_edit_wallpaper">Editar fondo de pantalla</string>
     <string name="cd_delete_wallpapers">Eliminar fondo de pantalla</string>
@@ -37,7 +37,7 @@
 
     <!-- Main screen -->
     <string name="label_app_status">ESTADO DE LA APP</string>
-    <string name="label_select_list">SELECCIONAR LISTA</string>
+    <string name="label_select_collection">SELECCIONAR COLECCIÓN</string>
 
     <!-- Service status labels -->
     <string name="status_label_active">ACTIVO</string>
@@ -111,34 +111,34 @@
     </string>
 
     <!-- Collections screen -->
-    <string name="collections_title">MIS LISTAS</string>
-    <string name="collections_empty_title">NO SE ENCONTRARON LISTAS</string>
+    <string name="collections_title">MIS COLECCIONES</string>
+    <string name="collections_empty_title">NO SE ENCONTRARON COLECCIONES</string>
     <string name="collections_empty_hint">PULSA + PARA EMPEZAR</string>
 
-    <!-- Create list card -->
-    <string name="create_list_title">CREAR LISTA NUEVA</string>
-    <string name="create_list_label_folder">CARPETA</string>
-    <string name="create_list_label_photos">FOTOS</string>
-    <string name="create_list_field_name">NOMBRE DE LA LISTA</string>
-    <string name="create_list_action_cancel">CANCELAR</string>
-    <string name="create_list_action_create">CREAR</string>
-    <string name="create_list_processing">AÑADIENDO FOTOS…</string>
+    <!-- Create collection card -->
+    <string name="create_collection_title">CREAR COLECCIÓN NUEVA</string>
+    <string name="create_collection_label_folder">CARPETA</string>
+    <string name="create_collection_label_photos">FOTOS</string>
+    <string name="create_collection_field_name">NOMBRE DE LA COLECCIÓN</string>
+    <string name="create_collection_action_cancel">CANCELAR</string>
+    <string name="create_collection_action_create">CREAR</string>
+    <string name="create_collection_processing">AÑADIENDO FOTOS…</string>
 
     <!-- Edit collection card -->
-    <string name="edit_list_title">AJUSTES DE LA LISTA</string>
-    <string name="edit_list_field_name">NOMBRE DE LA LISTA</string>
-    <string name="edit_list_rotation_title">FRECUENCIA DE ROTACIÓN</string>
-    <string name="edit_list_rotation_per_lock">POR BLOQUEO</string>
-    <string name="edit_list_rotation_hourly">CADA 1H</string>
-    <string name="edit_list_rotation_daily">DIARIO</string>
-    <string name="edit_list_action_manage_images">GESTIONAR IMÁGENES</string>
-    <string name="edit_list_action_delete">ELIMINAR LISTA</string>
-    <string name="edit_list_action_currently_active">ACTIVA</string>
-    <string name="edit_list_action_set_active">PONER COMO ACTIVA</string>
-    <string name="edit_list_action_save">GUARDAR</string>
-    <string name="edit_list_processing">ACTUALIZANDO LISTA…</string>
-    <string name="edit_list_delete_title">¿ELIMINAR LISTA?</string>
-    <string name="edit_list_delete_message">Esta acción no se puede deshacer.\nSe eliminarán todas las imágenes de esta lista.</string>
+    <string name="edit_collection_title">AJUSTES DE LA COLECCIÓN</string>
+    <string name="edit_collection_field_name">NOMBRE DE LA COLECCIÓN</string>
+    <string name="edit_collection_rotation_title">FRECUENCIA DE ROTACIÓN</string>
+    <string name="edit_collection_rotation_per_lock">POR BLOQUEO</string>
+    <string name="edit_collection_rotation_hourly">CADA 1H</string>
+    <string name="edit_collection_rotation_daily">DIARIO</string>
+    <string name="edit_collection_action_manage_images">GESTIONAR IMÁGENES</string>
+    <string name="edit_collection_action_delete">ELIMINAR COLECCIÓN</string>
+    <string name="edit_collection_action_currently_active">ACTIVA</string>
+    <string name="edit_collection_action_set_active">PONER COMO ACTIVA</string>
+    <string name="edit_collection_action_save">GUARDAR</string>
+    <string name="edit_collection_processing">ACTUALIZANDO COLECCIÓN…</string>
+    <string name="edit_collection_delete_title">¿ELIMINAR COLECCIÓN?</string>
+    <string name="edit_collection_delete_message">Esta acción no se puede deshacer. Se eliminarán todas las imágenes de esta colección.</string>
 
     <!-- Sort dropdown -->
     <string name="sort_by_prefix">ORDENAR POR: %1$s</string>
@@ -196,11 +196,11 @@
     <string name="tile_subtitle_initializing">Inicializando…</string>
     <string name="tile_subtitle_stopping">Parando…</string>
     <string name="tile_subtitle_ready">Listo</string>
-    <string name="tile_subtitle_no_list">Sin lista</string>
+    <string name="tile_subtitle_no_collection">Sin colección</string>
     <string name="tile_subtitle_power_save">Ahorro de batería</string>
     <string name="tile_subtitle_paused">Pausado (Batería)</string>
     <string name="tile_dialog_title">Wallpaper Changer</string>
-    <string name="tile_no_collection_message">No hay lista activa. Configura una en la app.</string>
+    <string name="tile_no_collection_message">No hay colección activa. Configura una en la app.</string>
     <string name="tile_dialog_open_app">Abrir App</string>
     <string name="tile_dialog_cancel">Cancelar</string>
 </resources>

@@ -52,7 +52,7 @@ internal fun WallpaperSelectionCard(
     totalImages: Int,
     onSelectFolderClick: () -> Unit
 ) {
-    val displayName = activeCollection?.name ?: stringResource(R.string.label_select_list)
+    val displayName = activeCollection?.name ?: stringResource(R.string.label_select_collection)
 
     OutlinedCard(
         modifier = Modifier.fillMaxWidth(),

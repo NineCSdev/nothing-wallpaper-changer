@@ -54,7 +54,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  * Card pop-up for creating a new collection.
  */
 @Composable
-internal fun CreateListCard(
+internal fun CreateCollectionCard(
     isProcessing: Boolean = false,
     hasPendingFolder: Boolean,
     hasPendingPhotos: Boolean,
@@ -63,36 +63,36 @@ internal fun CreateListCard(
     onPhotosSelect: () -> Unit,
     onCreateClick: (String, CropRule) -> Unit
 ) {
-    var listName by remember { mutableStateOf("") }
+    var collectionName by remember { mutableStateOf("") }
     var selectedRule by remember { mutableStateOf(CropRule.CENTER) }
 
     Dialog(
         onDismissRequest = if (isProcessing) ({}) else onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        CreateListCardContent(
+        CreateCollectionCardContent(
             isProcessing = isProcessing,
             hasPendingFolder = hasPendingFolder,
             hasPendingPhotos = hasPendingPhotos,
-            listName = listName,
-            onListNameChange = { listName = it },
+            collectionName = collectionName,
+            onCollectionNameChange = { collectionName = it },
             selectedRule = selectedRule,
             onRuleSelected = { selectedRule = it },
             onDismiss = onDismiss,
             onFolderSelect = onFolderSelect,
             onPhotosSelect = onPhotosSelect,
-            onCreateClick = { onCreateClick(listName, selectedRule) }
+            onCreateClick = { onCreateClick(collectionName, selectedRule) }
         )
     }
 }
 
 @Composable
-private fun CreateListCardContent(
+private fun CreateCollectionCardContent(
     isProcessing: Boolean,
     hasPendingFolder: Boolean,
     hasPendingPhotos: Boolean,
-    listName: String,
-    onListNameChange: (String) -> Unit,
+    collectionName: String,
+    onCollectionNameChange: (String) -> Unit,
     selectedRule: CropRule,
     onRuleSelected: (CropRule) -> Unit,
     onDismiss: () -> Unit,
@@ -124,14 +124,14 @@ private fun CreateListCardContent(
                     SourceButton(
                         modifier = Modifier.weight(1f),
                         icon = painterResource(R.drawable.icon_filled_folder),
-                        label = stringResource(R.string.create_list_label_folder),
+                        label = stringResource(R.string.create_collection_label_folder),
                         isSelected = hasPendingFolder,
                         onClick = onFolderSelect
                     )
                     SourceButton(
                         modifier = Modifier.weight(1f),
                         icon = painterResource(R.drawable.icon_collection),
-                        label = stringResource(R.string.create_list_label_photos),
+                        label = stringResource(R.string.create_collection_label_photos),
                         isSelected = hasPendingPhotos,
                         onClick = onPhotosSelect
                     )
@@ -140,9 +140,9 @@ private fun CreateListCardContent(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 NothingTextField(
-                    value = listName,
-                    onValueChange = onListNameChange,
-                    label = stringResource(R.string.create_list_field_name)
+                    value = collectionName,
+                    onValueChange = onCollectionNameChange,
+                    label = stringResource(R.string.create_collection_field_name)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -157,14 +157,14 @@ private fun CreateListCardContent(
                 CreateCardActions(
                     onDismiss = onDismiss,
                     isProcessing = isProcessing,
-                    enabled = listName.isNotBlank() && (hasPendingFolder || hasPendingPhotos),
+                    enabled = collectionName.isNotBlank() && (hasPendingFolder || hasPendingPhotos),
                     onCreate = onCreateClick
                 )
             }
 
             if (isProcessing) {
                 ProcessingOverlay(
-                    message = stringResource(R.string.create_list_processing),
+                    message = stringResource(R.string.create_collection_processing),
                     modifier = Modifier.matchParentSize()
                 )
             }
@@ -180,7 +180,7 @@ private fun CreateCardHeader(onDismiss: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = stringResource(R.string.create_list_title),
+            text = stringResource(R.string.create_collection_title),
             color = NothingWhite,
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp
@@ -235,14 +235,14 @@ private fun CreateCardActions(
 ) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         NothingButton(
-            text = stringResource(R.string.create_list_action_cancel),
+            text = stringResource(R.string.create_collection_action_cancel),
             onClick = onDismiss,
             modifier = Modifier.weight(1f),
             enabled = !isProcessing,
             variant = NothingButtonVariant.SECONDARY
         )
         NothingButton(
-            text = stringResource(R.string.create_list_action_create),
+            text = stringResource(R.string.create_collection_action_create),
             onClick = onCreate,
             modifier = Modifier.weight(1f),
             enabled = enabled && !isProcessing,
@@ -252,19 +252,19 @@ private fun CreateCardActions(
 }
 
 // ---------------------------------------------------------------------------
-// Previews — target CreateListCardContent to avoid Dialog rendering limits
+// Previews — target CreateCollectionCardContent to avoid Dialog rendering limits
 // ---------------------------------------------------------------------------
 
-@Preview(name = "CreateListCard – Idle", showBackground = true, backgroundColor = 0xFF000000)
+@Preview(name = "CreateCollectionCard – Idle", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
-private fun PreviewCreateListCardIdle() {
+private fun PreviewCreateCollectionCardIdle() {
     MaterialTheme {
-        CreateListCardContent(
+        CreateCollectionCardContent(
             isProcessing = false,
             hasPendingFolder = false,
             hasPendingPhotos = false,
-            listName = "",
-            onListNameChange = {},
+            collectionName = "",
+            onCollectionNameChange = {},
             selectedRule = CropRule.CENTER,
             onRuleSelected = {},
             onDismiss = {},
@@ -275,16 +275,16 @@ private fun PreviewCreateListCardIdle() {
     }
 }
 
-@Preview(name = "CreateListCard – Folder Selected", showBackground = true, backgroundColor = 0xFF000000)
+@Preview(name = "CreateCollectionCard – Folder Selected", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
-private fun PreviewCreateListCardFolderSelected() {
+private fun PreviewCreateCollectionCardFolderSelected() {
     MaterialTheme {
-        CreateListCardContent(
+        CreateCollectionCardContent(
             isProcessing = false,
             hasPendingFolder = true,
             hasPendingPhotos = false,
-            listName = "",
-            onListNameChange = {},
+            collectionName = "",
+            onCollectionNameChange = {},
             selectedRule = CropRule.CENTER,
             onRuleSelected = {},
             onDismiss = {},
@@ -295,16 +295,16 @@ private fun PreviewCreateListCardFolderSelected() {
     }
 }
 
-@Preview(name = "CreateListCard – Ready to Create", showBackground = true, backgroundColor = 0xFF000000)
+@Preview(name = "CreateCollectionCard – Ready to Create", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
-private fun PreviewCreateListCardReady() {
+private fun PreviewCreateCollectionCardReady() {
     MaterialTheme {
-        CreateListCardContent(
+        CreateCollectionCardContent(
             isProcessing = false,
             hasPendingFolder = true,
             hasPendingPhotos = true,
-            listName = "Morning Vibes",
-            onListNameChange = {},
+            collectionName = "Morning Vibes",
+            onCollectionNameChange = {},
             selectedRule = CropRule.FIT,
             onRuleSelected = {},
             onDismiss = {},
@@ -315,16 +315,16 @@ private fun PreviewCreateListCardReady() {
     }
 }
 
-@Preview(name = "CreateListCard – Processing", showBackground = true, backgroundColor = 0xFF000000)
+@Preview(name = "CreateCollectionCard – Processing", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
-private fun PreviewCreateListCardProcessing() {
+private fun PreviewCreateCollectionCardProcessing() {
     MaterialTheme {
-        CreateListCardContent(
+        CreateCollectionCardContent(
             isProcessing = true,
             hasPendingFolder = true,
             hasPendingPhotos = false,
-            listName = "Morning Vibes",
-            onListNameChange = {},
+            collectionName = "Morning Vibes",
+            onCollectionNameChange = {},
             selectedRule = CropRule.CENTER,
             onRuleSelected = {},
             onDismiss = {},

@@ -145,7 +145,7 @@ private fun EditCollectionCardContent(
                 NothingTextField(
                     value = nameText,
                     onValueChange = onNameChange,
-                    label = stringResource(R.string.edit_list_field_name)
+                    label = stringResource(R.string.edit_collection_field_name)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -187,15 +187,15 @@ private fun EditCollectionCardContent(
 
             if (isProcessing) {
                 ProcessingOverlay(
-                    message = stringResource(R.string.edit_list_processing),
+                    message = stringResource(R.string.edit_collection_processing),
                     modifier = Modifier.matchParentSize()
                 )
             }
 
             if (showDeleteConfirmation) {
                 ConfirmationOverlay(
-                    title = stringResource(R.string.edit_list_delete_title),
-                    message = stringResource(R.string.edit_list_delete_message),
+                    title = stringResource(R.string.edit_collection_delete_title),
+                    message = stringResource(R.string.edit_collection_delete_message),
                     onConfirm = onDeleteConfirm,
                     onCancel = onDeleteCancel
                 )
@@ -210,7 +210,7 @@ private fun RotationFrequencySelector(
     onFrequencySelected: (RotationFrequency) -> Unit
 ) {
     Text(
-        text = stringResource(R.string.edit_list_rotation_title),
+        text = stringResource(R.string.edit_collection_rotation_title),
         style = MaterialTheme.typography.labelSmall,
         color = NothingWhite.copy(alpha = 0.7f),
         letterSpacing = 1.sp,
@@ -224,19 +224,19 @@ private fun RotationFrequencySelector(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         TimerOptionButton(
-            label = stringResource(R.string.edit_list_rotation_per_lock),
+            label = stringResource(R.string.edit_collection_rotation_per_lock),
             selected = selectedFrequency == RotationFrequency.PER_LOCK,
             onClick = { onFrequencySelected(RotationFrequency.PER_LOCK) },
             modifier = Modifier.weight(1f)
         )
         TimerOptionButton(
-            label = stringResource(R.string.edit_list_rotation_hourly),
+            label = stringResource(R.string.edit_collection_rotation_hourly),
             selected = selectedFrequency == RotationFrequency.HOURLY,
             onClick = { onFrequencySelected(RotationFrequency.HOURLY) },
             modifier = Modifier.weight(1f)
         )
         TimerOptionButton(
-            label = stringResource(R.string.edit_list_rotation_daily),
+            label = stringResource(R.string.edit_collection_rotation_daily),
             selected = selectedFrequency == RotationFrequency.PER_DAY,
             onClick = { onFrequencySelected(RotationFrequency.PER_DAY) },
             modifier = Modifier.weight(1f)
@@ -282,7 +282,7 @@ private fun EditCardHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = stringResource(R.string.edit_list_title),
+            text = stringResource(R.string.edit_collection_title),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp,
@@ -324,7 +324,7 @@ private fun ManagementButtons(
         ) {
             Icon(painterResource(R.drawable.icon_collection), null, Modifier.size(18.dp))
             Spacer(Modifier.width(12.dp))
-            Text(stringResource(R.string.edit_list_action_manage_images), fontWeight = FontWeight.Medium, letterSpacing = 1.sp)
+            Text(stringResource(R.string.edit_collection_action_manage_images), fontWeight = FontWeight.Medium, letterSpacing = 1.sp)
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -336,7 +336,7 @@ private fun ManagementButtons(
             colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = NothingRed),
             border = BorderStroke(1.dp, NothingRed.copy(alpha = 0.4f))
         ) {
-            Text(stringResource(R.string.edit_list_action_delete), fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Text(stringResource(R.string.edit_collection_action_delete), fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         }
     }
 }
@@ -365,7 +365,7 @@ private fun EditCardActions(
             enabled = !isActive
         ) {
             Text(
-                if (isActive) stringResource(R.string.edit_list_action_currently_active) else stringResource(R.string.edit_list_action_set_active),
+                if (isActive) stringResource(R.string.edit_collection_action_currently_active) else stringResource(R.string.edit_collection_action_set_active),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -378,7 +378,7 @@ private fun EditCardActions(
             shape = RoundedCornerShape(8.dp),
             enabled = isChanged
         ) {
-            Text(stringResource(R.string.edit_list_action_save), fontWeight = FontWeight.Black)
+            Text(stringResource(R.string.edit_collection_action_save), fontWeight = FontWeight.Black)
         }
     }
 }
