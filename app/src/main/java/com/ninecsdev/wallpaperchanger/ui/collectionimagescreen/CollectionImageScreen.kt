@@ -5,7 +5,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.BoundsTransform
-import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.MutableTransitionState
@@ -53,6 +52,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -62,6 +62,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -70,11 +72,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
+import coil.request.ImageRequest
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
-import com.ninecsdev.wallpaperchanger.ui.walleditscreen.EditableWallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ImportSummarySnackbarEffect
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
@@ -84,6 +88,25 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 private const val GRID_COLUMNS = 3
 
 /**
+ * Explicit Coil memory-cache key for a wallpaper's grid thumbnail. Used while the full-res decode
+ * Keyed by uri (not id): two wallpapers sharing a backing file share the thumbnail too.
+ */
+internal fun wallpaperThumbCacheKey(uri: Uri) = "wallpaper-thumb-$uri"
+
+/**
+ * Same placeholder trick for *edited* wallpapers, under a separate key: their
+ * grid request is sized to the screen-aspect virtual frame (see[EditableWallpaperImage])
+ * so the bitmaps aren't interchangeable with the non-edited thumbnail's.
+ */
+internal fun wallpaperEditThumbCacheKey(uri: Uri) = "wallpaper-edit-thumb-$uri"
+
+/** Width/height of the loaded image, or null if the size is degenerate. */
+internal fun AsyncImagePainter.State.Success.intrinsicAspectRatio(): Float? {
+    val size = painter.intrinsicSize
+    return if (size.width > 0f && size.height > 0f) size.width / size.height else null
+}
+
+/**
  * Bounds spring for the grid ↔ preview zoom. The library default felt
  * near-instant on device; no-bouncy keeps the landing clean and springs
  * redirect gracefully when a flight is interrupted mid-way.
@@ -91,10 +114,26 @@ private const val GRID_COLUMNS = 3
 internal val PreviewFlightBoundsTransform = BoundsTransform { _, _ ->
     spring(
         dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = 375f, // how fast the animation plays
+        stiffness = 1000f, // how fast the animation plays
         visibilityThreshold = Rect.VisibilityThreshold
     )
 }
+
+/**
+ * Flight modifier for the grid ↔ preview shared-element zoom.
+ * Both the grid cell and the overlay page must call this with the same [key] for
+ * the transition to run; extracting the construction here keeps them in sync.
+ */
+@Suppress("ModifierFactoryExtensionFunction") // Receiver is SharedTransitionScope, not Modifier, intentional.
+@Composable
+internal fun SharedTransitionScope.previewFlightModifier(
+    key: Any,
+    animatedVisibilityScope: AnimatedVisibilityScope
+): Modifier = Modifier.sharedElement(
+    rememberSharedContentState(key = key),
+    animatedVisibilityScope = animatedVisibilityScope,
+    boundsTransform = PreviewFlightBoundsTransform
+)
 
 /**
  * Screen displaying all wallpapers inside a specific collection
@@ -141,59 +180,42 @@ fun CollectionImageScreen(
     SharedTransitionLayout {
         val sharedScope = this
 
-        // Returns the index of [id] in the current wallpaper list, coercing "not found" (-1)
-        // to 0 so the pager always has a valid initial page. Used to pin pagerStartIndex at
-        // open time and to update it when the open effect fires.
-        fun wallpaperIndex(id: Long?) =
-            uiState.wallpapers.indexOfFirst { it.id == id }.coerceAtLeast(0)
+        fun wallpaperIndex(id: Long?) = uiState.wallpapers.indexOfFirst { it.id == id }.coerceAtLeast(0)
 
-        // The preview overlay's enter/exit is driven locally (not by the ViewModel)
+        // The preview overlay's enter/exit is driven locally
         // so the close can play its shared-element flight *before* previewWallpaper
-        // is cleared. Starts visible when restored with an open preview (e.g. coming
-        // back from the editor) so the restore doesn't replay the zoom.
-        val previewVisibleState = remember {
-            MutableTransitionState(uiState.previewWallpaper != null)
-        }
+        val previewVisibleState = remember { MutableTransitionState(uiState.previewWallpaper != null) }
 
-        // Pager start page, pinned at open so page swipes (which update
-        // previewWallpaper) never yank the pager back to the tapped page.
-        var pagerStartIndex by remember {
-            mutableIntStateOf(wallpaperIndex(uiState.previewWallpaper?.id))
-        }
-
+        // Pager start page, pinned at open so page swipes never yank the pager back to the tapped page.
+        var pagerStartIndex by remember { mutableIntStateOf(wallpaperIndex(uiState.previewWallpaper?.id)) }
         val gridState = rememberLazyGridState()
+
+        // Prevents falling back to fullscreen until the full-res image decodes.
+        val knownAspectRatios = remember { mutableStateMapOf<Long, Float>() }
+
         val currentPreview by rememberUpdatedState(uiState.previewWallpaper)
         val currentOnClosePreview by rememberUpdatedState(onClosePreview)
 
-        // This flip fires the reverse flight: the currently viewed wallpaper's cell
-        // enters exactly as the overlay exits (both ends carry their shared modifiers —
-        // see sharesPreviewBounds below). WallpaperPreviewOverlay already stabilises
-        // onDismiss via rememberUpdatedState + pointerInput(Unit), so no remember{} here.
+        // This flip fires the reverse flight: the currently viewed wallpaper's cell enters exactly as the overlay exits
         val dismissPreview = {
             if (previewVisibleState.targetState) {
                 previewVisibleState.targetState = false
             }
         }
 
-        // Open the preview with a flight from the tapped cell. Because this effect
-        // runs a frame after previewWallpaper lands (and the shared modifiers key on
-        // previewWallpaper), the flight's origin is registered *before* this flip —
-        // shared-element flights only run when the origin pre-exists the flip.
-        // If the previewed wallpaper vanishes underneath us (e.g. deleted by a
-        // sync), close with a plain fade — there may be no thumbnail to fly into.
+        // Open the preview with a flight from the tapped cell.
         LaunchedEffect(uiState.previewWallpaper?.id) {
             val wallpaper = uiState.previewWallpaper
             if (wallpaper != null && !previewVisibleState.targetState) {
                 pagerStartIndex = wallpaperIndex(wallpaper.id)
                 previewVisibleState.targetState = true
             } else if (wallpaper == null && previewVisibleState.targetState) {
+                // If the previewed wallpaper vanishes underneath us (e.g. deleted by a sync), close with a plain fade.
                 previewVisibleState.targetState = false
             }
         }
 
-        // Once both the fade and the shared-element flight have settled after a
-        // close, commit the close to the ViewModel — that clears previewWallpaper,
-        // which in turn detaches the shared modifiers on both ends.
+        // Once both the fade and the shared-element flight have settled after a close, commit the close to the ViewModel
         LaunchedEffect(Unit) {
             snapshotFlow { previewVisibleState.isIdle && !sharedScope.isTransitionActive }
                 .collect { settled ->
@@ -340,18 +362,17 @@ fun CollectionImageScreen(
                             wallpaper = wallpaper,
                             isSelected = isSelected,
                             isSelectionMode = uiState.isSelectionMode,
-                            // Shared only while the preview is opening or closing (or a
-                            // flight is still running). While the preview sits settled —
-                            // in particular while paging — no cell is shared, so a swipe
-                            // can never re-match a cell and fire a stray flight.
-                            // Attach shared bounds only while the preview is NOT fully settled
-                            // open (i.e. during open/close flights). Once settled, no cell is
-                            // shared, so pager swipes cannot re-match a cell and fire stray flights.
+                            // Attach flight modifier only while the preview is NOT fully settled open (i.e. during open/close flights).
                             sharesPreviewBounds = isCurrentPreview && (
                                 !(previewVisibleState.currentState && previewVisibleState.targetState) ||
                                     sharedScope.isTransitionActive
                                 ),
                             hiddenForPreview = isCurrentPreview && previewVisibleState.targetState,
+                            onAspectRatioResolved = { ratio ->
+                                if (wallpaper.id !in knownAspectRatios) {
+                                    knownAspectRatios[wallpaper.id] = ratio
+                                }
+                            },
                             onClick = {
                                 if (uiState.isSelectionMode) {
                                     onToggleSelection(wallpaper.id)
@@ -370,10 +391,8 @@ fun CollectionImageScreen(
                     }
                 }
 
-                // Keep the currently viewed wallpaper's thumbnail composed while the
-                // user swipes the pager (the grid is hidden behind the opaque overlay,
-                // so the snap scroll is invisible) so dismissing always has a live
-                // flight target that isn't covered by the opaque top bar.
+                // Keep the currently viewed wallpaper's thumbnail composed so dismissing always
+                // has a live  flight target that isn't covered by the top bar.
                 val density = LocalDensity.current
                 LaunchedEffect(uiState.previewWallpaper?.id) {
                     val wallpaper = uiState.previewWallpaper ?: return@LaunchedEffect
@@ -394,15 +413,11 @@ fun CollectionImageScreen(
             }
         }
 
-        // Full-screen preview overlay, opened/closed with a shared-element zoom.
-        // Quick enter fade: the default spring's settling tail made the open feel
-        // laggy (and the chrome waits for it to finish), while the flying image
-        // covers the fade anyway. The exit keeps the default so the grid reveal
-        // roughly tracks the shrink flight.
+        // Full-screen preview overlay, opened/closed with a zoom.
         AnimatedVisibility(
             visibleState = previewVisibleState,
             enter = fadeIn(animationSpec = tween(durationMillis = 200)),
-            exit = fadeOut()
+            exit = fadeOut(animationSpec = tween(durationMillis = 200))
         ) {
             WallpaperPreviewOverlay(
                 wallpapers = uiState.wallpapers,
@@ -410,6 +425,7 @@ fun CollectionImageScreen(
                 sharedTransitionScope = sharedScope,
                 animatedVisibilityScope = this,
                 sharedWallpaperId = uiState.previewWallpaper?.id,
+                knownAspectRatios = knownAspectRatios,
                 onDismiss = dismissPreview,
                 onEdit = onEditFromPreview,
                 onPageChanged = onPreviewPageChanged
@@ -487,14 +503,13 @@ private fun EmptyCollectionState(
  *
  * Participates in the preview's shared-element zoom: the cell content hides while
  * its image is showing in the preview ([hiddenForPreview]), and carries the
- * sharedBounds modifier only while the preview is opening or closing
- * ([sharesPreviewBounds]). On open the cell's modifier is registered a frame
- * before it hides (flights need a pre-registered origin); on close the cell
+ * flight modifier (via [previewFlightModifier]) only while the preview is opening
+ * or closing ([sharesPreviewBounds]). On open the cell's modifier is registered a
+ * frame before it hides (flights need a pre-registered origin); on close the cell
  * re-enters as the overlay exits, so the image flies back into it. While the
  * preview is settled no cell is shared, so pager swipes cannot re-match a cell
  * and fire stray flights.
  */
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun SharedTransitionScope.WallpaperThumbnail(
     wallpaper: WallpaperImage,
@@ -504,6 +519,7 @@ private fun SharedTransitionScope.WallpaperThumbnail(
     hiddenForPreview: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onAspectRatioResolved: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -519,25 +535,44 @@ private fun SharedTransitionScope.WallpaperThumbnail(
             enter = fadeIn(),
             exit = fadeOut()
         ) {
-            val flightModifier = if (sharesPreviewBounds) {
-                Modifier.sharedBounds(
-                    rememberSharedContentState(key = wallpaper.id),
-                    animatedVisibilityScope = this@AnimatedVisibility,
-                    boundsTransform = PreviewFlightBoundsTransform
-                )
-            } else {
-                Modifier
-            }
+            val flightModifier = if (!sharesPreviewBounds) Modifier
+            else previewFlightModifier(
+                key = wallpaper.id,
+                animatedVisibilityScope = this@AnimatedVisibility
+            )
             Box(modifier = flightModifier.fillMaxSize()) {
-                EditableWallpaperImage(
-                    wallpaper = wallpaper,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(1.dp)
-                        .clip(RoundedCornerShape(if (isSelectionMode && isSelected) 8.dp else 0.dp))
-                        .background(NothingGray)
-                )
+                val imageModifier = Modifier
+                    .fillMaxSize()
+                    .padding(1.dp)
+                    .clip(RoundedCornerShape(if (isSelectionMode && isSelected) 8.dp else 0.dp))
+                    .then(if (sharesPreviewBounds) Modifier else Modifier.background(NothingGray))
+                // Both branches render a centered crop of their final image at any
+                // bounds, so the shared-element bounds animation (square cell →
+                // overlay rect) is itself the crop-rect morph. The explicit memory
+                // cache keys let the overlay reuse these bitmaps as instant
+                // placeholders.
+                if (wallpaper.editParams == null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(wallpaper.uri)
+                            .memoryCacheKey(wallpaperThumbCacheKey(wallpaper.uri))
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        onSuccess = { state ->
+                            state.intrinsicAspectRatio()?.let(onAspectRatioResolved)
+                        },
+                        modifier = imageModifier
+                    )
+                } else {
+                    EditableWallpaperImage(
+                        wallpaper = wallpaper,
+                        contentDescription = null,
+                        decodeFraction = 1f / GRID_COLUMNS,
+                        memoryCacheKey = wallpaperEditThumbCacheKey(wallpaper.uri),
+                        modifier = imageModifier
+                    )
+                }
 
                 // Edited params badge (bottom-right of thumbnail)
                 if (wallpaper.editParams != null) {

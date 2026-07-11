@@ -35,7 +35,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  * and a settings toggle for the controls panel.
  */
 @Composable
-internal fun WallpaperEditTopBar(
+internal fun EditTopBar(
     hasSavedEdits: Boolean,
     hasUnsavedChanges: Boolean,
     showControls: Boolean,
@@ -128,9 +128,9 @@ internal fun WallpaperEditTopBar(
 
 @Preview(name = "Top Bar – No changes", backgroundColor = 0xFF000000, showBackground = true)
 @Composable
-private fun WallpaperEditTopBarDefaultPreview() {
+private fun EditTopBarDefaultPreview() {
     MaterialTheme {
-        WallpaperEditTopBar(
+        EditTopBar(
             hasSavedEdits = false,
             hasUnsavedChanges = false,
             showControls = false,
@@ -145,9 +145,9 @@ private fun WallpaperEditTopBarDefaultPreview() {
 
 @Preview(name = "Top Bar – Unsaved changes", backgroundColor = 0xFF000000, showBackground = true)
 @Composable
-private fun WallpaperEditTopBarUnsavedPreview() {
+private fun EditTopBarUnsavedPreview() {
     MaterialTheme {
-        WallpaperEditTopBar(
+        EditTopBar(
             hasSavedEdits = false,
             hasUnsavedChanges = true,
             showControls = false,
@@ -162,9 +162,9 @@ private fun WallpaperEditTopBarUnsavedPreview() {
 
 @Preview(name = "Top Bar – Reset available", backgroundColor = 0xFF000000, showBackground = true)
 @Composable
-private fun WallpaperEditTopBarResetPreview() {
+private fun EditTopBarResetPreview() {
     MaterialTheme {
-        WallpaperEditTopBar(
+        EditTopBar(
             hasSavedEdits = true,
             hasUnsavedChanges = false,
             showControls = false,
@@ -179,9 +179,9 @@ private fun WallpaperEditTopBarResetPreview() {
 
 @Preview(name = "Top Bar – Controls open", backgroundColor = 0xFF000000, showBackground = true)
 @Composable
-private fun WallpaperEditTopBarControlsOpenPreview() {
+private fun EditTopBarControlsOpenPreview() {
     MaterialTheme {
-        WallpaperEditTopBar(
+        EditTopBar(
             hasSavedEdits = false,
             hasUnsavedChanges = false,
             showControls = true,

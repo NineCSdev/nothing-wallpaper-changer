@@ -16,7 +16,7 @@ android {
         minSdk = 33
         targetSdk = 36
         versionCode = 1
-        versionName = "0.3.2-beta"
+        versionName = "0.3.3-beta"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -35,7 +35,7 @@ android {
             )
             manifestPlaceholders["appLabel"] = "@string/app_name"
         }
-        debug{
+        debug {
             applicationIdSuffix= ".debug"
 
             manifestPlaceholders["appLabel"] = "Wallpaper (Dev)"

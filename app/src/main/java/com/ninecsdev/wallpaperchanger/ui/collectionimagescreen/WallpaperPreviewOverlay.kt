@@ -7,6 +7,7 @@ import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -16,6 +17,7 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,8 +34,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,18 +46,26 @@ import androidx.compose.ui.graphics.Brush.Companion.verticalGradient
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
-import com.ninecsdev.wallpaperchanger.ui.walleditscreen.EditableWallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
-import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.delay
+import kotlin.math.abs
+
+/**
+ * How long after the open flight starts the chrome (overlay UI) begins fading in.
+ */
+private const val CHROME_ENTER_DELAY_MILLIS = 100L
 
 /**
  * Full-screen wallpaper preview overlay.
@@ -61,14 +73,14 @@ import kotlinx.coroutines.flow.distinctUntilChanged
  * Features an edit button to navigate to the wallpaper editor.
  * Let's swipe back and forth between wallpapers.
  *
- * Opened/closed with a shared-element zoom: the page whose wallpaper id matches
- * [sharedWallpaperId] (the currently viewed wallpaper) carries a sharedBounds
- * modifier for the whole time the preview is open. It is inert while the preview
- * sits settled (the matching grid cell only shares during open/close flights) but
- * keeps the close flight's origin pre-registered — flights only run when their
- * origin exists before the visibility flip. The chrome (scrims, labels, edit
- * button, badge) is held back until the open flight fully settles and hides the
- * instant a close starts.
+ * Opened/closed with a shared-element zoom. A flight needs both ends registered
+ * under the same key *before* it starts, so the page showing [sharedWallpaperId]
+ * keeps its flight modifier (via [previewFlightModifier]) for the whole time the
+ * preview is open: while settled it does nothing (the grid cell only registers
+ * during open/close), but the close flight can start from it instantly.
+ *
+ * The chrome (scrims, labels, edit button, badge) fades in [CHROME_ENTER_DELAY_MILLIS]
+ * after the open starts and hides the instant a close starts.
  */
 @Composable
 internal fun WallpaperPreviewOverlay(
@@ -77,6 +89,7 @@ internal fun WallpaperPreviewOverlay(
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
     sharedWallpaperId: Long?,
+    knownAspectRatios: MutableMap<Long, Float> = mutableMapOf(),
     onDismiss: () -> Unit,
     onEdit: (WallpaperImage) -> Unit = {},
     onPageChanged: (WallpaperImage) -> Unit = {}
@@ -86,14 +99,24 @@ internal fun WallpaperPreviewOverlay(
     val safeInitialIndex = initialIndex.coerceIn(0, wallpapers.lastIndex)
     val dismiss by rememberUpdatedState(onDismiss)
 
-    // Chrome starts fading in immediately on open, ramping up while the image is
-    // still flying (it draws beneath the in-flight image, which renders in the
-    // shared-transition overlay). Gating on currentState instead left a dead gap:
-    // the flight spring registers on this same transition, so currentState only
-    // flips to Visible once the spring *reports* settled — well after it is
-    // visually done. A close still hides the chrome instantly.
     val transition = animatedVisibilityScope.transition
-    val chromeVisible = transition.targetState == EnterExitState.Visible
+    var chromeVisible by remember {
+        mutableStateOf(
+            transition.currentState == EnterExitState.Visible &&
+                transition.targetState == EnterExitState.Visible
+        )
+    }
+
+    LaunchedEffect(transition.targetState) {
+        if (transition.targetState == EnterExitState.Visible) {
+            if (transition.currentState != EnterExitState.Visible) {
+                delay(CHROME_ENTER_DELAY_MILLIS)
+            }
+            chromeVisible = true
+        } else {
+            chromeVisible = false
+        }
+    }
 
     // Recreate the pager when a new open pins a different start page (covers
     // re-opening another wallpaper while the previous close is still fading out).
@@ -105,7 +128,6 @@ internal fun WallpaperPreviewOverlay(
 
         LaunchedEffect(pagerState, wallpapers) {
             snapshotFlow { pagerState.currentPage }
-                .distinctUntilChanged()
                 .collect { page ->
                     wallpapers.getOrNull(page)?.let(onPageChanged)
                 }
@@ -133,30 +155,86 @@ internal fun WallpaperPreviewOverlay(
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 val wallpaper = wallpapers[page]
-                val imageModifier = if (wallpaper.id == sharedWallpaperId) {
-                    with(sharedTransitionScope) {
-                        Modifier.sharedBounds(
-                            rememberSharedContentState(key = wallpaper.id),
-                            animatedVisibilityScope = animatedVisibilityScope,
-                            boundsTransform = PreviewFlightBoundsTransform
+                val imageModifier = when {
+                    wallpaper.id != sharedWallpaperId -> Modifier
+                    else -> with(sharedTransitionScope) {
+                        previewFlightModifier(
+                            key = wallpaper.id,
+                            animatedVisibilityScope = animatedVisibilityScope
+                        )
+                    }
+                }
+                if (wallpaper.editParams == null) {
+                    // The shared element is sized to the image's fit rect (not the
+                    // full screen) and both flight ends use Crop, so the bounds
+                    // animation square→fit-rect is itself the crop-rect morph. The
+                    // aspect is seeded from the grid thumbnail so the flight targets
+                    // the right rect from frame one; if never learned, fall back to
+                    // fullscreen Fit until the full-res decode reports it
+                    var imageAspect by remember(wallpaper.uri) {
+                        mutableStateOf(knownAspectRatios[wallpaper.id])
+                    }
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val aspect = imageAspect
+                        // The flight renders only this content, so the grid
+                        // thumbnail's cached bitmap stands in until the full-res
+                        // decode lands (without it the flight starts blank)
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(wallpaper.uri)
+                                .placeholderMemoryCacheKey(wallpaperThumbCacheKey(wallpaper.uri))
+                                .build(),
+                            contentDescription = stringResource(R.string.cd_wallpaper_preview),
+                            contentScale = if (aspect == null) ContentScale.Fit else ContentScale.Crop,
+                            onSuccess = { state ->
+                                val resolved = state.intrinsicAspectRatio()
+                                if (resolved != null) {
+                                    val current = imageAspect
+                                    // The seeded ratio can be a rounding pixel off; don't retarget an in-flight morph over <1%.
+                                    if (current == null || abs(resolved - current) > current * 0.01f) {
+                                        imageAspect = resolved
+                                        knownAspectRatios[wallpaper.id] = resolved
+                                    }
+                                }
+                            },
+                            // Sizing must come BEFORE the shared element: it sets
+                            // the flight's target bounds, and inside them the image
+                            // just crop-fills. aspectRatio after the element instead
+                            // letterboxed the image inside the flying bounds no morph
+                            modifier = if (aspect == null) {
+                                Modifier.fillMaxSize().then(imageModifier)
+                            } else {
+                                Modifier.aspectRatio(aspect).then(imageModifier)
+                            }
                         )
                     }
                 } else {
-                    Modifier
+                    // Same crop-rect morph, placeholder, and sizing-before-element
+                    // rules as above but self-crops at any bounds, so this end is simply the full screen.
+                    EditableWallpaperImage(
+                        wallpaper = wallpaper,
+                        contentDescription = stringResource(R.string.cd_wallpaper_preview),
+                        placeholderMemoryCacheKey = wallpaperEditThumbCacheKey(wallpaper.uri),
+                        modifier = Modifier.fillMaxSize().then(imageModifier)
+                    )
                 }
-                EditableWallpaperImage(
-                    wallpaper = wallpaper,
-                    contentDescription = stringResource(R.string.cd_wallpaper_preview),
-                    contentScale = ContentScale.Fit,
-                    modifier = imageModifier.fillMaxSize()
-                )
             }
 
+            // A flying shared element draws in an overlay layer above all normal content, which
+            // hid the chrome's fades behind screen-covering images; renderInSharedTransitionScopeOverlay
+            // lifts the chrome into that layer above the image so the fades stay visible
             AnimatedVisibility(
                 visible = chromeVisible,
                 enter = fadeIn(),
-                exit = fadeOut(),
-                modifier = Modifier.matchParentSize()
+                exit = fadeOut(animationSpec = tween(durationMillis = 100)),
+                modifier = Modifier
+                    .matchParentSize()
+                    .then(with(sharedTransitionScope) {
+                        Modifier.renderInSharedTransitionScopeOverlay(zIndexInOverlay = 1f)
+                    })
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     // Top scrim + labels

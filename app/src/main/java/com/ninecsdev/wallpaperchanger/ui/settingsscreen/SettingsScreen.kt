@@ -210,10 +210,6 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                HorizontalDivider(
-                    color = NothingWhite.copy(alpha = 0.10f),
-                    thickness = 1.dp
-                )
             }
 
             // App version footer

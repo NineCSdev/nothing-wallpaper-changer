@@ -6,9 +6,11 @@ package com.ninecsdev.wallpaperchanger.logic
  * Result of the edit transform calculation. All values are in container units.
  *
  * Consumers read different fields depending on their rendering model:
- * - The editor preview and [EditableWallpaperImage][com.ninecsdev.wallpaperchanger.ui.walleditscreen.EditableWallpaperImage]
- *   render the image pre-fitted (`ContentScale.Fit`, centered) and apply `zoom` + [panX]/[panY]
- *   via `graphicsLayer`, they ignore [scale] and [drawX]/[drawY].
+ * - The editor preview and [EditableWallpaperImage][com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.EditableWallpaperImage]
+ *   render the image pre-fitted (`ContentScale.Fit`, centered) and apply a scale + [panX]/[panY]
+ *   via `graphicsLayer` (the editor scales by `zoom` directly; EditableWallpaperImage derives its
+ *   layer scale from [scale] because its fit base differs from its transform container), ignoring
+ *   [drawX]/[drawY].
  * - [BufferManager] draws the raw source bitmap through a `Matrix` and uses [scale] plus
  *   [drawX]/[drawY].
  */
@@ -27,7 +29,7 @@ data class EditTransform(
 
 /**
  * The single source of truth for the edit transform math (fit + zoom + normalized pan),
- * shared by the editor preview, [EditableWallpaperImage][com.ninecsdev.wallpaperchanger.ui.walleditscreen.EditableWallpaperImage],
+ * shared by the editor preview, [EditableWallpaperImage][com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.EditableWallpaperImage],
  * and [BufferManager]'s render path — so the wallpaper that lands on screen matches exactly
  * what the user saw in the editor.
  *

@@ -322,7 +322,7 @@ private fun WallpaperEditContent(
             modifier = Modifier.fillMaxSize()
         )
 
-        WallpaperEditTopBar(
+        EditTopBar(
             hasSavedEdits = wallpaper.editParams != null,
             hasUnsavedChanges = hasUnsavedChanges,
             showControls = showControls,
