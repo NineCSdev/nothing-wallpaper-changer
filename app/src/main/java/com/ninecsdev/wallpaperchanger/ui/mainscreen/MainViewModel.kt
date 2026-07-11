@@ -81,7 +81,10 @@ class MainViewModel @Inject constructor(
             }
         }
 
-    val uiState: StateFlow<MainUiState> = combine(
+    // Null until every source flow has emitted; the UI renders nothing until then so no
+    // fabricated default (e.g. revertToDefaultOnStop) can flash or animate to the real value.
+    // TODO tests: see vault note tests/ui-state-loading.md
+    val uiState: StateFlow<MainUiState?> = combine(
         settingsFlow,
         serviceStateManager.serviceState,
         activeCollectionFlow,
@@ -98,7 +101,7 @@ class MainViewModel @Inject constructor(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
-        initialValue = MainUiState()
+        initialValue = null
     )
 
     // Actions

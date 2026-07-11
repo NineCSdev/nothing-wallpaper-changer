@@ -80,8 +80,13 @@ class CollectionViewModel @Inject constructor(
                 }
             }
 
-    /** Combined public state built reactively. */
-    val uiState: StateFlow<CollectionUiState> = combine(
+    /**
+     * Combined public state built reactively.
+     * Null until every source flow has emitted; the UI renders nothing until then so no
+     * fabricated default (e.g. an empty collection list) can flash before the real data.
+     * TODO tests: see vault note tests/ui-state-loading.md
+     */
+    val uiState: StateFlow<CollectionUiState?> = combine(
         repository.getAllCollections(),
         previewsFlow,
         _screenState,
@@ -110,7 +115,7 @@ class CollectionViewModel @Inject constructor(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = CollectionUiState()
+        initialValue = null
     )
 
     // Pending source selection
@@ -233,7 +238,7 @@ class CollectionViewModel @Inject constructor(
 
     /** Opens the edit modal for the collection with [collectionId], if it exists. */
     fun openEditModal(collectionId: Long) {
-        val collection = uiState.value.allCollections.find { it.id == collectionId } ?: return
+        val collection = uiState.value?.allCollections?.find { it.id == collectionId } ?: return
         _screenState.update { it.copy(editingCollection = collection) }
     }
 

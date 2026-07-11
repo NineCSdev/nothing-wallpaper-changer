@@ -51,7 +51,10 @@ class SettingsViewModel @Inject constructor(
         appDataStore.keepLocalCopiesFlow()
     ) { lockscreenSettings, keepLocalCopies -> lockscreenSettings to keepLocalCopies }
 
-    val uiState: StateFlow<SettingsUiState> = combine(
+    // Null until every settings flow has emitted; the UI renders nothing until then so no
+    // fabricated default can flash or animate to the real persisted value.
+    // TODO tests: see vault note tests/ui-state-loading.md
+    val uiState: StateFlow<SettingsUiState?> = combine(
         appDataStore.screenOffDelayFlow(),
         appDataStore.startOnBootFlow(),
         appDataStore.compressionQualityHighFlow(),
@@ -72,7 +75,7 @@ class SettingsViewModel @Inject constructor(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
-        initialValue = SettingsUiState(appVersion = appVersion)
+        initialValue = null
     )
 
     // Actions

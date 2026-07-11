@@ -73,6 +73,8 @@ fun AppNavigation(
             popEnterTransition = { NavigationTransitions.popEnterMain_Collections },
             popExitTransition = { NavigationTransitions.popExitMain_Collections }
         ) {
+            // Render nothing until the real state has loaded (see MainViewModel.uiState).
+            val loadedMainState = mainState ?: return@composable
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -86,7 +88,7 @@ fun AppNavigation(
                     )
             ) {
                 MainScreen(
-                    uiState = mainState,
+                    uiState = loadedMainState,
                     onSelectFolderClick = {
                         collectionViewModel.setPickerMode(true)
                         navController.navigate(Route.COLLECTIONS)
@@ -111,6 +113,8 @@ fun AppNavigation(
             popEnterTransition = { NavigationTransitions.popEnterMain_Collections },
             popExitTransition = { NavigationTransitions.popExitMain_Collections }
         ) {
+            // Render nothing until the real state has loaded (see CollectionViewModel.uiState).
+            val loadedCollectionState = collectionState ?: return@composable
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -125,9 +129,9 @@ fun AppNavigation(
                     )
             ) {
                 CollectionListScreen(
-                    uiState = collectionState,
+                    uiState = loadedCollectionState,
                     onCollectionClick = { id ->
-                        if (collectionState.isPickerMode) {
+                        if (loadedCollectionState.isPickerMode) {
                             mainViewModel.setActiveCollection(id)
                             if (navController.previousBackStackEntry != null) {
                                 navController.popBackStack()
@@ -179,7 +183,7 @@ fun AppNavigation(
                     },
                     onSyncCollection = collectionViewModel::syncEditingCollection,
                     onViewImages = {
-                        collectionState.editingCollection?.let {
+                        loadedCollectionState.editingCollection?.let {
                             navController.navigate(Route.collectionImages(it.id))
                         }
                     },
@@ -276,8 +280,11 @@ fun AppNavigation(
             val settingsViewModel: SettingsViewModel = hiltViewModel()
             val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
 
+            // Render nothing until the real state has loaded (see SettingsViewModel.uiState).
+            val loadedSettingsState = settingsState ?: return@composable
+
             SettingsScreen(
-                uiState = settingsState,
+                uiState = loadedSettingsState,
                 onBackClick = {
                     if (navController.previousBackStackEntry != null) {
                         navController.popBackStack()
