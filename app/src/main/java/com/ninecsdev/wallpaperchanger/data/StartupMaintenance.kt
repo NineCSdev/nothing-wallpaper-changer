@@ -24,15 +24,17 @@ class StartupMaintenance @Inject constructor(
     private val hasRun = AtomicBoolean(false)
 
     /**
-     * Runs the startup tasks once per process. Both are reconciliation sweeps kept permanently
+     * Runs the startup tasks once per process. All are reconciliation sweeps kept permanently
      * (not one-time migrations), reclaiming whatever a process death left half-cleaned. Ordered
      * deliberately: the registry GC first (releases leaked picker grants and deletes orphan file
-     * rows), then the disk sweep, which diffs `internal_wallpapers/` against the rows that survived.
+     * rows), then the grant and disk sweeps, which diff the system's persisted grants and
+     * `internal_wallpapers/` against the rows that survived.
      */
     fun runOnce() {
         if (!hasRun.compareAndSet(false, true)) return
         scope.launch {
             repository.cleanupOrphanFileRegistry()
+            repository.cleanupOrphanPersistedGrants()
             repository.cleanupOrphanInternalFiles()
         }
     }

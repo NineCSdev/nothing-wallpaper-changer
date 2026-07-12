@@ -51,6 +51,18 @@ interface WallpaperDao {
     @Query("SELECT * FROM collections WHERE isActive = 1 LIMIT 1")
     fun observeActiveCollection(): Flow<WallpaperCollection?>
 
+    /**
+     * How many collections are backed by the folder [rootUri]. Guards the persisted-grant release:
+     * two collections built from the same folder share one grant, so it may only be released when
+     * this reaches zero.
+     */
+    @Query("SELECT COUNT(*) FROM collections WHERE rootUri = :rootUri")
+    suspend fun countCollectionsWithRootUri(rootUri: Uri): Int
+
+    /** All folder root uris across collections (manual collections' null roots excluded). */
+    @Query("SELECT rootUri FROM collections WHERE rootUri IS NOT NULL")
+    suspend fun getAllRootUris(): List<Uri>
+
     /** Updates the name and default crop rule of a collection. */
     @Query("UPDATE collections SET name = :newName, defaultCropRule = :newRule, rotationFrequency = :newFrequency WHERE id = :collectionId")
     suspend fun updateCollection(

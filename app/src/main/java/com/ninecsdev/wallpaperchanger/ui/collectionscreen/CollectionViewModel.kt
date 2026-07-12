@@ -163,11 +163,16 @@ class CollectionViewModel @Inject constructor(
         if (pendingPhotosUris.isEmpty()) return
         viewModelScope.launch {
             setProcessing(true)
-            val (shouldStartService, importResult) = repository.createManualCollection(name, pendingPhotosUris, rule)
-            pendingPhotosUris = emptyList()
-            setProcessing(false)
-            _screenState.update { it.copy(importSummary = importResult) }
-            onComplete(shouldStartService)
+            try {
+                val (shouldStartService, importResult) = repository.createManualCollection(name, pendingPhotosUris, rule)
+                pendingPhotosUris = emptyList()
+                _screenState.update { it.copy(importSummary = importResult) }
+                onComplete(shouldStartService)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to create manual collection: ${e.message}")
+            } finally {
+                setProcessing(false)
+            }
         }
     }
 

@@ -124,6 +124,14 @@ class WallpaperSources @Inject constructor(
     }
 
     /**
+     * Snapshot of every uri this app currently holds a persisted grant for (folder trees and
+     * photo-picker references alike). Callers must take this snapshot *before* computing
+     * their keep set so a grant acquired concurrently can never look orphaned.
+     */
+    fun persistedGrantUris(): List<Uri> =
+        appContext.contentResolver.persistedUriPermissions.map { it.uri }
+
+    /**
      * Releases a persisted READ URI permission previously taken via `takePersistableUriPermission`
      * (a folder tree grant or a photo-picker media grant). Safe to call even if already released.
      */

@@ -119,22 +119,29 @@ class WallpaperRepository @Inject constructor(
                 // Scan first to avoid creating an orphan empty collection (or one with a partial/empty image set) on a transient scan failure.
                 val scannedUris = folderScanner.scan(treeUri)
 
-                val isFirst = dao.getActiveCollection() == null
-                val collectionId = dao.insertCollection(
-                    WallpaperCollection(
-                        name = name,
-                        type = CollectionType.FOLDER,
-                        rootUri = treeUri,
-                        isActive = isFirst,
-                        defaultCropRule = rule
+                // Collection row and its images commit together so a failure can't leave a partial collection behind.
+                database.withTransaction {
+                    val isFirst = dao.getActiveCollection() == null
+                    val collectionId = dao.insertCollection(
+                        WallpaperCollection(
+                            name = name,
+                            type = CollectionType.FOLDER,
+                            rootUri = treeUri,
+                            isActive = isFirst,
+                            defaultCropRule = rule
+                        )
                     )
-                )
 
-                addFilesToCollection(collectionId, scannedUris.map { it to SourceType.FOLDER_DOC }, isManuallyAdded = false)
-                Log.d(TAG, "Imported ${scannedUris.size} images to collection: $name")
-                isFirst
+                    addFilesToCollection(collectionId, scannedUris.map { it to SourceType.FOLDER_DOC }, isManuallyAdded = false)
+                    Log.d(TAG, "Imported ${scannedUris.size} images to collection: $name")
+                    isFirst
+                }
             } catch (e: Exception) {
-                wallpaperSources.releasePersistedGrant(treeUri)
+                // Another collection built from the same folder shares this grant,
+                // only release it when nothing references the folder.
+                if (dao.countCollectionsWithRootUri(treeUri) == 0) {
+                    wallpaperSources.releasePersistedGrant(treeUri)
+                }
                 throw e
             }
         }
@@ -403,8 +410,11 @@ class WallpaperRepository @Inject constructor(
             dao.deleteCollection(collection)
             gcOrphanFiles()
 
-            // Release the persisted folder permission if this is a folder collection
-            if (collection.type == CollectionType.FOLDER && collection.rootUri != null) {
+            // Release the persisted folder permission if this is a folder collection and
+            // no other collection is built from the same folder and still needs the grant.
+            if (collection.type == CollectionType.FOLDER && collection.rootUri != null &&
+                dao.countCollectionsWithRootUri(collection.rootUri) == 0
+            ) {
                 wallpaperSources.releasePersistedGrant(collection.rootUri)
             }
         }
@@ -434,6 +444,29 @@ class WallpaperRepository @Inject constructor(
      */
     suspend fun cleanupOrphanFileRegistry() {
         withContext(Dispatchers.IO) { gcOrphanFiles() }
+    }
+
+    /**
+     * Reconciles the system's persisted URI grants with the DB: releases any grant this app holds
+     * that no collection root (folder tree) and no [SourceType.PICKER_GRANT] file row references.
+     * Reclaims grants leaked by a failure or process death between `takePersistableUriPermission`
+     * and the DB commit. Safe to call on every app start; a no-op when nothing leaked.
+     *
+     * TODO tests: check "WallpaperSources Tests" note
+     */
+    suspend fun cleanupOrphanPersistedGrants() {
+        withContext(Dispatchers.IO) {
+            // The grant snapshot is taken *before* the keep set so a grant acquired by a concurrent import
+            // can never look orphaned (its rows are in by the time the keep set is read).
+            val granted = wallpaperSources.persistedGrantUris()
+            if (granted.isEmpty()) return@withContext
+
+            val keep = (dao.getAllRootUris() + dao.getFileUrisBySourceType(SourceType.PICKER_GRANT)).toSet()
+            val leaked = granted.filterNot { it in keep }
+
+            leaked.forEach { wallpaperSources.releasePersistedGrant(it) }
+            if (leaked.isNotEmpty()) Log.d(TAG, "Released ${leaked.size} orphaned persisted grant(s)")
+        }
     }
 
     /**
