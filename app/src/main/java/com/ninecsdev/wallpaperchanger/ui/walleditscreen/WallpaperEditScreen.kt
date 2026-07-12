@@ -44,28 +44,9 @@ import com.ninecsdev.wallpaperchanger.ui.components.overlay.ProcessingOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
-// Constants and helpers to leave the UI code more readable
-private const val MinZoom = 0.5f
-private const val MaxZoom = 5f
-private const val MinOffset = -1f
-private const val MaxOffset = 1f
+// Gesture tuning; value bounds and edit math live in EditMath.kt
 private const val PanSensitivity = 0.003f
 private const val PanSensitivityXMultiplier = 1.25f
-private fun coerceZoom(value: Float): Float = value.coerceIn(MinZoom, MaxZoom)
-private fun coerceOffset(value: Float): Float = value.coerceIn(MinOffset, MaxOffset)
-
-private fun calculateFitHeightZoom(
-    imageAspectRatio: Float,
-    viewAspect: Float,
-): Float {
-    if (imageAspectRatio <= 0f || viewAspect <= 0f) return 1f
-
-    return if (imageAspectRatio > viewAspect) {
-        imageAspectRatio / viewAspect
-    } else {
-        1f
-    }
-}
 
 /**
  * Full-screen wallpaper editor.
@@ -93,9 +74,8 @@ fun WallpaperEditScreen(
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
 
-    var initialZoom by remember { mutableFloatStateOf(1f) }
-    var initialOffsetX by remember { mutableFloatStateOf(0f) }
-    var initialOffsetY by remember { mutableFloatStateOf(0f) }
+    // Saved params the current values are compared against (undo target / dirty check)
+    var baseline by remember { mutableStateOf(EditParams(zoom = 1f, offsetX = 0f, offsetY = 0f)) }
 
     // Controls panel visibility
     var showControls by remember { mutableStateOf(false) }
@@ -106,16 +86,11 @@ fun WallpaperEditScreen(
     // Restore saved edit params when wallpaper loads
     LaunchedEffect(wallpaper) {
         wallpaper?.let { wp ->
-            val savedZoom = wp.editParams?.zoom ?: 1f
-            val savedOffsetX = wp.editParams?.offsetX ?: 0f
-            val savedOffsetY = wp.editParams?.offsetY ?: 0f
-
-            zoom = savedZoom
-            offsetX = savedOffsetX
-            offsetY = savedOffsetY
-            initialZoom = savedZoom
-            initialOffsetX = savedOffsetX
-            initialOffsetY = savedOffsetY
+            val saved = wp.editParams ?: EditParams(zoom = 1f, offsetX = 0f, offsetY = 0f)
+            zoom = saved.zoom
+            offsetX = saved.offsetX
+            offsetY = saved.offsetY
+            baseline = saved
         }
     }
 
@@ -125,16 +100,13 @@ fun WallpaperEditScreen(
     val setOffsetX: (Float) -> Unit = { offsetX = coerceOffset(it) }
     val setOffsetY: (Float) -> Unit = { offsetY = coerceOffset(it) }
 
-    val hasUnsavedChanges = wallpaper != null && (
-        !isCloseEnough(zoom, initialZoom) ||
-            !isCloseEnough(offsetX, initialOffsetX) ||
-            !isCloseEnough(offsetY, initialOffsetY)
-        )
+    val hasUnsavedChanges = wallpaper != null &&
+        !matchesEditParams(baseline, zoom, offsetX, offsetY)
     val isSaveEnabled = hasUnsavedChanges && !uiState.isSaving
     val undoChanges = {
-        zoom = initialZoom
-        offsetX = initialOffsetX
-        offsetY = initialOffsetY
+        zoom = baseline.zoom
+        offsetX = baseline.offsetX
+        offsetY = baseline.offsetY
     }
 
     val guardedBack: () -> Unit = {

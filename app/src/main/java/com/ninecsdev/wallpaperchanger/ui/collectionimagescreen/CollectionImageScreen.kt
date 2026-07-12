@@ -277,18 +277,13 @@ fun CollectionImageScreen(
                     actions = {
                         // Edit (pencil), enabled when exactly 1 is selected
                         val editAlpha = when {
-                            uiState.isSelectionMode && uiState.selectedIds.size == 1 -> 1f
+                            uiState.selectedWallpaper != null -> 1f
                             uiState.isSelectionMode -> 0.3f
                             else -> 0.15f
                         }
                         IconButton(
-                            onClick = {
-                                if (uiState.isSelectionMode && uiState.selectedIds.size == 1) {
-                                    val id = uiState.selectedIds.first()
-                                    uiState.wallpapers.find { it.id == id }?.let { onEditSelected(it) }
-                                }
-                            },
-                            enabled = uiState.isSelectionMode && uiState.selectedIds.size == 1
+                            onClick = { uiState.selectedWallpaper?.let(onEditSelected) },
+                            enabled = uiState.selectedWallpaper != null
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.icon_edit),
@@ -300,17 +295,17 @@ fun CollectionImageScreen(
 
                         // Delete (trash), enabled when ≥ 1 selected
                         val deleteAlpha = when {
-                            uiState.isSelectionMode && uiState.selectedIds.isNotEmpty() -> 1f
+                            uiState.canDeleteSelection -> 1f
                             uiState.isSelectionMode -> 0.3f
                             else -> 0.15f
                         }
                         IconButton(
                             onClick = {
-                                if (uiState.isSelectionMode && uiState.selectedIds.isNotEmpty()) {
+                                if (uiState.canDeleteSelection) {
                                     showDeleteConfirmation = true
                                 }
                             },
-                            enabled = uiState.isSelectionMode && uiState.selectedIds.isNotEmpty()
+                            enabled = uiState.canDeleteSelection
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.icon_delete),

@@ -48,7 +48,6 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         uri?.let {
-            contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             collectionViewModel.setPendingFolderUri(it)
             collectionViewModel.toggleCreateModal(true)
         }

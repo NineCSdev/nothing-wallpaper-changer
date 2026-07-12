@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
-import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
@@ -35,7 +34,6 @@ import javax.inject.Inject
 @HiltViewModel
 class CollectionViewModel @Inject constructor(
     private val repository: WallpaperRepository,
-    private val wallpaperSources: WallpaperSources,
     serviceStateManager: ServiceStateManager
 ) : ViewModel() {
 
@@ -132,11 +130,20 @@ class CollectionViewModel @Inject constructor(
         _screenState.update { it.copy(hasPendingFolder = false, hasPendingPhotos = true) }
     }
 
-    fun hasPendingFolder(): Boolean = pendingFolderUri != null
-
     // Collection CRUD
 
-    fun finalizeFolderCollection(name: String, rule: CropRule, onComplete: (shouldStartService: Boolean) -> Unit) {
+    /**
+     * Creates the pending collection, folder or manual, whichever source is currently pending.
+     */
+    fun finalizeCollection(name: String, rule: CropRule, onComplete: (shouldStartService: Boolean) -> Unit) {
+        if (pendingFolderUri != null) {
+            finalizeFolderCollection(name, rule, onComplete)
+        } else {
+            finalizeManualCollection(name, rule, onComplete)
+        }
+    }
+
+    private fun finalizeFolderCollection(name: String, rule: CropRule, onComplete: (shouldStartService: Boolean) -> Unit) {
         val uri = pendingFolderUri ?: return
         viewModelScope.launch {
             setProcessing(true)
@@ -152,7 +159,7 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    fun finalizeManualCollection(name: String, rule: CropRule, onComplete: (shouldStartService: Boolean) -> Unit) {
+    private fun finalizeManualCollection(name: String, rule: CropRule, onComplete: (shouldStartService: Boolean) -> Unit) {
         if (pendingPhotosUris.isEmpty()) return
         viewModelScope.launch {
             setProcessing(true)
@@ -226,10 +233,7 @@ class CollectionViewModel @Inject constructor(
     }
 
     fun toggleCreateModal(show: Boolean) {
-        if (!show && pendingFolderUri != null) {
-            wallpaperSources.releasePersistedGrant(pendingFolderUri!!)
-            pendingFolderUri = null
-        }
+        if (!show) pendingFolderUri = null
         _screenState.update {
             if (show) it.copy(isShowingCreateModal = true)
             else it.copy(isShowingCreateModal = false, hasPendingFolder = false, hasPendingPhotos = false)

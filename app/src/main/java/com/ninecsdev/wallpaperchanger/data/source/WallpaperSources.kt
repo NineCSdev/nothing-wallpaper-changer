@@ -114,6 +114,16 @@ class WallpaperSources @Inject constructor(
     }
 
     /**
+     * Takes a persistable READ grant for [uri] (a folder tree from the system folder picker) so it
+     * survives across reboots. Counterpart of [releasePersistedGrant]
+     */
+    fun takePersistedGrant(uri: Uri) {
+        appContext.contentResolver.takePersistableUriPermission(
+            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+        )
+    }
+
+    /**
      * Releases a persisted READ URI permission previously taken via `takePersistableUriPermission`
      * (a folder tree grant or a photo-picker media grant). Safe to call even if already released.
      */

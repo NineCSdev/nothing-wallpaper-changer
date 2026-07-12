@@ -20,5 +20,16 @@ data class CollectionImageUiState(
     val relinkTarget: WallpaperImage? = null,
     /** One-shot flag: the last re-link attempt failed; drives the error snackbar. */
     val relinkFailed: Boolean = false
-)
+) {
+    /** The wallpaper the edit action targets: the single selection, or null when edit doesn't apply. */
+    val selectedWallpaper: WallpaperImage?
+        get() = if (isSelectionMode && selectedIds.size == 1) {
+            wallpapers.find { it.id in selectedIds }
+        } else {
+            null
+        }
 
+    /** True when the delete action applies: selection mode with at least one wallpaper selected. */
+    val canDeleteSelection: Boolean
+        get() = isSelectionMode && selectedIds.isNotEmpty()
+}

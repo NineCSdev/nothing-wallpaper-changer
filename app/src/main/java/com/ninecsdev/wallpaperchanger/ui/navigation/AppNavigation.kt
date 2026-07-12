@@ -159,14 +159,9 @@ fun AppNavigation(
                         onLaunchPhotosPicker()
                     },
                     onCreateCollection = { name, rule ->
-                        val onComplete: (Boolean) -> Unit = { shouldStartService ->
+                        collectionViewModel.finalizeCollection(name, rule) { shouldStartService ->
                             collectionViewModel.toggleCreateModal(false)
                             if (shouldStartService) onStartClick()
-                        }
-                        if (collectionViewModel.hasPendingFolder()) {
-                            collectionViewModel.finalizeFolderCollection(name, rule, onComplete)
-                        } else {
-                            collectionViewModel.finalizeManualCollection(name, rule, onComplete)
                         }
                     },
 

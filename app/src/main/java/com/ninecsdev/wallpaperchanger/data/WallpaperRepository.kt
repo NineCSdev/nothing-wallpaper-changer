@@ -114,23 +114,29 @@ class WallpaperRepository @Inject constructor(
      */
     suspend fun createFolderCollection(name: String, treeUri: Uri, rule: CropRule): Boolean {
         return withContext(Dispatchers.IO) {
-            // Scan first to avoid creating an orphan empty collection (or one with a partial/empty image set) on a transient scan failure.
-            val scannedUris = folderScanner.scan(treeUri)
+            wallpaperSources.takePersistedGrant(treeUri)
+            try {
+                // Scan first to avoid creating an orphan empty collection (or one with a partial/empty image set) on a transient scan failure.
+                val scannedUris = folderScanner.scan(treeUri)
 
-            val isFirst = dao.getActiveCollection() == null
-            val collectionId = dao.insertCollection(
-                WallpaperCollection(
-                    name = name,
-                    type = CollectionType.FOLDER,
-                    rootUri = treeUri,
-                    isActive = isFirst,
-                    defaultCropRule = rule
+                val isFirst = dao.getActiveCollection() == null
+                val collectionId = dao.insertCollection(
+                    WallpaperCollection(
+                        name = name,
+                        type = CollectionType.FOLDER,
+                        rootUri = treeUri,
+                        isActive = isFirst,
+                        defaultCropRule = rule
+                    )
                 )
-            )
 
-            addFilesToCollection(collectionId, scannedUris.map { it to SourceType.FOLDER_DOC }, isManuallyAdded = false)
-            Log.d(TAG, "Imported ${scannedUris.size} images to collection: $name")
-            isFirst
+                addFilesToCollection(collectionId, scannedUris.map { it to SourceType.FOLDER_DOC }, isManuallyAdded = false)
+                Log.d(TAG, "Imported ${scannedUris.size} images to collection: $name")
+                isFirst
+            } catch (e: Exception) {
+                wallpaperSources.releasePersistedGrant(treeUri)
+                throw e
+            }
         }
     }
 

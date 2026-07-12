@@ -4,7 +4,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
-import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,7 +54,7 @@ class WallpaperEditViewModel @Inject constructor(
     fun save(zoom: Float, offsetX: Float, offsetY: Float) {
         val wp = _uiState.value.wallpaper ?: return
 
-        if (isNoOpEdit(wp, zoom, offsetX, offsetY)) {
+        if (matchesEditParams(wp.editParams, zoom, offsetX, offsetY)) {
             _uiState.update { it.copy(shouldExit = true, saveError = false) }
             return
         }
@@ -68,26 +67,12 @@ class WallpaperEditViewModel @Inject constructor(
         }
     }
 
-    private fun isNoOpEdit(
-        wallpaper: WallpaperImage,
-        zoom: Float,
-        offsetX: Float,
-        offsetY: Float
-    ): Boolean {
-        val baseZoom = wallpaper.editParams?.zoom ?: 1f
-        val baseOffsetX = wallpaper.editParams?.offsetX ?: 0f
-        val baseOffsetY = wallpaper.editParams?.offsetY ?: 0f
-
-        return isCloseEnough(zoom, baseZoom) &&
-            isCloseEnough(offsetX, baseOffsetX) &&
-            isCloseEnough(offsetY, baseOffsetY)
-    }
-
     /**
      * Resets the edit: clears all edit parameters.
      * The wallpaper falls back to displaying the original URI.
      *
      * Note: not used due to new exit after undoing edit revise deletion
+     * keep in case decided to use it in the future
      */
     fun reset() {
         val wp = _uiState.value.wallpaper ?: return
