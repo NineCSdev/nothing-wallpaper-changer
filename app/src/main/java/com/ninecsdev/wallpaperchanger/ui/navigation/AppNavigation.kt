@@ -280,12 +280,14 @@ fun AppNavigation(
         ) {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
             val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+            val storageUsage by settingsViewModel.storageUsage.collectAsStateWithLifecycle()
 
             // Render nothing until the real state has loaded (see SettingsViewModel.uiState).
             val loadedSettingsState = settingsState ?: return@composable
 
             SettingsScreen(
                 uiState = loadedSettingsState,
+                storageUsage = storageUsage,
                 onBackClick = {
                     if (navController.previousBackStackEntry != null) {
                         navController.popBackStack()

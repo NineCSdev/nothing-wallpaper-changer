@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
+import com.ninecsdev.wallpaperchanger.logic.StorageUsage
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
@@ -12,6 +14,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -27,6 +30,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val appDataStore: AppDataStore,
+    private val imageInternalizer: ImageInternalizer,
     @param:ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -72,6 +76,16 @@ class SettingsViewModel @Inject constructor(
             keepLocalCopies = keepLocalCopies,
             appVersion = appVersion
         )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = null
+    )
+
+    // Kept out of [uiState] on purpose: it's a filesystem-derived display value, not a setting,
+    // and folding it into the combine would gate the whole screen's render on a directory walk.
+    val storageUsage: StateFlow<StorageUsage?> = flow {
+        emit(imageInternalizer.getStorageUsage(context))
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,

@@ -18,6 +18,12 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** Disk footprint of the internalized wallpapers ("local copies" in the UI). */
+data class StorageUsage(
+    val totalBytes: Long,
+    val fileCount: Int
+)
+
 /**
  * Handles copying external images into the app's private storage.
  * Used for manual collections to not get limited by android persistence file access.
@@ -128,6 +134,18 @@ class ImageInternalizer @Inject constructor(
         if (scale >= 1f) return src
 
         return src.scale((width * scale).toInt(), (height * scale).toInt())
+    }
+
+    /**
+     * Sums the current disk usage of [INTERNAL_FOLDER]. Computed from the filesystem on every call.
+     */
+    // TODO tests: see vault note tests/Storage Usage Tests
+    suspend fun getStorageUsage(context: Context): StorageUsage = withContext(Dispatchers.IO) {
+        val files = File(context.filesDir, INTERNAL_FOLDER).listFiles()
+        StorageUsage(
+            totalBytes = files?.sumOf { it.length() } ?: 0L,
+            fileCount = files?.size ?: 0
+        )
     }
 
     /**

@@ -29,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.logic.StorageUsage
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
@@ -42,6 +43,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 @Composable
 fun SettingsScreen(
     uiState: SettingsUiState,
+    storageUsage: StorageUsage?,
     onBackClick: () -> Unit,
     onScreenOffDelayChange: (Long) -> Unit,
     onStartOnBootChange: (Boolean) -> Unit,
@@ -186,6 +188,8 @@ fun SettingsScreen(
                     onCheckedChange = onKeepLocalCopiesChange
                 )
 
+                StorageUsageRow(usage = storageUsage)
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 SectionLabel(stringResource(R.string.settings_section_quality))
@@ -259,6 +263,7 @@ fun SettingsScreenPreview() {
                 compressionQualityLow = 80,
                 appVersion = "0.3.3-beta"
             ),
+            storageUsage = StorageUsage(totalBytes = 148_897_792, fileCount = 87),
             onBackClick = {},
             onScreenOffDelayChange = {},
             onStartOnBootChange = {},

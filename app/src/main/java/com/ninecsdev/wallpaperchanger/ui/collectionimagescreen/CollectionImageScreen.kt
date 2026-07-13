@@ -285,6 +285,7 @@ fun CollectionImageScreen(
                         }
                     },
                     actions = {
+                        // TODO: Not sure if the top bar looks too cluttered, decide if hide actions while not in selection
                         // Copy to another collection, enabled when ≥ 1 selected
                         val copyAlpha = when {
                             uiState.canCopySelection -> 1f
@@ -633,7 +634,7 @@ private fun SharedTransitionScope.WallpaperThumbnail(
                     EditedBadge(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(4.dp)
+                            .padding(6.dp)
                     )
                 }
 
@@ -642,7 +643,7 @@ private fun SharedTransitionScope.WallpaperThumbnail(
                     UnavailableBadge(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
-                            .padding(4.dp)
+                            .padding(6.dp)
                     )
                 }
 

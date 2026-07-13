@@ -90,6 +90,13 @@
     <string name="settings_section_storage">STORAGE</string>
     <string name="settings_keep_local_copies_title">KEEP LOCAL COPIES</string>
     <string name="settings_keep_local_copies_subtitle">COPY ADDED PHOTOS INTO APP STORAGE</string>
+    <string name="settings_storage_usage_title">STORAGE USED BY LOCAL COPIES</string>
+    <!-- %1$s = formatted size (e.g. "142 MB"), %2$s = pluralized image count -->
+    <string name="settings_storage_usage_value">%1$s · %2$s</string>
+    <plurals name="settings_storage_usage_images">
+        <item quantity="one">%d IMAGE</item>
+        <item quantity="other">%d IMAGES</item>
+    </plurals>
 
     <!-- Boot toggle -->
     <string name="settings_autostart_title">AUTOSTART ON BOOT</string>
