@@ -1,7 +1,33 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen
 
+import android.net.Uri
+import com.ninecsdev.wallpaperchanger.data.TransferResult
 import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
+import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+
+/** Whether a cross-collection transfer copies or moves the selection. */
+enum class TransferMode { COPY, MOVE }
+
+/** A candidate destination collection shown in the transfer target picker. */
+data class TransferTarget(
+    val collectionId: Long,
+    val name: String,
+    val previewUris: List<Uri>,
+    val imageCount: Int = 0
+)
+
+/**
+ * One-shot outcome of the last transfer; drives the summary snackbar.
+ * Counts follow [TransferResult]'s rule: [transferred] is operations that took effect
+ * (insert or edit-adoption), [alreadyPresent] is nothing-changed duplicates.
+ */
+data class TransferSummary(
+    val mode: TransferMode,
+    val transferred: Int,
+    val alreadyPresent: Int,
+    val targetName: String
+)
 
 /**
  * Snapshot of the Collection Image screen state.
@@ -9,6 +35,7 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
  */
 data class CollectionImageUiState(
     val collectionName: String = "",
+    val collectionType: CollectionType? = null,
     val wallpapers: List<WallpaperImage> = emptyList(),
     val isLoading: Boolean = true,
     val isSelectionMode: Boolean = false,
@@ -19,7 +46,13 @@ data class CollectionImageUiState(
     /** The unavailable image the user tapped to re-link; Null when no re-link is in progress. */
     val relinkTarget: WallpaperImage? = null,
     /** One-shot flag: the last re-link attempt failed; drives the error snackbar. */
-    val relinkFailed: Boolean = false
+    val relinkFailed: Boolean = false,
+    /** The transfer being configured (target picker open); null when no transfer is in progress. */
+    val transferMode: TransferMode? = null,
+    /** Destination candidates for the open target picker (all collections except this one). */
+    val transferTargets: List<TransferTarget> = emptyList(),
+    /** One-shot summary of the last transfer; cleared via [CollectionImageViewModel.clearTransferSummary]. */
+    val transferSummary: TransferSummary? = null
 ) {
     /** The wallpaper the edit action targets: the single selection, or null when edit doesn't apply. */
     val selectedWallpaper: WallpaperImage?
@@ -32,4 +65,19 @@ data class CollectionImageUiState(
     /** True when the delete action applies: selection mode with at least one wallpaper selected. */
     val canDeleteSelection: Boolean
         get() = isSelectionMode && selectedIds.isNotEmpty()
+
+    /** True when the copy action applies: same rule as delete. */
+    val canCopySelection: Boolean
+        get() = isSelectionMode && selectedIds.isNotEmpty()
+
+    /**
+     * True when the move action is offered at all. Never for FOLDER collections: sync re-derives
+     * their membership from disk, so a moved-out image would just be re-added on the next sync.
+     */
+    val isMoveAvailable: Boolean
+        get() = collectionType == CollectionType.MANUAL
+
+    /** True when the move action applies to the current selection. */
+    val canMoveSelection: Boolean
+        get() = isMoveAvailable && isSelectionMode && selectedIds.isNotEmpty()
 }

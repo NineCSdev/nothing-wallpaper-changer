@@ -40,6 +40,8 @@ import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
+import com.ninecsdev.wallpaperchanger.ui.components.CollectionGridItem
+import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 import com.ninecsdev.wallpaperchanger.ui.components.StatusLed
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ImportSummarySnackbarEffect
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
@@ -155,7 +157,7 @@ fun CollectionListScreen(
                     ) {
                         items(uiState.allCollections, key = { it.id }) { collection ->
                             CollectionGridItem(
-                                collection = collection,
+                                name = collection.name,
                                 state = uiState.previewStates[collection.id] ?: CollectionPreviewState(),
                                 onClick = { onCollectionClick(collection.id) }
                             )

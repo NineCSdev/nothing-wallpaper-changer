@@ -68,6 +68,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -155,6 +156,11 @@ fun CollectionImageScreen(
     onToggleSelection: (Long) -> Unit,
     onExitSelectionMode: () -> Unit,
     onDeleteSelected: () -> Unit,
+    onCopySelected: () -> Unit = {},
+    onMoveSelected: () -> Unit = {},
+    onTransferTargetSelected: (TransferTarget) -> Unit = {},
+    onTransferCancel: () -> Unit = {},
+    onTransferSummaryShown: () -> Unit = {},
     onEditSelected: (WallpaperImage) -> Unit,
     onEditFromPreview: (WallpaperImage) -> Unit,
     onPreviewPageChanged: (WallpaperImage) -> Unit,
@@ -176,6 +182,8 @@ fun CollectionImageScreen(
             onRelinkFailedShown()
         }
     }
+
+    TransferSummarySnackbarEffect(uiState.transferSummary, snackbarHostState, onTransferSummaryShown)
 
     SharedTransitionLayout {
         val sharedScope = this
@@ -251,7 +259,9 @@ fun CollectionImageScreen(
                                 text = uiState.collectionName.uppercase(),
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Black,
-                                letterSpacing = 2.sp
+                                letterSpacing = 2.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     },
@@ -275,6 +285,45 @@ fun CollectionImageScreen(
                         }
                     },
                     actions = {
+                        // Copy to another collection, enabled when ≥ 1 selected
+                        val copyAlpha = when {
+                            uiState.canCopySelection -> 1f
+                            uiState.isSelectionMode -> 0.3f
+                            else -> 0.15f
+                        }
+                        IconButton(
+                            onClick = onCopySelected,
+                            enabled = uiState.canCopySelection
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.icon_copy),
+                                contentDescription = stringResource(R.string.cd_copy_wallpapers),
+                                tint = NothingWhite.copy(alpha = copyAlpha),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        // Move to another collection. Hidden for folder collections:
+                        // sync would re-add a moved-out image on the next pass.
+                        if (uiState.isMoveAvailable) {
+                            val moveAlpha = when {
+                                uiState.canMoveSelection -> 1f
+                                uiState.isSelectionMode -> 0.3f
+                                else -> 0.15f
+                            }
+                            IconButton(
+                                onClick = onMoveSelected,
+                                enabled = uiState.canMoveSelection
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.icon_move),
+                                    contentDescription = stringResource(R.string.cd_move_wallpapers),
+                                    tint = NothingWhite.copy(alpha = moveAlpha),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
                         // Edit (pencil), enabled when exactly 1 is selected
                         val editAlpha = when {
                             uiState.selectedWallpaper != null -> 1f
@@ -441,6 +490,16 @@ fun CollectionImageScreen(
                 if (selectedCount > 0) onDeleteSelected()
             },
             onCancel = { showDeleteConfirmation = false }
+        )
+    }
+
+    // Copy/move destination picker.
+    if (uiState.transferMode != null) {
+        TransferTargetOverlay(
+            mode = uiState.transferMode,
+            targets = uiState.transferTargets,
+            onTargetSelected = onTransferTargetSelected,
+            onCancel = onTransferCancel
         )
     }
 

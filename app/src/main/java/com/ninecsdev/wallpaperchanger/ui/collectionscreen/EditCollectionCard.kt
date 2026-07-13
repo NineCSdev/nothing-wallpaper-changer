@@ -125,7 +125,7 @@ private fun EditCollectionCardContent(
 ) {
     Card(
         modifier = Modifier
-            .fillMaxWidth(0.9f)
+            .fillMaxWidth(1f)
             .clickable(enabled = false) { },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = NothingBlack),

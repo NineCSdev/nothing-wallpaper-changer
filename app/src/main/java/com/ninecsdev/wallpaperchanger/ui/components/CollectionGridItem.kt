@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.ui.collectionscreen
+package com.ninecsdev.wallpaperchanger.ui.components
 
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -25,12 +25,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
-import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
-import com.ninecsdev.wallpaperchanger.ui.components.ThumbnailSlot
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
@@ -45,10 +43,11 @@ data class CollectionPreviewState(
 /**
  * A square grid item representing a wallpaper collection.
  * Shows the first 4 wallpapers in a 2x2 with the 4th blurred out.
+ * Shared between the collections screen and the transfer target picker.
  */
 @Composable
-internal fun CollectionGridItem(
-    collection: WallpaperCollection,
+fun CollectionGridItem(
+    name: String,
     state: CollectionPreviewState,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -73,12 +72,13 @@ internal fun CollectionGridItem(
 
         // Name of the collection
         Text(
-            text = collection.name.uppercase(),
+            text = name.uppercase(),
             style = MaterialTheme.typography.labelSmall,
             color = NothingWhite.copy(alpha = 0.6f),
             fontWeight = FontWeight.Medium,
             letterSpacing = 1.sp,
-            maxLines = 1
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -159,7 +159,7 @@ fun CollectionGridItemMoreThan4Preview() {
             .padding(24.dp)
             .width(160.dp)) {
             CollectionGridItem(
-                collection = WallpaperCollection(name = "AMOLED", type = CollectionType.FOLDER),
+                name = "AMOLED",
                 state = CollectionPreviewState(previewUris = emptyList(),totalCount = 12),
                 onClick = {}
             )
@@ -175,7 +175,7 @@ fun CollectionGridItemLessOr4Preview() {
             .padding(24.dp)
             .width(160.dp)) {
             CollectionGridItem(
-                collection = WallpaperCollection(name = "AMOLED", type = CollectionType.FOLDER),
+                name = "AMOLED",
                 state = CollectionPreviewState(previewUris = emptyList(),totalCount = 4),
                 onClick = {}
             )

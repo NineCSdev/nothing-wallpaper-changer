@@ -28,6 +28,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.CollectionImageScreen
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.CollectionImageViewModel
+import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.TransferMode
 import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionListScreen
 import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionViewModel
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.MainScreen
@@ -229,6 +230,11 @@ fun AppNavigation(
                 onToggleSelection = collectionImageViewModel::toggleSelection,
                 onExitSelectionMode = collectionImageViewModel::exitSelectionMode,
                 onDeleteSelected = collectionImageViewModel::deleteSelectedWallpapers,
+                onCopySelected = { collectionImageViewModel.requestTransfer(TransferMode.COPY) },
+                onMoveSelected = { collectionImageViewModel.requestTransfer(TransferMode.MOVE) },
+                onTransferTargetSelected = collectionImageViewModel::transferToCollection,
+                onTransferCancel = collectionImageViewModel::cancelTransfer,
+                onTransferSummaryShown = collectionImageViewModel::clearTransferSummary,
                 onEditSelected = { wallpaper ->
                     navController.navigate(Route.wallpaperEdit(wallpaper.id))
                 },

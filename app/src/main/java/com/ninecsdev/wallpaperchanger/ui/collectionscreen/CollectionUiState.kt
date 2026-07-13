@@ -4,6 +4,7 @@ import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
+import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 
 /**
  * Snapshot of the Collection List screen state.

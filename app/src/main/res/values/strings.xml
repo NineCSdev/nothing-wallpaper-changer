@@ -166,6 +166,16 @@
     <string name="relink_dialog_cancel">CANCEL</string>
     <string name="relink_failed_snackbar">Couldn\'t re-link the image</string>
 
+    <!-- Copy/move between collections -->
+    <string name="cd_copy_wallpapers">Copy to another collection</string>
+    <string name="cd_move_wallpapers">Move to another collection</string>
+    <string name="transfer_dialog_title_copy">COPY TO</string>
+    <string name="transfer_dialog_title_move">MOVE TO</string>
+    <string name="transfer_dialog_empty">NO OTHER COLLECTIONS</string>
+    <string name="transfer_summary_copied">%1$d COPIED TO %2$s</string>
+    <string name="transfer_summary_moved">%1$d MOVED TO %2$s</string>
+    <string name="transfer_summary_already_present">%1$d ALREADY THERE</string>
+
     <!-- Pick import summary -->
     <string name="import_summary_referenced">%1$d ADDED AS REFERENCES</string>
     <string name="import_summary_internalized">%1$d COPIED LOCALLY</string>

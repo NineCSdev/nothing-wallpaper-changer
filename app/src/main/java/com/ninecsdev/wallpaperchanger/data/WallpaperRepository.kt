@@ -38,6 +38,15 @@ import javax.inject.Singleton
 enum class RelinkResult { RELINKED, MERGED, FAILED }
 
 /**
+ * Outcome of a cross-collection transfer (see [WallpaperRepository.copyImagesToCollection] /
+ * [WallpaperRepository.moveImagesToCollection]).
+ * [transferred] counts operations that took effect in the target: new memberships plus duplicates
+ * that adopted the source's edit. [alreadyPresent] counts duplicates where nothing changed in the
+ * target (for a move, their source rows are still removed).
+ */
+data class TransferResult(val transferred: Int = 0, val alreadyPresent: Int = 0)
+
+/**
  * Coordinates the data layer.
  *
  * Responsible for collection and wallpaper image CRUD, folder-sync orchestration, and
@@ -66,7 +75,7 @@ class WallpaperRepository @Inject constructor(
 
     // UI Data Access (Flows)
 
-    fun getAllCollections(): Flow<List<WallpaperCollection>> = dao.refactorAllCollections()
+    fun getAllCollections(): Flow<List<WallpaperCollection>> = dao.observeAllCollections()
 
     fun getImagesForCollection(collectionId: Long): Flow<List<WallpaperImage>> =
         dao.observeImagesForCollection(collectionId)
@@ -211,6 +220,81 @@ class WallpaperRepository @Inject constructor(
                 )
             }
             rows.chunked(SYNC_CHUNK_SIZE).forEach { dao.insertWallpapers(it) }
+        }
+    }
+
+    /**
+     * Copies [images] into [targetCollectionId]: each image's file gains a membership in the target
+     * carrying the source's edit params.
+     * Duplicates are skipped, except that a target membership with no edit adopts the source's edit.
+     */
+    suspend fun copyImagesToCollection(images: List<WallpaperImage>, targetCollectionId: Long): TransferResult =
+        transferImagesToCollection(images, targetCollectionId, removeFromSource = false)
+
+    /**
+     * Moves [images] into [targetCollectionId]: same as [copyImagesToCollection] plus deletion of
+     * the source memberships. On duplicates the source row is still removed.
+     * (the image already lives in the target; the target's edit wins).
+     *
+     * Callers should not offer move out of FOLDER collections as sync would re-add the image.
+     */
+    suspend fun moveImagesToCollection(images: List<WallpaperImage>, targetCollectionId: Long): TransferResult =
+        transferImagesToCollection(images, targetCollectionId, removeFromSource = true)
+
+    // TODO tests: check "tests/Wallpaper Transfer Tests" note
+    private suspend fun transferImagesToCollection(
+        images: List<WallpaperImage>,
+        targetCollectionId: Long,
+        removeFromSource: Boolean
+    ): TransferResult {
+        if (images.isEmpty()) return TransferResult()
+
+        return withContext(Dispatchers.IO) {
+            val target = dao.getCollectionById(targetCollectionId) ?: return@withContext TransferResult()
+            // Rows added to a folder collection must survive its sync diff, same as picker-adds.
+            val markManuallyAdded = target.type == CollectionType.FOLDER
+
+            database.withTransaction {
+                val existingByFileId = images.map { it.fileId }.distinct()
+                    .chunked(SYNC_CHUNK_SIZE)
+                    .flatMap { dao.getWallpapersInCollectionForFiles(targetCollectionId, it) }
+                    .associateBy { it.fileId }
+
+                val now = System.currentTimeMillis()
+                val newRows = mutableListOf<Wallpaper>()
+                var transferred = 0
+                var alreadyPresent = 0
+
+                for (image in images) {
+                    val existing = existingByFileId[image.fileId]
+                    when {
+                        existing == null -> {
+                            newRows += Wallpaper(
+                                collectionId = targetCollectionId,
+                                fileId = image.fileId,
+                                editParams = image.editParams,
+                                isManuallyAdded = markManuallyAdded,
+                                addedAt = now
+                            )
+                            transferred++
+                        }
+                        // Duplicate whose target membership is unedited: adopt the source's edit
+                        // (the more personalized state). An existing target edit is never overwritten.
+                        existing.editParams == null && image.editParams != null -> {
+                            val edit = image.editParams
+                            dao.updateWallpaperEdit(existing.id, edit.zoom, edit.offsetX, edit.offsetY)
+                            transferred++
+                        }
+                        else -> alreadyPresent++
+                    }
+                }
+
+                newRows.chunked(SYNC_CHUNK_SIZE).forEach { dao.insertWallpapers(it) }
+                if (removeFromSource) {
+                    images.map { it.id }.chunked(SYNC_CHUNK_SIZE).forEach { dao.deleteImagesByIds(it) }
+                }
+                TransferResult(transferred, alreadyPresent)
+            }
         }
     }
 

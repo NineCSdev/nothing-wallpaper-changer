@@ -39,7 +39,7 @@ interface WallpaperDao {
     suspend fun insertCollection(collection: WallpaperCollection): Long
 
     @Query("SELECT * FROM collections ORDER BY lastUsedAt DESC")
-    fun refactorAllCollections(): Flow<List<WallpaperCollection>>
+    fun observeAllCollections(): Flow<List<WallpaperCollection>>
 
     @Query("SELECT * FROM collections WHERE id = :collectionId LIMIT 1")
     suspend fun getCollectionById(collectionId: Long): WallpaperCollection?
@@ -205,6 +205,13 @@ interface WallpaperDao {
         collectionId: Long,
         sourceType: SourceType = SourceType.FOLDER_DOC
     ): List<WallpaperImage>
+
+    /**
+     * Join rows in [collectionId] whose file is one of [fileIds]. Used by cross-collection
+     * transfers to detect duplicates (the target already has the file) before inserting.
+     */
+    @Query("SELECT * FROM wallpapers WHERE collectionId = :collectionId AND fileId IN (:fileIds)")
+    suspend fun getWallpapersInCollectionForFiles(collectionId: Long, fileIds: List<Long>): List<Wallpaper>
 
     /** Fetches a single wallpaper by ID. */
     @Query("$SELECT_WALLPAPER_IMAGES WHERE w.id = :wallpaperId LIMIT 1")
