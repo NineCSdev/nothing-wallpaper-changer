@@ -20,13 +20,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.ui.components.SettingsRowHeader
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
@@ -41,37 +41,24 @@ internal fun <T> SettingsSegmentedSelector(
     onInfoClick: (() -> Unit)? = null
 ) {
     Column {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodySmall,
-                color = NothingWhite,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
-            )
-            if (onInfoClick != null) {
-                IconButton(
-                    onClick = onInfoClick,
-                    modifier = Modifier
-                        .size(16.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Info,
-                        contentDescription = stringResource(R.string.cd_setting_information),
-                        tint = NothingWhite.copy(alpha = 0.55f),
+        SettingsRowHeader(
+            title = title,
+            subtitle = subtitle,
+            titleTrailingContent = {
+                if (onInfoClick != null) {
+                    IconButton(
+                        onClick = onInfoClick,
                         modifier = Modifier.size(16.dp)
-                    )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = stringResource(R.string.cd_setting_information),
+                            tint = NothingWhite.copy(alpha = 0.55f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
-        }
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.labelSmall,
-            color = NothingWhite.copy(alpha = 0.4f),
-            letterSpacing = 0.5.sp
         )
 
         Spacer(modifier = Modifier.height(12.dp))

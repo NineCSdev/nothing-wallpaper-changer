@@ -19,8 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +47,8 @@ import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
+import com.ninecsdev.wallpaperchanger.ui.components.NothingButton
+import com.ninecsdev.wallpaperchanger.ui.components.NothingButtonVariant
 import com.ninecsdev.wallpaperchanger.ui.components.NothingTextField
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -121,75 +121,11 @@ private fun EditCollectionCardContent(
     onSetActive: () -> Unit,
     onSave: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth(1f)
-            .clickable(enabled = false) { },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = NothingBlack),
-        border = BorderStroke(1.dp, NothingWhite.copy(alpha = 0.2f))
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Column(modifier = Modifier.padding(24.dp)) {
-
-                EditCardHeader(
-                    collectionType = collection.type,
-                    onSyncClick = onSyncClick,
-                    onDismiss = onDismiss
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                NothingTextField(
-                    value = nameText,
-                    onValueChange = onNameChange,
-                    label = stringResource(R.string.edit_collection_field_name)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                CropRuleSelector(
-                    selectedRule = selectedRule,
-                    onRuleSelected = onRuleSelected
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                RotationFrequencySelector(
-                    selectedFrequency = selectedRotationFrequency,
-                    onFrequencySelected = onFrequencySelected
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                ManagementButtons(
-                    onDeleteRequest = onDeleteRequest,
-                    onViewImages = {
-                        onDismiss()
-                        onViewImages()
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                EditCardActions(
-                    isActive = collection.isActive,
-                    isChanged = nameText != collection.name ||
-                        selectedRule != collection.defaultCropRule ||
-                        selectedRotationFrequency != collection.rotationFrequency,
-                    onSetActive = { onSetActive(); onDismiss() },
-                    onSave = { onSave(); onDismiss() },
-                    onDismiss = onDismiss
-                )
-            }
-
-            if (isProcessing) {
-                ProcessingOverlay(
-                    message = stringResource(R.string.edit_collection_processing),
-                    modifier = Modifier.matchParentSize()
-                )
-            }
-
+    NothingDialogCard(
+        isProcessing = isProcessing,
+        processingMessage = stringResource(R.string.edit_collection_processing),
+        modifier = Modifier.clickable(enabled = false) { },
+        overlay = {
             if (showDeleteConfirmation) {
                 ConfirmationOverlay(
                     title = stringResource(R.string.edit_collection_delete_title),
@@ -199,6 +135,56 @@ private fun EditCollectionCardContent(
                 )
             }
         }
+    ) {
+        EditCardHeader(
+            collectionType = collection.type,
+            onSyncClick = onSyncClick,
+            onDismiss = onDismiss
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        NothingTextField(
+            value = nameText,
+            onValueChange = onNameChange,
+            label = stringResource(R.string.edit_collection_field_name)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        CropRuleSelector(
+            selectedRule = selectedRule,
+            onRuleSelected = onRuleSelected
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        RotationFrequencySelector(
+            selectedFrequency = selectedRotationFrequency,
+            onFrequencySelected = onFrequencySelected
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        ManagementButtons(
+            onDeleteRequest = onDeleteRequest,
+            onViewImages = {
+                onDismiss()
+                onViewImages()
+            }
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        EditCardActions(
+            isActive = collection.isActive,
+            isChanged = nameText != collection.name ||
+                selectedRule != collection.defaultCropRule ||
+                selectedRotationFrequency != collection.rotationFrequency,
+            onSetActive = { onSetActive(); onDismiss() },
+            onSave = { onSave(); onDismiss() },
+            onDismiss = onDismiss
+        )
     }
 }
 
@@ -327,15 +313,11 @@ private fun ManagementButtons(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Button(
+        NothingButton(
+            text = stringResource(R.string.edit_collection_action_delete),
             onClick = onDeleteRequest,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = NothingRed),
-            border = BorderStroke(1.dp, NothingRed.copy(alpha = 0.4f))
-        ) {
-            Text(stringResource(R.string.edit_collection_action_delete), fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-        }
+            variant = NothingButtonVariant.DANGER
+        )
     }
 }
 

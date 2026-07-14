@@ -101,23 +101,13 @@ internal fun LanguageSelector() {
     val selectedLanguage = languages.find { it.tag == selectedTag } ?: languages.first()
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.settings_language_title),
-                style = MaterialTheme.typography.bodySmall,
-                color = NothingWhite,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            )
-            Text(
-                text = stringResource(R.string.settings_language_subtitle),
-                style = MaterialTheme.typography.labelSmall,
-                color = NothingWhite.copy(alpha = 0.4f),
-                letterSpacing = 0.5.sp
-            )
-        }
+        SettingsRowHeader(
+            title = stringResource(R.string.settings_language_title),
+            subtitle = stringResource(R.string.settings_language_subtitle),
+            modifier = Modifier.weight(1f)
+        )
 
         Box(
             modifier = Modifier.onGloballyPositioned { coordinates ->

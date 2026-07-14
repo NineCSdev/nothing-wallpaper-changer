@@ -6,7 +6,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,21 +16,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -54,73 +45,25 @@ internal fun DefaultWallpaperCard(
     onToggleRevert: (Boolean) -> Unit,
     onSelectDefaultClick: () -> Unit
 ) {
-    OutlinedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(CardCornerRadius),
-        colors = CardDefaults.outlinedCardColors(
-            containerColor = NothingBlack,
-            contentColor = NothingWhite
-        ),
-        border = BorderStroke(2.dp, NothingWhite.copy(alpha = 0.5f))
-    ) {
-        Column {
-            DefaultCardHeader(revertToDefault, onToggleRevert)
+    NothingOutlinedCard {
+        SettingsToggleRow(
+            title = stringResource(R.string.label_default_wallpaper),
+            subtitle = stringResource(R.string.label_revert_on_stop),
+            checked = revertToDefault,
+            onCheckedChange = onToggleRevert,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+        )
 
-            AnimatedVisibility(
-                visible = revertToDefault,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                Column {
-                    HorizontalDivider(
-                        color = NothingWhite.copy(alpha = 0.5f),
-                        thickness = 2.dp
-                    )
-                    DefaultCardContent(defaultUri, onSelectDefaultClick)
-                }
+        AnimatedVisibility(
+            visible = revertToDefault,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Column {
+                NothingCardDivider()
+                DefaultCardContent(defaultUri, onSelectDefaultClick)
             }
         }
-    }
-}
-
-@Composable
-private fun DefaultCardHeader(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.label_default_wallpaper),
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            )
-            Text(
-                text = stringResource(R.string.label_revert_on_stop),
-                style = MaterialTheme.typography.labelSmall,
-                color = NothingWhite.copy(alpha = 0.4f),
-                letterSpacing = 0.5.sp
-            )
-        }
-
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            modifier = Modifier.scale(0.8f),
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = NothingBlack,
-                checkedTrackColor = NothingWhite,
-                uncheckedThumbColor = NothingWhite,
-                uncheckedTrackColor = NothingBlack,
-                uncheckedBorderColor = NothingWhite.copy(alpha = 0.5f)
-            )
-        )
     }
 }
 

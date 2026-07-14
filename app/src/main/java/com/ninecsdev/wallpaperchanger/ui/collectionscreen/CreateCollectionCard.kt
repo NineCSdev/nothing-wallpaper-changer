@@ -1,24 +1,19 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionscreen
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -100,75 +95,58 @@ private fun CreateCollectionCardContent(
     onPhotosSelect: () -> Unit,
     onCreateClick: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = NothingBlack),
-        border = BorderStroke(1.dp, NothingWhite.copy(alpha = 0.2f))
+    NothingDialogCard(
+        isProcessing = isProcessing,
+        processingMessage = stringResource(R.string.create_collection_processing),
+        columnContentAlignment = Alignment.CenterHorizontally
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                CreateCardHeader(onDismiss)
+        CreateCardHeader(onDismiss)
 
-                Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    SourceButton(
-                        modifier = Modifier.weight(1f),
-                        icon = painterResource(R.drawable.icon_filled_folder),
-                        label = stringResource(R.string.create_collection_label_folder),
-                        isSelected = hasPendingFolder,
-                        onClick = onFolderSelect
-                    )
-                    SourceButton(
-                        modifier = Modifier.weight(1f),
-                        icon = painterResource(R.drawable.icon_collection),
-                        label = stringResource(R.string.create_collection_label_photos),
-                        isSelected = hasPendingPhotos,
-                        onClick = onPhotosSelect
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                NothingTextField(
-                    value = collectionName,
-                    onValueChange = onCollectionNameChange,
-                    label = stringResource(R.string.create_collection_field_name)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                CropRuleSelector(
-                    selectedRule = selectedRule,
-                    onRuleSelected = onRuleSelected
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                CreateCardActions(
-                    onDismiss = onDismiss,
-                    isProcessing = isProcessing,
-                    enabled = collectionName.isNotBlank() && (hasPendingFolder || hasPendingPhotos),
-                    onCreate = onCreateClick
-                )
-            }
-
-            if (isProcessing) {
-                ProcessingOverlay(
-                    message = stringResource(R.string.create_collection_processing),
-                    modifier = Modifier.matchParentSize()
-                )
-            }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            SourceButton(
+                modifier = Modifier.weight(1f),
+                icon = painterResource(R.drawable.icon_filled_folder),
+                label = stringResource(R.string.create_collection_label_folder),
+                isSelected = hasPendingFolder,
+                onClick = onFolderSelect
+            )
+            SourceButton(
+                modifier = Modifier.weight(1f),
+                icon = painterResource(R.drawable.icon_collection),
+                label = stringResource(R.string.create_collection_label_photos),
+                isSelected = hasPendingPhotos,
+                onClick = onPhotosSelect
+            )
         }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        NothingTextField(
+            value = collectionName,
+            onValueChange = onCollectionNameChange,
+            label = stringResource(R.string.create_collection_field_name)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        CropRuleSelector(
+            selectedRule = selectedRule,
+            onRuleSelected = onRuleSelected
+        )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+        CreateCardActions(
+            onDismiss = onDismiss,
+            isProcessing = isProcessing,
+            enabled = collectionName.isNotBlank() && (hasPendingFolder || hasPendingPhotos),
+            onCreate = onCreateClick
+        )
     }
 }
 

@@ -19,13 +19,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.data.local.DeviceDefaults
+import com.ninecsdev.wallpaperchanger.ui.components.SettingsRowHeader
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -38,21 +37,12 @@ internal fun ScreenOffDelayField(
     var text by remember(currentDelayMs) { mutableStateOf(currentDelayMs.toString()) }
 
     Column {
-        Text(
-            text = stringResource(R.string.settings_screen_off_delay_title),
-            style = MaterialTheme.typography.bodySmall,
-            color = NothingWhite,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
-        )
-        Text(
-            text = stringResource(
+        SettingsRowHeader(
+            title = stringResource(R.string.settings_screen_off_delay_title),
+            subtitle = stringResource(
                 R.string.settings_screen_off_delay_subtitle,
                 DeviceDefaults.forThisDevice()
-            ),
-            style = MaterialTheme.typography.labelSmall,
-            color = NothingWhite.copy(alpha = 0.4f),
-            letterSpacing = 0.5.sp
+            )
         )
 
         Spacer(modifier = Modifier.height(8.dp))

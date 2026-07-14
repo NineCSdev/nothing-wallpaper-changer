@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.ui.mainscreen
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -16,11 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,8 +33,6 @@ import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
-import com.ninecsdev.wallpaperchanger.ui.theme.CardCornerRadius
-import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /**
@@ -54,90 +48,77 @@ internal fun WallpaperSelectionCard(
 ) {
     val displayName = activeCollection?.name ?: stringResource(R.string.label_select_collection)
 
-    OutlinedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(CardCornerRadius),
-        colors = CardDefaults.outlinedCardColors(
-            containerColor = NothingBlack,
-            contentColor = NothingWhite
-        ),
-        border = BorderStroke(2.dp, NothingWhite.copy(alpha = 0.5f))
-    ) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        painter = painterResource(R.drawable.icon_collection_outline),
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = NothingWhite
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = displayName.uppercase(),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = NothingWhite,
-                        letterSpacing = 1.sp
-                    )
-                }
-
-                TextButton(
-                    onClick = onSelectFolderClick,
-                    colors = ButtonDefaults.textButtonColors(contentColor = NothingWhite),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
-                ) {
-                    Text(
-                        text = if (activeCollection != null) stringResource(R.string.action_change) else stringResource(R.string.action_select),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 0.5.sp
-                    )
-                }
+    NothingOutlinedCard {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter = painterResource(R.drawable.icon_collection_outline),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = NothingWhite
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = displayName.uppercase(),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = NothingWhite,
+                    letterSpacing = 1.sp
+                )
             }
 
-            HorizontalDivider(
-                color = NothingWhite.copy(alpha = 0.5f),
-                thickness = 2.dp
-            )
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+            TextButton(
+                onClick = onSelectFolderClick,
+                colors = ButtonDefaults.textButtonColors(contentColor = NothingWhite),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
             ) {
-                val displayImages = previewImages.take(3)
+                Text(
+                    text = if (activeCollection != null) stringResource(R.string.action_change) else stringResource(R.string.action_select),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.5.sp
+                )
+            }
+        }
 
-                displayImages.forEach { image ->
-                    NothingThumbnail(
-                        uri = image.uri,
+        NothingCardDivider()
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // The ViewModel already truncates previewImages to PREVIEW_IMAGE_COUNT.
+            previewImages.forEach { image ->
+                NothingThumbnail(
+                    uri = image.uri,
+                    modifier = Modifier
+                        .weight(1f)
+                        .aspectRatio(0.75f)
+                )
+            }
+
+            // Placeholders for empty collections and loading
+            if (previewImages.size < PREVIEW_IMAGE_COUNT) {
+                repeat(PREVIEW_IMAGE_COUNT - previewImages.size) {
+                    Box(
                         modifier = Modifier
                             .weight(1f)
                             .aspectRatio(0.75f)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(NothingWhite.copy(alpha = 0.05f))
+                            .border(1.dp, NothingWhite.copy(alpha = 0.05f), RoundedCornerShape(4.dp))
                     )
                 }
-
-                // Placeholders for empty collections and loading
-                if (displayImages.size < 3) {
-                    repeat(3 - displayImages.size) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(0.75f)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(NothingWhite.copy(alpha = 0.05f))
-                                .border(1.dp, NothingWhite.copy(alpha = 0.05f), RoundedCornerShape(4.dp))
-                        )
-                    }
-                }
+            }
 
             Box(
                 modifier = Modifier.size(width = 45.dp, height = 60.dp),

@@ -1,5 +1,6 @@
 package com.ninecsdev.wallpaperchanger.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.ui.theme.CardCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 @Composable
@@ -39,6 +41,18 @@ fun NothingButton(
             disabledContainerColor = Color.Transparent,
             disabledContentColor = NothingWhite.copy(alpha = 0.1f)
         )
+        NothingButtonVariant.DANGER -> ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent,
+            contentColor = NothingRed,
+            disabledContainerColor = Color.Transparent,
+            disabledContentColor = NothingRed.copy(alpha = 0.3f)
+        )
+    }
+
+    val border = if (variant == NothingButtonVariant.DANGER) {
+        BorderStroke(1.dp, NothingRed.copy(alpha = 0.4f))
+    } else {
+        null
     }
 
     Button(
@@ -49,6 +63,7 @@ fun NothingButton(
             .height(56.dp),
         shape = RoundedCornerShape(CardCornerRadius),
         colors = colors,
+        border = border,
         contentPadding = PaddingValues(0.dp)
     ) {
         Text(
@@ -61,5 +76,5 @@ fun NothingButton(
 }
 
 enum class NothingButtonVariant {
-    PRIMARY, SECONDARY
+    PRIMARY, SECONDARY, DANGER
 }
