@@ -93,7 +93,7 @@ class MainViewModel @Inject constructor(
         MainUiState(
             serviceState = serviceState,
             activeCollection = active,
-            previewImages = previews.take(3),
+            previewImages = previews.take(PREVIEW_IMAGE_COUNT),
             activeCollectionSize = previews.size,
             defaultWallpaperUri = defaultUri,
             revertToDefaultOnStop = revert

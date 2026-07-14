@@ -16,13 +16,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingDarkGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 @Composable
@@ -50,7 +50,7 @@ internal fun CropRuleSelector(
                     .weight(1f)
                     .height(48.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(if (isSelected) NothingWhite else Color(0xFF151515))
+                    .background(if (isSelected) NothingWhite else NothingDarkGray)
                     .border(
                         1.dp,
                         if (isSelected) NothingWhite else NothingWhite.copy(alpha = 0.1f),

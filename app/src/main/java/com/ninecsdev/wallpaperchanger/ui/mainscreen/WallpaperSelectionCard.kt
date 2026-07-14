@@ -139,24 +139,23 @@ internal fun WallpaperSelectionCard(
                     }
                 }
 
-                Box(
-                    modifier = Modifier.size(width = 45.dp, height = 60.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val countText = when {
-                        activeCollection == null -> ""
-                        totalImages > 3 -> "+${totalImages - 3}"
-                        totalImages == 0 -> "0"
-                        else -> ""
-                    }
-
-                    Text(
-                        text = countText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = NothingWhite.copy(alpha = 0.5f),
-                        fontWeight = FontWeight.Black
-                    )
+            Box(
+                modifier = Modifier.size(width = 45.dp, height = 60.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                val countText = when {
+                    activeCollection == null -> ""
+                    totalImages > PREVIEW_IMAGE_COUNT -> "+${totalImages - PREVIEW_IMAGE_COUNT}"
+                    totalImages == 0 -> "0"
+                    else -> ""
                 }
+
+                Text(
+                    text = countText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = NothingWhite.copy(alpha = 0.5f),
+                    fontWeight = FontWeight.Black
+                )
             }
         }
     }

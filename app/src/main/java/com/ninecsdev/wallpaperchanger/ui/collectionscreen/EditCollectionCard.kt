@@ -50,9 +50,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.NothingTextField
-import com.ninecsdev.wallpaperchanger.ui.components.overlay.ProcessingOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
-import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /**

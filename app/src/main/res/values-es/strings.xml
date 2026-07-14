@@ -190,6 +190,9 @@
     <string name="action_delete">ELIMINAR</string>
     <string name="action_cancel">CANCELAR</string>
 
+    <!-- Generic processing overlay -->
+    <string name="label_processing">PROCESANDO…</string>
+
     <!-- Wallpaper preview overlay -->
     <string name="preview_title">VISTA PREVIA</string>
     <string name="preview_tap_to_exit">TOCA EN CUALQUIER LADO PARA SALIR</string>

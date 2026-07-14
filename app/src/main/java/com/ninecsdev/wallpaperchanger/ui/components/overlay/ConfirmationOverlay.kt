@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -29,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.ui.theme.CardCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -45,8 +48,8 @@ fun ConfirmationOverlay(
     modifier: Modifier = Modifier,
     title: String,
     message: String,
-    confirmLabel: String = "DELETE",
-    cancelLabel: String = "CANCEL",
+    confirmLabel: String = stringResource(R.string.action_delete),
+    cancelLabel: String = stringResource(R.string.action_cancel),
     accentColor: Color = NothingRed,
     onConfirm: () -> Unit,
     onCancel: () -> Unit
@@ -57,7 +60,7 @@ fun ConfirmationOverlay(
     ) {
         Card(
             modifier = modifier,
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(CardCornerRadius),
             colors = CardDefaults.cardColors(containerColor = NothingBlack),
             border = BorderStroke(1.dp, accentColor.copy(alpha = 0.4f))
         ) {

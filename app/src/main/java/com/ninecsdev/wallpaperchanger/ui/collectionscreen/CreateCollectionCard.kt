@@ -31,7 +31,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -46,8 +45,9 @@ import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButton
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButtonVariant
 import com.ninecsdev.wallpaperchanger.ui.components.NothingTextField
-import com.ninecsdev.wallpaperchanger.ui.components.overlay.ProcessingOverlay
-import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingDarkGray
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingDarkGraySelected
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /**
@@ -200,7 +200,7 @@ private fun SourceButton(
     onClick: () -> Unit
 ) {
     val borderColor = if (isSelected) NothingWhite else NothingWhite.copy(alpha = 0.1f)
-    val backgroundColor = if (isSelected) Color(0xFF222222) else Color(0xFF151515)
+    val backgroundColor = if (isSelected) NothingDarkGraySelected else NothingDarkGray
 
     Column(
         modifier = modifier
@@ -251,9 +251,7 @@ private fun CreateCardActions(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Previews — target CreateCollectionCardContent to avoid Dialog rendering limits
-// ---------------------------------------------------------------------------
+// Previews
 
 @Preview(name = "CreateCollectionCard – Idle", showBackground = true, backgroundColor = 0xFF000000)
 @Composable

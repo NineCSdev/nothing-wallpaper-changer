@@ -194,6 +194,9 @@
     <string name="action_delete">DELETE</string>
     <string name="action_cancel">CANCEL</string>
 
+    <!-- Generic processing overlay -->
+    <string name="label_processing">PROCESSING…</string>
+
     <!-- Wallpaper preview overlay -->
     <string name="preview_title">WALLPAPER PREVIEW</string>
     <string name="preview_tap_to_exit">TAP ANYWHERE TO EXIT</string>

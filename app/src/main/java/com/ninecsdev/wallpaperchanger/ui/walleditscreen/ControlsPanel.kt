@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButton
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButtonVariant
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /**
@@ -55,8 +56,8 @@ internal fun ControlsPanel(
                 brush = Brush.verticalGradient(
                     colors = listOf(
                         Color.Transparent,
-                        Color.Black.copy(alpha = 0.85f),
-                        Color.Black.copy(alpha = 0.95f)
+                        NothingBlack.copy(alpha = 0.85f),
+                        NothingBlack.copy(alpha = 0.95f)
                     )
                 )
             )

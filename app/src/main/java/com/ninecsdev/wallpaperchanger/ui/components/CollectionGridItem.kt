@@ -23,12 +23,12 @@ import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
@@ -133,7 +133,7 @@ private fun GridContent(uris: List<Uri>, totalCount: Int) {
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(RoundedCornerShape(bottomEnd = cornerRadius))
-                            .background(Color.Black.copy(alpha = 0.5f)),
+                            .background(NothingBlack.copy(alpha = 0.5f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(

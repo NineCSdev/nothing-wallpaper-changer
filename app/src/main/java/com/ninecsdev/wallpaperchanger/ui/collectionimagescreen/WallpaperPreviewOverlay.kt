@@ -58,6 +58,7 @@ import coil.request.ImageRequest
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import kotlinx.coroutines.delay
 import kotlin.math.abs
@@ -138,7 +139,7 @@ internal fun WallpaperPreviewOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(NothingBlack)
                 .pointerInput(Unit) {
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false)
@@ -245,7 +246,7 @@ internal fun WallpaperPreviewOverlay(
                             .background(
                                 brush = verticalGradient(
                                     colors = listOf(
-                                        Color.Black.copy(alpha = 0.6f),
+                                        NothingBlack.copy(alpha = 0.6f),
                                         Color.Transparent
                                     )
                                 )
@@ -279,7 +280,7 @@ internal fun WallpaperPreviewOverlay(
                                 brush = verticalGradient(
                                     colors = listOf(
                                         Color.Transparent,
-                                        Color.Black.copy(alpha = 0.6f)
+                                        NothingBlack.copy(alpha = 0.6f)
                                     )
                                 )
                             )
@@ -292,7 +293,7 @@ internal fun WallpaperPreviewOverlay(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = 0.5f))
+                                .background(NothingBlack.copy(alpha = 0.5f))
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.icon_edit),

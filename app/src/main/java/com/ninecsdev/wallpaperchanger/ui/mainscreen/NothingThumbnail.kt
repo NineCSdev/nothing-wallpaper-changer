@@ -19,8 +19,9 @@ import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /**
- * Universal preview thumbnail for a wallpaper.
- * Used in Grids, Selection Cards, and Default Wallpaper settings.
+ * Bordered preview thumbnail with a placeholder icon, used by the main-screen cards
+ * ([WallpaperSelectionCard] previews and [DefaultWallpaperCard]). Collection grids use the
+ * plain gray [ThumbnailSlot][com.ninecsdev.wallpaperchanger.ui.components.ThumbnailSlot] instead.
  */
 @Composable
 internal fun NothingThumbnail(

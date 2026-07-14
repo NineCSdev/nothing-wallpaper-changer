@@ -39,8 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.ninecsdev.wallpaperchanger.R
-import com.ninecsdev.wallpaperchanger.ui.theme.CardCornerRadius
-import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.components.SettingsToggleRow
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /**
@@ -156,7 +156,7 @@ private fun DefaultCardContent(
                 Text(
                     text = if (uri != null) stringResource(R.string.label_ready) else stringResource(R.string.label_not_set),
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (uri != null) NothingWhite else Color.Red.copy(alpha = 0.8f),
+                    color = if (uri != null) NothingWhite else NothingRed.copy(alpha = 0.8f),
                     fontWeight = FontWeight.Bold
                 )
             }
