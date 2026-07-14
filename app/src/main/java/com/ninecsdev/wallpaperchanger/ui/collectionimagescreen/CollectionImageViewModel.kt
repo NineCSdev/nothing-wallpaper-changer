@@ -24,7 +24,7 @@ import javax.inject.Inject
 class CollectionImageViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: WallpaperRepository
-) : ViewModel() {
+) : ViewModel(), CollectionImageActions {
 
     private val collectionId: Long = checkNotNull(savedStateHandle["collectionId"])
 
@@ -86,18 +86,18 @@ class CollectionImageViewModel @Inject constructor(
     }
 
     /** Clears the pick-import summary once the UI has shown it. */
-    fun clearImportSummary() {
+    override fun clearImportSummary() {
         _uiState.update { it.copy(importSummary = null) }
     }
 
     // Re-link unavailable image
 
     /** Marks [wallpaper] as the re-link target, opening the confirm dialog. */
-    fun requestRelink(wallpaper: WallpaperImage) {
+    override fun requestRelink(wallpaper: WallpaperImage) {
         _uiState.update { it.copy(relinkTarget = wallpaper) }
     }
 
-    fun cancelRelink() {
+    override fun cancelRelink() {
         _uiState.update { it.copy(relinkTarget = null) }
     }
 
@@ -124,21 +124,21 @@ class CollectionImageViewModel @Inject constructor(
     }
 
     /** Clears the re-link failure flag once the UI has shown the snackbar. */
-    fun clearRelinkFailed() {
+    override fun clearRelinkFailed() {
         _uiState.update { it.copy(relinkFailed = false) }
     }
 
     // Selection mode
 
     /** Enters selection mode with [id] as the first selected wallpaper. */
-    fun enterSelectionMode(id: Long) {
+    override fun enterSelectionMode(id: Long) {
         _uiState.update {
             it.copy(isSelectionMode = true, selectedIds = setOf(id))
         }
     }
 
     /** Toggles a wallpaper's selection. If nothing remains selected, exits selection mode. */
-    fun toggleSelection(id: Long) {
+    override fun toggleSelection(id: Long) {
         _uiState.update { state ->
             val updated = if (id in state.selectedIds) {
                 state.selectedIds - id
@@ -154,14 +154,14 @@ class CollectionImageViewModel @Inject constructor(
     }
 
     /** Exits selection mode and clears all selections. */
-    fun exitSelectionMode() {
+    override fun exitSelectionMode() {
         _uiState.update {
             it.copy(isSelectionMode = false, selectedIds = emptySet())
         }
     }
 
     /** Deletes all currently selected wallpapers from the collection. */
-    fun deleteSelectedWallpapers() {
+    override fun deleteSelectedWallpapers() {
         val state = _uiState.value
         if (state.selectedIds.isEmpty()) return
 
@@ -179,7 +179,7 @@ class CollectionImageViewModel @Inject constructor(
      * snapshot of every other collection with a few preview thumbnails (the dialog is static;
      * no need to keep observing while it's open).
      */
-    fun requestTransfer(mode: TransferMode) {
+    override fun requestTransfer(mode: TransferMode) {
         if (_uiState.value.selectedIds.isEmpty()) return
         viewModelScope.launch {
             val targets = repository.getAllCollections().first()
@@ -199,12 +199,12 @@ class CollectionImageViewModel @Inject constructor(
     }
 
     /** Closes the transfer target picker without transferring. */
-    fun cancelTransfer() {
+    override fun cancelTransfer() {
         _uiState.update { it.copy(transferMode = null, transferTargets = emptyList()) }
     }
 
     /** Runs the pending copy/move of the selected wallpapers into [target], then exits selection. */
-    fun transferToCollection(target: TransferTarget) {
+    override fun transferToCollection(target: TransferTarget) {
         val state = _uiState.value
         val mode = state.transferMode ?: return
         val images = state.wallpapers.filter { it.id in state.selectedIds }
@@ -235,17 +235,17 @@ class CollectionImageViewModel @Inject constructor(
     }
 
     /** Clears the transfer summary once the UI has shown the snackbar. */
-    fun clearTransferSummary() {
+    override fun clearTransferSummary() {
         _uiState.update { it.copy(transferSummary = null) }
     }
 
     // Full-screen preview
 
-    fun openPreview(wallpaper: WallpaperImage) {
+    override fun openPreview(wallpaper: WallpaperImage) {
         _uiState.update { it.copy(previewWallpaper = wallpaper) }
     }
 
-    fun closePreview() {
+    override fun closePreview() {
         _uiState.update { it.copy(previewWallpaper = null) }
     }
 }

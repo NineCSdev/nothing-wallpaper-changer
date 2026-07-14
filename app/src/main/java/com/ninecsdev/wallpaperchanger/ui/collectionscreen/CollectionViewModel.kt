@@ -36,7 +36,7 @@ import javax.inject.Inject
 class CollectionViewModel @Inject constructor(
     private val repository: WallpaperRepository,
     serviceStateManager: ServiceStateManager
-) : ViewModel() {
+) : ViewModel(), CollectionListActions {
 
     private companion object {
         const val TAG = "CollectionViewModel"
@@ -178,7 +178,7 @@ class CollectionViewModel @Inject constructor(
     }
 
     /** Clears the pick-import summary once the UI has shown it. */
-    fun clearImportSummary() {
+    override fun clearImportSummary() {
         _screenState.update { it.copy(importSummary = null) }
     }
 
@@ -197,7 +197,7 @@ class CollectionViewModel @Inject constructor(
     }
 
     /** Updates the collection currently open in the edit modal. */
-    fun updateEditingCollection(
+    override fun updateEditingCollection(
         newName: String,
         cropRule: CropRule,
         rotationFrequency: RotationFrequency
@@ -209,7 +209,7 @@ class CollectionViewModel @Inject constructor(
     }
 
     /** Makes the collection currently open in the edit modal the active one. */
-    fun setActiveEditingCollection() {
+    override fun setActiveEditingCollection() {
         val collection = _screenState.value.editingCollection ?: return
         viewModelScope.launch {
             repository.setActiveCollection(collection.id)
@@ -217,7 +217,7 @@ class CollectionViewModel @Inject constructor(
     }
 
     /** Manually re-syncs the **folder** collection currently open in the edit modal. */
-    fun syncEditingCollection() {
+    override fun syncEditingCollection() {
         val collection = _screenState.value.editingCollection ?: return
         viewModelScope.launch {
             setProcessing(true)
@@ -228,7 +228,7 @@ class CollectionViewModel @Inject constructor(
 
     // Sort order
 
-    fun setSortOrder(order: CollectionSortOrder) {
+    override fun setSortOrder(order: CollectionSortOrder) {
         _sortOrder.value = order
     }
 
@@ -238,7 +238,7 @@ class CollectionViewModel @Inject constructor(
         _screenState.update { it.copy(isPickerMode = picker) }
     }
 
-    fun toggleCreateModal(show: Boolean) {
+    override fun toggleCreateModal(show: Boolean) {
         if (!show) pendingFolderUri = null
         _screenState.update {
             if (show) it.copy(isShowingCreateModal = true)
@@ -252,7 +252,7 @@ class CollectionViewModel @Inject constructor(
         _screenState.update { it.copy(editingCollection = collection) }
     }
 
-    fun closeEditModal() {
+    override fun closeEditModal() {
         _screenState.update { it.copy(editingCollection = null) }
     }
 

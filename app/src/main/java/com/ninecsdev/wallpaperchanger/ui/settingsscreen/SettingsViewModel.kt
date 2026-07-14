@@ -32,7 +32,7 @@ class SettingsViewModel @Inject constructor(
     private val appDataStore: AppDataStore,
     private val imageInternalizer: ImageInternalizer,
     @param:ApplicationContext private val context: Context
-) : ViewModel() {
+) : ViewModel(), SettingsActions {
 
     private val appVersion: String = try {
         context.packageManager
@@ -94,35 +94,35 @@ class SettingsViewModel @Inject constructor(
 
     // Actions
 
-    fun setScreenOffDelay(delayMs: Long) {
+    override fun setScreenOffDelay(delayMs: Long) {
         viewModelScope.launch { appDataStore.setScreenOffDelay(delayMs) }
     }
 
-    fun setStartOnBoot(enabled: Boolean) {
+    override fun setStartOnBoot(enabled: Boolean) {
         viewModelScope.launch { appDataStore.setStartOnBoot(enabled) }
     }
 
-    fun setCompressionQualityHigh(quality: Int) {
+    override fun setCompressionQualityHigh(quality: Int) {
         viewModelScope.launch { appDataStore.setCompressionQualityHigh(quality) }
     }
 
-    fun setCompressionQualityLow(quality: Int) {
+    override fun setCompressionQualityLow(quality: Int) {
         viewModelScope.launch { appDataStore.setCompressionQualityLow(quality) }
     }
 
-    fun setBatterySaverPolicy(policy: BatterySaverPolicy) {
+    override fun setBatterySaverPolicy(policy: BatterySaverPolicy) {
         viewModelScope.launch { appDataStore.setBatterySaverPolicy(policy) }
     }
 
-    fun setWallpaperDestination(destination: WallpaperDestination) {
+    override fun setWallpaperDestination(destination: WallpaperDestination) {
         viewModelScope.launch { appDataStore.setWallpaperDestination(destination) }
     }
 
-    fun setWallpaperZoomFix(zoomFix: WallpaperZoomFix) {
+    override fun setWallpaperZoomFix(zoomFix: WallpaperZoomFix) {
         viewModelScope.launch { appDataStore.setWallpaperZoomFix(zoomFix) }
     }
 
-    fun setKeepLocalCopies(enabled: Boolean) {
+    override fun setKeepLocalCopies(enabled: Boolean) {
         viewModelScope.launch { appDataStore.setKeepLocalCopies(enabled) }
     }
 }

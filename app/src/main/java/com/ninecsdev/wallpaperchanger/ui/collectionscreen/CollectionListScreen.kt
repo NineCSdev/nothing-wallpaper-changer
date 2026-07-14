@@ -59,27 +59,20 @@ import com.ninecsdev.wallpaperchanger.R
 @Composable
 fun CollectionListScreen(
     uiState: CollectionUiState,
+    actions: CollectionListActions,
     onCollectionClick: (Long) -> Unit,
-    onSortOrderChange: (CollectionSortOrder) -> Unit,
-    onAddClick: () -> Unit,
     onBackClick: () -> Unit,
-    // Create modal callbacks
-    onDismissCreateModal: () -> Unit,
+    // Composites wired in [CollectionListRoute]: they pair a ViewModel call with a
+    // launcher, navigation, or service-lifecycle side effect this screen can't own.
     onFolderSelect: () -> Unit,
     onPhotosSelect: () -> Unit,
     onCreateCollection: (name: String, rule: CropRule) -> Unit,
-    // Edit modal callbacks
-    onDismissEditModal: () -> Unit,
-    onEditCollection: (newName: String, rule: CropRule, freq: RotationFrequency) -> Unit,
-    onSetActiveCollection: () -> Unit,
     onDeleteCollection: () -> Unit,
-    onSyncCollection: () -> Unit,
-    onViewImages: () -> Unit,
-    onImportSummaryShown: () -> Unit = {}
+    onViewImages: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
-    ImportSummarySnackbarEffect(uiState.importSummary, snackbarHostState, onImportSummaryShown)
+    ImportSummarySnackbarEffect(uiState.importSummary, snackbarHostState, actions::clearImportSummary)
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -119,7 +112,7 @@ fun CollectionListScreen(
             },
             floatingActionButton = {
                 FloatingActionButton(
-                    onClick = onAddClick,
+                    onClick = { actions.toggleCreateModal(true) },
                     containerColor = NothingWhite,
                     contentColor = NothingBlack,
                     shape = MaterialTheme.shapes.large
@@ -141,7 +134,7 @@ fun CollectionListScreen(
                 ) {
                     SortDropdown(
                         selected = uiState.sortOrder,
-                        onSelected = onSortOrderChange
+                        onSelected = actions::setSortOrder
                     )
                 }
 
@@ -171,9 +164,10 @@ fun CollectionListScreen(
         if (uiState.isShowingCreateModal) {
             CreateCollectionCard(
                 isProcessing = uiState.isProcessing,
+                hasError = uiState.createError,
                 hasPendingFolder = uiState.hasPendingFolder,
                 hasPendingPhotos = uiState.hasPendingPhotos,
-                onDismiss = onDismissCreateModal,
+                onDismiss = { actions.toggleCreateModal(false) },
                 onFolderSelect = onFolderSelect,
                 onPhotosSelect = onPhotosSelect,
                 onCreateClick = onCreateCollection
@@ -184,11 +178,11 @@ fun CollectionListScreen(
             EditCollectionCard(
                 collection = collection,
                 isProcessing = uiState.isProcessing,
-                onDismiss = onDismissEditModal,
-                onEdit = onEditCollection,
-                onSetActive = onSetActiveCollection,
+                onDismiss = actions::closeEditModal,
+                onEdit = actions::updateEditingCollection,
+                onSetActive = actions::setActiveEditingCollection,
                 onDelete = onDeleteCollection,
-                onSyncClick = onSyncCollection,
+                onSyncClick = actions::syncEditingCollection,
                 onViewImages = onViewImages
             )
         }
@@ -238,21 +232,14 @@ fun CollectionListScreenPopulatedPreview() {
                     4L to CollectionPreviewState(previewUris = emptyList(), totalCount = 2)
                 )
             ),
+            actions = PreviewCollectionListActions,
             onCollectionClick = {},
-            onSortOrderChange = {},
-            onAddClick = {},
             onBackClick = {},
-            onDismissCreateModal = {},
             onFolderSelect = {},
             onPhotosSelect = {},
             onCreateCollection = { _, _ -> },
-            onDismissEditModal = {},
-            onEditCollection = { _, _, _ -> },
-            onSetActiveCollection = {},
             onDeleteCollection = {},
-            onSyncCollection = {},
-            onViewImages = {},
-            onImportSummaryShown = {}
+            onViewImages = {}
         )
     }
 }
@@ -263,20 +250,25 @@ fun CollectionListScreenEmptyPreview() {
     MaterialTheme {
         CollectionListScreen(
             uiState = CollectionUiState(),
+            actions = PreviewCollectionListActions,
             onCollectionClick = {},
-            onSortOrderChange = {},
-            onAddClick = {},
             onBackClick = {},
-            onDismissCreateModal = {},
             onFolderSelect = {},
             onPhotosSelect = {},
             onCreateCollection = { _, _ -> },
-            onDismissEditModal = {},
-            onEditCollection = { _, _, _ -> },
-            onSetActiveCollection = {},
             onDeleteCollection = {},
-            onSyncCollection = {},
             onViewImages = {}
         )
     }
+}
+
+/** No-op actions for previews. */
+private object PreviewCollectionListActions : CollectionListActions {
+    override fun setSortOrder(order: CollectionSortOrder) {}
+    override fun toggleCreateModal(show: Boolean) {}
+    override fun closeEditModal() {}
+    override fun updateEditingCollection(newName: String, cropRule: CropRule, rotationFrequency: RotationFrequency) {}
+    override fun setActiveEditingCollection() {}
+    override fun syncEditingCollection() {}
+    override fun clearImportSummary() {}
 }

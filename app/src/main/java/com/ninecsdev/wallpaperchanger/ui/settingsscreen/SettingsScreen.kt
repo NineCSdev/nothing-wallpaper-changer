@@ -44,15 +44,8 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 fun SettingsScreen(
     uiState: SettingsUiState,
     storageUsage: StorageUsage?,
-    onBackClick: () -> Unit,
-    onScreenOffDelayChange: (Long) -> Unit,
-    onStartOnBootChange: (Boolean) -> Unit,
-    onBatterySaverPolicyChange: (BatterySaverPolicy) -> Unit,
-    onWallpaperDestinationChange: (WallpaperDestination) -> Unit,
-    onWallpaperZoomFixChange: (WallpaperZoomFix) -> Unit,
-    onCompressionQualityHighChange: (Int) -> Unit,
-    onCompressionQualityLowChange: (Int) -> Unit,
-    onKeepLocalCopiesChange: (Boolean) -> Unit
+    actions: SettingsActions,
+    onBackClick: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -100,7 +93,7 @@ fun SettingsScreen(
 
                 ScreenOffDelayField(
                     currentDelayMs = uiState.screenOffDelayMs,
-                    onDelayChange = onScreenOffDelayChange
+                    onDelayChange = actions::setScreenOffDelay
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -109,7 +102,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_autostart_title),
                     subtitle = stringResource(R.string.settings_autostart_subtitle),
                     checked = uiState.startOnBoot,
-                    onCheckedChange = onStartOnBootChange
+                    onCheckedChange = actions::setStartOnBoot
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -119,7 +112,7 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_battery_saver_subtitle),
                     options = BatterySaverPolicy.entries,
                     selected = uiState.batterySaverPolicy,
-                    onOptionChange = onBatterySaverPolicyChange,
+                    onOptionChange = actions::setBatterySaverPolicy,
                     optionLabel = { policy ->
                         when (policy) {
                             BatterySaverPolicy.STOP -> stringResource(R.string.settings_battery_stop)
@@ -136,7 +129,7 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_destination_subtitle),
                     options = WallpaperDestination.entries,
                     selected = uiState.wallpaperDestination,
-                    onOptionChange = onWallpaperDestinationChange,
+                    onOptionChange = actions::setWallpaperDestination,
                     optionLabel = { destination ->
                         when (destination) {
                             WallpaperDestination.LOCK -> stringResource(R.string.settings_destination_lock)
@@ -150,7 +143,7 @@ fun SettingsScreen(
 
                 WallpaperZoomFixSelector(
                     selected = uiState.wallpaperZoomFix,
-                    onZoomFixChange = onWallpaperZoomFixChange
+                    onZoomFixChange = actions::setWallpaperZoomFix
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -185,7 +178,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_keep_local_copies_title),
                     subtitle = stringResource(R.string.settings_keep_local_copies_subtitle),
                     checked = uiState.keepLocalCopies,
-                    onCheckedChange = onKeepLocalCopiesChange
+                    onCheckedChange = actions::setKeepLocalCopies
                 )
 
                 StorageUsageRow(usage = storageUsage)
@@ -200,7 +193,7 @@ fun SettingsScreen(
                     label = stringResource(R.string.settings_quality_high_label),
                     subtitle = stringResource(R.string.settings_quality_high_subtitle),
                     value = uiState.compressionQualityHigh,
-                    onValueChange = onCompressionQualityHighChange
+                    onValueChange = actions::setCompressionQualityHigh
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -209,7 +202,7 @@ fun SettingsScreen(
                     label = stringResource(R.string.settings_quality_low_label),
                     subtitle = stringResource(R.string.settings_quality_low_subtitle),
                     value = uiState.compressionQualityLow,
-                    onValueChange = onCompressionQualityLowChange
+                    onValueChange = actions::setCompressionQualityLow
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -264,15 +257,21 @@ fun SettingsScreenPreview() {
                 appVersion = "0.3.3-beta"
             ),
             storageUsage = StorageUsage(totalBytes = 148_897_792, fileCount = 87),
-            onBackClick = {},
-            onScreenOffDelayChange = {},
-            onStartOnBootChange = {},
-            onBatterySaverPolicyChange = {},
-            onWallpaperZoomFixChange = {},
-            onCompressionQualityHighChange = {},
-            onCompressionQualityLowChange = {},
-            onWallpaperDestinationChange = {},
-            onKeepLocalCopiesChange = {}
+            actions = PreviewSettingsActions,
+            onBackClick = {}
         )
     }
+}
+
+/** No-op actions for previews. */
+private object PreviewSettingsActions : SettingsActions {
+    override fun setScreenOffDelay(delayMs: Long) {}
+    override fun setStartOnBoot(enabled: Boolean) {}
+    override fun setBatterySaverPolicy(policy: BatterySaverPolicy) {}
+    override fun setWallpaperDestination(destination: WallpaperDestination) {}
+    override fun setWallpaperZoomFix(zoomFix: WallpaperZoomFix) {}
+    override fun setCompressionQualityHigh(quality: Int) {}
+    override fun setCompressionQualityLow(quality: Int) {}
+    override fun setKeepLocalCopies(enabled: Boolean) {}
+    override fun setAppLanguage(tag: String) {}
 }

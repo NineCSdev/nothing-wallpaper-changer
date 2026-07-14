@@ -148,42 +148,26 @@ internal fun SharedTransitionScope.previewFlightModifier(
 @Composable
 fun CollectionImageScreen(
     uiState: CollectionImageUiState,
+    actions: CollectionImageActions,
     onBackClick: () -> Unit,
     onAddWallpapers: () -> Unit,
-    onWallpaperTap: (WallpaperImage) -> Unit,
-    onUnavailableTap: (WallpaperImage) -> Unit = {},
-    onWallpaperLongPress: (Long) -> Unit,
-    onToggleSelection: (Long) -> Unit,
-    onExitSelectionMode: () -> Unit,
-    onDeleteSelected: () -> Unit,
-    onCopySelected: () -> Unit = {},
-    onMoveSelected: () -> Unit = {},
-    onTransferTargetSelected: (TransferTarget) -> Unit = {},
-    onTransferCancel: () -> Unit = {},
-    onTransferSummaryShown: () -> Unit = {},
-    onEditSelected: (WallpaperImage) -> Unit,
-    onEditFromPreview: (WallpaperImage) -> Unit,
-    onPreviewPageChanged: (WallpaperImage) -> Unit,
-    onClosePreview: () -> Unit,
-    onImportSummaryShown: () -> Unit = {},
-    onRelinkConfirm: () -> Unit = {},
-    onRelinkCancel: () -> Unit = {},
-    onRelinkFailedShown: () -> Unit = {}
+    onEditWallpaper: (WallpaperImage) -> Unit,
+    onRelinkConfirm: () -> Unit
 ) {
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    ImportSummarySnackbarEffect(uiState.importSummary, snackbarHostState, onImportSummaryShown)
+    ImportSummarySnackbarEffect(uiState.importSummary, snackbarHostState, actions::clearImportSummary)
 
     val relinkFailedMessage = stringResource(R.string.relink_failed_snackbar)
     LaunchedEffect(uiState.relinkFailed) {
         if (uiState.relinkFailed) {
             snackbarHostState.showSnackbar(relinkFailedMessage)
-            onRelinkFailedShown()
+            actions.clearRelinkFailed()
         }
     }
 
-    TransferSummarySnackbarEffect(uiState.transferSummary, snackbarHostState, onTransferSummaryShown)
+    TransferSummarySnackbarEffect(uiState.transferSummary, snackbarHostState, actions::clearTransferSummary)
 
     SharedTransitionLayout {
         val sharedScope = this
@@ -202,7 +186,7 @@ fun CollectionImageScreen(
         val knownAspectRatios = remember { mutableStateMapOf<Long, Float>() }
 
         val currentPreview by rememberUpdatedState(uiState.previewWallpaper)
-        val currentOnClosePreview by rememberUpdatedState(onClosePreview)
+        val currentActions by rememberUpdatedState(actions)
 
         // This flip fires the reverse flight: the currently viewed wallpaper's cell enters exactly as the overlay exits
         val dismissPreview = {
@@ -228,7 +212,7 @@ fun CollectionImageScreen(
             snapshotFlow { previewVisibleState.isIdle && !sharedScope.isTransitionActive }
                 .collect { settled ->
                     if (settled && !previewVisibleState.currentState && currentPreview != null) {
-                        currentOnClosePreview()
+                        currentActions.closePreview()
                     }
                 }
         }
@@ -236,7 +220,7 @@ fun CollectionImageScreen(
         // Handle back press: exit selection mode first, then close preview, then navigate back
         // TODO: Do a better handling of this
         BackHandler(enabled = uiState.isSelectionMode) {
-            onExitSelectionMode()
+            actions.exitSelectionMode()
         }
         BackHandler(enabled = previewVisibleState.targetState) {
             dismissPreview()
@@ -267,7 +251,7 @@ fun CollectionImageScreen(
                     },
                     navigationIcon = {
                         if (uiState.isSelectionMode) {
-                            IconButton(onClick = onExitSelectionMode) {
+                            IconButton(onClick = actions::exitSelectionMode) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = stringResource(R.string.cd_exit_selection),
@@ -293,7 +277,7 @@ fun CollectionImageScreen(
                             else -> 0.15f
                         }
                         IconButton(
-                            onClick = onCopySelected,
+                            onClick = { actions.requestTransfer(TransferMode.COPY) },
                             enabled = uiState.canCopySelection
                         ) {
                             Icon(
@@ -313,7 +297,7 @@ fun CollectionImageScreen(
                                 else -> 0.15f
                             }
                             IconButton(
-                                onClick = onMoveSelected,
+                                onClick = { actions.requestTransfer(TransferMode.MOVE) },
                                 enabled = uiState.canMoveSelection
                             ) {
                                 Icon(
@@ -332,7 +316,7 @@ fun CollectionImageScreen(
                             else -> 0.15f
                         }
                         IconButton(
-                            onClick = { uiState.selectedWallpaper?.let(onEditSelected) },
+                            onClick = { uiState.selectedWallpaper?.let(onEditWallpaper) },
                             enabled = uiState.selectedWallpaper != null
                         ) {
                             Icon(
@@ -420,16 +404,16 @@ fun CollectionImageScreen(
                             },
                             onClick = {
                                 if (uiState.isSelectionMode) {
-                                    onToggleSelection(wallpaper.id)
+                                    actions.toggleSelection(wallpaper.id)
                                 } else if (!wallpaper.isAvailable) {
-                                    onUnavailableTap(wallpaper)
+                                    actions.requestRelink(wallpaper)
                                 } else {
-                                    onWallpaperTap(wallpaper)
+                                    actions.openPreview(wallpaper)
                                 }
                             },
                             onLongClick = {
                                 if (!uiState.isSelectionMode) {
-                                    onWallpaperLongPress(wallpaper.id)
+                                    actions.enterSelectionMode(wallpaper.id)
                                 }
                             }
                         )
@@ -472,8 +456,8 @@ fun CollectionImageScreen(
                 sharedWallpaperId = uiState.previewWallpaper?.id,
                 knownAspectRatios = knownAspectRatios,
                 onDismiss = dismissPreview,
-                onEdit = onEditFromPreview,
-                onPageChanged = onPreviewPageChanged
+                onEdit = onEditWallpaper,
+                onPageChanged = actions::openPreview
             )
         }
     }
@@ -488,7 +472,7 @@ fun CollectionImageScreen(
                     else stringResource(R.string.image_screen_delete_multiple_message),
             onConfirm = {
                 showDeleteConfirmation = false
-                if (selectedCount > 0) onDeleteSelected()
+                if (selectedCount > 0) actions.deleteSelectedWallpapers()
             },
             onCancel = { showDeleteConfirmation = false }
         )
@@ -499,8 +483,8 @@ fun CollectionImageScreen(
         TransferTargetOverlay(
             mode = uiState.transferMode,
             targets = uiState.transferTargets,
-            onTargetSelected = onTransferTargetSelected,
-            onCancel = onTransferCancel
+            onTargetSelected = actions::transferToCollection,
+            onCancel = actions::cancelTransfer
         )
     }
 
@@ -513,7 +497,7 @@ fun CollectionImageScreen(
             cancelLabel = stringResource(R.string.relink_dialog_cancel),
             accentColor = NothingWhite,
             onConfirm = onRelinkConfirm,
-            onCancel = onRelinkCancel
+            onCancel = actions::cancelRelink
         )
     }
 }
@@ -699,17 +683,11 @@ fun CollectionImageScreenPreview() {
                 wallpapers = sampleWallpapers,
                 isLoading = false
             ),
+            actions = PreviewCollectionImageActions,
             onBackClick = {},
             onAddWallpapers = {},
-            onWallpaperTap = {},
-            onWallpaperLongPress = {},
-            onToggleSelection = {},
-            onExitSelectionMode = {},
-            onDeleteSelected = {},
-            onEditSelected = {},
-            onEditFromPreview = {},
-            onPreviewPageChanged = {},
-            onClosePreview = {}
+            onEditWallpaper = {},
+            onRelinkConfirm = {}
         )
     }
 }
@@ -734,17 +712,11 @@ fun CollectionImageScreenSelectionPreview() {
                 isSelectionMode = true,
                 selectedIds = setOf(2L, 4L)
             ),
+            actions = PreviewCollectionImageActions,
             onBackClick = {},
             onAddWallpapers = {},
-            onWallpaperTap = {},
-            onWallpaperLongPress = {},
-            onToggleSelection = {},
-            onExitSelectionMode = {},
-            onDeleteSelected = {},
-            onEditSelected = {},
-            onEditFromPreview = {},
-            onPreviewPageChanged = {},
-            onClosePreview = {}
+            onEditWallpaper = {},
+            onRelinkConfirm = {}
         )
     }
 }
@@ -759,17 +731,29 @@ fun CollectionImageScreenEmptyPreview() {
                 wallpapers = emptyList(),
                 isLoading = false
             ),
+            actions = PreviewCollectionImageActions,
             onBackClick = {},
             onAddWallpapers = {},
-            onWallpaperTap = {},
-            onWallpaperLongPress = {},
-            onToggleSelection = {},
-            onExitSelectionMode = {},
-            onDeleteSelected = {},
-            onEditSelected = {},
-            onEditFromPreview = {},
-            onPreviewPageChanged = {},
-            onClosePreview = {}
+            onEditWallpaper = {},
+            onRelinkConfirm = {}
         )
     }
+}
+
+/** No-op actions for previews. */
+private object PreviewCollectionImageActions : CollectionImageActions {
+    override fun openPreview(wallpaper: WallpaperImage) {}
+    override fun closePreview() {}
+    override fun enterSelectionMode(id: Long) {}
+    override fun toggleSelection(id: Long) {}
+    override fun exitSelectionMode() {}
+    override fun deleteSelectedWallpapers() {}
+    override fun requestTransfer(mode: TransferMode) {}
+    override fun transferToCollection(target: TransferTarget) {}
+    override fun cancelTransfer() {}
+    override fun clearTransferSummary() {}
+    override fun requestRelink(wallpaper: WallpaperImage) {}
+    override fun cancelRelink() {}
+    override fun clearRelinkFailed() {}
+    override fun clearImportSummary() {}
 }
