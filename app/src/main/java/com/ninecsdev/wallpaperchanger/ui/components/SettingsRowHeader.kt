@@ -23,7 +23,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  * The shared "bold all-caps title + dimmed subtitle" header used by settings rows and the
  * main-screen cards (toggle rows, selectors, sliders, the language picker, etc.).
  *
- * [titleTrailingContent] renders inline after the title (pass e.g. an info [IconButton] for
+ * [titleTrailingContent] renders inline after the title (pass e.g. an info IconButton for
  * rows that need one); it's empty (and free) for the common title-only case.
  */
 @Composable

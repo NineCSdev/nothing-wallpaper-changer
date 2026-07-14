@@ -160,7 +160,11 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                LanguageSelector()
+                LanguageSelector(
+                    languages = uiState.availableLanguages,
+                    selectedTag = uiState.selectedLanguageTag,
+                    onLanguageSelected = actions::setAppLanguage
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -255,6 +259,12 @@ fun SettingsScreenPreview() {
                 wallpaperZoomFix = WallpaperZoomFix.BLURRED,
                 compressionQualityHigh = 95,
                 compressionQualityLow = 80,
+                availableLanguages = listOf(
+                    LanguageOption("", "System default", null),
+                    LanguageOption("en", "English", "English"),
+                    LanguageOption("es", "Español", "Spanish")
+                ),
+                selectedLanguageTag = "",
                 appVersion = "0.3.3-beta"
             ),
             storageUsage = StorageUsage(totalBytes = 148_897_792, fileCount = 87),

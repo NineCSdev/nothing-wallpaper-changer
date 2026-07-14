@@ -134,6 +134,7 @@
     <string name="create_collection_action_cancel">CANCEL</string>
     <string name="create_collection_action_create">CREATE</string>
     <string name="create_collection_processing">ADDING PHOTOS…</string>
+    <string name="create_collection_error">COULDN\'T CREATE COLLECTION — TRY AGAIN</string>
 
     <!-- Edit collection card -->
     <string name="edit_collection_title">MANAGE COLLECTION</string>

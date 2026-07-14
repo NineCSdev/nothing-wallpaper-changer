@@ -130,6 +130,7 @@
     <string name="create_collection_action_cancel">CANCELAR</string>
     <string name="create_collection_action_create">CREAR</string>
     <string name="create_collection_processing">AÑADIENDO FOTOS…</string>
+    <string name="create_collection_error">NO SE PUDO CREAR LA COLECCIÓN — INTÉNTALO DE NUEVO</string>
 
     <!-- Edit collection card -->
     <string name="edit_collection_title">AJUSTES DE LA COLECCIÓN</string>

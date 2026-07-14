@@ -51,6 +51,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 @Composable
 internal fun CreateCollectionCard(
     isProcessing: Boolean = false,
+    hasError: Boolean = false,
     hasPendingFolder: Boolean,
     hasPendingPhotos: Boolean,
     onDismiss: () -> Unit,
@@ -67,6 +68,7 @@ internal fun CreateCollectionCard(
     ) {
         CreateCollectionCardContent(
             isProcessing = isProcessing,
+            hasError = hasError,
             hasPendingFolder = hasPendingFolder,
             hasPendingPhotos = hasPendingPhotos,
             collectionName = collectionName,
@@ -84,6 +86,7 @@ internal fun CreateCollectionCard(
 @Composable
 private fun CreateCollectionCardContent(
     isProcessing: Boolean,
+    hasError: Boolean = false,
     hasPendingFolder: Boolean,
     hasPendingPhotos: Boolean,
     collectionName: String,
@@ -139,7 +142,18 @@ private fun CreateCollectionCardContent(
             onRuleSelected = onRuleSelected
         )
 
-                Spacer(modifier = Modifier.height(16.dp))
+        if (hasError) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.create_collection_error),
+                style = MaterialTheme.typography.labelSmall,
+                color = NothingRed,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         CreateCardActions(
             onDismiss = onDismiss,

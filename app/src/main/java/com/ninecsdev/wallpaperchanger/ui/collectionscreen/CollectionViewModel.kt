@@ -109,7 +109,8 @@ class CollectionViewModel @Inject constructor(
             hasPendingPhotos = modal.hasPendingPhotos,
             editingCollection = modal.editingCollection,
             isProcessing = modal.isProcessing,
-            importSummary = modal.importSummary
+            importSummary = modal.importSummary,
+            createError = modal.createError
         )
     }.stateIn(
         scope = viewModelScope,
@@ -137,6 +138,7 @@ class CollectionViewModel @Inject constructor(
      * Creates the pending collection, folder or manual, whichever source is currently pending.
      */
     fun finalizeCollection(name: String, rule: CropRule, onComplete: (shouldStartService: Boolean) -> Unit) {
+        _screenState.update { it.copy(createError = false) }
         if (pendingFolderUri != null) {
             finalizeFolderCollection(name, rule, onComplete)
         } else {
@@ -154,6 +156,7 @@ class CollectionViewModel @Inject constructor(
                 onComplete(shouldStartService)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to create folder collection: ${e.message}")
+                _screenState.update { it.copy(createError = true) }
             } finally {
                 setProcessing(false)
             }
@@ -171,6 +174,7 @@ class CollectionViewModel @Inject constructor(
                 onComplete(shouldStartService)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to create manual collection: ${e.message}")
+                _screenState.update { it.copy(createError = true) }
             } finally {
                 setProcessing(false)
             }
@@ -241,8 +245,8 @@ class CollectionViewModel @Inject constructor(
     override fun toggleCreateModal(show: Boolean) {
         if (!show) pendingFolderUri = null
         _screenState.update {
-            if (show) it.copy(isShowingCreateModal = true)
-            else it.copy(isShowingCreateModal = false, hasPendingFolder = false, hasPendingPhotos = false)
+            if (show) it.copy(isShowingCreateModal = true, createError = false)
+            else it.copy(isShowingCreateModal = false, hasPendingFolder = false, hasPendingPhotos = false, createError = false)
         }
     }
 
@@ -269,5 +273,6 @@ private data class ScreenModalState(
     val hasPendingPhotos: Boolean = false,
     val editingCollection: WallpaperCollection? = null,
     val isProcessing: Boolean = false,
-    val importSummary: PickImportResult? = null
+    val importSummary: PickImportResult? = null,
+    val createError: Boolean = false
 )
