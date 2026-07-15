@@ -25,6 +25,10 @@ data class EditTransform(
     val drawX: Float,
     /** Top-left Y of the scaled content: centering + pan. Ready for `Matrix.postTranslate`. */
     val drawY: Float,
+    /** Maximum pixel pan from center on the X axis (offset ±1 maps to ±this; `panX = offsetX * maxPanX`). 0 when the axis doesn't overflow. */
+    val maxPanX: Float,
+    /** Maximum pixel pan from center on the Y axis (offset ±1 maps to ±this; `panY = offsetY * maxPanY`). 0 when the axis doesn't overflow. */
+    val maxPanY: Float,
 )
 
 /**
@@ -71,5 +75,7 @@ fun computeEditTransform(
         panY = panY,
         drawX = centerX + panX,
         drawY = centerY + panY,
+        maxPanX = maxPanX,
+        maxPanY = maxPanY,
     )
 }

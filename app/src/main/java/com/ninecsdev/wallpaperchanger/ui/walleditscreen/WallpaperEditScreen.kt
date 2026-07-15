@@ -8,8 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -21,11 +20,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
@@ -49,7 +50,8 @@ import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
  * Full-screen wallpaper editor.
  *
  * The wallpaper fills the entire screen as the editing canvas.
- * Zooming and moving the image is supported via a pinch-to-zoom gesture.
+ * Pinch to zoom (into wherever the fingers are) and drag to move the image;
+ * the gesture math lives in [applyEditGesture] (EditMath.kt).
  *
  * A collapsible bottom panel provides precision sliders and save/cancel actions.
  *
@@ -80,14 +82,15 @@ fun WallpaperEditScreen(
     // Discard confirmation dialog visibility
     var showDiscardDialog by remember { mutableStateOf(false) }
 
-    // Restore saved edit params when wallpaper loads
+    // Restore saved edit params when wallpaper loads, coercing into the editor's bounds so a
+    // legacy/corrupt persisted value can't produce a bad first frame (e.g. zoom 0 -> invisible).
     LaunchedEffect(wallpaper) {
         wallpaper?.let { wp ->
             val saved = wp.editParams ?: EditParams(zoom = 1f, offsetX = 0f, offsetY = 0f)
-            zoom = saved.zoom
-            offsetX = saved.offsetX
-            offsetY = saved.offsetY
-            baseline = saved
+            zoom = coerceZoom(saved.zoom)
+            offsetX = coerceOffset(saved.offsetX)
+            offsetY = coerceOffset(saved.offsetY)
+            baseline = saved.copy(zoom = zoom, offsetX = offsetX, offsetY = offsetY)
         }
     }
 
@@ -96,6 +99,12 @@ fun WallpaperEditScreen(
     val setZoom: (Float) -> Unit = { zoom = coerceZoom(it) }
     val setOffsetX: (Float) -> Unit = { offsetX = coerceOffset(it) }
     val setOffsetY: (Float) -> Unit = { offsetY = coerceOffset(it) }
+    // Pinch/drag updates all three axes atomically (already coerced by applyEditGesture).
+    val onGestureTransform: (GestureTransform) -> Unit = { g ->
+        zoom = g.zoom
+        offsetX = g.offsetX
+        offsetY = g.offsetY
+    }
 
     val hasUnsavedChanges = wallpaper != null &&
         !matchesEditParams(baseline, zoom, offsetX, offsetY)
@@ -129,6 +138,7 @@ fun WallpaperEditScreen(
             onZoomChange = setZoom,
             onOffsetXChange = setOffsetX,
             onOffsetYChange = setOffsetY,
+            onGestureTransform = onGestureTransform,
             onToggleControls = { showControls = !showControls },
             onSave = { onSave(zoom, offsetX, offsetY) },
             onUndo = undoChanges,
@@ -174,22 +184,16 @@ private fun WallpaperCanvas(
     imageAspectRatio: Float,
     onImageAspectRatioChange: (Float) -> Unit,
     onViewAspectChange: (Float) -> Unit,
-    onZoomChange: (Float) -> Unit,
-    onOffsetXChange: (Float) -> Unit,
-    onOffsetYChange: (Float) -> Unit,
+    onGestureTransform: (GestureTransform) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Gesture state, pinch and drag update zoom and offset together
-    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
-        val nextZoom = coerceZoom(zoom * zoomChange)
-        val panSensitivity = PanSensitivity / nextZoom
-        val nextOffsetX = coerceOffset(offsetX + panChange.x * panSensitivity * PanSensitivityXMultiplier)
-        val nextOffsetY = coerceOffset(offsetY + panChange.y * panSensitivity)
-
-        onZoomChange(nextZoom)
-        onOffsetXChange(nextOffsetX)
-        onOffsetYChange(nextOffsetY)
-    }
+    // The gesture detector is created once (keyed on Unit), so it must read the *latest* edit
+    // state and geometry each frame rather than capturing the values from first composition.
+    val currentZoom by rememberUpdatedState(zoom)
+    val currentOffsetX by rememberUpdatedState(offsetX)
+    val currentOffsetY by rememberUpdatedState(offsetY)
+    val currentAspect by rememberUpdatedState(imageAspectRatio)
+    val currentOnGesture by rememberUpdatedState(onGestureTransform)
 
     AsyncImage(
         model = wallpaperUri,
@@ -202,7 +206,26 @@ private fun WallpaperCanvas(
             }
         },
         modifier = modifier
-            .transformable(state = transformState)
+            .pointerInput(Unit) {
+                // centroid/pan/zoom are in this node's pixel space; `size` is the container.
+                detectTransformGestures { centroid, pan, gestureZoom, _ ->
+                    currentOnGesture(
+                        applyEditGesture(
+                            zoom = currentZoom,
+                            offsetX = currentOffsetX,
+                            offsetY = currentOffsetY,
+                            centroidX = centroid.x,
+                            centroidY = centroid.y,
+                            panX = pan.x,
+                            panY = pan.y,
+                            gestureZoom = gestureZoom,
+                            containerWidth = size.width.toFloat(),
+                            containerHeight = size.height.toFloat(),
+                            imageAspectRatio = currentAspect,
+                        )
+                    )
+                }
+            }
             .onSizeChanged { size ->
                 if (size.height > 0) {
                     onViewAspectChange(size.width.toFloat() / size.height)
@@ -257,6 +280,7 @@ private fun WallpaperEditContent(
     onZoomChange: (Float) -> Unit,
     onOffsetXChange: (Float) -> Unit,
     onOffsetYChange: (Float) -> Unit,
+    onGestureTransform: (GestureTransform) -> Unit,
     onToggleControls: () -> Unit,
     onSave: () -> Unit,
     onUndo: () -> Unit,
@@ -284,9 +308,7 @@ private fun WallpaperEditContent(
             imageAspectRatio = imageAspectRatio,
             onImageAspectRatioChange = { imageAspectRatio = it },
             onViewAspectChange = { viewAspect = it },
-            onZoomChange = onZoomChange,
-            onOffsetXChange = onOffsetXChange,
-            onOffsetYChange = onOffsetYChange,
+            onGestureTransform = onGestureTransform,
             modifier = Modifier.fillMaxSize()
         )
 
