@@ -20,7 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.ui.components.SettingsRowHeader
@@ -47,9 +47,8 @@ internal fun QualitySlider(
 
             Text(
                 text = "$value%",
-                style = MaterialTheme.typography.bodySmall,
-                color = NothingWhite,
-                fontWeight = FontWeight.Bold
+                style = NothingType.sliderPercent,
+                color = NothingWhite
             )
         }
 

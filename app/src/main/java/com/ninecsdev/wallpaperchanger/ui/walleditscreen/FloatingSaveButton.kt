@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Floating circular save button anchored to the bottom-center of the editor.
@@ -60,7 +60,7 @@ internal fun FloatingSaveButton(
 @Preview(name = "Floating Save Button – Enabled", backgroundColor = 0xFF000000, showBackground = true)
 @Composable
 private fun FloatingSaveButtonEnabledPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         FloatingSaveButton(
             onSave = {},
             enabled = true,
@@ -71,7 +71,7 @@ private fun FloatingSaveButtonEnabledPreview() {
 @Preview(name = "Floating Save Button – Disabled", backgroundColor = 0xFF000000, showBackground = true)
 @Composable
 private fun FloatingSaveButtonDisabledPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         FloatingSaveButton(
             onSave = {},
             enabled = false,

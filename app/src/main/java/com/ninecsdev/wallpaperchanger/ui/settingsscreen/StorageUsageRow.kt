@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -17,11 +16,12 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.logic.StorageUsage
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Informational row showing the space used by local copies (internalized wallpapers).
@@ -39,9 +39,8 @@ internal fun StorageUsageRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(R.string.settings_storage_usage_title),
-                style = MaterialTheme.typography.labelSmall,
-                color = NothingWhite.copy(alpha = 0.55f),
-                letterSpacing = 1.sp
+                style = NothingType.metaLabel,
+                color = NothingWhite.copy(alpha = 0.55f)
             )
         }
 
@@ -57,9 +56,8 @@ internal fun StorageUsageRow(
                     )
                 )
             } ?: "—",
-            style = MaterialTheme.typography.labelSmall,
-            color = NothingWhite.copy(alpha = 0.55f),
-            letterSpacing = 1.sp
+            style = NothingType.metaLabel,
+            color = NothingWhite.copy(alpha = 0.55f)
         )
     }
 }
@@ -67,7 +65,7 @@ internal fun StorageUsageRow(
 @Preview
 @Composable
 private fun StorageUsageRowPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(
             modifier = Modifier
                 .background(NothingBlack)

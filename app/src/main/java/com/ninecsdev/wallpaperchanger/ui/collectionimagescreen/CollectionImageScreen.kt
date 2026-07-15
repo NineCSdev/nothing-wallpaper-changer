@@ -67,12 +67,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
@@ -84,7 +82,9 @@ import com.ninecsdev.wallpaperchanger.ui.components.overlay.ImportSummarySnackba
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 private const val GRID_COLUMNS = 3
 
@@ -519,9 +519,7 @@ private fun EmptyCollectionState(
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = stringResource(R.string.image_screen_empty_title),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 2.sp,
+            style = NothingType.titleCaps,
             color = NothingWhite.copy(alpha = 0.4f)
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -676,7 +674,7 @@ fun CollectionImageScreenPreview() {
         )
     }
 
-    MaterialTheme {
+    WallpaperChangerTheme {
         CollectionImageScreen(
             uiState = CollectionImageUiState(
                 collectionName = "AMOLED HIGH",
@@ -703,7 +701,7 @@ fun CollectionImageScreenSelectionPreview() {
         )
     }
 
-    MaterialTheme {
+    WallpaperChangerTheme {
         CollectionImageScreen(
             uiState = CollectionImageUiState(
                 collectionName = "FAVORITES",
@@ -724,7 +722,7 @@ fun CollectionImageScreenSelectionPreview() {
 @Preview(showSystemUi = true, name = "Empty Collection", backgroundColor = 0xFF000000)
 @Composable
 fun CollectionImageScreenEmptyPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         CollectionImageScreen(
             uiState = CollectionImageUiState(
                 collectionName = "EMPTY COLLECTION",

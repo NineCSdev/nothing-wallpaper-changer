@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.Composable
@@ -57,7 +57,7 @@ internal fun SettingsToggleRow(
 @Preview
 @Composable
 private fun SettingsToggleRowPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(
             modifier = Modifier
                 .background(NothingBlack)

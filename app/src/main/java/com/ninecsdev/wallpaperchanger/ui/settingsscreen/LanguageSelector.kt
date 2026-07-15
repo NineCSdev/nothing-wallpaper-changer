@@ -31,11 +31,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.components.SettingsRowHeader
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /**
@@ -90,9 +90,7 @@ internal fun LanguageSelector(
                 ) {
                     Text(
                         text = selectedLanguage.nativeName,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
+                        style = NothingType.rowLabel
                     )
                     Spacer(modifier = Modifier.size(4.dp))
                     Icon(
@@ -120,17 +118,15 @@ internal fun LanguageSelector(
                             Column {
                                 Text(
                                     text = language.nativeName,
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = NothingType.metaLabel,
                                     color = if (isSelected) NothingWhite else NothingWhite.copy(alpha = 0.6f),
-                                    fontWeight = if (isSelected) FontWeight.Black else FontWeight.Normal,
-                                    letterSpacing = 1.sp
+                                    fontWeight = if (isSelected) FontWeight.Black else FontWeight.Normal
                                 )
                                 if (language.displayName != null) {
                                     Text(
                                         text = language.displayName,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = NothingWhite.copy(alpha = 0.35f),
-                                        letterSpacing = 0.5.sp
+                                        style = NothingType.caption,
+                                        color = NothingWhite.copy(alpha = 0.35f)
                                     )
                                 }
                             }

@@ -22,18 +22,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionGridItem
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Destination picker for copying/moving the selected wallpapers into another collection:
@@ -88,9 +88,7 @@ private fun TransferTargetCard(
                     if (mode == TransferMode.COPY) R.string.transfer_dialog_title_copy
                         else R.string.transfer_dialog_title_move
                 ),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp,
+                style = NothingType.titleCaps,
                 color = NothingWhite,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
@@ -170,7 +168,7 @@ fun TransferSummarySnackbarEffect(
 @Preview(name = "Transfer Target Card", backgroundColor = 0xFF000000, showBackground = true)
 @Composable
 fun TransferTargetCardPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         TransferTargetCard(
             mode = TransferMode.COPY,
             targets = listOf(
@@ -187,7 +185,7 @@ fun TransferTargetCardPreview() {
 @Preview(name = "Transfer Target Card (empty)", backgroundColor = 0xFF000000, showBackground = true)
 @Composable
 fun TransferTargetCardEmptyPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         TransferTargetCard(
             mode = TransferMode.MOVE,
             targets = emptyList(),

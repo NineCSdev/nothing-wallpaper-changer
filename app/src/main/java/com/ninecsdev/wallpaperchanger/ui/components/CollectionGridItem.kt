@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,14 +22,17 @@ import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Data state for the Grid Item for performance
@@ -73,10 +75,8 @@ fun CollectionGridItem(
         // Name of the collection
         Text(
             text = name.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
+            style = NothingType.metaLabel,
             color = NothingWhite.copy(alpha = 0.6f),
-            fontWeight = FontWeight.Medium,
-            letterSpacing = 1.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -139,8 +139,7 @@ private fun GridContent(uris: List<Uri>, totalCount: Int) {
                         Text(
                             text = "+${totalCount - 3}",
                             color = NothingWhite,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Black
+                            style = NothingType.badgeCaps
                         )
                     }
                 }
@@ -154,7 +153,7 @@ private fun GridContent(uris: List<Uri>, totalCount: Int) {
 @Preview(name = ">4 wallpapers",showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun CollectionGridItemMoreThan4Preview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(modifier = Modifier
             .padding(24.dp)
             .width(160.dp)) {
@@ -170,7 +169,7 @@ fun CollectionGridItemMoreThan4Preview() {
 @Preview(name = "4 wallpapers",showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun CollectionGridItemLessOr4Preview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(modifier = Modifier
             .padding(24.dp)
             .width(160.dp)) {

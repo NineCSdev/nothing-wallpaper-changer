@@ -7,17 +7,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * The shared "bold all-caps title + dimmed subtitle" header used by settings rows and the
@@ -40,18 +39,15 @@ internal fun SettingsRowHeader(
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodySmall,
-                color = NothingWhite,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
+                style = NothingType.rowTitle,
+                color = NothingWhite
             )
             titleTrailingContent()
         }
         Text(
             text = subtitle,
-            style = MaterialTheme.typography.labelSmall,
-            color = NothingWhite.copy(alpha = 0.4f),
-            letterSpacing = 0.5.sp
+            style = NothingType.caption,
+            color = NothingWhite.copy(alpha = 0.4f)
         )
     }
 }
@@ -59,7 +55,7 @@ internal fun SettingsRowHeader(
 @Preview(showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 private fun SettingsRowHeaderPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(
             modifier = Modifier
                 .background(NothingBlack)

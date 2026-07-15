@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +23,8 @@ import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingDarkGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 @Composable
 internal fun CropRuleSelector(
@@ -49,12 +50,12 @@ internal fun CropRuleSelector(
                 modifier = Modifier
                     .weight(1f)
                     .height(48.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(SmallCornerRadius))
                     .background(if (isSelected) NothingWhite else NothingDarkGray)
                     .border(
                         1.dp,
                         if (isSelected) NothingWhite else NothingWhite.copy(alpha = 0.1f),
-                        RoundedCornerShape(8.dp)
+                        RoundedCornerShape(SmallCornerRadius)
                     )
             ) {
                 Icon(
@@ -71,7 +72,7 @@ internal fun CropRuleSelector(
 @Preview(name = "Crop Rule Selector")
 @Composable
 fun CropRuleSelectorPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(modifier = Modifier
             .background(NothingBlack)
             .padding(16.dp)) {

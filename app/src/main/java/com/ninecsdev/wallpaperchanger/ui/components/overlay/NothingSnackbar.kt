@@ -2,7 +2,6 @@ package com.ninecsdev.wallpaperchanger.ui.components.overlay
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -10,12 +9,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.ui.theme.CardCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /**
@@ -39,9 +37,7 @@ fun NothingSnackbarHost(
         ) {
             Text(
                 text = data.visuals.message.uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp
+                style = NothingType.overline
             )
         }
     }
@@ -59,9 +55,7 @@ private fun NothingSnackbarPreview() {
         ) {
             Text(
                 text = "3 ADDED AS REFERENCES • 1 SKIPPED",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp
+                style = NothingType.overline
             )
         }
     }

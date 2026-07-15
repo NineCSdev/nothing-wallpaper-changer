@@ -49,17 +49,18 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 
@@ -257,9 +258,7 @@ internal fun WallpaperPreviewOverlay(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = stringResource(R.string.preview_title),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 2.sp,
+                                style = NothingType.titleCaps,
                                 color = NothingWhite
                             )
                             Spacer(modifier = Modifier.height(8.dp))
@@ -328,7 +327,7 @@ fun WallpaperPreviewOverlayPreview() {
         uri = Uri.EMPTY
     )
 
-    MaterialTheme {
+    WallpaperChangerTheme {
         SharedTransitionLayout {
             AnimatedVisibility(visibleState = remember { MutableTransitionState(true) }) {
                 WallpaperPreviewOverlay(
@@ -354,7 +353,7 @@ fun WallpaperPreviewOverlayEditedPreview() {
         editParams = EditParams(zoom = 1.5f, offsetX = 0f, offsetY = 0f)
     )
 
-    MaterialTheme {
+    WallpaperChangerTheme {
         SharedTransitionLayout {
             AnimatedVisibility(visibleState = remember { MutableTransitionState(true) }) {
                 WallpaperPreviewOverlay(

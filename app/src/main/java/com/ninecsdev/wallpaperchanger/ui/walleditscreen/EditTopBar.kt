@@ -11,7 +11,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,13 +19,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Top app-bar overlay for the wallpaper editor.
@@ -77,9 +76,7 @@ internal fun EditTopBar(
 
             Text(
                 text = stringResource(R.string.edit_screen_title),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 2.sp,
+                style = NothingType.titleCaps,
                 color = NothingWhite,
                 modifier = Modifier.weight(1f)
             )
@@ -130,7 +127,7 @@ internal fun EditTopBar(
 @Preview(name = "Top Bar – No changes", backgroundColor = 0xFF000000, showBackground = true)
 @Composable
 private fun EditTopBarDefaultPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         EditTopBar(
             hasSavedEdits = false,
             hasUnsavedChanges = false,
@@ -147,7 +144,7 @@ private fun EditTopBarDefaultPreview() {
 @Preview(name = "Top Bar – Unsaved changes", backgroundColor = 0xFF000000, showBackground = true)
 @Composable
 private fun EditTopBarUnsavedPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         EditTopBar(
             hasSavedEdits = false,
             hasUnsavedChanges = true,
@@ -164,7 +161,7 @@ private fun EditTopBarUnsavedPreview() {
 @Preview(name = "Top Bar – Reset available", backgroundColor = 0xFF000000, showBackground = true)
 @Composable
 private fun EditTopBarResetPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         EditTopBar(
             hasSavedEdits = true,
             hasUnsavedChanges = false,
@@ -181,7 +178,7 @@ private fun EditTopBarResetPreview() {
 @Preview(name = "Top Bar – Controls open", backgroundColor = 0xFF000000, showBackground = true)
 @Composable
 private fun EditTopBarControlsOpenPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         EditTopBar(
             hasSavedEdits = false,
             hasUnsavedChanges = false,

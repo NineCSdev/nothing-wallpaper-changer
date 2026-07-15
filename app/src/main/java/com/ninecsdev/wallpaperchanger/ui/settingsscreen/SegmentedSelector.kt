@@ -23,11 +23,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.components.SettingsRowHeader
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 @Composable
@@ -87,9 +87,8 @@ internal fun <T> SettingsSegmentedSelector(
                 ) {
                     Text(
                         text = optionLabel(option),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = if (isSelected) FontWeight.Black else FontWeight.Normal,
-                        letterSpacing = 1.sp
+                        style = NothingType.metaLabel,
+                        fontWeight = if (isSelected) FontWeight.Black else FontWeight.Normal
                     )
                 }
             }

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,10 +29,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.logic.computeEditTransform
@@ -42,11 +40,10 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ProcessingOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
-
-// Gesture tuning; value bounds and edit math live in EditMath.kt
-private const val PanSensitivity = 0.003f
-private const val PanSensitivityXMultiplier = 1.25f
+import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Full-screen wallpaper editor.
@@ -241,9 +238,8 @@ private fun WallpaperLoadingState(isLoading: Boolean) {
         if (isLoading) {
             Text(
                 text = stringResource(R.string.edit_screen_loading),
-                style = MaterialTheme.typography.labelLarge,
-                color = NothingWhite.copy(alpha = 0.4f),
-                letterSpacing = 2.sp
+                style = NothingType.overlayMessage,
+                color = NothingWhite.copy(alpha = 0.4f)
             )
         }
     }
@@ -356,14 +352,13 @@ private fun SaveErrorBanner(show: Boolean) {
         ) {
             Text(
                 text = stringResource(R.string.edit_screen_save_failed),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.5.sp,
+                style = NothingType.errorBanner,
                 color = NothingWhite,
+                textAlign = TextAlign.Center,
                 modifier = Modifier
                     .background(
                         color = NothingWhite.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(SmallCornerRadius)
                     )
                     .padding(horizontal = 20.dp, vertical = 10.dp)
             )
@@ -420,7 +415,7 @@ private fun WallpaperEditScreenPreview() {
         uri = Uri.EMPTY
     )
 
-    MaterialTheme {
+    WallpaperChangerTheme {
         WallpaperEditScreen(
             uiState = WallpaperEditUiState(
                 wallpaper = sampleWallpaper,
@@ -443,7 +438,7 @@ private fun WallpaperEditScreenResetPreview() {
         editParams = EditParams(zoom = 1.5f, offsetX = 0f, offsetY = 0f)
     )
 
-    MaterialTheme {
+    WallpaperChangerTheme {
         WallpaperEditScreen(
             uiState = WallpaperEditUiState(
                 wallpaper = sampleWallpaper,
@@ -465,7 +460,7 @@ private fun WallpaperEditScreenSavingPreview() {
         uri = Uri.EMPTY
     )
 
-    MaterialTheme {
+    WallpaperChangerTheme {
         WallpaperEditScreen(
             uiState = WallpaperEditUiState(
                 wallpaper = sampleWallpaper,
@@ -488,7 +483,7 @@ private fun WallpaperEditScreenErrorPreview() {
         uri = Uri.EMPTY
     )
 
-    MaterialTheme {
+    WallpaperChangerTheme {
         WallpaperEditScreen(
             uiState = WallpaperEditUiState(
                 wallpaper = sampleWallpaper,
@@ -505,7 +500,7 @@ private fun WallpaperEditScreenErrorPreview() {
 @Preview(showSystemUi = true, name = "Wallpaper Editor (Loading)", backgroundColor = 0xFF000000)
 @Composable
 private fun WallpaperEditScreenLoadingPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         WallpaperEditScreen(
             uiState = WallpaperEditUiState(
                 wallpaper = null,

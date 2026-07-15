@@ -11,9 +11,6 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.core.net.toUri
 import androidx.navigation.compose.rememberNavController
@@ -21,7 +18,7 @@ import com.ninecsdev.wallpaperchanger.service.WallpaperService
 import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionViewModel
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.MainViewModel
 import com.ninecsdev.wallpaperchanger.ui.navigation.AppNavigation
-import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -81,26 +78,24 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            MaterialTheme {
-                CompositionLocalProvider(LocalContentColor provides NothingWhite) {
-                    AppNavigation(
-                        navController = rememberNavController(),
-                        modifier = Modifier.fillMaxSize(),
-                        onStartClick = { checkPermissionsAndStart() },
-                        onStopService = { stopWallpaperService() },
-                        onLaunchFolderPicker = { folderLauncher.launch(null) },
-                        onLaunchPhotosPicker = {
-                            photosLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        },
-                        onLaunchDefaultWallpaperPicker = {
-                            defaultWallpaperLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        }
-                    )
-                }
+            WallpaperChangerTheme {
+                AppNavigation(
+                    navController = rememberNavController(),
+                    modifier = Modifier.fillMaxSize(),
+                    onStartClick = { checkPermissionsAndStart() },
+                    onStopService = { stopWallpaperService() },
+                    onLaunchFolderPicker = { folderLauncher.launch(null) },
+                    onLaunchPhotosPicker = {
+                        photosLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    onLaunchDefaultWallpaperPicker = {
+                        defaultWallpaperLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    }
+                )
             }
         }
     }

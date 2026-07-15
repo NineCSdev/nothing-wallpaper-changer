@@ -21,7 +21,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,12 +32,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.ninecsdev.wallpaperchanger.R
@@ -51,7 +48,10 @@ import com.ninecsdev.wallpaperchanger.ui.components.NothingButton
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButtonVariant
 import com.ninecsdev.wallpaperchanger.ui.components.NothingTextField
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Card pop-up for editing or deleting a collection.
@@ -144,13 +144,17 @@ private fun EditCollectionCardContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        NothingTextField(
-            value = nameText,
-            onValueChange = onNameChange,
-            label = stringResource(R.string.edit_collection_field_name)
-        )
+        // Rename is blocked for the system (Favourites) collection — its name is a localized resource.
+        // The field is hidden here and the repository guards the rename regardless.
+        if (!collection.isSystem) {
+            NothingTextField(
+                value = nameText,
+                onValueChange = onNameChange,
+                label = stringResource(R.string.edit_collection_field_name)
+            )
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         CropRuleSelector(
             selectedRule = selectedRule,
@@ -195,10 +199,8 @@ private fun RotationFrequencySelector(
 ) {
     Text(
         text = stringResource(R.string.edit_collection_rotation_title),
-        style = MaterialTheme.typography.labelSmall,
-        color = NothingWhite.copy(alpha = 0.7f),
-        letterSpacing = 1.sp,
-        fontWeight = FontWeight.Bold
+        style = NothingType.rowLabel,
+        color = NothingWhite.copy(alpha = 0.7f)
     )
 
     Spacer(modifier = Modifier.height(8.dp))
@@ -238,15 +240,14 @@ private fun TimerOptionButton(
     OutlinedButton(
         onClick = onClick,
         modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(SmallCornerRadius),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite),
         border = BorderStroke(1.dp, NothingWhite.copy(alpha = if (selected) 0.8f else 0.3f)),
         contentPadding = PaddingValues(horizontal = 4.dp)
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
+            style = NothingType.labelStrong,
             color = NothingWhite.copy(alpha = if (selected) 1f else 0.7f),
             maxLines = 1,
             textAlign = TextAlign.Center
@@ -267,9 +268,7 @@ private fun EditCardHeader(
     ) {
         Text(
             text = stringResource(R.string.edit_collection_title),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 2.sp,
+            style = NothingType.titleCaps,
             color = NothingWhite
         )
 
@@ -302,13 +301,13 @@ private fun ManagementButtons(
         OutlinedButton(
             onClick = onViewImages,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(SmallCornerRadius),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite),
             border = BorderStroke(1.dp, NothingWhite.copy(alpha = 0.3f))
         ) {
             Icon(painterResource(R.drawable.icon_collection), null, Modifier.size(18.dp))
             Spacer(Modifier.width(12.dp))
-            Text(stringResource(R.string.edit_collection_action_manage_images), fontWeight = FontWeight.Medium, letterSpacing = 1.sp)
+            Text(stringResource(R.string.edit_collection_action_manage_images), style = NothingType.dialogButton)
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -341,13 +340,12 @@ private fun EditCardActions(
                 contentColor = NothingWhite
             ),
             border = BorderStroke(1.dp, NothingWhite.copy(alpha = if (isActive) 0.1f else 0.4f)),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(SmallCornerRadius),
             enabled = !isActive
         ) {
             Text(
                 if (isActive) stringResource(R.string.edit_collection_action_currently_active) else stringResource(R.string.edit_collection_action_set_active),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold
+                style = NothingType.labelStrong
             )
         }
 
@@ -355,10 +353,10 @@ private fun EditCardActions(
             onClick = onSave,
             modifier = Modifier.weight(1f),
             colors = ButtonDefaults.buttonColors(containerColor = NothingWhite, contentColor = NothingBlack),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(SmallCornerRadius),
             enabled = isChanged
         ) {
-            Text(stringResource(R.string.edit_collection_action_save), fontWeight = FontWeight.Black)
+            Text(stringResource(R.string.edit_collection_action_save), style = NothingType.badgeCaps)
         }
     }
 }
@@ -398,7 +396,7 @@ private fun DialogScrim(content: @Composable () -> Unit) {
 )
 @Composable
 private fun PreviewEditCollectionCardFolder() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         DialogScrim {
             EditCollectionCardContent(
                 collection = previewFolderCollection,
@@ -431,7 +429,7 @@ private fun PreviewEditCollectionCardFolder() {
 )
 @Composable
 private fun PreviewEditCollectionCardManual() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         DialogScrim {
             EditCollectionCardContent(
                 collection = previewManualCollection,
@@ -464,7 +462,7 @@ private fun PreviewEditCollectionCardManual() {
 )
 @Composable
 private fun PreviewEditCollectionCardActive() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         DialogScrim {
             EditCollectionCardContent(
                 collection = previewFolderCollection.copy(isActive = true),
@@ -497,7 +495,7 @@ private fun PreviewEditCollectionCardActive() {
 )
 @Composable
 private fun PreviewEditCollectionCardProcessing() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         DialogScrim {
             EditCollectionCardContent(
                 collection = previewFolderCollection,

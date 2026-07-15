@@ -23,18 +23,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.theme.CardCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Generic two-button confirmation dialog in the app's black-card styling.
@@ -74,9 +75,7 @@ fun ConfirmationOverlay(
 
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp,
+                    style = NothingType.titleCaps,
                     color = accentColor
                 )
 
@@ -98,23 +97,23 @@ fun ConfirmationOverlay(
                     OutlinedButton(
                         onClick = onCancel,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(SmallCornerRadius),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite),
                         border = BorderStroke(1.dp, NothingWhite.copy(alpha = 0.4f))
                     ) {
-                        Text(cancelLabel, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Text(cancelLabel, style = NothingType.dialogButton)
                     }
 
                     Button(
                         onClick = onConfirm,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(SmallCornerRadius),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = accentColor,
                             contentColor = if (accentColor.luminance() > 0.5f) NothingBlack else NothingWhite
                         )
                     ) {
-                        Text(confirmLabel, fontWeight = FontWeight.Black)
+                        Text(confirmLabel, style = NothingType.badgeCaps)
                     }
                 }
             }
@@ -125,7 +124,7 @@ fun ConfirmationOverlay(
 @Preview(name = "Confirmation Overlay", backgroundColor = 0xFF000000, showBackground = true)
 @Composable
 fun ConfirmationOverlayPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Scaffold(containerColor = NothingBlack){ padding ->
             ConfirmationOverlay(
                 modifier = Modifier.padding(16.dp),

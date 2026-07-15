@@ -24,15 +24,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.components.SettingsToggleRow
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Component for configuring the default wallpaper.
@@ -98,9 +98,8 @@ private fun DefaultCardContent(
                 )
                 Text(
                     text = if (uri != null) stringResource(R.string.label_ready) else stringResource(R.string.label_not_set),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (uri != null) NothingWhite else NothingRed.copy(alpha = 0.8f),
-                    fontWeight = FontWeight.Bold
+                    style = NothingType.labelStrong,
+                    color = if (uri != null) NothingWhite else NothingRed.copy(alpha = 0.8f)
                 )
             }
 
@@ -111,9 +110,7 @@ private fun DefaultCardContent(
             ) {
                 Text(
                     text = if (uri != null) stringResource(R.string.action_change) else stringResource(R.string.action_select),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp
+                    style = NothingType.actionEmphasis
                 )
             }
         }
@@ -123,7 +120,7 @@ private fun DefaultCardContent(
 @Preview(name = "Enabled", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun PreviewDefaultCardEnabled() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(Modifier.padding(16.dp)) {
             DefaultWallpaperCard(
                 revertToDefault = true,
@@ -138,7 +135,7 @@ fun PreviewDefaultCardEnabled() {
 @Preview(name = "Not set",showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun DefaultWallpaperCardPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(Modifier.padding(16.dp)) {
             DefaultWallpaperCard(
                 revertToDefault = true,
@@ -153,7 +150,7 @@ fun DefaultWallpaperCardPreview() {
 @Preview(name = "Disabled", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun PreviewDefaultCardDisabled() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(Modifier.padding(16.dp)) {
             DefaultWallpaperCard(
                 revertToDefault = false,

@@ -4,7 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -70,7 +70,7 @@ internal fun WallpaperZoomFixSelector(
 @Preview
 @Composable
 private fun WallpaperZoomFixSelectorPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(
             modifier = Modifier
                 .background(NothingBlack)

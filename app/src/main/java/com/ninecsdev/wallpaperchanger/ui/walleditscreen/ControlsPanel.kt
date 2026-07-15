@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -21,16 +20,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButton
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButtonVariant
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Bottom panel with precision sliders and action buttons.
@@ -126,9 +125,7 @@ private fun SliderRow(
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.5.sp,
+            style = NothingType.overline,
             color = NothingWhite.copy(alpha = 0.6f),
             modifier = Modifier.width(48.dp)
         )
@@ -147,8 +144,7 @@ private fun SliderRow(
 
         Text(
             text = displayValue,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Medium,
+            style = NothingType.caption,
             color = NothingWhite.copy(alpha = 0.5f),
             modifier = Modifier.width(52.dp),
             maxLines = 1
@@ -159,7 +155,7 @@ private fun SliderRow(
 @Preview(name = "Controls Panel", backgroundColor = 0xFF121212, showBackground = true)
 @Composable
 private fun ControlsPanelPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         ControlsPanel(
             zoom = 1.5f,
             offsetX = 0.25f,

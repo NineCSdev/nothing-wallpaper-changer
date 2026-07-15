@@ -8,17 +8,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.ui.components.StatusLed
@@ -26,7 +23,9 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGreen
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingOrange
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Header for showing the app status.
@@ -44,10 +43,8 @@ internal fun ServiceStatusHeader(
     ) {
         Text(
             text = stringResource(R.string.label_app_status),
-            style = MaterialTheme.typography.labelSmall,
-            color = NothingWhite.copy(alpha = 0.4f),
-            letterSpacing = 2.sp,
-            fontWeight = FontWeight.Bold
+            style = NothingType.overline,
+            color = NothingWhite.copy(alpha = 0.4f)
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -62,10 +59,8 @@ internal fun ServiceStatusHeader(
 
             Text(
                 text = stringResource(labelRes),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Black,
-                color = NothingWhite,
-                letterSpacing = 1.sp
+                style = NothingType.statusValue,
+                color = NothingWhite
             )
         }
     }
@@ -86,7 +81,7 @@ internal fun getVisualsForState(state: ServiceState): Pair<Color, Int> {
 @Preview(name = "Running", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun PreviewHeaderRunning() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(Modifier.padding(24.dp)) {
             ServiceStatusHeader(state = ServiceState.Running)
         }
@@ -96,7 +91,7 @@ fun PreviewHeaderRunning() {
 @Preview(name = "Power Save", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun PreviewHeaderLoading() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(Modifier.padding(24.dp)) {
             ServiceStatusHeader(
                 state = ServiceState.Loading,
@@ -108,7 +103,7 @@ fun PreviewHeaderLoading() {
 @Preview(name = "Stopped", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun PreviewHeaderStopped() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(Modifier.padding(24.dp)) {
             ServiceStatusHeader(state = ServiceState.Stopped)
         }
@@ -118,7 +113,7 @@ fun PreviewHeaderStopped() {
 @Preview(name = "No Collection", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun PreviewHeaderNoCollection() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(Modifier.padding(24.dp)) {
             ServiceStatusHeader(state = ServiceState.DisabledNoCollection)
         }
@@ -128,7 +123,7 @@ fun PreviewHeaderNoCollection() {
 @Preview(name = "Power Save", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun PreviewHeaderPowerSave() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(Modifier.padding(24.dp)) {
             ServiceStatusHeader(
                 state = ServiceState.DisabledPowerSave,

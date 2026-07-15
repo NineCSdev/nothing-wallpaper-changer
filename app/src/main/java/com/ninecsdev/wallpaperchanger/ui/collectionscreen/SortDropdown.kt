@@ -14,7 +14,6 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,12 +28,13 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Dropdown for choosing the collection sort order.
@@ -63,10 +63,8 @@ internal fun SortDropdown(
         ) {
             Text(
                 text = stringResource(R.string.sort_by_prefix, selected.label()),
-                style = MaterialTheme.typography.labelSmall,
-                color = NothingWhite,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
+                style = NothingType.rowLabel,
+                color = NothingWhite
             )
             Icon(
                 imageVector = Icons.Default.ArrowDropDown,
@@ -89,13 +87,12 @@ internal fun SortDropdown(
                     text = {
                         Text(
                             text = option.label(),
-                            style = MaterialTheme.typography.labelSmall,
+                            style = NothingType.metaLabel,
                             color = if (option == selected)
                                 NothingWhite
                             else
                                 NothingWhite.copy(alpha = 0.6f),
-                            fontWeight = if (option == selected) FontWeight.Black else FontWeight.Normal,
-                            letterSpacing = 1.sp
+                            fontWeight = if (option == selected) FontWeight.Black else FontWeight.Normal
                         )
                     },
                     onClick = {
@@ -118,7 +115,7 @@ private fun CollectionSortOrder.label(): String = when (this) {
 @Preview(name = "Name", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 private fun SortDropdownNamePreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Surface(color = NothingBlack, modifier = Modifier.padding(16.dp)) {
             SortDropdown(
                 selected = CollectionSortOrder.NAME,
@@ -131,7 +128,7 @@ private fun SortDropdownNamePreview() {
 @Preview(name = "Creation date", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 private fun SortDropdownDatePreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Surface(color = NothingBlack, modifier = Modifier.padding(16.dp)) {
             SortDropdown(
                 selected = CollectionSortOrder.DATE_CREATED,
@@ -143,7 +140,7 @@ private fun SortDropdownDatePreview() {
 @Preview(name = "Last used", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 private fun SortDropdownUsedPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Surface(color = NothingBlack, modifier = Modifier.padding(16.dp)) {
             SortDropdown(
                 selected = CollectionSortOrder.LAST_USED,

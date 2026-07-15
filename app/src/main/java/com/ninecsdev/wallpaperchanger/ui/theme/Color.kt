@@ -17,3 +17,4 @@ val NothingDarkGray = Color(0xFF151515)
 val NothingDarkGraySelected = Color(0xFF222222)
 
 val CardCornerRadius = 16.dp
+val SmallCornerRadius = 8.dp

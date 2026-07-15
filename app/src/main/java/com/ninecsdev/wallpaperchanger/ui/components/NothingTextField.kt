@@ -14,6 +14,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 @Composable
 fun NothingTextField(
@@ -42,7 +43,7 @@ fun NothingTextField(
 @Preview(name = "Nothing TextField")
 @Composable
 fun NothingTextFieldPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(modifier = Modifier.background(NothingBlack).padding(16.dp)) {
             NothingTextField(
                 value = "Amoled Pack",

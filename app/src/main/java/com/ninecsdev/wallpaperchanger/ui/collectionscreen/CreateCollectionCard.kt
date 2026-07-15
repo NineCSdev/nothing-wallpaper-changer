@@ -29,10 +29,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.ninecsdev.wallpaperchanger.R
@@ -43,7 +41,9 @@ import com.ninecsdev.wallpaperchanger.ui.components.NothingTextField
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingDarkGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingDarkGraySelected
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Card pop-up for creating a new collection.
@@ -146,10 +146,8 @@ private fun CreateCollectionCardContent(
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = stringResource(R.string.create_collection_error),
-                style = MaterialTheme.typography.labelSmall,
-                color = NothingRed,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.5.sp
+                style = NothingType.labelStrong,
+                color = NothingRed
             )
         }
 
@@ -173,9 +171,8 @@ private fun CreateCardHeader(onDismiss: () -> Unit) {
     ) {
         Text(
             text = stringResource(R.string.create_collection_title),
-            color = NothingWhite,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 2.sp
+            style = NothingType.createDialogTitle,
+            color = NothingWhite
         )
         IconButton(onClick = onDismiss) {
             Icon(Icons.Default.Close, contentDescription = null, tint = NothingWhite)
@@ -248,7 +245,7 @@ private fun CreateCardActions(
 @Preview(name = "CreateCollectionCard – Idle", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 private fun PreviewCreateCollectionCardIdle() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         CreateCollectionCardContent(
             isProcessing = false,
             hasPendingFolder = false,
@@ -268,7 +265,7 @@ private fun PreviewCreateCollectionCardIdle() {
 @Preview(name = "CreateCollectionCard – Folder Selected", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 private fun PreviewCreateCollectionCardFolderSelected() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         CreateCollectionCardContent(
             isProcessing = false,
             hasPendingFolder = true,
@@ -288,7 +285,7 @@ private fun PreviewCreateCollectionCardFolderSelected() {
 @Preview(name = "CreateCollectionCard – Ready to Create", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 private fun PreviewCreateCollectionCardReady() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         CreateCollectionCardContent(
             isProcessing = false,
             hasPendingFolder = true,
@@ -308,7 +305,7 @@ private fun PreviewCreateCollectionCardReady() {
 @Preview(name = "CreateCollectionCard – Processing", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 private fun PreviewCreateCollectionCardProcessing() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         CreateCollectionCardContent(
             isProcessing = true,
             hasPendingFolder = true,

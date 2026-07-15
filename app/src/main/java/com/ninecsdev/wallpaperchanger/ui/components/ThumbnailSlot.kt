@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,6 +16,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
+import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Square slot for a single image preview.
@@ -48,11 +49,11 @@ fun ThumbnailSlot(
 @Preview(showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun PreviewThumbnailSlot() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         ThumbnailSlot(
             uri = null,
             modifier = Modifier.size(100.dp),
-            shape = RoundedCornerShape(8.dp)
+            shape = RoundedCornerShape(SmallCornerRadius)
         )
     }
 }

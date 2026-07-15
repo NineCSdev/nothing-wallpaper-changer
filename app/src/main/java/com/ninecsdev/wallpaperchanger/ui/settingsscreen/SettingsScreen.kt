@@ -15,7 +15,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -24,10 +23,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.logic.StorageUsage
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
@@ -35,7 +32,9 @@ import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import com.ninecsdev.wallpaperchanger.ui.components.SettingsToggleRow
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Settings screen.
@@ -54,9 +53,7 @@ fun SettingsScreen(
                 title = {
                     Text(
                         text = stringResource(R.string.settings_title),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp
+                        style = NothingType.titleCaps
                     )
                 },
                 navigationIcon = {
@@ -223,9 +220,8 @@ fun SettingsScreen(
             ) {
                 Text(
                     text = "v${uiState.appVersion}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = NothingWhite.copy(alpha = 0.25f),
-                    letterSpacing = 1.sp
+                    style = NothingType.metaLabel,
+                    color = NothingWhite.copy(alpha = 0.25f)
                 )
             }
         }
@@ -238,10 +234,8 @@ fun SettingsScreen(
 private fun SectionLabel(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.labelSmall,
-        color = NothingWhite.copy(alpha = 0.4f),
-        letterSpacing = 2.sp,
-        fontWeight = FontWeight.Bold
+        style = NothingType.overline,
+        color = NothingWhite.copy(alpha = 0.4f)
     )
 }
 
@@ -250,7 +244,7 @@ private fun SectionLabel(text: String) {
 @Preview(showSystemUi = true, name = "Settings", backgroundColor = 0xFF000000, device = "spec:width=411dp,height=1210dp,dpi=420")
 @Composable
 fun SettingsScreenPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         SettingsScreen(
             uiState = SettingsUiState(
                 screenOffDelayMs = 250,

@@ -30,10 +30,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
@@ -47,7 +45,9 @@ import com.ninecsdev.wallpaperchanger.ui.components.overlay.ImportSummarySnackba
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.getVisualsForState
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 import com.ninecsdev.wallpaperchanger.R
 
 /**
@@ -82,9 +82,7 @@ fun CollectionListScreen(
                     title = {
                         Text(
                             text = stringResource(R.string.collections_title),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 2.sp
+                            style = NothingType.titleCaps
                         )
                     },
                     navigationIcon = {
@@ -152,7 +150,7 @@ fun CollectionListScreen(
                             CollectionGridItem(
                                 name = collection.name,
                                 state = uiState.previewStates[collection.id] ?: CollectionPreviewState(),
-                                onClick = { onCollectionClick(collection.id) }
+                                onClick = { onCollectionClick(collection.id) },
                             )
                         }
                     }
@@ -198,17 +196,14 @@ private fun EmptyCollectionsView() {
     ) {
         Text(
             text = stringResource(R.string.collections_empty_title),
-            style = MaterialTheme.typography.labelLarge,
-            color = NothingWhite.copy(alpha = 0.4f),
-            fontWeight = FontWeight.Black,
-            letterSpacing = 2.sp
+            style = NothingType.titleCaps,
+            color = NothingWhite.copy(alpha = 0.4f)
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.collections_empty_hint),
-            style = MaterialTheme.typography.labelSmall,
-            color = NothingWhite.copy(alpha = 0.2f),
-            letterSpacing = 1.sp
+            style = NothingType.metaLabel,
+            color = NothingWhite.copy(alpha = 0.2f)
         )
     }
 }
@@ -216,13 +211,13 @@ private fun EmptyCollectionsView() {
 @Preview(showSystemUi = true, name = "Populated", backgroundColor = 0xFF000000)
 @Composable
 fun CollectionListScreenPopulatedPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         CollectionListScreen(
             uiState = CollectionUiState(
                 allCollections = listOf(
                     WallpaperCollection(id = 1, name = "AMOLED HIGH", type = CollectionType.FOLDER),
                     WallpaperCollection(id = 2, name = "NATURE PACK", type = CollectionType.FOLDER),
-                    WallpaperCollection(id = 3, name = "FAVORITES", type = CollectionType.MANUAL),
+                    WallpaperCollection(id = 3, name = "Favourites", type = CollectionType.MANUAL, isSystem = true),
                     WallpaperCollection(id = 4, name = "MINIMALISM", type = CollectionType.FOLDER)
                 ),
                 previewStates = mapOf(
@@ -247,7 +242,7 @@ fun CollectionListScreenPopulatedPreview() {
 @Preview(showSystemUi = true, name = "Empty", backgroundColor = 0xFF000000)
 @Composable
 fun CollectionListScreenEmptyPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         CollectionListScreen(
             uiState = CollectionUiState(),
             actions = PreviewCollectionListActions,

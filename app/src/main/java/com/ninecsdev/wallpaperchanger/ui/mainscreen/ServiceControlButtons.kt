@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,7 +51,7 @@ internal fun ServiceControlButtons(
 @Preview(name = "State: Ready to Start", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun PreviewButtonsReady() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Column(Modifier.padding(16.dp)) {
             ServiceControlButtons(
                 isStartEnabled = true,
@@ -66,7 +66,7 @@ fun PreviewButtonsReady() {
 @Preview(name = "State: Service Running", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun PreviewButtonsRunning() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Column(Modifier.padding(16.dp)) {
             ServiceControlButtons(
                 isStartEnabled = false,
@@ -81,7 +81,7 @@ fun PreviewButtonsRunning() {
 @Preview(name = "State: Setup Needed", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun PreviewButtonsDisabled() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Column(Modifier.padding(16.dp)) {
             ServiceControlButtons(
                 isStartEnabled = false,

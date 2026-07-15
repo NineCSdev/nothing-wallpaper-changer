@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -24,15 +23,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Component for choosing the active collection.
@@ -65,10 +64,8 @@ internal fun WallpaperSelectionCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = displayName.uppercase(),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = NothingWhite,
-                    letterSpacing = 1.sp
+                    style = NothingType.rowTitle,
+                    color = NothingWhite
                 )
             }
 
@@ -79,9 +76,7 @@ internal fun WallpaperSelectionCard(
             ) {
                 Text(
                     text = if (activeCollection != null) stringResource(R.string.action_change) else stringResource(R.string.action_select),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 0.5.sp
+                    style = NothingType.actionEmphasis
                 )
             }
         }
@@ -132,9 +127,8 @@ internal fun WallpaperSelectionCard(
 
                 Text(
                     text = countText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = NothingWhite.copy(alpha = 0.5f),
-                    fontWeight = FontWeight.Black
+                    style = NothingType.countBadge,
+                    color = NothingWhite.copy(alpha = 0.5f)
                 )
             }
         }
@@ -144,7 +138,7 @@ internal fun WallpaperSelectionCard(
 @Preview(name = "Selection: Active Folder", showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun PreviewSelectionCardActive() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         Box(Modifier.padding(16.dp)) {
             WallpaperSelectionCard(
                 activeCollection = WallpaperCollection(name = "Amoled Collection", type = CollectionType.FOLDER),

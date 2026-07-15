@@ -202,7 +202,7 @@
     <string name="edit_screen_title">EDITAR FONDO DE PANTALLA</string>
     <string name="edit_screen_loading">CARGANDO…</string>
     <string name="edit_screen_saving">GUARDANDO CAMBIOS…</string>
-    <string name="edit_screen_save_failed">ERROR AL GUARDAR — REINTENTALO</string>
+    <string name="edit_screen_save_failed">ERROR AL GUARDAR\nVUELVE A INTENTARLO</string>
     <string name="edit_controls_zoom">ZOOM</string>
     <string name="edit_controls_cancel">CANCELAR</string>
     <string name="edit_controls_save">GUARDAR</string>

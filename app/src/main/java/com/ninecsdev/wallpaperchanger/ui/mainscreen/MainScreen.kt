@@ -19,7 +19,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -142,7 +142,7 @@ fun MainScreen(
 @Preview(showSystemUi = true, name = "Main Screen - Running", backgroundColor = 0xFF000000)
 @Composable
 fun MainScreenRunningPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         CompositionLocalProvider(LocalContentColor provides NothingWhite) {
             MainScreen(
                 uiState = MainUiState(
@@ -164,7 +164,7 @@ fun MainScreenRunningPreview() {
 @Preview(showSystemUi = true, name = "Main Screen - Setup Needed", backgroundColor = 0xFF000000)
 @Composable
 fun MainScreenEmptyPreview() {
-    MaterialTheme {
+    WallpaperChangerTheme {
         CompositionLocalProvider(LocalContentColor provides NothingWhite) {
             MainScreen(
                 uiState = MainUiState(
