@@ -63,6 +63,10 @@ interface WallpaperDao {
     @Query("SELECT rootUri FROM collections WHERE rootUri IS NOT NULL")
     suspend fun getAllRootUris(): List<Uri>
 
+    /** The app-owned Favourites collection, or null if it hasn't been created yet. */
+    @Query("SELECT * FROM collections WHERE isFavorites = 1 LIMIT 1")
+    suspend fun getFavoritesCollection(): WallpaperCollection?
+
     /** Updates the name and default crop rule of a collection. */
     @Query("UPDATE collections SET name = :newName, defaultCropRule = :newRule, rotationFrequency = :newFrequency WHERE id = :collectionId")
     suspend fun updateCollection(
@@ -235,5 +239,15 @@ interface WallpaperDao {
 
     @Query("DELETE FROM wallpapers WHERE id IN (:ids)")
     suspend fun deleteImagesByIds(ids: List<Long>)
+
+    // Favourites (memberships of the system collection, keyed by fileId)
+
+    /** Reactive set of file ids that have a membership in the Favourites collection. */
+    @Query("SELECT DISTINCT w.fileId FROM wallpapers w JOIN collections c ON w.collectionId = c.id WHERE c.isFavorites = 1")
+    fun observeFavoriteFileIds(): Flow<List<Long>>
+
+    /** Removes the Favourites membership (unfavourite) for the given files. */
+    @Query("DELETE FROM wallpapers WHERE collectionId = :collectionId AND fileId IN (:fileIds)")
+    suspend fun deleteJoinRowsForFiles(collectionId: Long, fileIds: List<Long>)
 
 }

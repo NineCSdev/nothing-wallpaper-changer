@@ -11,6 +11,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
+import com.ninecsdev.wallpaperchanger.model.pinnedFirst
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -96,7 +97,7 @@ class CollectionViewModel @Inject constructor(
             CollectionSortOrder.NAME -> collections.sortedBy { it.name.lowercase() }
             CollectionSortOrder.LAST_USED -> collections.sortedByDescending { it.lastUsedAt }
             CollectionSortOrder.DATE_CREATED -> collections.sortedByDescending { it.createdAt }
-        }
+        }.pinnedFirst() // central pinned-first rule, applied on top of the user's chosen sort
 
         CollectionUiState(
             allCollections = sorted,

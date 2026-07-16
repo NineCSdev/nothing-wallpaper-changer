@@ -18,6 +18,7 @@ import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.ServiceState
+import com.ninecsdev.wallpaperchanger.model.resolveDisplayName
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -148,7 +149,7 @@ class WallpaperService : Service() {
             } else {
                 serviceStateManager.markServiceRunning()
 
-                val activeName = repository.getActiveCollectionOnce()?.name
+                val activeName = repository.getActiveCollectionOnce()?.resolveDisplayName(this@WallpaperService)
                 notificationHelper.showCycling(activeName)
             }
         }

@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 5,
-    "identityHash": "4f649db1fc20a752c51dfc765c889d97",
+    "identityHash": "2cfa09bbec56c2be0c0250a5386b41bd",
     "entities": [
       {
         "tableName": "collections",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `isActive` INTEGER NOT NULL, `rootUri` TEXT, `defaultCropRule` TEXT NOT NULL, `rotationFrequency` TEXT NOT NULL, `lastWallpaperChangeAt` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `lastUsedAt` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `isActive` INTEGER NOT NULL, `rootUri` TEXT, `defaultCropRule` TEXT NOT NULL, `rotationFrequency` TEXT NOT NULL, `lastWallpaperChangeAt` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `lastUsedAt` INTEGER NOT NULL, `isFavorites` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -64,6 +64,12 @@
           {
             "fieldPath": "lastUsedAt",
             "columnName": "lastUsedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isFavorites",
+            "columnName": "isFavorites",
             "affinity": "INTEGER",
             "notNull": true
           }
@@ -242,7 +248,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4f649db1fc20a752c51dfc765c889d97')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2cfa09bbec56c2be0c0250a5386b41bd')"
     ]
   }
 }

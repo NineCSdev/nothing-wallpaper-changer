@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -38,6 +39,8 @@ import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
+import com.ninecsdev.wallpaperchanger.model.isPinned
+import com.ninecsdev.wallpaperchanger.model.resolveDisplayName
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionGridItem
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 import com.ninecsdev.wallpaperchanger.ui.components.StatusLed
@@ -148,9 +151,10 @@ fun CollectionListScreen(
                     ) {
                         items(uiState.allCollections, key = { it.id }) { collection ->
                             CollectionGridItem(
-                                name = collection.name,
+                                name = collection.resolveDisplayName(LocalContext.current),
                                 state = uiState.previewStates[collection.id] ?: CollectionPreviewState(),
                                 onClick = { onCollectionClick(collection.id) },
+                                isPinned = collection.isPinned
                             )
                         }
                     }
@@ -217,7 +221,7 @@ fun CollectionListScreenPopulatedPreview() {
                 allCollections = listOf(
                     WallpaperCollection(id = 1, name = "AMOLED HIGH", type = CollectionType.FOLDER),
                     WallpaperCollection(id = 2, name = "NATURE PACK", type = CollectionType.FOLDER),
-                    WallpaperCollection(id = 3, name = "Favourites", type = CollectionType.MANUAL, isSystem = true),
+                    WallpaperCollection(id = 3, name = "Favourites", type = CollectionType.MANUAL, isFavorites = true),
                     WallpaperCollection(id = 4, name = "MINIMALISM", type = CollectionType.FOLDER)
                 ),
                 previewStates = mapOf(

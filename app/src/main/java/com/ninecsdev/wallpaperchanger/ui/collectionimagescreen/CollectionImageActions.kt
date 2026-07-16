@@ -26,6 +26,10 @@ interface CollectionImageActions {
     fun cancelTransfer()
     fun clearTransferSummary()
 
+    // Favourites
+    fun toggleFavoriteSelected()
+    fun toggleFavorite(wallpaper: WallpaperImage)
+
     // Re-link unavailable image
     fun requestRelink(wallpaper: WallpaperImage)
     fun cancelRelink()

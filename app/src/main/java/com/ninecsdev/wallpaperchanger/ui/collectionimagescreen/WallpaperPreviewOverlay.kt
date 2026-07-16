@@ -14,8 +14,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +28,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -92,6 +97,8 @@ internal fun WallpaperPreviewOverlay(
     animatedVisibilityScope: AnimatedVisibilityScope,
     sharedWallpaperId: Long?,
     knownAspectRatios: MutableMap<Long, Float> = mutableMapOf(),
+    favoriteFileIds: Set<Long> = emptySet(),
+    onToggleFavorite: (WallpaperImage) -> Unit = {},
     onDismiss: () -> Unit,
     onEdit: (WallpaperImage) -> Unit = {},
     onPageChanged: (WallpaperImage) -> Unit = {}
@@ -286,20 +293,43 @@ internal fun WallpaperPreviewOverlay(
                             .padding(bottom = 48.dp, top = 32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        IconButton(
-                            onClick = { currentWallpaper?.let(onEdit) },
-                            enabled = currentWallpaper != null,
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(NothingBlack.copy(alpha = 0.5f))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(20.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                painter = painterResource(R.drawable.icon_edit),
-                                contentDescription = stringResource(R.string.cd_edit_wallpaper),
-                                tint = NothingWhite,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            // Favourite toggle.
+                            val isFavorited = currentWallpaper?.fileId in favoriteFileIds
+                            IconButton(
+                                onClick = { currentWallpaper?.let(onToggleFavorite) },
+                                enabled = currentWallpaper != null,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(NothingBlack.copy(alpha = 0.5f))
+                            ) {
+                                Icon(
+                                    imageVector = if (isFavorited) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                    contentDescription = stringResource(R.string.cd_favorite_wallpapers),
+                                    tint = if (isFavorited) NothingRed else NothingWhite,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { currentWallpaper?.let(onEdit) },
+                                enabled = currentWallpaper != null,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(NothingBlack.copy(alpha = 0.5f))
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.icon_edit),
+                                    contentDescription = stringResource(R.string.cd_edit_wallpaper),
+                                    tint = NothingWhite,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
 

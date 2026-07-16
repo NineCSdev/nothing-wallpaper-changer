@@ -36,7 +36,9 @@ data class TransferSummary(
 data class CollectionImageUiState(
     val collectionName: String = "",
     val collectionType: CollectionType? = null,
+    val isFavoritesCollection: Boolean = false,
     val wallpapers: List<WallpaperImage> = emptyList(),
+    val favoriteFileIds: Set<Long> = emptySet(),
     val isLoading: Boolean = true,
     val isSelectionMode: Boolean = false,
     val selectedIds: Set<Long> = emptySet(),
@@ -62,22 +64,30 @@ data class CollectionImageUiState(
             null
         }
 
-    /** True when the delete action applies: selection mode with at least one wallpaper selected. */
     val canDeleteSelection: Boolean
         get() = isSelectionMode && selectedIds.isNotEmpty()
 
-    /** True when the copy action applies: same rule as delete. */
     val canCopySelection: Boolean
         get() = isSelectionMode && selectedIds.isNotEmpty()
 
+    val canFavoriteSelection: Boolean
+        get() = isSelectionMode && selectedIds.isNotEmpty()
+
     /**
-     * True when the move action is offered at all. Never for FOLDER collections: sync re-derives
+     * Whether every selected wallpaper is already favourite — the bulk action then un-favourites
+     * them (and the toolbar heart shows filled); otherwise it favourites the ones that aren't yet.
+     */
+    val isSelectionAllFavorites: Boolean
+        get() = canFavoriteSelection &&
+            wallpapers.filter { it.id in selectedIds }.all { it.fileId in favoriteFileIds }
+
+    /**
+     * True when the move action is offered. Never for FOLDER collections: sync re-derives
      * their membership from disk, so a moved-out image would just be re-added on the next sync.
      */
     val isMoveAvailable: Boolean
         get() = collectionType == CollectionType.MANUAL
 
-    /** True when the move action applies to the current selection. */
     val canMoveSelection: Boolean
         get() = isMoveAvailable && isSelectionMode && selectedIds.isNotEmpty()
 }

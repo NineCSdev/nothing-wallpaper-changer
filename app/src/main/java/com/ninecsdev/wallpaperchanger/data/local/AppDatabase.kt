@@ -148,6 +148,11 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX index_wallpapers_collectionId ON wallpapers(collectionId)")
                 db.execSQL("CREATE INDEX index_wallpapers_fileId ON wallpapers(fileId)")
                 db.execSQL("CREATE UNIQUE INDEX index_wallpapers_collectionId_fileId ON wallpapers(collectionId, fileId)")
+
+                // 3. `isFavorites` flag on collections, marking the app-owned Favourites collection.
+                // Existing collections are all user-owned so the default is 0; the Favourites row
+                // itself is created lazily by the repository on the first favourite.
+                db.execSQL("ALTER TABLE collections ADD COLUMN isFavorites INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

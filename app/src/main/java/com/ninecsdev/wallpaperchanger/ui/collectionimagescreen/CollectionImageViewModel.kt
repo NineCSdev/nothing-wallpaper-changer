@@ -34,6 +34,7 @@ class CollectionImageViewModel @Inject constructor(
     init {
         loadCollectionMetadata()
         observeImages()
+        observeFavorites()
         // Silent re-probe: files marked unavailable may be readable again (source restored,
         // permission re-granted, connectivity back), clear the flag if so.
         viewModelScope.launch { repository.reprobeUnavailableFiles(collectionId) }
@@ -45,8 +46,17 @@ class CollectionImageViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     collectionName = collection?.name ?: "",
-                    collectionType = collection?.type
+                    collectionType = collection?.type,
+                    isFavoritesCollection = collection?.isFavorites == true
                 )
+            }
+        }
+    }
+
+    private fun observeFavorites() {
+        viewModelScope.launch {
+            repository.favoriteFileIdsFlow().collect { ids ->
+                _uiState.update { it.copy(favoriteFileIds = ids) }
             }
         }
     }
@@ -172,7 +182,7 @@ class CollectionImageViewModel @Inject constructor(
         }
     }
 
-    // Copy/move to another collection
+    // Copy/move actions
 
     /**
      * Opens the transfer target picker for the current selection. Destinations are a one-shot
@@ -183,7 +193,8 @@ class CollectionImageViewModel @Inject constructor(
         if (_uiState.value.selectedIds.isEmpty()) return
         viewModelScope.launch {
             val targets = repository.getAllCollections().first()
-                .filter { it.id != collectionId }
+                // Favourites collection is excluded as a transfer target
+                .filter { it.id != collectionId && !it.isFavorites }
                 .map { collection ->
                     TransferTarget(
                         collectionId = collection.id,
@@ -237,6 +248,40 @@ class CollectionImageViewModel @Inject constructor(
     /** Clears the transfer summary once the UI has shown the snackbar. */
     override fun clearTransferSummary() {
         _uiState.update { it.copy(transferSummary = null) }
+    }
+
+    // Favourite actions
+
+    /**
+     * Bulk favourite toggle for the current selection: if every selected wallpaper is already
+     * favourite, un-favourites them all; otherwise favourites the ones that aren't yet. Exits
+     * selection mode afterward.
+     */
+    override fun toggleFavoriteSelected() {
+        val state = _uiState.value
+        val selected = state.wallpapers.filter { it.id in state.selectedIds }
+        if (selected.isEmpty()) return
+        viewModelScope.launch {
+            // Same derived property the toolbar heart renders from, so icon and action can't drift.
+            if (state.isSelectionAllFavorites) {
+                repository.removeFavorites(selected.map { it.fileId })
+            } else {
+                repository.addFavorites(selected.filter { it.fileId !in state.favoriteFileIds })
+            }
+            exitSelectionMode()
+        }
+    }
+
+    /** Toggles a single wallpaper's favourite state. */
+    override fun toggleFavorite(wallpaper: WallpaperImage) {
+        val isFavorite = wallpaper.fileId in _uiState.value.favoriteFileIds
+        viewModelScope.launch {
+            if (isFavorite) {
+                repository.removeFavorites(listOf(wallpaper.fileId))
+            } else {
+                repository.addFavorites(listOf(wallpaper))
+            }
+        }
     }
 
     // Full-screen preview

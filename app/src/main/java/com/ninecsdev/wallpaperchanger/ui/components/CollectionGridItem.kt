@@ -12,8 +12,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,6 +25,7 @@ import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -29,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
-import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
@@ -52,7 +55,8 @@ fun CollectionGridItem(
     name: String,
     state: CollectionPreviewState,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isPinned: Boolean = false
 ) {
     Column(
         modifier = modifier
@@ -68,6 +72,26 @@ fun CollectionGridItem(
                 .background(color = NothingGray)
         ) {
             GridContent(state.previewUris, state.totalCount)
+
+            // Pinned marker (system/Favourites) collections, top-left over the preview.
+            if (isPinned) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp)
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(NothingWhite),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.icon_pinned),
+                        contentDescription = stringResource(R.string.cd_favorites_collection),
+                        tint = NothingBlack,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -176,7 +200,8 @@ fun CollectionGridItemLessOr4Preview() {
             CollectionGridItem(
                 name = "AMOLED",
                 state = CollectionPreviewState(previewUris = emptyList(),totalCount = 4),
-                onClick = {}
+                onClick = {},
+                isPinned = true
             )
         }
     }

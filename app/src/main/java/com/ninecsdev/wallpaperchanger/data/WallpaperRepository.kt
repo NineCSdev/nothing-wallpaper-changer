@@ -105,6 +105,13 @@ class WallpaperRepository @Inject constructor(
     fun observeImageCount(collectionId: Long): Flow<Int> =
         dao.observeImageCount(collectionId)
 
+    /**
+     * Reactive set of file ids that are favourited (have a membership in the system Favourites
+     * collection). The heart badge lights on every copy of these files across all collections.
+     */
+    fun favoriteFileIdsFlow(): Flow<Set<Long>> =
+        dao.observeFavoriteFileIds().map { it.toSet() }
+
     // Collection operations
 
     suspend fun updateCollection(
@@ -114,7 +121,13 @@ class WallpaperRepository @Inject constructor(
         newFrequency: RotationFrequency
     ) {
         withContext(Dispatchers.IO) {
-            dao.updateCollection(id, newName, newRule, newFrequency)
+            // Rename is blocked for the system (Favourites) collection — its display name is a
+            // localized resource. Keep the stored fallback name regardless of what the edit card
+            // submits; crop rule and rotation frequency stay editable. The edit card also hides the
+            // name field for system rows, this guard is the authoritative backstop.
+            val existing = dao.getCollectionById(id)
+            val safeName = if (existing?.isFavorites == true) existing.name else newName
+            dao.updateCollection(id, safeName, newRule, newFrequency)
         }
     }
 
@@ -255,7 +268,8 @@ class WallpaperRepository @Inject constructor(
             val markManuallyAdded = target.type == CollectionType.FOLDER
 
             database.withTransaction {
-                val existingByFileId = images.map { it.fileId }.distinct()
+                val existingByFileId = images.map { it.fileId }
+                    .distinct()
                     .chunked(SYNC_CHUNK_SIZE)
                     .flatMap { dao.getWallpapersInCollectionForFiles(targetCollectionId, it) }
                     .associateBy { it.fileId }
@@ -295,6 +309,70 @@ class WallpaperRepository @Inject constructor(
                 }
                 TransferResult(transferred, alreadyPresent)
             }
+        }
+    }
+
+    // Favourites
+    // TODO tests: check "tests/Favourites Tests" note
+
+    /**
+     * Favourites [images]: inserts a membership into the Favourites collection for each, snapshotting
+     * the hearted copy's persisted [WallpaperImage.editParams] into the new join row.
+     * The Favourites collection is created lazily inside this transaction on the first use.
+     */
+    suspend fun addFavorites(images: List<WallpaperImage>) {
+        if (images.isEmpty()) return
+        withContext(Dispatchers.IO) {
+            val now = System.currentTimeMillis()
+            database.withTransaction {
+                val favoritesId = getOrCreateFavoritesCollection()
+                val rows = images.map { image ->
+                    Wallpaper(
+                        collectionId = favoritesId,
+                        fileId = image.fileId,
+                        editParams = image.editParams,
+                        isManuallyAdded = false,
+                        addedAt = now
+                    )
+                }
+                rows.chunked(SYNC_CHUNK_SIZE).forEach { dao.insertWallpapers(it) }
+            }
+        }
+    }
+
+    /**
+     * Returns the id of the system Favourites collection, creating it lazily on first use.
+     * **MUST** be called inside a Room transaction.
+     * The collection is a plain [CollectionType.MANUAL] row flagged [WallpaperCollection.isFavorites];
+     * it is never auto-deleted when emptied, but the user may delete it (recreated fresh here later).
+     */
+    private suspend fun getOrCreateFavoritesCollection(): Long {
+        val existing = dao.getFavoritesCollection()
+        if (existing != null) return existing.id
+        return dao.insertCollection(
+            // Just in case we save the collection.name as Favourites as a final fallback
+            WallpaperCollection(
+                name = "Favourites",
+                type = CollectionType.MANUAL,
+                isFavorites = true
+            )
+        )
+    }
+
+    /**
+     * Un-favourites the given [fileIds]: deletes their single Favourites membership.
+     * Orphan GC runs afterward to reclaim a file that lived *only* in Favourites
+     * (e.g. one added there directly via the picker).
+     */
+    suspend fun removeFavorites(fileIds: List<Long>) {
+        if (fileIds.isEmpty()) return
+
+        withContext(Dispatchers.IO) {
+            val favoritesId = dao.getFavoritesCollection()?.id ?: return@withContext
+            database.withTransaction {
+                fileIds.chunked(SYNC_CHUNK_SIZE).forEach { dao.deleteJoinRowsForFiles(favoritesId, it) }
+            }
+            gcOrphanFiles()
         }
     }
 

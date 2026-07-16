@@ -26,9 +26,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
+import androidx.compose.ui.platform.LocalContext
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.model.resolveDisplayName
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
@@ -44,7 +46,8 @@ internal fun WallpaperSelectionCard(
     totalImages: Int,
     onSelectFolderClick: () -> Unit
 ) {
-    val displayName = activeCollection?.name ?: stringResource(R.string.label_select_collection)
+    val displayName = activeCollection?.resolveDisplayName(LocalContext.current)
+        ?: stringResource(R.string.label_select_collection)
 
     NothingOutlinedCard {
         Row(

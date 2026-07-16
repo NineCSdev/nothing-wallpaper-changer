@@ -38,6 +38,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -76,6 +78,7 @@ import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.EditParams
+import com.ninecsdev.wallpaperchanger.model.resolveCollectionDisplayName
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ImportSummarySnackbarEffect
@@ -234,16 +237,15 @@ fun CollectionImageScreen(
                         if (uiState.isSelectionMode) {
                             Text(
                                 text = stringResource(R.string.image_screen_count_selected, uiState.selectedIds.size),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 2.sp
+                                style = NothingType.titleCaps
                             )
                         } else {
+                            val title = resolveCollectionDisplayName(
+                                LocalContext.current, uiState.collectionName, uiState.isFavoritesCollection
+                            )
                             Text(
-                                text = uiState.collectionName.uppercase(),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 2.sp,
+                                text = title.uppercase(),
+                                style = NothingType.titleCaps,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -270,6 +272,25 @@ fun CollectionImageScreen(
                     },
                     actions = {
                         // TODO: Not sure if the top bar looks too cluttered, decide if hide actions while not in selection
+                        // Favourite/unfavourite the selection, enabled when ≥ 1 selected. Filled heart
+                        // when every selected wallpaper is already favourited (the action removes them).
+                        val favoriteAlpha = when {
+                            uiState.canFavoriteSelection -> 1f
+                            uiState.isSelectionMode -> 0.3f
+                            else -> 0.15f
+                        }
+                        IconButton(
+                            onClick = actions::toggleFavoriteSelected,
+                            enabled = uiState.canFavoriteSelection
+                        ) {
+                            Icon(
+                                imageVector = if (uiState.isSelectionAllFavorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = stringResource(R.string.cd_favorite_wallpapers),
+                                tint = NothingWhite.copy(alpha = favoriteAlpha),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
                         // Copy to another collection, enabled when ≥ 1 selected
                         val copyAlpha = when {
                             uiState.canCopySelection -> 1f
@@ -391,6 +412,8 @@ fun CollectionImageScreen(
                             wallpaper = wallpaper,
                             isSelected = isSelected,
                             isSelectionMode = uiState.isSelectionMode,
+                            // Passive heart badge on every favourite file, suppressed inside Favourites itself (all noise there).
+                            isFavorite = !uiState.isFavoritesCollection && wallpaper.fileId in uiState.favoriteFileIds,
                             // Attach flight modifier only while the preview is NOT fully settled open (i.e. during open/close flights).
                             sharesPreviewBounds = isCurrentPreview && (
                                 !(previewVisibleState.currentState && previewVisibleState.targetState) ||
@@ -455,6 +478,8 @@ fun CollectionImageScreen(
                 animatedVisibilityScope = this,
                 sharedWallpaperId = uiState.previewWallpaper?.id,
                 knownAspectRatios = knownAspectRatios,
+                favoriteFileIds = uiState.favoriteFileIds,
+                onToggleFavorite = actions::toggleFavorite,
                 onDismiss = dismissPreview,
                 onEdit = onEditWallpaper,
                 onPageChanged = actions::openPreview
@@ -552,6 +577,7 @@ private fun SharedTransitionScope.WallpaperThumbnail(
     wallpaper: WallpaperImage,
     isSelected: Boolean,
     isSelectionMode: Boolean,
+    isFavorite: Boolean,
     sharesPreviewBounds: Boolean,
     hiddenForPreview: Boolean,
     onClick: () -> Unit,
@@ -625,6 +651,15 @@ private fun SharedTransitionScope.WallpaperThumbnail(
                     UnavailableBadge(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
+                            .padding(6.dp)
+                    )
+                }
+
+                // Favourite badge (top-left of thumbnail; free of the edited/unavailable/selection corners)
+                if (isFavorite) {
+                    FavoriteBadge(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
                             .padding(6.dp)
                     )
                 }
@@ -750,6 +785,8 @@ private object PreviewCollectionImageActions : CollectionImageActions {
     override fun transferToCollection(target: TransferTarget) {}
     override fun cancelTransfer() {}
     override fun clearTransferSummary() {}
+    override fun toggleFavoriteSelected() {}
+    override fun toggleFavorite(wallpaper: WallpaperImage) {}
     override fun requestRelink(wallpaper: WallpaperImage) {}
     override fun cancelRelink() {}
     override fun clearRelinkFailed() {}

@@ -2,9 +2,11 @@
   <dictionary name="project">
     <words>
       <w>Español</w>
+      <w>Favourited</w>
       <w>Metroid</w>
       <w>Snackbar</w>
       <w>Spacewar</w>
+      <w>favorited</w>
       <w>ninecsdev</w>
       <w>poweron</w>
       <w>quickboot</w>

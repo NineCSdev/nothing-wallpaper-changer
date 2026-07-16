@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -144,9 +143,9 @@ private fun EditCollectionCardContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Rename is blocked for the system (Favourites) collection — its name is a localized resource.
+        // Rename is blocked for the Favourites collection as its name is a localized resource.
         // The field is hidden here and the repository guards the rename regardless.
-        if (!collection.isSystem) {
+        if (!collection.isFavorites) {
             NothingTextField(
                 value = nameText,
                 onValueChange = onNameChange,

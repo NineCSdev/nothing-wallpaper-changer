@@ -191,6 +191,12 @@
     <string name="cd_unavailable_wallpaper">Unavailable</string>
     <string name="cd_edited_wallpaper">Edited</string>
 
+    <!-- Favourites -->
+    <string name="favorites_collection_name">Favourites</string>
+    <string name="cd_favorite_wallpapers">Favourite</string>
+    <string name="cd_favorited_wallpaper">Favourited</string>
+    <string name="cd_favorites_collection">Favourites collection</string>
+
     <!-- Delete confirmation overlay -->
     <string name="action_delete">DELETE</string>
     <string name="action_cancel">CANCEL</string>
