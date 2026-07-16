@@ -171,10 +171,7 @@ private fun EditCollectionCardContent(
 
         ManagementButtons(
             onDeleteRequest = onDeleteRequest,
-            onViewImages = {
-                onDismiss()
-                onViewImages()
-            }
+            onViewImages = onViewImages
         )
 
         Spacer(modifier = Modifier.height(32.dp))

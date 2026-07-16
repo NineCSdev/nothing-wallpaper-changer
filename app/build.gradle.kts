@@ -36,6 +36,7 @@ android {
             manifestPlaceholders["appLabel"] = "@string/app_name"
         }
         debug {
+            versionNameSuffix= "-debug"
             applicationIdSuffix= ".debug"
 
             manifestPlaceholders["appLabel"] = "Wallpaper (Dev)"

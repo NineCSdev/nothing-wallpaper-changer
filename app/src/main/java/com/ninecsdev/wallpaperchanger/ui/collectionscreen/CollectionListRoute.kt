@@ -1,7 +1,11 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionscreen
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /**
@@ -27,6 +31,18 @@ fun CollectionListRoute(
 
     // Render nothing until the real state has loaded (see CollectionViewModel.uiState).
     val loadedUiState = uiState ?: return
+
+    // We record the target here, close the modal, and defer the navigation until the modal
+    // has actually left composition.
+    var pendingViewImagesId by remember { mutableStateOf<Long?>(null) }
+
+    LaunchedEffect(pendingViewImagesId, loadedUiState.editingCollection) {
+        val target = pendingViewImagesId
+        if (target != null && loadedUiState.editingCollection == null) {
+            pendingViewImagesId = null
+            onViewImages(target)
+        }
+    }
 
     CollectionListScreen(
         uiState = loadedUiState,
@@ -59,7 +75,8 @@ fun CollectionListRoute(
             }
         },
         onViewImages = {
-            loadedUiState.editingCollection?.let { onViewImages(it.id) }
+            loadedUiState.editingCollection?.let { pendingViewImagesId = it.id }
+            viewModel.closeEditModal()
         }
     )
 }
