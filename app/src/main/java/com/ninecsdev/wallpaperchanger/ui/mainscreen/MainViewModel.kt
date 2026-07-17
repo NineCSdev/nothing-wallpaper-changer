@@ -9,12 +9,14 @@ import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.data.StartupMaintenance
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -38,6 +40,7 @@ class MainViewModel @Inject constructor(
     serviceStateManager: ServiceStateManager,
     private val appDataStore: AppDataStore,
     private val imageInternalizer: ImageInternalizer,
+    private val wallpaperSources: WallpaperSources,
     startupMaintenance: StartupMaintenance,
     @param:ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -81,6 +84,18 @@ class MainViewModel @Inject constructor(
             }
         }
 
+    // Permission state has no system callback, so it's refreshed by the Route on
+    // resume and by the grant launcher's result (see refreshMediaAccess).
+    private val hasMediaAccess = MutableStateFlow(wallpaperSources.hasMediaAccess())
+
+    // How many MediaStore references are currently unreadable for lack of the permission
+    private val mediaAccessLostFlow = combine(
+        hasMediaAccess,
+        repository.observeMediaStoreFileCount()
+    ) { hasAccess, referenceCount ->
+        if (hasAccess) 0 else referenceCount
+    }
+
     // Null until every source flow has emitted; the UI renders nothing until then so no
     // fabricated default (e.g. revertToDefaultOnStop) can flash or animate to the real value.
     // TODO tests: see vault note tests/ui-state-loading.md
@@ -88,15 +103,17 @@ class MainViewModel @Inject constructor(
         settingsFlow,
         serviceStateManager.serviceState,
         activeCollectionFlow,
-        previewsFlow
-    ) { (defaultUri, revert), serviceState, active, previews ->
+        previewsFlow,
+        mediaAccessLostFlow
+    ) { (defaultUri, revert), serviceState, active, previews, mediaAccessLost ->
         MainUiState(
             serviceState = serviceState,
             activeCollection = active,
             previewImages = previews.take(PREVIEW_IMAGE_COUNT),
             activeCollectionSize = previews.size,
             defaultWallpaperUri = defaultUri,
-            revertToDefaultOnStop = revert
+            revertToDefaultOnStop = revert,
+            mediaAccessLostCount = mediaAccessLost
         )
     }.stateIn(
         scope = viewModelScope,
@@ -109,6 +126,21 @@ class MainViewModel @Inject constructor(
     fun setActiveCollection(collectionId: Long) {
         viewModelScope.launch {
             repository.setActiveCollection(collectionId)
+        }
+    }
+
+    /**
+     * Re-reads the `READ_MEDIA_IMAGES` state (on resume and after the banner's grant request).
+     * A missing→granted transition re-runs the MediaStore availability sweep immediately, so
+     * every reference badged unavailable by the revocation self-heals without an app restart.
+     */
+    fun refreshMediaAccess() {
+        val granted = wallpaperSources.hasMediaAccess()
+
+        val wasGranted = hasMediaAccess.value
+        hasMediaAccess.value = granted
+        if (granted && !wasGranted) {
+            viewModelScope.launch { repository.reconcileMediaStoreAvailability() }
         }
     }
 

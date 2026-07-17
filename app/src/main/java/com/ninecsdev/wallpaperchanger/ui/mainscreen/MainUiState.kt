@@ -27,7 +27,10 @@ data class MainUiState(
 
     // Default wallpaper data
     val defaultWallpaperUri: Uri? = null,
-    val revertToDefaultOnStop: Boolean = true
+    val revertToDefaultOnStop: Boolean = true,
+
+    /** How many MediaStore-referenced images are unreadable because `READ_MEDIA_IMAGES` is missing */
+    val mediaAccessLostCount: Int = 0
 ) {
     val isStartEnabled: Boolean
         get() = serviceState is ServiceState.Stopped

@@ -7,8 +7,8 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
  * [CollectionImageViewModel]. Navigation and launcher-backed callbacks (back, add
  * wallpapers, edit, relink picker) are deliberately not part of this contract; they
  * stay as plain parameters on [CollectionImageScreen] / [CollectionImageRoute].
- * TODO tests: see vault note tests/screen-actions-routes.md
  */
+// TODO tests: see vault note tests/screen-actions-routes.md
 interface CollectionImageActions {
     // Full-screen preview
     fun openPreview(wallpaper: WallpaperImage)

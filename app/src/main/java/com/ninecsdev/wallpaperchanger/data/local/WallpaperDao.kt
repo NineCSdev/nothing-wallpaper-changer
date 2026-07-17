@@ -134,9 +134,21 @@ interface WallpaperDao {
     @Query("SELECT uri FROM wallpaper_files WHERE sourceType = :type")
     suspend fun getFileUrisBySourceType(type: SourceType): List<Uri>
 
+    /** All file rows of the given source type. */
+    @Query("SELECT * FROM wallpaper_files WHERE sourceType = :type")
+    suspend fun getFilesBySourceType(type: SourceType): List<WallpaperFile>
+
+    /** Reactive count of files of the given source type. Drives the main screen's "photo access revoked" banner. */
+    @Query("SELECT COUNT(*) FROM wallpaper_files WHERE sourceType = :type")
+    fun observeFileCountBySourceType(type: SourceType): Flow<Int>
+
     /** Toggles a file's availability. */
     @Query("UPDATE wallpaper_files SET isAvailable = :available WHERE id = :fileId")
     suspend fun setFileAvailability(fileId: Long, available: Boolean)
+
+    /** Bulk sibling of [setFileAvailability]; callers chunk [fileIds] to respect SQLite bind limits. */
+    @Query("UPDATE wallpaper_files SET isAvailable = :available WHERE id IN (:fileIds)")
+    suspend fun setFilesAvailability(fileIds: List<Long>, available: Boolean)
 
     /**
      * Repoints a file row to a freshly picked source and restores it to available. Used to re-link

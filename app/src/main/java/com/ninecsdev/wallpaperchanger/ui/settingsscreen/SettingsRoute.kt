@@ -1,8 +1,12 @@
 package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /**
@@ -16,6 +20,17 @@ fun SettingsRoute(onBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val storageUsage by viewModel.storageUsage.collectAsStateWithLifecycle()
 
+    // Permission state has no callback; re-check whenever the user comes back from system settings.
+    LifecycleResumeEffect(Unit) {
+        viewModel.refreshMediaAccess()
+        onPauseOrDispose { }
+    }
+
+    // Tapping the locked keep-local-copies toggle asks for the permission instead of doing nothing.
+    val mediaAccessLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { viewModel.refreshMediaAccess() }
+
     // Render nothing until the real state has loaded (see SettingsViewModel.uiState).
     val loadedUiState = uiState ?: return
 
@@ -23,6 +38,9 @@ fun SettingsRoute(onBack: () -> Unit) {
         uiState = loadedUiState,
         storageUsage = storageUsage,
         actions = viewModel,
-        onBackClick = onBack
+        onBackClick = onBack,
+        onRequestMediaAccess = {
+            mediaAccessLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
+        }
     )
 }

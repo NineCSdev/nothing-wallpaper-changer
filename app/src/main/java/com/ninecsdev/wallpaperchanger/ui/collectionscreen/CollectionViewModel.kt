@@ -84,8 +84,8 @@ class CollectionViewModel @Inject constructor(
      * Combined public state built reactively.
      * Null until every source flow has emitted; the UI renders nothing until then so no
      * fabricated default (e.g. an empty collection list) can flash before the real data.
-     * TODO tests: see vault note tests/ui-state-loading.md
      */
+    // TODO tests: see vault note tests/ui-state-loading.md
     val uiState: StateFlow<CollectionUiState?> = combine(
         repository.getAllCollections(),
         previewsFlow,

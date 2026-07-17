@@ -11,7 +11,7 @@ import javax.inject.Singleton
 /**
  * One-shot app-startup housekeeping, triggered from the UI's entry point but owned here so
  * the work is decoupled from any UI lifecycle. Runs on a singleton-lived scope (mirroring
- * [ServiceStateManager]) rather than a `viewModelScope`, so it isn't cancelled if the user
+ * [ServiceStateManager]) rather than a `viewModelScope`, so it isn't canceled if the user
  * opens then immediately closes the app.
  */
 @Singleton
@@ -26,15 +26,18 @@ class StartupMaintenance @Inject constructor(
     /**
      * Runs the startup tasks once per process. All are reconciliation sweeps kept permanently
      * (not one-time migrations), reclaiming whatever a process death left half-cleaned. Ordered
-     * deliberately: the registry GC first (releases leaked picker grants and deletes orphan file
-     * rows), then the grant and disk sweeps, which diff the system's persisted grants and
-     * `internal_wallpapers/` against the rows that survived.
+     * deliberately: the registry GC first (reclaims backing resources and deletes orphan file
+     * rows), then the grant, MediaStore-availability, and disk sweeps, which diff the system's
+     * persisted grants, the device's MediaStore, and `internal_wallpapers/` against the rows
+     * that survived.
      */
     fun runOnce() {
         if (!hasRun.compareAndSet(false, true)) return
+
         scope.launch {
             repository.cleanupOrphanFileRegistry()
             repository.cleanupOrphanPersistedGrants()
+            repository.reconcileMediaStoreAvailability()
             repository.cleanupOrphanInternalFiles()
         }
     }

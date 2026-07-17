@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
@@ -49,7 +47,8 @@ fun MainScreen(
     onOpenCollectionsClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onToggleRevert: (Boolean) -> Unit,
-    onSelectDefaultClick: () -> Unit
+    onSelectDefaultClick: () -> Unit,
+    onGrantMediaAccess: () -> Unit
 ) {
     Scaffold(
         containerColor = NothingBlack,
@@ -62,7 +61,6 @@ fun MainScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.Start
             ) {
@@ -77,6 +75,7 @@ fun MainScreen(
                         state = uiState.serviceState,
                         modifier = Modifier.weight(1f)
                     )
+
                     IconButton(
                         onClick = safeClick(onSettingsClick),
                         modifier = Modifier.offset(y = (-20).dp),
@@ -119,6 +118,15 @@ fun MainScreen(
                     onToggleRevert = onToggleRevert,
                     onSelectDefaultClick = onSelectDefaultClick
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (uiState.mediaAccessLostCount > 0) {
+                    MediaAccessBanner(
+                        lostCount = uiState.mediaAccessLostCount,
+                        onGrantClick = onGrantMediaAccess
+                    )
+                }
             }
 
             Box(
@@ -155,7 +163,8 @@ fun MainScreenRunningPreview() {
                 onOpenCollectionsClick = {},
                 onSettingsClick = {},
                 onToggleRevert = {},
-                onSelectDefaultClick = {}
+                onSelectDefaultClick = {},
+                onGrantMediaAccess = {}
             )
         }
     }
@@ -169,7 +178,8 @@ fun MainScreenEmptyPreview() {
             MainScreen(
                 uiState = MainUiState(
                     serviceState = ServiceState.DisabledNoCollection,
-                    activeCollection = null
+                    activeCollection = null,
+                    mediaAccessLostCount = 2
                 ),
                 onStartClick = {},
                 onStopClick = {},
@@ -177,7 +187,8 @@ fun MainScreenEmptyPreview() {
                 onOpenCollectionsClick = {},
                 onSettingsClick = {},
                 onToggleRevert = {},
-                onSelectDefaultClick = {}
+                onSelectDefaultClick = {},
+                onGrantMediaAccess = {}
             )
         }
     }

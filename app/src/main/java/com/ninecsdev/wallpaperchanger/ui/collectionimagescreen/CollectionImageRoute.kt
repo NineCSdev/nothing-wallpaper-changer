@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.ui.components.rememberMediaAccessGatedAction
 
 /**
  * Stateful entry point for the Collection Image screen: owns the ViewModel, collects
@@ -38,15 +39,18 @@ fun CollectionImageRoute(
         viewModel.onRelinkPicked(uri)
     }
 
+    // Add-images goes through the media-access pre-prompt so reference mode gets its in-context permission ask.
+    val gatedAddWallpapers = rememberMediaAccessGatedAction {
+        imagePickerLauncher.launch(
+            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+        )
+    }
+
     CollectionImageScreen(
         uiState = uiState,
         actions = viewModel,
         onBackClick = onBack,
-        onAddWallpapers = {
-            imagePickerLauncher.launch(
-                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-            )
-        },
+        onAddWallpapers = gatedAddWallpapers,
         onEditWallpaper = onEditWallpaper,
         onRelinkConfirm = {
             relinkPickerLauncher.launch(

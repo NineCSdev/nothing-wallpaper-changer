@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ninecsdev.wallpaperchanger.ui.components.rememberMediaAccessGatedAction
 
 /**
  * Stateful entry point for the Collection List screen: collects state and wires the
@@ -59,7 +60,7 @@ fun CollectionListRoute(
             viewModel.toggleCreateModal(false)
             onLaunchFolderPicker()
         },
-        onPhotosSelect = {
+        onPhotosSelect = rememberMediaAccessGatedAction {
             viewModel.toggleCreateModal(false)
             onLaunchPhotosPicker()
         },

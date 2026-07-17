@@ -91,8 +91,8 @@ abstract class AppDatabase : RoomDatabase() {
          * single file row.
          *
          * `sourceType` is derived from the uri: anything under `internal_wallpapers/` is an app-owned
-         * copy (INTERNALIZED); everything else is a folder document URI (FOLDER_DOC). No PICKER_GRANT
-         * rows can exist yet, reference-mode manual picks are introduced in a later step.
+         * copy (INTERNALIZED); everything else is a folder document URI (FOLDER_DOC).
+         * Reference-mode manual picks are introduced in a later step.
          *
          * Join rows keep their original ids, edit params, `isManuallyAdded`, and `addedAt`. The file
          * row's `addedAt` is the earliest membership timestamp for that uri.

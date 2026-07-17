@@ -88,7 +88,8 @@
     <string name="settings_section_storage">ALMACENAMIENTO</string>
     <string name="settings_keep_local_copies_title">MANTENER COPIAS LOCALES</string>
     <string name="settings_keep_local_copies_subtitle">COPIAR LAS FOTOS AL ALMACENAMIENTO DE LA APP</string>
-    <string name="settings_storage_usage_title">ESPACIO USADO POR COPIAS</string>
+    <string name="settings_keep_local_copies_locked_subtitle">SIN ACCESO A FOTOS, LAS FOTOS SIEMPRE SE COPIAN</string>
+    <string name="settings_storage_usage_title">ESPACIO USADO</string>
     <string name="settings_storage_usage_value">%1$s · %2$s</string>
     <plurals name="settings_storage_usage_images">
         <item quantity="one">%d IMAGEN</item>
@@ -169,6 +170,22 @@
     <string name="relink_dialog_confirm">REELEGIR</string>
     <string name="relink_dialog_cancel">CANCELAR</string>
     <string name="relink_failed_snackbar">No se pudo re-enlazar la imagen</string>
+
+    <!-- Acceso a fotos (READ_MEDIA_IMAGES): aviso previo al selector, banner de reactivación -->
+    <string name="media_access_prompt_title">¿PERMITIR ACCESO A FOTOS?</string>
+    <string name="media_access_prompt_message">
+        Con acceso a fotos, las fotos añadidas se guardan como referencias (no ocupan espacio).
+        Sin él, cada foto se copia en la app para tener acesso en segundo plano.
+    </string>
+    <string name="media_access_prompt_allow">PERMITIR</string>
+    <string name="media_access_prompt_skip">COPIAR</string>
+    <string name="media_access_banner_title">FALTA ACCESO A FOTOS</string>
+    <plurals name="media_access_banner_message">
+        <item quantity="one">%d imagen no puede cargarse hasta restaurar el acceso.</item>
+        <item quantity="many">%d imágenes no pueden cargarse hasta restaurar el acceso.</item>
+        <item quantity="other">%d imágenes no pueden cargarse hasta restaurar el acceso.</item>
+    </plurals>
+    <string name="media_access_banner_action">PERMITIR</string>
 
     <!-- Copiar/mover entre colecciones -->
     <string name="cd_copy_wallpapers">Copiar a otra colección</string>

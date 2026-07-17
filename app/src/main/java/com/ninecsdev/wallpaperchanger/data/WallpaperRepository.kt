@@ -112,6 +112,11 @@ class WallpaperRepository @Inject constructor(
     fun favoriteFileIdsFlow(): Flow<Set<Long>> =
         dao.observeFavoriteFileIds().map { it.toSet() }
 
+    /** Reactive count of [SourceType.MEDIA_STORE] file rows. */
+    fun observeMediaStoreFileCount(): Flow<Int> =
+        dao.observeFileCountBySourceType(SourceType.MEDIA_STORE)
+
+
     // Collection operations
 
     suspend fun updateCollection(
@@ -610,12 +615,11 @@ class WallpaperRepository @Inject constructor(
 
     /**
      * Reconciles the system's persisted URI grants with the DB: releases any grant this app holds
-     * that no collection root (folder tree) and no [SourceType.PICKER_GRANT] file row references.
-     * Reclaims grants leaked by a failure or process death between `takePersistableUriPermission`
-     * and the DB commit. Safe to call on every app start; a no-op when nothing leaked.
-     *
-     * TODO tests: check "WallpaperSources Tests" note
+     * that no collection root (folder tree) references. Reclaims grants leaked by a failure or
+     * process death between `takePersistableUriPermission` and the DB commit.
+     * Safe to call on every app start; a no-op when nothing leaked.
      */
+    // TODO tests: check "WallpaperSources Tests" note
     suspend fun cleanupOrphanPersistedGrants() {
         withContext(Dispatchers.IO) {
             // The grant snapshot is taken *before* the keep set so a grant acquired by a concurrent import
@@ -623,11 +627,55 @@ class WallpaperRepository @Inject constructor(
             val granted = wallpaperSources.persistedGrantUris()
             if (granted.isEmpty()) return@withContext
 
-            val keep = (dao.getAllRootUris() + dao.getFileUrisBySourceType(SourceType.PICKER_GRANT)).toSet()
+            val keep = dao.getAllRootUris().toSet()
             val leaked = granted.filterNot { it in keep }
 
             leaked.forEach { wallpaperSources.releasePersistedGrant(it) }
             if (leaked.isNotEmpty()) Log.d(TAG, "Released ${leaked.size} orphaned persisted grant(s)")
+        }
+    }
+
+    /**
+     * Reconciles [SourceType.MEDIA_STORE] references with the device's MediaStore, both ways:
+     * rows whose media id no longer exists (photo deleted in a gallery app, SD card unmounted) are
+     * marked unavailable, and unavailable rows whose id reappeared (card remounted) are restored.
+     *
+     * When `READ_MEDIA_IMAGES` is missing (denied or revoked) every reference
+     * is unreadable by definition, so all of them are marked unavailable without querying; the
+     * main screen prompts for a re-grant and this sweep restores them once it's back.
+     *
+     * Runs at startup ([StartupMaintenance]) or on mid-session re-grant.
+     */
+    // TODO tests: check "MediaStore Transition Tests" note
+    suspend fun reconcileMediaStoreAvailability() {
+        withContext(Dispatchers.IO) {
+            val references = dao.getFilesBySourceType(SourceType.MEDIA_STORE)
+            if (references.isEmpty()) return@withContext
+
+            if (!wallpaperSources.hasMediaAccess()) {
+                references.filter { it.isAvailable }
+                    .map { it.id }
+                    .chunked(SYNC_CHUNK_SIZE)
+                    .forEach { dao.setFilesAvailability(it, false) }
+                Log.w(TAG, "READ_MEDIA_IMAGES missing; ${references.size} MediaStore reference(s) marked unavailable")
+                return@withContext
+            }
+
+            // A row whose uri has no parseable id can't be checked; leaving it untouched keeps the
+            // sweep non-destructive (rotation's own failure marking still covers it).
+            val idsByFile = references.mapNotNull { file ->
+                file.uri.lastPathSegment?.toLongOrNull()?.let { file to it }
+            }
+            val existing = wallpaperSources.queryExistingMediaStoreIds(idsByFile.map { it.second })
+
+            val lost = idsByFile.filter { (file, id) -> file.isAvailable && id !in existing }.map { it.first.id }
+            val recovered = idsByFile.filter { (file, id) -> !file.isAvailable && id in existing }.map { it.first.id }
+
+            lost.chunked(SYNC_CHUNK_SIZE).forEach { dao.setFilesAvailability(it, false) }
+            recovered.chunked(SYNC_CHUNK_SIZE).forEach { dao.setFilesAvailability(it, true) }
+            if (lost.isNotEmpty() || recovered.isNotEmpty()) {
+                Log.d(TAG, "MediaStore sweep: ${lost.size} lost, ${recovered.size} recovered")
+            }
         }
     }
 

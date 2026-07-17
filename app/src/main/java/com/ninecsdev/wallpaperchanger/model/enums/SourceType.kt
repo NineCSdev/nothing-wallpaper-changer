@@ -8,10 +8,11 @@ package com.ninecsdev.wallpaperchanger.model.enums
  */
 enum class SourceType {
     /**
-     * A photo-picker `content://` URI kept alive via `takePersistableUriPermission`.
-     * The bytes live in the user's storage. On orphan, we release the grant.
+     * A stable MediaStore image URI (`content://media/external/images/media/<id>`) read under
+     * the `READ_MEDIA_IMAGES`. Derived at pick time from the photo-picker URI's embedded media id.
+     * The bytes live in the user's storage; on orphan there is nothing to clean up.
      */
-    PICKER_GRANT,
+    MEDIA_STORE,
 
     /**
      * An app-private WebP copy under `files/internal_wallpapers/` produced by

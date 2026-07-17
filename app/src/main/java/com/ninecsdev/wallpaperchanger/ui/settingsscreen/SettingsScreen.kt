@@ -45,7 +45,8 @@ fun SettingsScreen(
     uiState: SettingsUiState,
     storageUsage: StorageUsage?,
     actions: SettingsActions,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onRequestMediaAccess: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -176,11 +177,18 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Without READ_MEDIA_IMAGES every pick is internalized, so the toggle shows the
+                // effective (forced-on) value; the stored preference is untouched, and tapping
+                // the toggle requests the permission instead of changing the setting.
                 SettingsToggleRow(
                     title = stringResource(R.string.settings_keep_local_copies_title),
-                    subtitle = stringResource(R.string.settings_keep_local_copies_subtitle),
-                    checked = uiState.keepLocalCopies,
-                    onCheckedChange = actions::setKeepLocalCopies
+                    subtitle = if (uiState.hasMediaAccess) stringResource(R.string.settings_keep_local_copies_subtitle)
+                                else stringResource(R.string.settings_keep_local_copies_locked_subtitle),
+                    checked = uiState.effectiveKeepLocalCopies,
+                    onCheckedChange = { enabled ->
+                        if (uiState.hasMediaAccess) actions.setKeepLocalCopies(enabled)
+                        else onRequestMediaAccess()
+                    }
                 )
 
                 StorageUsageRow(usage = storageUsage)
@@ -263,7 +271,8 @@ fun SettingsScreenPreview() {
             ),
             storageUsage = StorageUsage(totalBytes = 148_897_792, fileCount = 87),
             actions = PreviewSettingsActions,
-            onBackClick = {}
+            onBackClick = {},
+            onRequestMediaAccess = {}
         )
     }
 }
@@ -279,4 +288,5 @@ private object PreviewSettingsActions : SettingsActions {
     override fun setCompressionQualityLow(quality: Int) {}
     override fun setKeepLocalCopies(enabled: Boolean) {}
     override fun setAppLanguage(tag: String) {}
+    override fun refreshMediaAccess() {}
 }

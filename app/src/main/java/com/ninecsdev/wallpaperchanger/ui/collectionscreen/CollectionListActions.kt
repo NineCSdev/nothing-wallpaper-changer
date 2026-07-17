@@ -10,8 +10,8 @@ import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
  * (collection click, folder/photos pickers, create/delete with their service
  * side effects) are deliberately not part of this contract; they stay as plain
  * parameters on [CollectionListScreen] / [CollectionListRoute].
- * TODO tests: see vault note tests/screen-actions-routes.md
  */
+// TODO tests: see vault note tests/screen-actions-routes.md
 interface CollectionListActions {
     fun setSortOrder(order: CollectionSortOrder)
     fun toggleCreateModal(show: Boolean)

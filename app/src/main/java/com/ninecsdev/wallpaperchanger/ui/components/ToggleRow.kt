@@ -19,7 +19,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /**
  * A title/subtitle row with a trailing Nothing-styled [Switch]. Shared by the settings screen
- * and the main-screen default-wallpaper card.
+ * and the main-screen default-wallpaper card. A disabled row keeps rendering its checked state.
  */
 @Composable
 internal fun SettingsToggleRow(
@@ -27,7 +27,8 @@ internal fun SettingsToggleRow(
     subtitle: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -42,13 +43,16 @@ internal fun SettingsToggleRow(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
+            enabled = enabled,
             modifier = Modifier.scale(0.8f),
             colors = SwitchDefaults.colors(
                 checkedThumbColor = NothingBlack,
                 checkedTrackColor = NothingWhite,
                 uncheckedThumbColor = NothingWhite,
                 uncheckedTrackColor = NothingBlack,
-                uncheckedBorderColor = NothingWhite.copy(alpha = 0.5f)
+                uncheckedBorderColor = NothingWhite.copy(alpha = 0.5f),
+                disabledCheckedThumbColor = NothingBlack,
+                disabledCheckedTrackColor = NothingWhite.copy(alpha = 0.5f)
             )
         )
     }
@@ -67,6 +71,26 @@ private fun SettingsToggleRowPreview() {
                 title = "TOGGLE TITLE",
                 subtitle = "Toggle subtitle",
                 checked = true,
+                onCheckedChange = {}
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun SettingsToggleRowDisabledPreview() {
+    WallpaperChangerTheme {
+        Box(
+            modifier = Modifier
+                .background(NothingBlack)
+                .padding(16.dp)
+        ) {
+            SettingsToggleRow(
+                title = "TOGGLE TITLE",
+                subtitle = "Toggle subtitle",
+                checked = true,
+                enabled = false,
                 onCheckedChange = {}
             )
         }

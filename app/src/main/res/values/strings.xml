@@ -90,7 +90,8 @@
     <string name="settings_section_storage">STORAGE</string>
     <string name="settings_keep_local_copies_title">KEEP LOCAL COPIES</string>
     <string name="settings_keep_local_copies_subtitle">COPY ADDED PHOTOS INTO APP STORAGE</string>
-    <string name="settings_storage_usage_title">STORAGE USED BY LOCAL COPIES</string>
+    <string name="settings_keep_local_copies_locked_subtitle">WITHOUT PHOTO ACCESS, PHOTOS ARE ALWAYS COPIED</string>
+    <string name="settings_storage_usage_title">STORAGE USED</string>
     <!-- %1$s = formatted size (e.g. "142 MB"), %2$s = pluralized image count -->
     <string name="settings_storage_usage_value">%1$s · %2$s</string>
     <plurals name="settings_storage_usage_images">
@@ -173,6 +174,21 @@
     <string name="relink_dialog_confirm">RESELECT</string>
     <string name="relink_dialog_cancel">CANCEL</string>
     <string name="relink_failed_snackbar">Couldn\'t re-link the image</string>
+
+    <!-- Photo access (READ_MEDIA_IMAGES): pre-prompt before picking, re-grant banner -->
+    <string name="media_access_prompt_title">ALLOW PHOTO ACCESS?</string>
+    <string name="media_access_prompt_message">
+        With photo access, added photos are kept as references (don\'t use extra storage).
+        \nWithout it, each photo is copied into the app for background access.
+    </string>
+    <string name="media_access_prompt_allow">ALLOW</string>
+    <string name="media_access_prompt_skip">COPY</string>
+    <string name="media_access_banner_title">PHOTO ACCESS NEEDED</string>
+    <plurals name="media_access_banner_message">
+        <item quantity="one">%d referenced image can\'t load until access is restored.</item>
+        <item quantity="other">%d referenced images can\'t load until access is restored.</item>
+    </plurals>
+    <string name="media_access_banner_action">GRANT</string>
 
     <!-- Copy/move between collections -->
     <string name="cd_copy_wallpapers">Copy to another collection</string>

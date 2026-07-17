@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.logic.StorageUsage
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
@@ -37,6 +38,7 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val appDataStore: AppDataStore,
     private val imageInternalizer: ImageInternalizer,
+    private val wallpaperSources: WallpaperSources,
     @param:ApplicationContext private val context: Context
 ) : ViewModel(), SettingsActions {
 
@@ -50,7 +52,7 @@ class SettingsViewModel @Inject constructor(
     // supported languages is fixed (read once from locales_config); only the selected tag varies.
     private val localeManager = context.getSystemService(Context.LOCALE_SERVICE) as? LocaleManager
     private val availableLanguages: List<LanguageOption> = buildLanguageList(context)
-    private val _selectedLanguageTag = MutableStateFlow(currentLanguageTag())
+    private val selectedLanguageTag = MutableStateFlow(currentLanguageTag())
 
     // Separate in 2 flows as combine max is 5
     private val lockscreenSettingsFlow = combine(
@@ -61,13 +63,18 @@ class SettingsViewModel @Inject constructor(
         Triple(batterySaverPolicy, wallpaperZoomFix, wallpaperDestination)
     }
 
+    // Permission state has no system callback, so it's snapshot here and refreshed by the
+    // Route on every resume (the user may grant/revoke in system settings and come back).
+    private val hasMediaAccess = MutableStateFlow(wallpaperSources.hasMediaAccess())
+
     // Nested so the outer combine (5-arg max) still has free slots for keepLocalCopies + language.
     private val lockscreenStorageLanguageFlow = combine(
         lockscreenSettingsFlow,
         appDataStore.keepLocalCopiesFlow(),
-        _selectedLanguageTag
-    ) { lockscreenSettings, keepLocalCopies, languageTag ->
-        Triple(lockscreenSettings, keepLocalCopies, languageTag)
+        hasMediaAccess,
+        selectedLanguageTag
+    ) { lockscreenSettings, keepLocalCopies, hasMediaAccess, languageTag ->
+        Triple(lockscreenSettings, keepLocalCopies to hasMediaAccess, languageTag)
     }
 
     // Null until every settings flow has emitted; the UI renders nothing until then so no
@@ -79,7 +86,7 @@ class SettingsViewModel @Inject constructor(
         appDataStore.compressionQualityHighFlow(),
         appDataStore.compressionQualityLowFlow(),
         lockscreenStorageLanguageFlow
-    ) { delay, boot, qualityHigh, qualityLow, (lockscreenSettings, keepLocalCopies, languageTag) ->
+    ) { delay, boot, qualityHigh, qualityLow, (lockscreenSettings, storageAccess, languageTag) ->
         SettingsUiState(
             screenOffDelayMs = delay,
             startOnBoot = boot,
@@ -88,7 +95,8 @@ class SettingsViewModel @Inject constructor(
             wallpaperDestination = lockscreenSettings.third,
             compressionQualityHigh = qualityHigh,
             compressionQualityLow = qualityLow,
-            keepLocalCopies = keepLocalCopies,
+            keepLocalCopies = storageAccess.first,
+            hasMediaAccess = storageAccess.second,
             availableLanguages = availableLanguages,
             selectedLanguageTag = languageTag,
             appVersion = appVersion
@@ -143,13 +151,17 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { appDataStore.setKeepLocalCopies(enabled) }
     }
 
+    override fun refreshMediaAccess() {
+        hasMediaAccess.value = wallpaperSources.hasMediaAccess()
+    }
+
     /**
      * Applies [tag] as the app locale (empty tag → follow the system locale). Updates the UI
      * optimistically, then hands the change to the system, which recreates the Activity; the
-     * next VM instance re-seeds [_selectedLanguageTag] from [currentLanguageTag].
+     * next VM instance re-seeds [selectedLanguageTag] from [currentLanguageTag].
      */
     override fun setAppLanguage(tag: String) {
-        _selectedLanguageTag.value = tag
+        selectedLanguageTag.value = tag
         val localeList = if (tag.isEmpty()) {
             LocaleList.getEmptyLocaleList()
         } else {
