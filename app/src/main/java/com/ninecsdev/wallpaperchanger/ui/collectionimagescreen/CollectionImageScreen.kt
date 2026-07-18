@@ -448,7 +448,8 @@ fun CollectionImageScreen(
                 CollectionPickerItem(
                     id = target.collectionId,
                     name = target.name,
-                    previewState = CollectionPreviewState(target.previewUris, target.imageCount)
+                    previewState = CollectionPreviewState(target.previewUris, target.imageCount),
+                    isPinned = target.isPinned
                 )
             },
             onItemClick = { item ->

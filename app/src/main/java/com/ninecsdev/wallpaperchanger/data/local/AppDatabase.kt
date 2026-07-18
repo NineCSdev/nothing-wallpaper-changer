@@ -153,6 +153,10 @@ abstract class AppDatabase : RoomDatabase() {
                 // Existing collections are all user-owned so the default is 0; the Favourites row
                 // itself is created lazily by the repository on the first favourite.
                 db.execSQL("ALTER TABLE collections ADD COLUMN isFavorites INTEGER NOT NULL DEFAULT 0")
+
+                // 4. User-set `isPinned` flag (pinned collections sort first). Folded into this
+                // migration like isFavorites. the lazily-created Favourites row is born pinned.
+                db.execSQL("ALTER TABLE collections ADD COLUMN isPinned INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

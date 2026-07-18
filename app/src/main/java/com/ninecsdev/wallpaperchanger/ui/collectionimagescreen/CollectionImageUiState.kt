@@ -14,7 +14,8 @@ data class TransferTarget(
     val collectionId: Long,
     val name: String,
     val previewUris: List<Uri>,
-    val imageCount: Int = 0
+    val imageCount: Int = 0,
+    val isPinned: Boolean = false
 )
 
 /**

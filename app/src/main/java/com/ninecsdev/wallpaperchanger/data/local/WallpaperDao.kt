@@ -84,6 +84,10 @@ interface WallpaperDao {
         updateLastUsed(collectionId)
     }
 
+    /** Sets the user-controlled pin flag (pinned collections sort first in every collection grid). */
+    @Query("UPDATE collections SET isPinned = :pinned WHERE id = :collectionId")
+    suspend fun setCollectionPinned(collectionId: Long, pinned: Boolean)
+
     @Query("UPDATE collections SET lastWallpaperChangeAt = :timestamp WHERE id = :collectionId")
     suspend fun updateLastWallpaperChangeAt(collectionId: Long, timestamp: Long = System.currentTimeMillis())
 

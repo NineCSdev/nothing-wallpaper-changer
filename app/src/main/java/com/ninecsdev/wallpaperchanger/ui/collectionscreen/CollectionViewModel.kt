@@ -204,6 +204,23 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
+    // Long-press context menu intents
+
+    /** Flips the pin flag of the given collection; the list reorders reactively. */
+    override fun togglePinned(collectionId: Long) {
+        val collection = uiState.value?.allCollections?.find { it.id == collectionId } ?: return
+        viewModelScope.launch {
+            repository.setCollectionPinned(collectionId, !collection.isPinned)
+        }
+    }
+
+    /** Makes the given collection the active one (menu sibling of [setActiveEditingCollection]). */
+    override fun setActiveCollection(collectionId: Long) {
+        viewModelScope.launch {
+            repository.setActiveCollection(collectionId)
+        }
+    }
+
     // Sort order
 
     override fun setSortOrder(order: CollectionSortOrder) {

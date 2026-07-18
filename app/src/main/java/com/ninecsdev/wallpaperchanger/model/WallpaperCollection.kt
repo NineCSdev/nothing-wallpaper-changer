@@ -18,6 +18,7 @@ import java.time.ZoneId
  * [com.ninecsdev.wallpaperchanger.model.enums.CollectionType.MANUAL] types have images handpicked by the user and are not synced.
  *
  * [isFavorites] marks the app-owned Favourites collection.
+ * [isPinned] is the user-set "sort first"
  */
 //"App-owned vs user-owned" is orthogonal to [type] (how images get in), so Favourites is a plain
 // [CollectionType.MANUAL] collection with this flag set. If more app-owned collections ever appear,
@@ -35,14 +36,9 @@ data class WallpaperCollection(
     val lastWallpaperChangeAt: Long = 0L,
     val createdAt: Long = System.currentTimeMillis(),
     val lastUsedAt: Long = System.currentTimeMillis(),
-    val isFavorites: Boolean = false
+    val isFavorites: Boolean = false,
+    val isPinned: Boolean = false
 )
-
-/**
- * Whether this collection is pinned to the top of the collection list. For now only the Favourites
- * collection is pinned; the future pin-any-collection feature swaps this predicate.
- */
-val WallpaperCollection.isPinned: Boolean get() = isFavorites
 
 /**
  * The central "pinned collections sort first" rule, applied on top of an already-sorted list.

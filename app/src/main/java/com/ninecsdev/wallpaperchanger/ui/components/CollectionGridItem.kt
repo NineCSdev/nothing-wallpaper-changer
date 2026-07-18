@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -59,13 +60,20 @@ fun CollectionGridItem(
     state: CollectionPreviewState,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
     isPinned: Boolean = false,
     isActive: Boolean = false
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .then(
+                if (onLongClick != null) {
+                    Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                } else {
+                    Modifier.clickable { onClick() }
+                }
+            ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Container for the 2x2 grid
@@ -81,7 +89,7 @@ fun CollectionGridItem(
         ) {
             GridContent(state.previewUris, state.totalCount)
 
-            // Pinned marker (system/Favourites) collections, top-left over the preview.
+            // Pinned marker, top-left over the preview.
             if (isPinned) {
                 Box(
                     modifier = Modifier
@@ -94,7 +102,7 @@ fun CollectionGridItem(
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.icon_pinned),
-                        contentDescription = stringResource(R.string.cd_favorites_collection),
+                        contentDescription = stringResource(R.string.cd_pinned_collection),
                         tint = NothingBlack,
                         modifier = Modifier.size(18.dp),
                     )

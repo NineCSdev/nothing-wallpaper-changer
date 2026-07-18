@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.RelinkResult
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.model.pinnedFirst
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -195,6 +196,8 @@ class CollectionImageViewModel @Inject constructor(
             val targets = repository.getAllCollections().first()
                 // Favourites collection is excluded as a transfer target
                 .filter { it.id != collectionId && !it.isFavorites }
+                .sortedByDescending { it.lastUsedAt }
+                .pinnedFirst()
                 .map { collection ->
                     TransferTarget(
                         collectionId = collection.id,
@@ -202,7 +205,8 @@ class CollectionImageViewModel @Inject constructor(
                         previewUris = repository.observePreviewImages(collection.id, limit = 4)
                             .first()
                             .map { it.uri },
-                        imageCount = repository.observeImageCount(collection.id).first()
+                        imageCount = repository.observeImageCount(collection.id).first(),
+                        isPinned = collection.isPinned
                     )
                 }
             _uiState.update { it.copy(transferMode = mode, transferTargets = targets) }

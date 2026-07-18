@@ -20,4 +20,8 @@ interface CollectionListActions {
     fun setActiveEditingCollection()
     fun syncEditingCollection()
     fun clearImportSummary()
+
+    // Long-press context menu intents
+    fun togglePinned(collectionId: Long)
+    fun setActiveCollection(collectionId: Long)
 }

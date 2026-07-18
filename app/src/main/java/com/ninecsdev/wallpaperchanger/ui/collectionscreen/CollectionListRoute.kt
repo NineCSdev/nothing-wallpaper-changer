@@ -48,7 +48,8 @@ fun CollectionListRoute(
     CollectionListScreen(
         uiState = loadedUiState,
         actions = viewModel,
-        onCollectionClick = viewModel::openEditModal,
+        onCollectionClick = onViewImages,
+        onEditCollection = viewModel::openEditModal,
         onBackClick = onBack,
         onFolderSelect = {
             viewModel.toggleCreateModal(false)

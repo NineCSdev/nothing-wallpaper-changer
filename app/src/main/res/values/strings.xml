@@ -218,7 +218,13 @@
     <string name="favorites_collection_name">Favourites</string>
     <string name="cd_favorite_wallpapers">Favourite</string>
     <string name="cd_favorited_wallpaper">Favourited</string>
-    <string name="cd_favorites_collection">Favourites collection</string>
+    <string name="cd_pinned_collection">Pinned collection</string>
+
+    <!-- Collection long-press context menu -->
+    <string name="collection_menu_pin">PIN</string>
+    <string name="collection_menu_unpin">UNPIN</string>
+    <string name="collection_menu_set_active">SET AS ACTIVE</string>
+    <string name="collection_menu_edit">EDIT COLLECTION</string>
 
     <!-- Delete confirmation overlay -->
     <string name="action_delete">DELETE</string>

@@ -39,7 +39,6 @@ import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
-import com.ninecsdev.wallpaperchanger.model.isPinned
 import com.ninecsdev.wallpaperchanger.model.resolveDisplayName
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionGridItem
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
@@ -56,6 +55,8 @@ import com.ninecsdev.wallpaperchanger.R
 /**
  * Screen for displaying all the user's collections in a
  * 2-column grid with a collection creation button at the bottom.
+ * Tapping a tile opens its images ([onCollectionClick]); long-pressing opens the
+ * context menu (Pin/Unpin · Set active · Edit, the latter via [onEditCollection]).
  * Owns and renders the CreateCollectionCard and EditCollectionCard modals.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,6 +65,7 @@ fun CollectionListScreen(
     uiState: CollectionUiState,
     actions: CollectionListActions,
     onCollectionClick: (Long) -> Unit,
+    onEditCollection: (Long) -> Unit,
     onBackClick: () -> Unit,
     // Composites wired in [CollectionListRoute]: they pair a ViewModel call with a
     // launcher, navigation, or service-lifecycle side effect this screen can't own.
@@ -150,12 +152,22 @@ fun CollectionListScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(uiState.allCollections, key = { it.id }) { collection ->
-                            CollectionGridItem(
-                                name = collection.resolveDisplayName(LocalContext.current),
-                                state = uiState.previewStates[collection.id] ?: CollectionPreviewState(),
-                                onClick = { onCollectionClick(collection.id) },
-                                isPinned = collection.isPinned
-                            )
+                            // Tap opens the collection's images; long-press opens the context menu.
+                            CollectionTileContextMenu(
+                                isPinned = collection.isPinned,
+                                isActive = collection.isActive,
+                                onTogglePin = { actions.togglePinned(collection.id) },
+                                onSetActive = { actions.setActiveCollection(collection.id) },
+                                onEdit = { onEditCollection(collection.id) }
+                            ) { onLongClick ->
+                                CollectionGridItem(
+                                    name = collection.resolveDisplayName(LocalContext.current),
+                                    state = uiState.previewStates[collection.id] ?: CollectionPreviewState(),
+                                    onClick = { onCollectionClick(collection.id) },
+                                    onLongClick = onLongClick,
+                                    isPinned = collection.isPinned
+                                )
+                            }
                         }
                     }
                 }
@@ -233,6 +245,7 @@ fun CollectionListScreenPopulatedPreview() {
             ),
             actions = PreviewCollectionListActions,
             onCollectionClick = {},
+            onEditCollection = {},
             onBackClick = {},
             onFolderSelect = {},
             onPhotosSelect = {},
@@ -251,6 +264,7 @@ fun CollectionListScreenEmptyPreview() {
             uiState = CollectionUiState(),
             actions = PreviewCollectionListActions,
             onCollectionClick = {},
+            onEditCollection = {},
             onBackClick = {},
             onFolderSelect = {},
             onPhotosSelect = {},
@@ -270,4 +284,6 @@ private object PreviewCollectionListActions : CollectionListActions {
     override fun setActiveEditingCollection() {}
     override fun syncEditingCollection() {}
     override fun clearImportSummary() {}
+    override fun togglePinned(collectionId: Long) {}
+    override fun setActiveCollection(collectionId: Long) {}
 }

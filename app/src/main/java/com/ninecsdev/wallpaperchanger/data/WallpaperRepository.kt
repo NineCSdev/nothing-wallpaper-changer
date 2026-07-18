@@ -136,6 +136,14 @@ class WallpaperRepository @Inject constructor(
         }
     }
 
+    /** Pins or unpins a collection. Purely positional. */
+    // TODO tests: see vault note tests/Pinned Collections Tests
+    suspend fun setCollectionPinned(collectionId: Long, pinned: Boolean) {
+        withContext(Dispatchers.IO) {
+            dao.setCollectionPinned(collectionId, pinned)
+        }
+    }
+
     /**
      * Creates a folder collection. Returns `true` if it became the active collection.
      */
@@ -359,7 +367,9 @@ class WallpaperRepository @Inject constructor(
             WallpaperCollection(
                 name = "Favourites",
                 type = CollectionType.MANUAL,
-                isFavorites = true
+                isFavorites = true,
+                // Pinned by default (like the migration does for existing rows); user may unpin.
+                isPinned = true
             )
         )
     }
