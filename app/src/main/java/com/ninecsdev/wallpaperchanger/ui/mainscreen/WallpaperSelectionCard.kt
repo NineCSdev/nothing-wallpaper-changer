@@ -44,7 +44,7 @@ internal fun WallpaperSelectionCard(
     activeCollection: WallpaperCollection?,
     previewImages: List<WallpaperImage>,
     totalImages: Int,
-    onSelectFolderClick: () -> Unit
+    onSelectCollectionClick: () -> Unit
 ) {
     val displayName = activeCollection?.resolveDisplayName(LocalContext.current)
         ?: stringResource(R.string.label_select_collection)
@@ -73,7 +73,7 @@ internal fun WallpaperSelectionCard(
             }
 
             TextButton(
-                onClick = onSelectFolderClick,
+                onClick = onSelectCollectionClick,
                 colors = ButtonDefaults.textButtonColors(contentColor = NothingWhite),
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
             ) {
@@ -147,7 +147,7 @@ fun PreviewSelectionCardActive() {
                 activeCollection = WallpaperCollection(name = "Amoled Collection", type = CollectionType.FOLDER),
                 previewImages = emptyList(),
                 totalImages = 15,
-                onSelectFolderClick = {}
+                onSelectCollectionClick = {}
             )
         }
     }

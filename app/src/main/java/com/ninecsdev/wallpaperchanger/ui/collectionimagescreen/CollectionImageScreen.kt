@@ -505,11 +505,35 @@ fun CollectionImageScreen(
 
     // Copy/move destination picker.
     if (uiState.transferMode != null) {
-        TransferTargetOverlay(
-            mode = uiState.transferMode,
-            targets = uiState.transferTargets,
-            onTargetSelected = actions::transferToCollection,
-            onCancel = actions::cancelTransfer
+        CollectionPickerSheet(
+            title = stringResource(
+                if (uiState.transferMode == TransferMode.COPY) R.string.transfer_dialog_title_copy
+                else R.string.transfer_dialog_title_move
+            ),
+            items = uiState.transferTargets.map { target ->
+                CollectionPickerItem(
+                    id = target.collectionId,
+                    name = target.name,
+                    previewState = CollectionPreviewState(target.previewUris, target.imageCount)
+                )
+            },
+            onItemClick = { item ->
+                uiState.transferTargets
+                    .find { it.collectionId == item.id }
+                    ?.let(actions::transferToCollection)
+            },
+            onDismiss = actions::cancelTransfer,
+            emptyContent = {
+                Text(
+                    text = stringResource(R.string.transfer_dialog_empty),
+                    style = NothingType.metaLabel,
+                    color = NothingWhite.copy(alpha = 0.4f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
+                )
+            }
         )
     }
 

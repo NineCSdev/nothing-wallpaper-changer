@@ -127,6 +127,10 @@
     <string name="collections_empty_title">NO COLLECTIONS FOUND</string>
     <string name="collections_empty_hint">TAP + TO INITIALIZE</string>
 
+    <!-- Collection picker sheet -->
+    <string name="picker_empty_create">CREATE COLLECTION</string>
+    <string name="cd_active_collection">Active collection</string>
+
     <!-- Create collection card -->
     <string name="create_collection_title">CREATE NEW COLLECTION</string>
     <string name="create_collection_label_folder">FOLDER</string>

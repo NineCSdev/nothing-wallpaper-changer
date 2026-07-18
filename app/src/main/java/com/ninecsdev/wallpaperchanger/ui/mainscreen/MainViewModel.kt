@@ -12,6 +12,8 @@ import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.model.pinnedFirst
+import com.ninecsdev.wallpaperchanger.ui.components.collectionPreviewsFlow
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -84,6 +86,25 @@ class MainViewModel @Inject constructor(
             }
         }
 
+    // Active-collection picker sheet: collections + previews only flow while the sheet is open
+    private val _isPickerSheetOpen = MutableStateFlow(false)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val pickerSheetFlow: Flow<CollectionPickerSheetState> = _isPickerSheetOpen
+        .flatMapLatest { open ->
+            if (!open) {
+                flowOf(CollectionPickerSheetState())
+            } else {
+                combine(
+                    repository.getAllCollections()
+                        .map { it.sortedByDescending { coll -> coll.lastUsedAt }.pinnedFirst() },
+                    repository.collectionPreviewsFlow()
+                ) { collections, previews ->
+                    CollectionPickerSheetState(isOpen = true, collections = collections, previewStates = previews)
+                }
+            }
+        }
+
     // Permission state has no system callback, so it's refreshed by the Route on
     // resume and by the grant launcher's result (see refreshMediaAccess).
     private val hasMediaAccess = MutableStateFlow(wallpaperSources.hasMediaAccess())
@@ -100,21 +121,26 @@ class MainViewModel @Inject constructor(
     // fabricated default (e.g. revertToDefaultOnStop) can flash or animate to the real value.
     // TODO tests: see vault note tests/ui-state-loading.md
     val uiState: StateFlow<MainUiState?> = combine(
-        settingsFlow,
-        serviceStateManager.serviceState,
-        activeCollectionFlow,
-        previewsFlow,
-        mediaAccessLostFlow
-    ) { (defaultUri, revert), serviceState, active, previews, mediaAccessLost ->
-        MainUiState(
-            serviceState = serviceState,
-            activeCollection = active,
-            previewImages = previews.take(PREVIEW_IMAGE_COUNT),
-            activeCollectionSize = previews.size,
-            defaultWallpaperUri = defaultUri,
-            revertToDefaultOnStop = revert,
-            mediaAccessLostCount = mediaAccessLost
-        )
+        combine(
+            settingsFlow,
+            serviceStateManager.serviceState,
+            activeCollectionFlow,
+            previewsFlow,
+            mediaAccessLostFlow
+        ) { (defaultUri, revert), serviceState, active, previews, mediaAccessLost ->
+            MainUiState(
+                serviceState = serviceState,
+                activeCollection = active,
+                previewImages = previews.take(PREVIEW_IMAGE_COUNT),
+                activeCollectionSize = previews.size,
+                defaultWallpaperUri = defaultUri,
+                revertToDefaultOnStop = revert,
+                mediaAccessLostCount = mediaAccessLost
+            )
+        },
+        pickerSheetFlow
+    ) { base, pickerSheet ->
+        base.copy(pickerSheet = pickerSheet)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
@@ -127,6 +153,10 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             repository.setActiveCollection(collectionId)
         }
+    }
+
+    fun setPickerSheetOpen(open: Boolean) {
+        _isPickerSheetOpen.value = open
     }
 
     /**

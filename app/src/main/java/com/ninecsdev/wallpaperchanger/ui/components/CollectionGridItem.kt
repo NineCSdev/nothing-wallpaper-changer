@@ -2,6 +2,7 @@ package com.ninecsdev.wallpaperchanger.ui.components
 
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,7 +51,7 @@ data class CollectionPreviewState(
 /**
  * A square grid item representing a wallpaper collection.
  * Shows the first 4 wallpapers in a 2x2 with the 4th blurred out.
- * Shared between the collections screen and the transfer target picker.
+ * Shared between the collections screen and the collection picker sheet.
  */
 @Composable
 fun CollectionGridItem(
@@ -56,7 +59,8 @@ fun CollectionGridItem(
     state: CollectionPreviewState,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isPinned: Boolean = false
+    isPinned: Boolean = false,
+    isActive: Boolean = false
 ) {
     Column(
         modifier = modifier
@@ -70,6 +74,10 @@ fun CollectionGridItem(
                 .aspectRatio(1f)
                 .clip(RoundedCornerShape(16.dp))
                 .background(color = NothingGray)
+                .then(
+                    if (isActive) Modifier.border(2.dp, NothingWhite, RoundedCornerShape(16.dp))
+                    else Modifier
+                )
         ) {
             GridContent(state.previewUris, state.totalCount)
 
@@ -87,6 +95,26 @@ fun CollectionGridItem(
                     Icon(
                         painter = painterResource(R.drawable.icon_pinned),
                         contentDescription = stringResource(R.string.cd_favorites_collection),
+                        tint = NothingBlack,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+
+            // Active-collection marker, top-right over the preview only for when selecting active from main screen.
+            if (isActive) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(NothingWhite),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = stringResource(R.string.cd_active_collection),
                         tint = NothingBlack,
                         modifier = Modifier.size(18.dp),
                     )

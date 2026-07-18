@@ -123,6 +123,10 @@
     <string name="collections_empty_title">NO SE ENCONTRARON COLECCIONES</string>
     <string name="collections_empty_hint">PULSA + PARA EMPEZAR</string>
 
+    <!-- Collection picker sheet -->
+    <string name="picker_empty_create">CREAR COLECCIÓN</string>
+    <string name="cd_active_collection">Colección activa</string>
+
     <!-- Create collection card -->
     <string name="create_collection_title">CREAR COLECCIÓN NUEVA</string>
     <string name="create_collection_label_folder">CARPETA</string>

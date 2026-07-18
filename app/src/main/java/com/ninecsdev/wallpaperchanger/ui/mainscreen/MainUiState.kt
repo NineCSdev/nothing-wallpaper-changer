@@ -4,6 +4,17 @@ import android.net.Uri
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
+
+/**
+ * State slice for the active-collection picker sheet. [collections] and [previewStates] are
+ * only populated while the sheet is open (see MainViewModel.pickerSheetFlow).
+ */
+data class CollectionPickerSheetState(
+    val isOpen: Boolean = false,
+    val collections: List<WallpaperCollection> = emptyList(),
+    val previewStates: Map<Long, CollectionPreviewState> = emptyMap()
+)
 
 /**
  * Number of preview thumbnails shown for the active collection on the main screen.
@@ -29,8 +40,11 @@ data class MainUiState(
     val defaultWallpaperUri: Uri? = null,
     val revertToDefaultOnStop: Boolean = true,
 
-    /** How many MediaStore-referenced images are unreadable because `READ_MEDIA_IMAGES` is missing */
-    val mediaAccessLostCount: Int = 0
+    // Lost photos data
+    val mediaAccessLostCount: Int = 0,
+
+    // Active-collection picker data
+    val pickerSheet: CollectionPickerSheetState = CollectionPickerSheetState()
 ) {
     val isStartEnabled: Boolean
         get() = serviceState is ServiceState.Stopped

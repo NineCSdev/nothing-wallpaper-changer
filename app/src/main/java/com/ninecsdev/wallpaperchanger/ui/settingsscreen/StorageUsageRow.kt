@@ -40,7 +40,7 @@ internal fun StorageUsageRow(
             Text(
                 text = stringResource(R.string.settings_storage_usage_title),
                 style = NothingType.metaLabel,
-                color = NothingWhite.copy(alpha = 0.55f)
+                color = NothingWhite.copy(alpha = 0.4f)
             )
         }
 
@@ -57,7 +57,7 @@ internal fun StorageUsageRow(
                 )
             } ?: "—",
             style = NothingType.metaLabel,
-            color = NothingWhite.copy(alpha = 0.55f)
+            color = NothingWhite.copy(alpha = 0.4f)
         )
     }
 }

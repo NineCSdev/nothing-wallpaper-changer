@@ -19,7 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun MainRoute(
     viewModel: MainViewModel,
-    onOpenCollections: (pickerMode: Boolean) -> Unit,
+    onOpenCollections: () -> Unit,
     onOpenSettings: () -> Unit,
     onStartService: () -> Unit,
     onStopService: () -> Unit,
@@ -46,8 +46,13 @@ fun MainRoute(
         uiState = loadedUiState,
         onStartClick = onStartService,
         onStopClick = onStopService,
-        onSelectFolderClick = { onOpenCollections(true) },
-        onOpenCollectionsClick = { onOpenCollections(false) },
+        onSelectCollectionClick = { viewModel.setPickerSheetOpen(true) },
+        onPickCollection = { id ->
+            viewModel.setActiveCollection(id)
+            viewModel.setPickerSheetOpen(false)
+        },
+        onDismissPicker = { viewModel.setPickerSheetOpen(false) },
+        onOpenCollectionsClick = onOpenCollections,
         onSettingsClick = onOpenSettings,
         onToggleRevert = viewModel::setRevertToDefault,
         onSelectDefaultClick = onLaunchDefaultWallpaperPicker,

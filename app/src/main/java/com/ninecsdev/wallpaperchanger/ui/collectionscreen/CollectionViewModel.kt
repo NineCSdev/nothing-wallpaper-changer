@@ -13,17 +13,13 @@ import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.pinnedFirst
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
+import com.ninecsdev.wallpaperchanger.ui.components.collectionPreviewsFlow
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -54,31 +50,9 @@ class CollectionViewModel @Inject constructor(
     /** Modal/processing state managed by this screen. */
     private val _screenState = MutableStateFlow(ScreenModalState())
 
-    /**
-     * Grid previews, derived reactively from the DB. Each collection's 2×2 thumbnails and total
-     * count update on their own when images are added/removed.
-     */
-    @OptIn(ExperimentalCoroutinesApi::class)
+    /** Grid previews, derived reactively from the DB (see [collectionPreviewsFlow]). */
     private val previewsFlow: Flow<Map<Long, CollectionPreviewState>> =
-        repository.getAllCollections()
-            .map { collections -> collections.map { it.id } }
-            .distinctUntilChanged()
-            .flatMapLatest { ids ->
-                if (ids.isEmpty()) {
-                    flowOf(emptyMap())
-                } else {
-                    combine(
-                        ids.map { id ->
-                            combine(
-                                repository.observePreviewImages(id),
-                                repository.observeImageCount(id)
-                            ) { images, count ->
-                                id to CollectionPreviewState(images.map { it.uri }, count)
-                            }
-                        }
-                    ) { entries -> entries.toMap() }
-                }
-            }
+        repository.collectionPreviewsFlow()
 
     /**
      * Combined public state built reactively.
@@ -104,7 +78,6 @@ class CollectionViewModel @Inject constructor(
             previewStates = previews,
             serviceState = serviceState,
             sortOrder = sort,
-            isPickerMode = modal.isPickerMode,
             isShowingCreateModal = modal.isShowingCreateModal,
             hasPendingFolder = modal.hasPendingFolder,
             hasPendingPhotos = modal.hasPendingPhotos,
@@ -239,10 +212,6 @@ class CollectionViewModel @Inject constructor(
 
     // Modal/navigation helpers
 
-    fun setPickerMode(picker: Boolean) {
-        _screenState.update { it.copy(isPickerMode = picker) }
-    }
-
     override fun toggleCreateModal(show: Boolean) {
         if (!show) pendingFolderUri = null
         _screenState.update {
@@ -268,7 +237,6 @@ class CollectionViewModel @Inject constructor(
 
 /** Internal holder so modal flags can be combined as a single flow. */
 private data class ScreenModalState(
-    val isPickerMode: Boolean = false,
     val isShowingCreateModal: Boolean = false,
     val hasPendingFolder: Boolean = false,
     val hasPendingPhotos: Boolean = false,

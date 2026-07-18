@@ -43,7 +43,9 @@ fun MainScreen(
     uiState: MainUiState,
     onStartClick: () -> Unit,
     onStopClick: () -> Unit,
-    onSelectFolderClick: () -> Unit,
+    onSelectCollectionClick: () -> Unit,
+    onPickCollection: (Long) -> Unit,
+    onDismissPicker: () -> Unit,
     onOpenCollectionsClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onToggleRevert: (Boolean) -> Unit,
@@ -107,7 +109,7 @@ fun MainScreen(
                     activeCollection = uiState.activeCollection,
                     previewImages = uiState.previewImages,
                     totalImages = uiState.activeCollectionSize,
-                    onSelectFolderClick = onSelectFolderClick
+                    onSelectCollectionClick = onSelectCollectionClick
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -145,6 +147,20 @@ fun MainScreen(
             }
         }
     }
+
+    // Active-collection picker sheet, over everything else.
+    if (uiState.pickerSheet.isOpen) {
+        ActiveCollectionPickerSheet(
+            state = uiState.pickerSheet,
+            activeCollectionId = uiState.activeCollection?.id,
+            onPick = onPickCollection,
+            onDismiss = onDismissPicker,
+            onCreateCollection = {
+                onDismissPicker()
+                onOpenCollectionsClick()
+            }
+        )
+    }
 }
 
 @Preview(showSystemUi = true, name = "Main Screen - Running", backgroundColor = 0xFF000000)
@@ -159,7 +175,9 @@ fun MainScreenRunningPreview() {
                 ),
                 onStartClick = {},
                 onStopClick = {},
-                onSelectFolderClick = {},
+                onSelectCollectionClick = {},
+                onPickCollection = {},
+                onDismissPicker = {},
                 onOpenCollectionsClick = {},
                 onSettingsClick = {},
                 onToggleRevert = {},
@@ -183,7 +201,9 @@ fun MainScreenEmptyPreview() {
                 ),
                 onStartClick = {},
                 onStopClick = {},
-                onSelectFolderClick = {},
+                onSelectCollectionClick = {},
+                onPickCollection = {},
+                onDismissPicker = {},
                 onOpenCollectionsClick = {},
                 onSettingsClick = {},
                 onToggleRevert = {},

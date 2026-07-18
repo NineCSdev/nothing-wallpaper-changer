@@ -14,14 +14,14 @@ import com.ninecsdev.wallpaperchanger.ui.components.rememberMediaAccessGatedActi
  * ViewModel into the stateless [CollectionListScreen], composing the callbacks that
  * pair a ViewModel call with a launcher, navigation, or service side effect.
  *
- * [viewModel] is passed in (not resolved here) because it is activity-scoped and
- * shared with the main screen, which sets picker mode on it before navigating here.
+ * [viewModel] is passed in (not resolved here) because it must be the activity-scoped
+ * instance: MainActivity's picker-result launchers push the picked folder/photos and
+ * reopen the create modal on it.
  */
 @Composable
 fun CollectionListRoute(
     viewModel: CollectionViewModel,
     onBack: () -> Unit,
-    onCollectionPicked: (Long) -> Unit,
     onViewImages: (Long) -> Unit,
     onLaunchFolderPicker: () -> Unit,
     onLaunchPhotosPicker: () -> Unit,
@@ -48,13 +48,7 @@ fun CollectionListRoute(
     CollectionListScreen(
         uiState = loadedUiState,
         actions = viewModel,
-        onCollectionClick = { id ->
-            if (loadedUiState.isPickerMode) {
-                onCollectionPicked(id)
-            } else {
-                viewModel.openEditModal(id)
-            }
-        },
+        onCollectionClick = viewModel::openEditModal,
         onBackClick = onBack,
         onFolderSelect = {
             viewModel.toggleCreateModal(false)

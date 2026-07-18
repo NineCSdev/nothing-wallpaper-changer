@@ -46,9 +46,9 @@ internal fun WallpaperZoomFixSelector(
 
     if (showInfo) {
         AlertDialog(
-            onDismissRequest = { showInfo = true },
+            onDismissRequest = { showInfo = false },
             confirmButton = {
-                TextButton(onClick = { showInfo = true }) {
+                TextButton(onClick = { showInfo = false }) {
                     Text(text = stringResource(R.string.settings_zoom_fix_dialog_ok))
                 }
             },

@@ -75,18 +75,12 @@ fun AppNavigation(
                     .edgeSwipe(
                         edgePredicate = { offset, size -> offset.x > size.width * 0.70f },
                         swipePredicate = { dragAmount -> dragAmount < -50f },
-                        onSwipe = {
-                            collectionViewModel.setPickerMode(false)
-                            navController.navigate(Route.COLLECTIONS)
-                        }
+                        onSwipe = { navController.navigate(Route.COLLECTIONS) }
                     )
             ) {
                 MainRoute(
                     viewModel = mainViewModel,
-                    onOpenCollections = { pickerMode ->
-                        collectionViewModel.setPickerMode(pickerMode)
-                        navController.navigate(Route.COLLECTIONS)
-                    },
+                    onOpenCollections = { navController.navigate(Route.COLLECTIONS) },
                     onOpenSettings = { navController.navigate(Route.SETTINGS) },
                     onStartService = onStartClick,
                     onStopService = onStopService,
@@ -114,10 +108,6 @@ fun AppNavigation(
                 CollectionListRoute(
                     viewModel = collectionViewModel,
                     onBack = popBack,
-                    onCollectionPicked = { id ->
-                        mainViewModel.setActiveCollection(id)
-                        popBack()
-                    },
                     onViewImages = { id ->
                         navController.navigate(Route.collectionImages(id))
                     },
