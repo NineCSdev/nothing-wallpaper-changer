@@ -64,21 +64,12 @@ data class CollectionImageUiState(
             null
         }
 
-    val canDeleteSelection: Boolean
-        get() = isSelectionMode && selectedIds.isNotEmpty()
-
-    val canCopySelection: Boolean
-        get() = isSelectionMode && selectedIds.isNotEmpty()
-
-    val canFavoriteSelection: Boolean
-        get() = isSelectionMode && selectedIds.isNotEmpty()
-
     /**
      * Whether every selected wallpaper is already favourite — the bulk action then un-favourites
      * them (and the toolbar heart shows filled); otherwise it favourites the ones that aren't yet.
      */
     val isSelectionAllFavorites: Boolean
-        get() = canFavoriteSelection &&
+        get() = isSelectionMode && selectedIds.isNotEmpty() &&
             wallpapers.filter { it.id in selectedIds }.all { it.fileId in favoriteFileIds }
 
     /**
@@ -87,7 +78,4 @@ data class CollectionImageUiState(
      */
     val isMoveAvailable: Boolean
         get() = collectionType == CollectionType.MANUAL
-
-    val canMoveSelection: Boolean
-        get() = isMoveAvailable && isSelectionMode && selectedIds.isNotEmpty()
 }

@@ -10,10 +10,13 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -24,6 +27,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -38,8 +42,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -67,8 +69,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -80,6 +82,9 @@ import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.resolveCollectionDisplayName
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.ui.components.overlay.CollectionPickerItem
+import com.ninecsdev.wallpaperchanger.ui.components.overlay.CollectionPickerSheet
+import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ImportSummarySnackbarEffect
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
@@ -270,106 +275,6 @@ fun CollectionImageScreen(
                             }
                         }
                     },
-                    actions = {
-                        // TODO: Not sure if the top bar looks too cluttered, decide if hide actions while not in selection
-                        // Favourite/unfavourite the selection, enabled when ≥ 1 selected. Filled heart
-                        // when every selected wallpaper is already favourited (the action removes them).
-                        val favoriteAlpha = when {
-                            uiState.canFavoriteSelection -> 1f
-                            uiState.isSelectionMode -> 0.3f
-                            else -> 0.15f
-                        }
-                        IconButton(
-                            onClick = actions::toggleFavoriteSelected,
-                            enabled = uiState.canFavoriteSelection
-                        ) {
-                            Icon(
-                                imageVector = if (uiState.isSelectionAllFavorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = stringResource(R.string.cd_favorite_wallpapers),
-                                tint = NothingWhite.copy(alpha = favoriteAlpha),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-
-                        // Copy to another collection, enabled when ≥ 1 selected
-                        val copyAlpha = when {
-                            uiState.canCopySelection -> 1f
-                            uiState.isSelectionMode -> 0.3f
-                            else -> 0.15f
-                        }
-                        IconButton(
-                            onClick = { actions.requestTransfer(TransferMode.COPY) },
-                            enabled = uiState.canCopySelection
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.icon_copy),
-                                contentDescription = stringResource(R.string.cd_copy_wallpapers),
-                                tint = NothingWhite.copy(alpha = copyAlpha),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-
-                        // Move to another collection. Hidden for folder collections:
-                        // sync would re-add a moved-out image on the next pass.
-                        if (uiState.isMoveAvailable) {
-                            val moveAlpha = when {
-                                uiState.canMoveSelection -> 1f
-                                uiState.isSelectionMode -> 0.3f
-                                else -> 0.15f
-                            }
-                            IconButton(
-                                onClick = { actions.requestTransfer(TransferMode.MOVE) },
-                                enabled = uiState.canMoveSelection
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.icon_move),
-                                    contentDescription = stringResource(R.string.cd_move_wallpapers),
-                                    tint = NothingWhite.copy(alpha = moveAlpha),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-
-                        // Edit (pencil), enabled when exactly 1 is selected
-                        val editAlpha = when {
-                            uiState.selectedWallpaper != null -> 1f
-                            uiState.isSelectionMode -> 0.3f
-                            else -> 0.15f
-                        }
-                        IconButton(
-                            onClick = { uiState.selectedWallpaper?.let(onEditWallpaper) },
-                            enabled = uiState.selectedWallpaper != null
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.icon_edit),
-                                contentDescription = stringResource(R.string.cd_edit_wallpaper),
-                                tint = NothingWhite.copy(alpha = editAlpha),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-
-                        // Delete (trash), enabled when ≥ 1 selected
-                        val deleteAlpha = when {
-                            uiState.canDeleteSelection -> 1f
-                            uiState.isSelectionMode -> 0.3f
-                            else -> 0.15f
-                        }
-                        IconButton(
-                            onClick = {
-                                if (uiState.canDeleteSelection) {
-                                    showDeleteConfirmation = true
-                                }
-                            },
-                            enabled = uiState.canDeleteSelection
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.icon_delete),
-                                contentDescription = stringResource(R.string.cd_delete_wallpapers),
-                                tint = NothingWhite.copy(alpha = deleteAlpha),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = NothingBlack,
                         titleContentColor = NothingWhite
@@ -390,77 +295,106 @@ fun CollectionImageScreen(
             },
             containerColor = NothingBlack
         ) { padding ->
-            if (uiState.wallpapers.isEmpty() && !uiState.isLoading) {
-                EmptyCollectionState(
-                    topPadding = padding.calculateTopPadding(),
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(GRID_COLUMNS),
-                    state = gridState,
-                    contentPadding = PaddingValues(
-                        top = padding.calculateTopPadding() + 8.dp,
-                        bottom = padding.calculateBottomPadding() + 8.dp,
-                    ),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(uiState.wallpapers, key = { it.id }) { wallpaper ->
-                        val isSelected = wallpaper.id in uiState.selectedIds
-                        val isCurrentPreview = wallpaper.id == uiState.previewWallpaper?.id
-                        WallpaperThumbnail(
-                            wallpaper = wallpaper,
-                            isSelected = isSelected,
-                            isSelectionMode = uiState.isSelectionMode,
-                            // Passive heart badge on every favourite file, suppressed inside Favourites itself (all noise there).
-                            isFavorite = !uiState.isFavoritesCollection && wallpaper.fileId in uiState.favoriteFileIds,
-                            // Attach flight modifier only while the preview is NOT fully settled open (i.e. during open/close flights).
-                            sharesPreviewBounds = isCurrentPreview && (
-                                !(previewVisibleState.currentState && previewVisibleState.targetState) ||
-                                    sharedScope.isTransitionActive
-                                ),
-                            hiddenForPreview = isCurrentPreview && previewVisibleState.targetState,
-                            onAspectRatioResolved = { ratio ->
-                                if (wallpaper.id !in knownAspectRatios) {
-                                    knownAspectRatios[wallpaper.id] = ratio
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (uiState.wallpapers.isEmpty() && !uiState.isLoading) {
+                    EmptyCollectionState(
+                        topPadding = padding.calculateTopPadding(),
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    // Extra bottom clearance while the floating selection pill is up,
+                    // so the last grid row can always scroll clear of it.
+                    val selectionBarClearance by animateDpAsState(
+                        targetValue = if (uiState.isSelectionMode) 88.dp else 0.dp,
+                        label = "selectionBarClearance"
+                    )
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(GRID_COLUMNS),
+                        state = gridState,
+                        contentPadding = PaddingValues(
+                            top = padding.calculateTopPadding() + 8.dp,
+                            bottom = padding.calculateBottomPadding() + 8.dp + selectionBarClearance,
+                        ),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(uiState.wallpapers, key = { it.id }) { wallpaper ->
+                            val isSelected = wallpaper.id in uiState.selectedIds
+                            val isCurrentPreview = wallpaper.id == uiState.previewWallpaper?.id
+                            WallpaperThumbnail(
+                                wallpaper = wallpaper,
+                                isSelected = isSelected,
+                                isSelectionMode = uiState.isSelectionMode,
+                                // Passive heart badge on every favourite file.
+                                isFavorite = wallpaper.fileId in uiState.favoriteFileIds,
+                                // Attach flight modifier only while the preview is NOT fully settled open (i.e. during open/close flights).
+                                sharesPreviewBounds = isCurrentPreview && (
+                                    !(previewVisibleState.currentState && previewVisibleState.targetState) ||
+                                        sharedScope.isTransitionActive
+                                    ),
+                                hiddenForPreview = isCurrentPreview && previewVisibleState.targetState,
+                                onAspectRatioResolved = { ratio ->
+                                    if (wallpaper.id !in knownAspectRatios) {
+                                        knownAspectRatios[wallpaper.id] = ratio
+                                    }
+                                },
+                                onClick = {
+                                    if (uiState.isSelectionMode) {
+                                        actions.toggleSelection(wallpaper.id)
+                                    } else if (!wallpaper.isAvailable) {
+                                        actions.requestRelink(wallpaper)
+                                    } else {
+                                        actions.openPreview(wallpaper)
+                                    }
+                                },
+                                onLongClick = {
+                                    if (!uiState.isSelectionMode) {
+                                        actions.enterSelectionMode(wallpaper.id)
+                                    }
                                 }
-                            },
-                            onClick = {
-                                if (uiState.isSelectionMode) {
-                                    actions.toggleSelection(wallpaper.id)
-                                } else if (!wallpaper.isAvailable) {
-                                    actions.requestRelink(wallpaper)
-                                } else {
-                                    actions.openPreview(wallpaper)
-                                }
-                            },
-                            onLongClick = {
-                                if (!uiState.isSelectionMode) {
-                                    actions.enterSelectionMode(wallpaper.id)
-                                }
-                            }
-                        )
+                            )
+                        }
+                    }
+
+                    // Keep the currently viewed wallpaper's thumbnail composed so dismissing always
+                    // has a live  flight target that isn't covered by the top bar.
+                    val density = LocalDensity.current
+                    LaunchedEffect(uiState.previewWallpaper?.id) {
+                        val wallpaper = uiState.previewWallpaper ?: return@LaunchedEffect
+                        if (!previewVisibleState.currentState) return@LaunchedEffect
+                        val index = uiState.wallpapers.indexOfFirst { it.id == wallpaper.id }
+                        if (index < 0) return@LaunchedEffect
+                        val topSafePx = with(density) { (padding.calculateTopPadding() + 8.dp).toPx() }
+                        val info = gridState.layoutInfo.visibleItemsInfo.find { it.key == wallpaper.id }
+                        val safelyVisible = info != null &&
+                            info.offset.y >= topSafePx &&
+                            info.offset.y + info.size.height <= gridState.layoutInfo.viewportEndOffset
+                        if (!safelyVisible) {
+                            // scrollToItem aligns the item to the start of the content area,
+                            // which the grid's contentPadding already keeps clear of the top bar.
+                            gridState.scrollToItem(index)
+                        }
                     }
                 }
 
-                // Keep the currently viewed wallpaper's thumbnail composed so dismissing always
-                // has a live  flight target that isn't covered by the top bar.
-                val density = LocalDensity.current
-                LaunchedEffect(uiState.previewWallpaper?.id) {
-                    val wallpaper = uiState.previewWallpaper ?: return@LaunchedEffect
-                    if (!previewVisibleState.currentState) return@LaunchedEffect
-                    val index = uiState.wallpapers.indexOfFirst { it.id == wallpaper.id }
-                    if (index < 0) return@LaunchedEffect
-                    val topSafePx = with(density) { (padding.calculateTopPadding() + 8.dp).toPx() }
-                    val info = gridState.layoutInfo.visibleItemsInfo.find { it.key == wallpaper.id }
-                    val safelyVisible = info != null &&
-                        info.offset.y >= topSafePx &&
-                        info.offset.y + info.size.height <= gridState.layoutInfo.viewportEndOffset
-                    if (!safelyVisible) {
-                        // scrollToItem aligns the item to the start of the content area,
-                        // which the grid's contentPadding already keeps clear of the top bar.
-                        gridState.scrollToItem(index)
-                    }
+                // Floating selection-actions pill (Nothing-gallery style), overlaying the grid.
+                AnimatedVisibility(
+                    visible = uiState.isSelectionMode,
+                    enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it / 2 }) + fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = padding.calculateBottomPadding() + 16.dp)
+                ) {
+                    SelectionActionBar(
+                        isAllFavorites = uiState.isSelectionAllFavorites,
+                        canEdit = uiState.selectedWallpaper != null,
+                        isMoveAvailable = uiState.isMoveAvailable,
+                        onFavoriteClick = actions::toggleFavoriteSelected,
+                        onEditClick = { uiState.selectedWallpaper?.let(onEditWallpaper) },
+                        onDeleteClick = { showDeleteConfirmation = true },
+                        onCopyClick = { actions.requestTransfer(TransferMode.COPY) },
+                        onMoveClick = { actions.requestTransfer(TransferMode.MOVE) }
+                    )
                 }
             }
         }

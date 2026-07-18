@@ -197,6 +197,9 @@
     <!-- Copy/move between collections -->
     <string name="cd_copy_wallpapers">Copy to another collection</string>
     <string name="cd_move_wallpapers">Move to another collection</string>
+    <string name="cd_selection_more">More actions</string>
+    <string name="selection_menu_copy">COPY</string>
+    <string name="selection_menu_move">MOVE</string>
     <string name="transfer_dialog_title_copy">COPY TO</string>
     <string name="transfer_dialog_title_move">MOVE TO</string>
     <string name="transfer_dialog_empty">NO OTHER COLLECTIONS</string>
