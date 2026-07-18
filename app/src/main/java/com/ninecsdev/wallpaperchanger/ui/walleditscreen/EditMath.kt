@@ -12,13 +12,21 @@ import kotlin.math.abs
 
 private const val EditValueEpsilon = 0.001f
 
-private const val MinZoom = 0.5f
+private const val MinZoom = 1f
 private const val MaxZoom = 5f
 private const val MinOffset = -1f
 private const val MaxOffset = 1f
 
 internal fun coerceZoom(value: Float): Float = value.coerceIn(MinZoom, MaxZoom)
 internal fun coerceOffset(value: Float): Float = value.coerceIn(MinOffset, MaxOffset)
+
+/**
+ * Offset display mapping: the persisted offset is -1..1, but the editor sliders present it to the
+ * user as 0..100 (0 = -1, 50 = 0 / centered, 100 = 1). Conversion is confined to the UI layer;
+ * everything below the slider keeps the -1..1 range.
+ */
+internal fun offsetToPercent(offset: Float): Float = (offset - MinOffset) / (MaxOffset - MinOffset) * 100f
+internal fun percentToOffset(percent: Float): Float = coerceOffset(MinOffset + percent / 100f * (MaxOffset - MinOffset))
 
 internal fun isCloseEnough(left: Float, right: Float): Boolean =
     abs(left - right) <= EditValueEpsilon
@@ -38,7 +46,7 @@ internal fun matchesEditParams(
         isCloseEnough(offsetX, params?.offsetX ?: 0f) &&
         isCloseEnough(offsetY, params?.offsetY ?: 0f)
 
-// TODO: Add tests for applyEditGesture (see "EditTransform Tests" in the notes — gesture section)
+// TODO: Add tests for applyEditGesture (see "EditTransform Tests" in the notes, gesture section)
 
 /** New (zoom, offsetX, offsetY) produced by one pinch/drag frame. Values are already coerced. */
 internal data class GestureTransform(

@@ -67,23 +67,23 @@ internal fun ControlsPanel(
         SliderRow(
             label = stringResource(R.string.edit_controls_zoom),
             value = zoom,
-            valueRange = 0.5f..5f,
+            valueRange = 1f..5f,
             displayValue = "%.1fx".format(zoom),
             onValueChange = onZoomChange
         )
         SliderRow(
             label = "X",
-            value = offsetX,
-            valueRange = -1f..1f,
-            displayValue = "%+.2f".format(offsetX),
-            onValueChange = onOffsetXChange
+            value = offsetToPercent(offsetX),
+            valueRange = 0f..100f,
+            displayValue = "%.0f".format(offsetToPercent(offsetX)),
+            onValueChange = { onOffsetXChange(percentToOffset(it)) }
         )
         SliderRow(
             label = "Y",
-            value = offsetY,
-            valueRange = -1f..1f,
-            displayValue = "%+.2f".format(offsetY),
-            onValueChange = onOffsetYChange
+            value = offsetToPercent(offsetY),
+            valueRange = 0f..100f,
+            displayValue = "%.0f".format(offsetToPercent(offsetY)),
+            onValueChange = { onOffsetYChange(percentToOffset(it)) }
         )
 
         Spacer(modifier = Modifier.height(12.dp))
