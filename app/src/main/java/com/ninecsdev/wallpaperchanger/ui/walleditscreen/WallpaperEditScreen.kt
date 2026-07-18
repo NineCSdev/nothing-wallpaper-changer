@@ -45,13 +45,22 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
+import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.ControlsPanel
+import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.EditTopBar
+import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.FloatingSaveButton
+import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.GestureTransform
+import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.applyEditGesture
+import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.calculateFitHeightZoom
+import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.coerceOffset
+import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.coerceZoom
+import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.matchesEditParams
 
 /**
  * Full-screen wallpaper editor.
  *
  * The wallpaper fills the entire screen as the editing canvas.
  * Pinch to zoom (into wherever the fingers are) and drag to move the image;
- * the gesture math lives in [applyEditGesture] (EditMath.kt).
+ * the gesture math lives in [applyEditGesture][com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.applyEditGesture] (EditMath.kt).
  *
  * A collapsible bottom panel provides precision sliders and save/cancel actions.
  *
@@ -389,7 +398,7 @@ private fun SaveErrorBanner(show: Boolean) {
 }
 
 /**
- * Animated wrapper that slides [ControlsPanel] in and out from the bottom
+ * Animated wrapper that slides [ControlsPanel][com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.ControlsPanel] in and out from the bottom
  * of the screen based on [visible].
  */
 @Composable

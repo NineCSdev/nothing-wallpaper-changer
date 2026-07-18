@@ -45,12 +45,16 @@ import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 import com.ninecsdev.wallpaperchanger.ui.components.StatusLed
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ImportSummarySnackbarEffect
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
-import com.ninecsdev.wallpaperchanger.ui.mainscreen.getVisualsForState
+import com.ninecsdev.wallpaperchanger.ui.mainscreen.components.getVisualsForState
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.ui.collectionscreen.components.CollectionTileContextMenu
+import com.ninecsdev.wallpaperchanger.ui.collectionscreen.components.CreateCollectionCard
+import com.ninecsdev.wallpaperchanger.ui.collectionscreen.components.EditCollectionCard
+import com.ninecsdev.wallpaperchanger.ui.collectionscreen.components.SortDropdown
 
 /**
  * Screen for displaying all the user's collections in a
@@ -162,7 +166,8 @@ fun CollectionListScreen(
                             ) { onLongClick ->
                                 CollectionGridItem(
                                     name = collection.resolveDisplayName(LocalContext.current),
-                                    state = uiState.previewStates[collection.id] ?: CollectionPreviewState(),
+                                    state = uiState.previewStates[collection.id]
+                                        ?: CollectionPreviewState(),
                                     onClick = { onCollectionClick(collection.id) },
                                     onLongClick = onLongClick,
                                     isPinned = collection.isPinned

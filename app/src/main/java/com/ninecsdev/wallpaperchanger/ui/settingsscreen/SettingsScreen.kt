@@ -31,6 +31,12 @@ import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import com.ninecsdev.wallpaperchanger.ui.components.SettingsToggleRow
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.LanguageSelector
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.QualitySlider
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.ScreenOffDelayField
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.SettingsSegmentedSelector
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.StorageUsageRow
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.WallpaperZoomFixSelector
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite

@@ -30,6 +30,12 @@ import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.ui.components.safeClick
+import com.ninecsdev.wallpaperchanger.ui.mainscreen.components.ActiveCollectionPickerSheet
+import com.ninecsdev.wallpaperchanger.ui.mainscreen.components.DefaultWallpaperCard
+import com.ninecsdev.wallpaperchanger.ui.mainscreen.components.MediaAccessBanner
+import com.ninecsdev.wallpaperchanger.ui.mainscreen.components.ServiceControlButtons
+import com.ninecsdev.wallpaperchanger.ui.mainscreen.components.ServiceStatusHeader
+import com.ninecsdev.wallpaperchanger.ui.mainscreen.components.WallpaperSelectionCard
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
