@@ -35,6 +35,7 @@ class ImageInternalizer @Inject constructor(
 ) {
     companion object {
         private const val TAG = "ImageInternalizer"
+        // If this changes, update the quality-slider info dialogs in strings.xml, which quote "2 MB".
         private const val LARGE_FILE_THRESHOLD = 2L * 1024 * 1024 // 2 MB
         const val INTERNAL_FOLDER = "internal_wallpapers"
 

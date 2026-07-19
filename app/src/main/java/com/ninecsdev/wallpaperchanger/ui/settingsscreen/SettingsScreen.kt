@@ -107,7 +107,9 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_autostart_title),
                     subtitle = stringResource(R.string.settings_autostart_subtitle),
                     checked = uiState.startOnBoot,
-                    onCheckedChange = actions::setStartOnBoot
+                    onCheckedChange = actions::setStartOnBoot,
+                    infoDialogTitle = stringResource(R.string.settings_autostart_dialog_title),
+                    infoDialogBody = stringResource(R.string.settings_autostart_dialog_body)
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -124,7 +126,9 @@ fun SettingsScreen(
                             BatterySaverPolicy.PAUSE -> stringResource(R.string.settings_battery_pause)
                             BatterySaverPolicy.IGNORE -> stringResource(R.string.settings_battery_ignore)
                         }
-                    }
+                    },
+                    infoDialogTitle = stringResource(R.string.settings_battery_saver_dialog_title),
+                    infoDialogBody = stringResource(R.string.settings_battery_saver_dialog_body)
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -141,7 +145,9 @@ fun SettingsScreen(
                             WallpaperDestination.HOME -> stringResource(R.string.settings_destination_home)
                             WallpaperDestination.BOTH -> stringResource(R.string.settings_destination_both)
                         }
-                    }
+                    },
+                    infoDialogTitle = stringResource(R.string.settings_destination_dialog_title),
+                    infoDialogBody = stringResource(R.string.settings_destination_dialog_body)
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -194,7 +200,9 @@ fun SettingsScreen(
                     onCheckedChange = { enabled ->
                         if (uiState.hasMediaAccess) actions.setKeepLocalCopies(enabled)
                         else onRequestMediaAccess()
-                    }
+                    },
+                    infoDialogTitle = stringResource(R.string.settings_keep_local_copies_dialog_title),
+                    infoDialogBody = stringResource(R.string.settings_keep_local_copies_dialog_body)
                 )
 
                 StorageUsageRow(usage = storageUsage)
@@ -209,7 +217,9 @@ fun SettingsScreen(
                     label = stringResource(R.string.settings_quality_high_label),
                     subtitle = stringResource(R.string.settings_quality_high_subtitle),
                     value = uiState.compressionQualityHigh,
-                    onValueChange = actions::setCompressionQualityHigh
+                    onValueChange = actions::setCompressionQualityHigh,
+                    infoDialogTitle = stringResource(R.string.settings_quality_high_dialog_title),
+                    infoDialogBody = stringResource(R.string.settings_quality_high_dialog_body)
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -218,7 +228,9 @@ fun SettingsScreen(
                     label = stringResource(R.string.settings_quality_low_label),
                     subtitle = stringResource(R.string.settings_quality_low_subtitle),
                     value = uiState.compressionQualityLow,
-                    onValueChange = actions::setCompressionQualityLow
+                    onValueChange = actions::setCompressionQualityLow,
+                    infoDialogTitle = stringResource(R.string.settings_quality_low_dialog_title),
+                    infoDialogBody = stringResource(R.string.settings_quality_low_dialog_body)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))

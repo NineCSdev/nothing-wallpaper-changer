@@ -28,7 +28,9 @@ internal fun SettingsToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    infoDialogTitle: String? = null,
+    infoDialogBody: String? = null
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -37,7 +39,9 @@ internal fun SettingsToggleRow(
         SettingsRowHeader(
             title = title,
             subtitle = subtitle,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
+            infoDialogTitle = infoDialogTitle,
+            infoDialogBody = infoDialogBody
         )
 
         Switch(

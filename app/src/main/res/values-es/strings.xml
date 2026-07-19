@@ -76,19 +76,48 @@
     <string name="settings_battery_stop">PARAR</string>
     <string name="settings_battery_pause">PAUSAR</string>
     <string name="settings_battery_ignore">IGNORAR</string>
+    <string name="settings_battery_saver_dialog_title">Política de ahorro de batería</string>
+    <string name="settings_battery_saver_dialog_body">
+        Decide qué hace el servicio de rotación mientras el modo de ahorro de batería está activo.
+        \nParar detiene el servicio por completo hasta que lo inicies de nuevo.
+        \nPausar mantiene el servicio vivo, pero deja de cambiar fondos haciendo que prácticamente no use bateria,
+        reanudándose automáticamente al desactivarse el ahorro.
+        \nIgnorar sigue rotando con normalidad.
+    </string>
     <string name="settings_destination_title">DESTINO DEL FONDO DE PANTALLA</string>
     <string name="settings_destination_subtitle">APLICAR A PANTALLA DE BLOQUEO, PANTALLA DE INICIO O AMBAS</string>
     <string name="settings_destination_lock">BLOQUEO</string>
     <string name="settings_destination_home">INICIO</string>
     <string name="settings_destination_both">AMBAS</string>
+    <string name="settings_destination_dialog_title">Destino del fondo de pantalla</string>
+    <string name="settings_destination_dialog_body">
+        Selecciona donde se aplica el fondo de pantalla: en la pantalla de bloqueo, en la de inicio o en ambas.
+        Las opcion no seleccionada mantiene el fondo que ya tenga.
+    </string>
     <string name="settings_quality_high_label">CALIDAD ESTÁNDAR</string>
-    <string name="settings_quality_high_subtitle">PARA LA MAYORÍA DE IMÁGENES - RECOMENDADO 95%</string>
-    <string name="settings_quality_low_label">CALIDAD REDUCIDAD</string>
-    <string name="settings_quality_low_subtitle">PARA IMÁGENES PESADAS - RECOMENDADO 80%</string>
+    <string name="settings_quality_high_subtitle">PARA LA MAYORÍA DE IMÁGENES</string>
+    <string name="settings_quality_high_dialog_title">Calidad estándar</string>
+    <string name="settings_quality_high_dialog_body">
+        La calidad de compresión usada cuando la app guarda su propia copia de una imagen de tamaño estandar (hasta 2 MB).
+        Valores más altos conservan más detalle, pero ocupan más espacio. El valor recomendado es 95%, pues la copia es indistingible de la original.
+    </string>
+    <string name="settings_quality_low_label">CALIDAD REDUCIDA</string>
+    <string name="settings_quality_low_subtitle">PARA IMÁGENES PESADAS</string>
+    <string name="settings_quality_low_dialog_title">Calidad reducida</string>
+    <string name="settings_quality_low_dialog_body">
+        La calidad de compresión usada para imágenes pesadas (más de 2 MB), donde una compresión más fuerte ahorra más espacio.
+        Valores más bajos usa menos espacio, pero pierde más detalle. El valor recomendado es 80% para ahorrar espacio de forma significativa sin perder demasiado detalle.
+    </string>
     <string name="settings_section_storage">ALMACENAMIENTO</string>
     <string name="settings_keep_local_copies_title">MANTENER COPIAS LOCALES</string>
     <string name="settings_keep_local_copies_subtitle">COPIAR LAS FOTOS AL ALMACENAMIENTO DE LA APP</string>
     <string name="settings_keep_local_copies_locked_subtitle">SIN ACCESO A FOTOS, LAS FOTOS SIEMPRE SE COPIAN</string>
+    <string name="settings_keep_local_copies_dialog_title">Mantener copias locales</string>
+    <string name="settings_keep_local_copies_dialog_body">
+        Normalmente la app usa tus fotos directamente desde donde están, sin guardar duplicados, pero un fondo deja de funcionar si su original se mueve o se borra.
+        Con esta opción, la app guarda su propia copia comprimida de cada foto, de modo que los fondos siguen funcionando pase lo que pase con los originales, a cambio de usar espacio de almacenamiento.
+        Sin el permiso de acceso a fotos, las copias se guardan siempre, independientemente de este ajuste para poder aceder en segundo plano a ellas.
+    </string>
     <string name="settings_storage_usage_title">ESPACIO USADO</string>
     <string name="settings_storage_usage_value">%1$s · %2$s</string>
     <plurals name="settings_storage_usage_images">
@@ -100,10 +129,22 @@
     <!-- Boot toggle -->
     <string name="settings_autostart_title">INICIO AUTOMÁTICO AL ARRANCAR</string>
     <string name="settings_autostart_subtitle">REANUDAR EL SERVICIO TRAS REINICIAR</string>
+    <string name="settings_autostart_dialog_title">Inicio automático al arrancar</string>
+    <string name="settings_autostart_dialog_body">
+        Si está activado, el servicio de rotación se reinicia automáticamente tras reiniciar el teléfono, siempre que estuviera en marcha previamente.
+        Si está desactivado, tendrás que abrir la app e iniciarlo manualmente tras cada reinicio.
+    </string>
 
     <!-- Screen off delay -->
     <string name="settings_screen_off_delay_title">RETARDO MIENTRAS SE APAGA PANTALLA</string>
-    <string name="settings_screen_off_delay_subtitle">POR ANIMACIÓN DE APAGADO DE PANTALLA - %1$dms POR DEFECTO</string>
+    <string name="settings_screen_off_delay_subtitle">POR ANIMACIÓN DE APAGADO DE PANTALLA</string>
+    <string name="settings_screen_off_delay_dialog_title">Retardo al apagar la pantalla</string>
+    <string name="settings_screen_off_delay_dialog_body">
+        El fondo se cambia al apagarse la pantalla, pero puede tardar un poco en apagarse del todo si hay animación de apagado.
+        Este retardo espera a que termine esa animación antes de aplicar el cambio, para que nunca sea visible.
+        Si la pantalla se enciende durante el retardo, el intercambio se cancela.
+        \n\n %1$d ms por defecto para tu móvil.
+    </string>
 
     <!-- Lockscreen zoom fix -->
     <string name="settings_zoom_fix_title">CORRECIÓN DEL ZOOM DEL FONDO DE PANTALLA</string>
@@ -111,11 +152,12 @@
     <string name="settings_zoom_fix_off">DESACTIVADO</string>
     <string name="settings_zoom_fix_blur">DESENFOQUE</string>
     <string name="settings_zoom_fix_edge">BORDE</string>
-    <string name="settings_zoom_fix_dialog_title">Corrección de zoom en fondo de pantalla</string>
+    <string name="settings_zoom_fix_dialog_title">Corrección del zoom del fondo de pantalla</string>
     <string name="settings_zoom_fix_dialog_body">
         Algunos sistemas operativos de móviles (como Nothing OS) hacen un zoom automático al fondo de pantalla para crear efecto "parallax".
         Este ajuste añade un margen oculto al fondo para que el SO recorte este margen en vez del fondo de pantalla en sí.
-        Dado que el comportamiento del zoom varia hay dos estilos de margen: elige Desenfoque para la mayoría, o Borde para bordes más marcado.
+        \nDado que el comportamiento del zoom varía hay dos estilos de margen en caso de que este no se aplique:
+        elige Desenfoque para la mayoría, o Borde para bordes más marcado.
     </string>
 
     <!-- Collections screen -->
@@ -145,6 +187,7 @@
     <string name="edit_collection_rotation_hourly">CADA 1H</string>
     <string name="edit_collection_rotation_daily">DIARIO</string>
     <string name="edit_collection_action_manage_images">GESTIONAR IMÁGENES</string>
+    <string name="edit_collection_action_restore_removed">RESTAURAR IMÁGENES ELIMINADAS (%1$d)</string>
     <string name="edit_collection_action_delete">ELIMINAR COLECCIÓN</string>
     <string name="edit_collection_action_currently_active">ACTIVA</string>
     <string name="edit_collection_action_set_active">PONER COMO ACTIVA</string>

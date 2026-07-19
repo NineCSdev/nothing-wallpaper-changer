@@ -32,7 +32,9 @@ internal fun QualitySlider(
     label: String,
     subtitle: String,
     value: Int,
-    onValueChange: (Int) -> Unit
+    onValueChange: (Int) -> Unit,
+    infoDialogTitle: String? = null,
+    infoDialogBody: String? = null
 ) {
     Column {
         Row(
@@ -42,7 +44,9 @@ internal fun QualitySlider(
         ) {
             SettingsRowHeader(
                 title = label,
-                subtitle = subtitle
+                subtitle = subtitle,
+                infoDialogTitle = infoDialogTitle,
+                infoDialogBody = infoDialogBody
             )
 
             Text(

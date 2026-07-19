@@ -10,12 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,9 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.components.SettingsRowHeader
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
@@ -39,27 +32,15 @@ internal fun <T> SettingsSegmentedSelector(
     selected: T,
     onOptionChange: (T) -> Unit,
     optionLabel: @Composable (T) -> String,
-    onInfoClick: (() -> Unit)? = null
+    infoDialogTitle: String? = null,
+    infoDialogBody: String? = null
 ) {
     Column {
         SettingsRowHeader(
             title = title,
             subtitle = subtitle,
-            titleTrailingContent = {
-                if (onInfoClick != null) {
-                    IconButton(
-                        onClick = onInfoClick,
-                        modifier = Modifier.size(16.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Info,
-                            contentDescription = stringResource(R.string.cd_setting_information),
-                            tint = NothingWhite.copy(alpha = 0.55f),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            }
+            infoDialogTitle = infoDialogTitle,
+            infoDialogBody = infoDialogBody
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -115,7 +96,9 @@ fun SettingsSegmentedSelectorPreview() {
             options = options,
             selected = selectedOption,
             onOptionChange = {},
-            optionLabel = { it.uppercase() }
+            optionLabel = { it.uppercase() },
+            infoDialogTitle = "Update frequency",
+            infoDialogBody = "Explanation of what this setting does."
         )
     }
 }

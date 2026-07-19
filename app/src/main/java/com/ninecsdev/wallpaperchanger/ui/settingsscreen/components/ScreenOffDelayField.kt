@@ -39,8 +39,10 @@ internal fun ScreenOffDelayField(
     Column {
         SettingsRowHeader(
             title = stringResource(R.string.settings_screen_off_delay_title),
-            subtitle = stringResource(
-                R.string.settings_screen_off_delay_subtitle,
+            subtitle = stringResource(R.string.settings_screen_off_delay_subtitle),
+            infoDialogTitle = stringResource(R.string.settings_screen_off_delay_dialog_title),
+            infoDialogBody = stringResource(
+                R.string.settings_screen_off_delay_dialog_body,
                 DeviceDefaults.forThisDevice()
             )
         )

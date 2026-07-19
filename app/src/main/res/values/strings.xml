@@ -78,19 +78,48 @@
     <string name="settings_battery_stop">STOP</string>
     <string name="settings_battery_pause">PAUSE</string>
     <string name="settings_battery_ignore">IGNORE</string>
+    <string name="settings_battery_saver_dialog_title">Battery saver policy</string>
+    <string name="settings_battery_saver_dialog_body">
+        Chooses what the rotation service does while Android\'s Battery Saver is active.
+        \nStop shuts the service down completely until you start it again yourself.
+        \nPause keeps the service alive but stops swapping wallpapers making it consume close to no battery,
+        resuming automatically when Battery Saver turns off.
+        Ignore keeps rotating normally.
+    </string>
     <string name="settings_destination_title">WALLPAPER DESTINATION</string>
     <string name="settings_destination_subtitle">APPLY TO YOUR LOCK SCREEN, HOME SCREEN OR BOTH</string>
     <string name="settings_destination_lock">LOCK</string>
     <string name="settings_destination_home">HOME</string>
     <string name="settings_destination_both">BOTH</string>
+    <string name="settings_destination_dialog_title">Wallpaper destination</string>
+    <string name="settings_destination_dialog_body">
+        Selects which screen receive the rotating wallpapers: the lock screen, the home screen, or both.
+        The screen not selected keeps whatever wallpaper it already has.
+    </string>
     <string name="settings_quality_high_label">STANDARD QUALITY</string>
-    <string name="settings_quality_high_subtitle">FOR MOST IMAGES - RECOMMENDED 95%</string>
+    <string name="settings_quality_high_subtitle">FOR MOST IMAGES</string>
+    <string name="settings_quality_high_dialog_title">Standard quality</string>
+    <string name="settings_quality_high_dialog_body">
+        The compression quality used when the app saves its own copy of a normal-sized image (up to 2 MB).
+        Higher values keep more detail but use more storage. The recommended value is 95% as the copy is visually indistinguishable from the original.
+    </string>
     <string name="settings_quality_low_label">REDUCED QUALITY</string>
-    <string name="settings_quality_low_subtitle">FOR HEAVY IMAGES - RECOMMENDED 80%</string>
+    <string name="settings_quality_low_subtitle">FOR HEAVY IMAGES</string>
+    <string name="settings_quality_low_dialog_title">Reduced quality</string>
+    <string name="settings_quality_low_dialog_body">
+        The compression quality used for heavy images (over 2 MB), where stronger compression saves the most storage.
+        Lower values saves more storage at the cost of the fine detail. The recommended value is 80% for saving meaningful storage while not losing too much detail.
+    </string>
     <string name="settings_section_storage">STORAGE</string>
     <string name="settings_keep_local_copies_title">KEEP LOCAL COPIES</string>
     <string name="settings_keep_local_copies_subtitle">COPY ADDED PHOTOS INTO APP STORAGE</string>
     <string name="settings_keep_local_copies_locked_subtitle">WITHOUT PHOTO ACCESS, PHOTOS ARE ALWAYS COPIED</string>
+    <string name="settings_keep_local_copies_dialog_title">Keep local copies</string>
+    <string name="settings_keep_local_copies_dialog_body">
+        Normally the app uses your picked photos directly from where they live, storing no duplicates, but a wallpaper breaks if its original is moved or deleted.
+        \nWith this on, the app saves its own compressed copy of every photo, so wallpapers keep working no matter what happens to the originals, at the cost of storage space.
+        Without photo access permission, copies are always kept regardless of this setting to have background access to them.
+    </string>
     <string name="settings_storage_usage_title">STORAGE USED</string>
     <!-- %1$s = formatted size (e.g. "142 MB"), %2$s = pluralized image count -->
     <string name="settings_storage_usage_value">%1$s · %2$s</string>
@@ -102,11 +131,23 @@
     <!-- Boot toggle -->
     <string name="settings_autostart_title">AUTOSTART ON BOOT</string>
     <string name="settings_autostart_subtitle">RESUME SERVICE AFTER REBOOT</string>
+    <string name="settings_autostart_dialog_title">Autostart on boot</string>
+    <string name="settings_autostart_dialog_body">
+        When enabled, the rotation service starts again automatically after the phone reboots, as long as it was running before shutdown.
+        When disabled, you need to open the app and start it manually after every reboot.
+    </string>
 
     <!-- Screen off delay -->
     <string name="settings_screen_off_delay_title">SCREEN OFF DELAY</string>
-    <string name="settings_screen_off_delay_subtitle">DELAY FOR SCREEN OFF ANIMATION - %1$dms BY DEFAULT</string>
+    <string name="settings_screen_off_delay_subtitle">DELAY FOR SCREEN OFF ANIMATION</string>
     <string name="settings_screen_off_delay_unit" translatable="false">ms</string>
+    <string name="settings_screen_off_delay_dialog_title">Screen off delay</string>
+    <string name="settings_screen_off_delay_dialog_body">
+        The wallpaper is swapped when the screen turns off, but it can take a bit to fully turn off if there is a screen-off animation.
+        This delay waits for that animation to finish before applying the change, so the swap is never visible.
+        If the screen wakes up during the delay, the swap is canceled.
+        \n\n%1$d ms by default for your phone.
+    </string>
 
     <!-- Lockscreen zoom fix -->
     <string name="settings_zoom_fix_title">WALLPAPER ZOOM FIX</string>
@@ -118,9 +159,10 @@
     <string name="settings_zoom_fix_dialog_body">
         Certain phone operating systems (like Nothing OS) automatically zoom in on wallpapers to create a parallax effect.
         This setting adds hidden padding to your image, ensuring the OS crops the padding rather than the wallpaper itself.
-        Because this zoom behavior varies, two padding styles are available: choose Blur for most wallpapers, or Edge for sharper borders.
+        \nBecause this zoom behavior varies, two padding styles are available in case it doesn\'t apply: choose Blur for most cases,
+         or Edge for sharper borders.
     </string>
-    <string name="settings_zoom_fix_dialog_ok" translatable="false">OK</string>
+    <string name="settings_info_dialog_ok" translatable="false">OK</string>
 
     <!-- Collections screen -->
     <string name="collections_title">MY COLLECTIONS</string>
@@ -149,6 +191,7 @@
     <string name="edit_collection_rotation_hourly">EVERY 1H</string>
     <string name="edit_collection_rotation_daily">DAILY</string>
     <string name="edit_collection_action_manage_images">MANAGE IMAGES</string>
+    <string name="edit_collection_action_restore_removed">RESTORE REMOVED IMAGES (%1$d)</string>
     <string name="edit_collection_action_delete">DELETE COLLECTION</string>
     <string name="edit_collection_action_currently_active">CURRENTLY ACTIVE</string>
     <string name="edit_collection_action_set_active">SET AS ACTIVE</string>
