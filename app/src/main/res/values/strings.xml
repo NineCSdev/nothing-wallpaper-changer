@@ -99,14 +99,14 @@
     <string name="settings_quality_high_label">STANDARD QUALITY</string>
     <string name="settings_quality_high_subtitle">FOR MOST IMAGES</string>
     <string name="settings_quality_high_dialog_title">Standard quality</string>
-    <string name="settings_quality_high_dialog_body">
+    <string name="settings_quality_high_dialog_body" formatted="false">
         The compression quality used when the app saves its own copy of a normal-sized image (up to 2 MB).
         Higher values keep more detail but use more storage. The recommended value is 95% as the copy is visually indistinguishable from the original.
     </string>
     <string name="settings_quality_low_label">REDUCED QUALITY</string>
     <string name="settings_quality_low_subtitle">FOR HEAVY IMAGES</string>
     <string name="settings_quality_low_dialog_title">Reduced quality</string>
-    <string name="settings_quality_low_dialog_body">
+    <string name="settings_quality_low_dialog_body" formatted="false">
         The compression quality used for heavy images (over 2 MB), where stronger compression saves the most storage.
         Lower values saves more storage at the cost of the fine detail. The recommended value is 80% for saving meaningful storage while not losing too much detail.
     </string>
@@ -184,18 +184,31 @@
     <string name="create_collection_error">COULDN\'T CREATE COLLECTION — TRY AGAIN</string>
 
     <!-- Edit collection card -->
-    <string name="edit_collection_title">MANAGE COLLECTION</string>
-    <string name="edit_collection_field_name">COLLECTION NAME</string>
+    <string name="edit_collection_meta_folder">FOLDER</string>
+    <string name="edit_collection_meta_manual">MANUAL</string>
+    <string name="edit_collection_meta_active">ACTIVE</string>
+    <plurals name="edit_collection_meta_images">
+        <item quantity="one">%1$d IMAGE</item>
+        <item quantity="other">%1$d IMAGES</item>
+    </plurals>
+    <string name="edit_collection_crop_title">CROP RULE</string>
+    <string name="edit_collection_crop_info_title">Crop rule</string>
+    <string name="edit_collection_crop_info_body">
+        Sets how this collection\'s images are placed by default when their shape doesn\'t match the screen.
+        \n\n• Center keeps the middle of the image and crops both edges.
+        \n• Left keeps the left edge.
+        \n• Right keeps the right edge.
+        \n• Fit shows the whole image without cropping, adding black bars if needed.
+        \n\nEach wallpaper can be adjusted individually in its editor ignoring the general crop rule.
+    </string>
     <string name="edit_collection_rotation_title">ROTATION FREQUENCY</string>
     <string name="edit_collection_rotation_per_lock">PER LOCK</string>
     <string name="edit_collection_rotation_hourly">EVERY 1H</string>
     <string name="edit_collection_rotation_daily">DAILY</string>
-    <string name="edit_collection_action_manage_images">MANAGE IMAGES</string>
+    <string name="edit_collection_action_sync">SYNC FOLDER</string>
     <string name="edit_collection_action_restore_removed">RESTORE REMOVED IMAGES (%1$d)</string>
+    <string name="edit_collection_folder_actions_header">FOLDER ACTIONS</string>
     <string name="edit_collection_action_delete">DELETE COLLECTION</string>
-    <string name="edit_collection_action_currently_active">CURRENTLY ACTIVE</string>
-    <string name="edit_collection_action_set_active">SET AS ACTIVE</string>
-    <string name="edit_collection_action_save">SAVE</string>
     <string name="edit_collection_processing">UPDATING COLLECTION…</string>
     <string name="edit_collection_delete_title">DELETE COLLECTION?</string>
     <string name="edit_collection_delete_message">This action cannot be undone.\nAll images in this collection will be removed.</string>

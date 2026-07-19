@@ -3,10 +3,10 @@ package com.ninecsdev.wallpaperchanger.ui.collectionscreen.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,10 +32,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -43,52 +55,64 @@ import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
-import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
+import com.ninecsdev.wallpaperchanger.model.resolveDisplayName
+import com.ninecsdev.wallpaperchanger.ui.components.InfoDialogIcon
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButton
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButtonVariant
-import com.ninecsdev.wallpaperchanger.ui.components.NothingTextField
+import com.ninecsdev.wallpaperchanger.ui.components.NothingSegmentedRow
+import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingGreen
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
- * Card pop-up for editing or deleting a collection.
+ * Card pop-up for managing a collection.
+ *
+ * For folder collections there is a folder section with folder specific actions.
  */
+// TODO tests: see vault note tests/Edit Collection Card Tests
 @Composable
 internal fun EditCollectionCard(
     collection: WallpaperCollection,
+    imageCount: Int,
     isProcessing: Boolean = false,
     excludedCount: Int = 0,
     onDismiss: () -> Unit,
-    onEdit: (String, CropRule, RotationFrequency) -> Unit,
+    onRename: (String) -> Unit,
+    onCropRuleSelected: (CropRule) -> Unit,
+    onRotationFrequencySelected: (RotationFrequency) -> Unit,
     onDelete: () -> Unit,
-    onSetActive: () -> Unit,
     onSyncClick: () -> Unit,
-    onRestoreRemoved: () -> Unit = {},
-    onViewImages: () -> Unit
+    onRestoreRemoved: () -> Unit = {}
 ) {
-    var nameText by remember { mutableStateOf(collection.name) }
-    var selectedRule by remember { mutableStateOf(collection.defaultCropRule) }
-    var selectedRotationFrequency by remember { mutableStateOf(collection.rotationFrequency) }
+    var nameText by remember(collection.id) { mutableStateOf(collection.name) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
 
+    // Commits a valid rename; blank or unchanged input reverts to the current name.
+    val commitName = {
+        val trimmed = nameText.trim()
+        if (trimmed.isNotEmpty() && trimmed != collection.name) onRename(trimmed)
+        else nameText = collection.name
+    }
+    val dismiss = { commitName(); onDismiss() }
+
     Dialog(
-        onDismissRequest = if (isProcessing) ({}) else onDismiss,
+        onDismissRequest = if (isProcessing) ({}) else dismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         EditCollectionCardContent(
             collection = collection,
+            imageCount = imageCount,
             isProcessing = isProcessing,
             excludedCount = excludedCount,
-            onRestoreRemoved = onRestoreRemoved,
             nameText = nameText,
             onNameChange = { nameText = it },
-            selectedRule = selectedRule,
-            onRuleSelected = { selectedRule = it },
-            selectedRotationFrequency = selectedRotationFrequency,
-            onFrequencySelected = { selectedRotationFrequency = it },
+            onNameCommit = commitName,
+            onCropRuleSelected = onCropRuleSelected,
+            onRotationFrequencySelected = onRotationFrequencySelected,
             showDeleteConfirmation = showDeleteConfirmation,
             onDeleteRequest = { showDeleteConfirmation = true },
             onDeleteConfirm = {
@@ -96,11 +120,9 @@ internal fun EditCollectionCard(
                 onDelete()
             },
             onDeleteCancel = { showDeleteConfirmation = false },
-            onDismiss = onDismiss,
+            onDismiss = dismiss,
             onSyncClick = onSyncClick,
-            onViewImages = onViewImages,
-            onSetActive = onSetActive,
-            onSave = { onEdit(nameText, selectedRule, selectedRotationFrequency) }
+            onRestoreRemoved = onRestoreRemoved
         )
     }
 }
@@ -108,24 +130,21 @@ internal fun EditCollectionCard(
 @Composable
 private fun EditCollectionCardContent(
     collection: WallpaperCollection,
+    imageCount: Int,
     isProcessing: Boolean,
+    excludedCount: Int,
     nameText: String,
-    excludedCount: Int = 0,
-    onRestoreRemoved: () -> Unit = {},
     onNameChange: (String) -> Unit,
-    selectedRule: CropRule,
-    onRuleSelected: (CropRule) -> Unit,
-    selectedRotationFrequency: RotationFrequency,
-    onFrequencySelected: (RotationFrequency) -> Unit,
+    onNameCommit: () -> Unit,
+    onCropRuleSelected: (CropRule) -> Unit,
+    onRotationFrequencySelected: (RotationFrequency) -> Unit,
     showDeleteConfirmation: Boolean,
     onDeleteRequest: () -> Unit,
     onDeleteConfirm: () -> Unit,
     onDeleteCancel: () -> Unit,
     onDismiss: () -> Unit,
     onSyncClick: () -> Unit,
-    onViewImages: () -> Unit,
-    onSetActive: () -> Unit,
-    onSave: () -> Unit
+    onRestoreRemoved: () -> Unit
 ) {
     NothingDialogCard(
         isProcessing = isProcessing,
@@ -143,58 +162,221 @@ private fun EditCollectionCardContent(
         }
     ) {
         EditCardHeader(
-            collectionType = collection.type,
-            onSyncClick = onSyncClick,
+            collection = collection,
+            imageCount = imageCount,
+            nameText = nameText,
+            onNameChange = onNameChange,
+            onNameCommit = onNameCommit,
             onDismiss = onDismiss
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Rename is blocked for the Favourites collection as its name is a localized resource.
-        // The field is hidden here and the repository guards the rename regardless.
-        if (!collection.isFavorites) {
-            NothingTextField(
-                value = nameText,
-                onValueChange = onNameChange,
-                label = stringResource(R.string.edit_collection_field_name)
+        SectionLabel(text = stringResource(R.string.edit_collection_crop_title)) {
+            InfoDialogIcon(
+                dialogTitle = stringResource(R.string.edit_collection_crop_info_title),
+                dialogBody = stringResource(R.string.edit_collection_crop_info_body)
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
+        Spacer(modifier = Modifier.height(8.dp))
+
         CropRuleSelector(
-            selectedRule = selectedRule,
-            onRuleSelected = onRuleSelected
+            selectedRule = collection.defaultCropRule,
+            onRuleSelected = onCropRuleSelected
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        SectionLabel(text = stringResource(R.string.edit_collection_rotation_title))
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         RotationFrequencySelector(
-            selectedFrequency = selectedRotationFrequency,
-            onFrequencySelected = onFrequencySelected
+            selectedFrequency = collection.rotationFrequency,
+            onFrequencySelected = onRotationFrequencySelected
         )
+
+        if (collection.type == CollectionType.FOLDER) {
+            Spacer(modifier = Modifier.height(24.dp))
+
+            FolderMaintenanceSection(
+                excludedCount = excludedCount,
+                onSyncClick = onSyncClick,
+                onRestoreRemoved = onRestoreRemoved
+            )
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        ManagementButtons(
-            showRestoreRemoved = collection.type == CollectionType.FOLDER && excludedCount > 0,
-            excludedCount = excludedCount,
-            onRestoreRemoved = onRestoreRemoved,
-            onDeleteRequest = onDeleteRequest,
-            onViewImages = onViewImages
+        NothingButton(
+            text = stringResource(R.string.edit_collection_action_delete),
+            onClick = onDeleteRequest,
+            variant = NothingButtonVariant.DANGER,
+            leadingIcon = {
+                Icon(painterResource(R.drawable.icon_delete), null, Modifier.size(18.dp))
+            }
         )
+    }
+}
 
-        Spacer(modifier = Modifier.height(32.dp))
+/**
+ * Collection-identity header: the name as an in-place editable title (static for the
+ * rename-blocked Favourites collection), a `TYPE · N IMAGES · ACTIVE` metadata line, and ✕.
+ */
+@Composable
+private fun EditCardHeader(
+    collection: WallpaperCollection,
+    imageCount: Int,
+    nameText: String,
+    onNameChange: (String) -> Unit,
+    onNameCommit: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            EditableTitle(
+                nameText = nameText,
+                canRename = !collection.isFavorites,
+                staticName = collection.resolveDisplayName(LocalContext.current),
+                onNameChange = onNameChange,
+                onNameCommit = onNameCommit
+            )
 
-        EditCardActions(
-            isActive = collection.isActive,
-            isChanged = nameText != collection.name ||
-                selectedRule != collection.defaultCropRule ||
-                selectedRotationFrequency != collection.rotationFrequency,
-            onSetActive = { onSetActive(); onDismiss() },
-            onSave = { onSave(); onDismiss() },
-            onDismiss = onDismiss
+            Spacer(modifier = Modifier.height(4.dp))
+
+            CollectionMetadataLine(
+                type = collection.type,
+                imageCount = imageCount,
+                isActive = collection.isActive
+            )
+        }
+
+        IconButton(onClick = onDismiss) {
+            Icon(Icons.Default.Close, stringResource(R.string.cd_close), tint = NothingWhite)
+        }
+    }
+}
+
+@Composable
+private fun EditableTitle(
+    nameText: String,
+    canRename: Boolean,
+    staticName: String,
+    onNameChange: (String) -> Unit,
+    onNameCommit: () -> Unit
+) {
+    if (!canRename) {
+        Text(
+            text = staticName,
+            style = NothingType.createDialogTitle,
+            color = NothingWhite,
+            maxLines = 1
         )
+        return
+    }
+
+    val focusManager = LocalFocusManager.current
+    val focusRequester = remember { FocusRequester() }
+    var isFocused by remember { mutableStateOf(false) }
+
+    // BasicTextField fills whatever width it is given, which would strand the pencil at the far
+    // edge on short names. Sizing the field to the measured text keeps the pencil hugging it;
+    // weight() then clamps it so long names still truncate instead of pushing the icon off-card.
+    val textStyle = NothingType.createDialogTitle.copy(color = NothingWhite)
+    val textMeasurer = rememberTextMeasurer()
+    val fieldWidth = with(LocalDensity.current) {
+        textMeasurer.measure(nameText, textStyle, maxLines = 1).size.width.toDp()
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        BasicTextField(
+            value = nameText,
+            onValueChange = onNameChange,
+            textStyle = textStyle,
+            cursorBrush = SolidColor(NothingWhite),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = {
+                onNameCommit()
+                focusManager.clearFocus()
+            }),
+            modifier = Modifier
+                .weight(1f, fill = false)
+                // +2dp so the caret at the end of the text is not clipped.
+                .width(fieldWidth + 2.dp)
+                .focusRequester(focusRequester)
+                .onFocusChanged { isFocused = it.isFocused }
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        // Tap-to-edit affordance: brightens while editing, and focuses the field when tapped.
+        Icon(
+            painter = painterResource(R.drawable.icon_edit),
+            contentDescription = null,
+            tint = NothingWhite.copy(alpha = if (isFocused) 0.9f else 0.4f),
+            modifier = Modifier
+                .size(18.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { focusRequester.requestFocus() }
+        )
+    }
+}
+
+@Composable
+private fun CollectionMetadataLine(
+    type: CollectionType,
+    imageCount: Int,
+    isActive: Boolean
+) {
+    val typeLabel = stringResource(
+        if (type == CollectionType.FOLDER) R.string.edit_collection_meta_folder
+        else R.string.edit_collection_meta_manual
+    )
+    val countLabel = pluralStringResource(R.plurals.edit_collection_meta_images, imageCount, imageCount)
+
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = "$typeLabel · $countLabel",
+            style = NothingType.metaLabel,
+            color = NothingWhite.copy(alpha = 0.45f)
+        )
+        if (isActive) {
+            Text(
+                text = "·",
+                style = NothingType.metaLabel,
+                color = NothingWhite.copy(alpha = 0.45f)
+            )
+            Text(
+                text = stringResource(R.string.edit_collection_meta_active),
+                style = NothingType.metaLabel,
+                color = NothingGreen
+            )
+        }
+    }
+}
+
+/** Small caps section label with an optional trailing slot (e.g. the crop-rule info icon). */
+@Composable
+private fun SectionLabel(
+    text: String,
+    trailing: @Composable () -> Unit = {}
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = text,
+            style = NothingType.rowLabel,
+            color = NothingWhite.copy(alpha = 0.7f)
+        )
+        trailing()
     }
 }
 
@@ -203,191 +385,77 @@ private fun RotationFrequencySelector(
     selectedFrequency: RotationFrequency,
     onFrequencySelected: (RotationFrequency) -> Unit
 ) {
-    Text(
-        text = stringResource(R.string.edit_collection_rotation_title),
-        style = NothingType.rowLabel,
-        color = NothingWhite.copy(alpha = 0.7f)
-    )
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        TimerOptionButton(
-            label = stringResource(R.string.edit_collection_rotation_per_lock),
-            selected = selectedFrequency == RotationFrequency.PER_LOCK,
-            onClick = { onFrequencySelected(RotationFrequency.PER_LOCK) },
-            modifier = Modifier.weight(1f)
-        )
-        TimerOptionButton(
-            label = stringResource(R.string.edit_collection_rotation_hourly),
-            selected = selectedFrequency == RotationFrequency.HOURLY,
-            onClick = { onFrequencySelected(RotationFrequency.HOURLY) },
-            modifier = Modifier.weight(1f)
-        )
-        TimerOptionButton(
-            label = stringResource(R.string.edit_collection_rotation_daily),
-            selected = selectedFrequency == RotationFrequency.PER_DAY,
-            onClick = { onFrequencySelected(RotationFrequency.PER_DAY) },
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun TimerOptionButton(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier,
-        shape = RoundedCornerShape(SmallCornerRadius),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite),
-        border = BorderStroke(1.dp, NothingWhite.copy(alpha = if (selected) 0.8f else 0.3f)),
-        contentPadding = PaddingValues(horizontal = 4.dp)
-    ) {
+    NothingSegmentedRow(
+        options = RotationFrequency.entries,
+        selected = selectedFrequency,
+        onSelect = onFrequencySelected
+    ) { frequency, isSelected ->
+        val label = when (frequency) {
+            RotationFrequency.PER_LOCK -> stringResource(R.string.edit_collection_rotation_per_lock)
+            RotationFrequency.HOURLY -> stringResource(R.string.edit_collection_rotation_hourly)
+            RotationFrequency.PER_DAY -> stringResource(R.string.edit_collection_rotation_daily)
+        }
         Text(
             text = label,
             style = NothingType.labelStrong,
-            color = NothingWhite.copy(alpha = if (selected) 1f else 0.7f),
+            color = if (isSelected) NothingBlack else NothingWhite.copy(alpha = 0.9f),
             maxLines = 1,
             textAlign = TextAlign.Center
         )
     }
 }
 
+/**
+ * Folder-only maintenance actions: manual re-sync and, when [excludedCount] > 0, the
+ * "Restore removed images (N)" recovery row (the row disappears once the count is 0).
+ */
 @Composable
-private fun EditCardHeader(
-    collectionType: CollectionType,
-    onSyncClick: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = stringResource(R.string.edit_collection_title),
-            style = NothingType.titleCaps,
-            color = NothingWhite
-        )
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (collectionType == CollectionType.FOLDER) {
-                IconButton(onClick = onSyncClick) {
-                    Icon(
-                        painter = painterResource(R.drawable.icon_sync),
-                        contentDescription = stringResource(R.string.cd_sync),
-                        tint = NothingWhite,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-
-            IconButton(onClick = onDismiss) {
-                Icon(Icons.Default.Close, stringResource(R.string.cd_close), tint = NothingWhite)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ManagementButtons(
-    showRestoreRemoved: Boolean,
+private fun FolderMaintenanceSection(
     excludedCount: Int,
-    onRestoreRemoved: () -> Unit,
-    onDeleteRequest: () -> Unit,
-    onViewImages: () -> Unit
+    onSyncClick: () -> Unit,
+    onRestoreRemoved: () -> Unit
 ) {
     Column {
-        OutlinedButton(
-            onClick = onViewImages,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(SmallCornerRadius),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite),
-            border = BorderStroke(1.dp, NothingWhite.copy(alpha = 0.3f))
+        SectionLabel(text = stringResource(R.string.edit_collection_folder_actions_header))
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FolderActionButton(
+            text = stringResource(R.string.edit_collection_action_sync),
+            onClick = onSyncClick
         ) {
-            Icon(painterResource(R.drawable.icon_collection), null, Modifier.size(18.dp))
-            Spacer(Modifier.width(12.dp))
-            Text(stringResource(R.string.edit_collection_action_manage_images), style = NothingType.dialogButton)
+            Icon(painterResource(R.drawable.icon_sync), null, Modifier.size(18.dp))
         }
 
-        // Recovery for in-app-deleted folder images: wipes the exclusion tombstones and re-syncs.
-        // No confirmation, the row disappears once the count is 0.
-        if (showRestoreRemoved) {
-            Spacer(modifier = Modifier.height(12.dp))
+        if (excludedCount > 0) {
+            Spacer(modifier = Modifier.height(4.dp))
 
-            OutlinedButton(
-                onClick = onRestoreRemoved,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(SmallCornerRadius),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite),
-                border = BorderStroke(1.dp, NothingWhite.copy(alpha = 0.3f))
+            FolderActionButton(
+                text = stringResource(R.string.edit_collection_action_restore_removed, excludedCount),
+                onClick = onRestoreRemoved
             ) {
                 Icon(Icons.Default.Refresh, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    stringResource(R.string.edit_collection_action_restore_removed, excludedCount),
-                    style = NothingType.dialogButton
-                )
             }
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        NothingButton(
-            text = stringResource(R.string.edit_collection_action_delete),
-            onClick = onDeleteRequest,
-            variant = NothingButtonVariant.DANGER
-        )
     }
 }
 
 @Composable
-private fun EditCardActions(
-    isActive: Boolean,
-    isChanged: Boolean,
-    onSetActive: () -> Unit,
-    onSave: () -> Unit,
-    onDismiss: () -> Unit
+private fun FolderActionButton(
+    text: String,
+    onClick: () -> Unit,
+    icon: @Composable () -> Unit
 ) {
-    Row(
+    OutlinedButton(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        shape = RoundedCornerShape(SmallCornerRadius),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite),
+        border = BorderStroke(1.dp, NothingWhite.copy(alpha = 0.3f))
     ) {
-        Button(
-            onClick = { onSetActive(); onDismiss() },
-            modifier = Modifier.weight(1.2f),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Transparent,
-                contentColor = NothingWhite
-            ),
-            border = BorderStroke(1.dp, NothingWhite.copy(alpha = if (isActive) 0.1f else 0.4f)),
-            shape = RoundedCornerShape(SmallCornerRadius),
-            enabled = !isActive
-        ) {
-            Text(
-                if (isActive) stringResource(R.string.edit_collection_action_currently_active) else stringResource(R.string.edit_collection_action_set_active),
-                style = NothingType.labelStrong
-            )
-        }
-
-        Button(
-            onClick = onSave,
-            modifier = Modifier.weight(1f),
-            colors = ButtonDefaults.buttonColors(containerColor = NothingWhite, contentColor = NothingBlack),
-            shape = RoundedCornerShape(SmallCornerRadius),
-            enabled = isChanged
-        ) {
-            Text(stringResource(R.string.edit_collection_action_save), style = NothingType.badgeCaps)
-        }
+        icon()
+        Spacer(Modifier.width(12.dp))
+        Text(text, style = NothingType.dialogButton)
     }
 }
 
@@ -430,22 +498,21 @@ private fun PreviewEditCollectionCardFolder() {
         DialogScrim {
             EditCollectionCardContent(
                 collection = previewFolderCollection,
+                imageCount = 124,
                 isProcessing = false,
+                excludedCount = 0,
                 nameText = previewFolderCollection.name,
                 onNameChange = {},
-                selectedRule = previewFolderCollection.defaultCropRule,
-                onRuleSelected = {},
-                selectedRotationFrequency = previewFolderCollection.rotationFrequency,
-                onFrequencySelected = {},
+                onNameCommit = {},
+                onCropRuleSelected = {},
+                onRotationFrequencySelected = {},
                 showDeleteConfirmation = false,
                 onDeleteRequest = {},
                 onDeleteConfirm = {},
                 onDeleteCancel = {},
                 onDismiss = {},
                 onSyncClick = {},
-                onViewImages = {},
-                onSetActive = {},
-                onSave = {}
+                onRestoreRemoved = {}
             )
         }
     }
@@ -463,23 +530,21 @@ private fun PreviewEditCollectionCardFolderWithRestore() {
         DialogScrim {
             EditCollectionCardContent(
                 collection = previewFolderCollection,
+                imageCount = 124,
                 isProcessing = false,
                 excludedCount = 4,
                 nameText = previewFolderCollection.name,
                 onNameChange = {},
-                selectedRule = previewFolderCollection.defaultCropRule,
-                onRuleSelected = {},
-                selectedRotationFrequency = previewFolderCollection.rotationFrequency,
-                onFrequencySelected = {},
+                onNameCommit = {},
+                onCropRuleSelected = {},
+                onRotationFrequencySelected = {},
                 showDeleteConfirmation = false,
                 onDeleteRequest = {},
                 onDeleteConfirm = {},
                 onDeleteCancel = {},
                 onDismiss = {},
                 onSyncClick = {},
-                onViewImages = {},
-                onSetActive = {},
-                onSave = {}
+                onRestoreRemoved = {}
             )
         }
     }
@@ -497,22 +562,21 @@ private fun PreviewEditCollectionCardManual() {
         DialogScrim {
             EditCollectionCardContent(
                 collection = previewManualCollection,
+                imageCount = 12,
                 isProcessing = false,
+                excludedCount = 0,
                 nameText = previewManualCollection.name,
                 onNameChange = {},
-                selectedRule = previewManualCollection.defaultCropRule,
-                onRuleSelected = {},
-                selectedRotationFrequency = previewManualCollection.rotationFrequency,
-                onFrequencySelected = {},
+                onNameCommit = {},
+                onCropRuleSelected = {},
+                onRotationFrequencySelected = {},
                 showDeleteConfirmation = false,
                 onDeleteRequest = {},
                 onDeleteConfirm = {},
                 onDeleteCancel = {},
                 onDismiss = {},
                 onSyncClick = {},
-                onViewImages = {},
-                onSetActive = {},
-                onSave = {}
+                onRestoreRemoved = {}
             )
         }
     }
@@ -530,22 +594,21 @@ private fun PreviewEditCollectionCardActive() {
         DialogScrim {
             EditCollectionCardContent(
                 collection = previewFolderCollection.copy(isActive = true),
+                imageCount = 124,
                 isProcessing = false,
+                excludedCount = 0,
                 nameText = previewFolderCollection.name,
                 onNameChange = {},
-                selectedRule = previewFolderCollection.defaultCropRule,
-                onRuleSelected = {},
-                selectedRotationFrequency = previewFolderCollection.rotationFrequency,
-                onFrequencySelected = {},
+                onNameCommit = {},
+                onCropRuleSelected = {},
+                onRotationFrequencySelected = {},
                 showDeleteConfirmation = false,
                 onDeleteRequest = {},
                 onDeleteConfirm = {},
                 onDeleteCancel = {},
                 onDismiss = {},
                 onSyncClick = {},
-                onViewImages = {},
-                onSetActive = {},
-                onSave = {}
+                onRestoreRemoved = {}
             )
         }
     }
@@ -563,22 +626,21 @@ private fun PreviewEditCollectionCardProcessing() {
         DialogScrim {
             EditCollectionCardContent(
                 collection = previewFolderCollection,
+                imageCount = 124,
                 isProcessing = true,
+                excludedCount = 0,
                 nameText = previewFolderCollection.name,
                 onNameChange = {},
-                selectedRule = previewFolderCollection.defaultCropRule,
-                onRuleSelected = {},
-                selectedRotationFrequency = previewFolderCollection.rotationFrequency,
-                onFrequencySelected = {},
+                onNameCommit = {},
+                onCropRuleSelected = {},
+                onRotationFrequencySelected = {},
                 showDeleteConfirmation = false,
                 onDeleteRequest = {},
                 onDeleteConfirm = {},
                 onDeleteCancel = {},
                 onDismiss = {},
                 onSyncClick = {},
-                onViewImages = {},
-                onSetActive = {},
-                onSave = {}
+                onRestoreRemoved = {}
             )
         }
     }

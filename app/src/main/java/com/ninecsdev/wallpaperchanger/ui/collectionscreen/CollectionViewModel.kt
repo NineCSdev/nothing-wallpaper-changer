@@ -8,7 +8,6 @@ import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
-import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
@@ -68,8 +67,9 @@ class CollectionViewModel @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     private val modalWithExclusionCount: Flow<Pair<ScreenModalState, Int>> = combine(
         _screenState,
+        // Observed by id regardless of type as a manual collection's count is a constant 0.
         _screenState
-            .map { it.editingCollection?.takeIf { c -> c.type == CollectionType.FOLDER }?.id }
+            .map { it.editingCollectionId }
             .distinctUntilChanged()
             .flatMapLatest { id -> if (id == null) flowOf(0) else repository.observeExclusionCount(id) }
     ) { modal, count -> modal to count }
@@ -101,7 +101,7 @@ class CollectionViewModel @Inject constructor(
             isShowingCreateModal = modal.isShowingCreateModal,
             hasPendingFolder = modal.hasPendingFolder,
             hasPendingPhotos = modal.hasPendingPhotos,
-            editingCollection = modal.editingCollection,
+            editingCollection = modal.editingCollectionId?.let { id -> collections.find { it.id == id } },
             editingExclusionCount = exclusionCount,
             isProcessing = modal.isProcessing,
             importSummary = modal.importSummary,
@@ -186,7 +186,7 @@ class CollectionViewModel @Inject constructor(
      * the active collection.
      */
     fun deleteEditingCollection(onDeleted: (wasActive: Boolean) -> Unit) {
-        val collection = _screenState.value.editingCollection ?: return
+        val collection = editingCollection() ?: return
         val wasActive = collection.isActive
         viewModelScope.launch {
             repository.deleteCollection(collection)
@@ -195,29 +195,37 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    /** Updates the collection currently open in the edit modal. */
-    override fun updateEditingCollection(
-        newName: String,
-        cropRule: CropRule,
-        rotationFrequency: RotationFrequency
-    ) {
-        val collection = _screenState.value.editingCollection ?: return
+    // Edit-card instant-apply intents: each field commits immediately decide if update the DAO to
+    // have separate updating func for each the name, crop rule and frequency.
+    // TODO tests: see vault note tests/Edit Collection Card Tests
+
+    /** Renames the collection currently open in the edit modal. */
+    override fun renameEditingCollection(newName: String) {
+        val collection = editingCollection() ?: return
         viewModelScope.launch {
-            repository.updateCollection(collection.id, newName, cropRule, rotationFrequency)
+            repository.updateCollection(collection.id, newName, collection.defaultCropRule, collection.rotationFrequency)
         }
     }
 
-    /** Makes the collection currently open in the edit modal the active one. */
-    override fun setActiveEditingCollection() {
-        val collection = _screenState.value.editingCollection ?: return
+    /** Sets the default crop rule of the collection currently open in the edit modal. */
+    override fun setEditingCropRule(rule: CropRule) {
+        val collection = editingCollection() ?: return
         viewModelScope.launch {
-            repository.setActiveCollection(collection.id)
+            repository.updateCollection(collection.id, collection.name, rule, collection.rotationFrequency)
+        }
+    }
+
+    /** Sets the rotation frequency of the collection currently open in the edit modal. */
+    override fun setEditingRotationFrequency(frequency: RotationFrequency) {
+        val collection = editingCollection() ?: return
+        viewModelScope.launch {
+            repository.updateCollection(collection.id, collection.name, collection.defaultCropRule, frequency)
         }
     }
 
     /** Manually re-syncs the **folder** collection currently open in the edit modal. */
     override fun syncEditingCollection() {
-        val collection = _screenState.value.editingCollection ?: return
+        val collection = editingCollection() ?: return
         viewModelScope.launch {
             setProcessing(true)
             repository.syncCollection(collection.id)
@@ -231,7 +239,7 @@ class CollectionViewModel @Inject constructor(
      * their edits. The dialog stays open; its restore row hides itself once the count hits zero.
      */
     override fun restoreRemovedImages() {
-        val collection = _screenState.value.editingCollection ?: return
+        val collection = editingCollection() ?: return
         viewModelScope.launch {
             setProcessing(true)
             repository.restoreExcludedImages(collection.id)
@@ -272,15 +280,17 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    /** Opens the edit modal for the collection with [collectionId], if it exists. */
+    /** Opens the edit modal for the collection with [collectionId]; renders once the id resolves. */
     fun openEditModal(collectionId: Long) {
-        val collection = uiState.value?.allCollections?.find { it.id == collectionId } ?: return
-        _screenState.update { it.copy(editingCollection = collection) }
+        _screenState.update { it.copy(editingCollectionId = collectionId) }
     }
 
     override fun closeEditModal() {
-        _screenState.update { it.copy(editingCollection = null) }
+        _screenState.update { it.copy(editingCollectionId = null) }
     }
+
+    /** The live row of the collection open in the edit modal, resolved through [uiState]. */
+    private fun editingCollection(): WallpaperCollection? = uiState.value?.editingCollection
 
     private fun setProcessing(loading: Boolean) {
         _screenState.update { it.copy(isProcessing = loading) }
@@ -292,7 +302,7 @@ private data class ScreenModalState(
     val isShowingCreateModal: Boolean = false,
     val hasPendingFolder: Boolean = false,
     val hasPendingPhotos: Boolean = false,
-    val editingCollection: WallpaperCollection? = null,
+    val editingCollectionId: Long? = null,
     val isProcessing: Boolean = false,
     val importSummary: PickImportResult? = null,
     val createError: Boolean = false

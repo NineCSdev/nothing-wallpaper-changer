@@ -180,18 +180,32 @@
     <string name="create_collection_error">NO SE PUDO CREAR LA COLECCIÓN — INTÉNTALO DE NUEVO</string>
 
     <!-- Edit collection card -->
-    <string name="edit_collection_title">AJUSTES DE LA COLECCIÓN</string>
-    <string name="edit_collection_field_name">NOMBRE DE LA COLECCIÓN</string>
+    <string name="edit_collection_meta_folder">CARPETA</string>
+    <string name="edit_collection_meta_manual">MANUAL</string>
+    <string name="edit_collection_meta_active">ACTIVA</string>
+    <plurals name="edit_collection_meta_images">
+        <item quantity="one">%1$d IMAGEN</item>
+        <item quantity="many">%1$d IMÁGENES</item>
+        <item quantity="other">%1$d IMÁGENES</item>
+    </plurals>
+    <string name="edit_collection_crop_title">AJUSTE DE IMAGEN</string>
+    <string name="edit_collection_crop_info_title">Ajuste de imagen</string>
+    <string name="edit_collection_crop_info_body">
+        Define cómo se colocan por defecto las imágenes de esta colección cuando su forma no coincide con la pantalla.
+        \n\n• Centro conserva el centro de la imagen y recorta ambos lados.
+        \n• Izquierda conserva el lado izquierdo.
+        \n• Derecha conserva el lado derecho.
+        \n• Ajustar muestra la imagen completa sin recortar, añadiendo bandas negras si hace falta.
+        \n\nCada fondo se puede ajustar individualmente en su editor ignorando el ajuste general de la colección.
+    </string>
     <string name="edit_collection_rotation_title">FRECUENCIA DE ROTACIÓN</string>
     <string name="edit_collection_rotation_per_lock">POR BLOQUEO</string>
     <string name="edit_collection_rotation_hourly">CADA 1H</string>
     <string name="edit_collection_rotation_daily">DIARIO</string>
-    <string name="edit_collection_action_manage_images">GESTIONAR IMÁGENES</string>
-    <string name="edit_collection_action_restore_removed">RESTAURAR IMÁGENES ELIMINADAS (%1$d)</string>
+    <string name="edit_collection_action_sync">SINCRONIZAR CARPETA</string>
+    <string name="edit_collection_action_restore_removed">RESTAURAR ELIMINADAS (%1$d)</string>
+    <string name="edit_collection_folder_actions_header">ACCIONES DE CARPETA</string>
     <string name="edit_collection_action_delete">ELIMINAR COLECCIÓN</string>
-    <string name="edit_collection_action_currently_active">ACTIVA</string>
-    <string name="edit_collection_action_set_active">PONER COMO ACTIVA</string>
-    <string name="edit_collection_action_save">GUARDAR</string>
     <string name="edit_collection_processing">ACTUALIZANDO COLECCIÓN…</string>
     <string name="edit_collection_delete_title">¿ELIMINAR COLECCIÓN?</string>
     <string name="edit_collection_delete_message">Esta acción no se puede deshacer. Se eliminarán todas las imágenes de esta colección.</string>

@@ -2,8 +2,10 @@ package com.ninecsdev.wallpaperchanger.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -24,7 +26,8 @@ fun NothingButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    variant: NothingButtonVariant = NothingButtonVariant.PRIMARY
+    variant: NothingButtonVariant = NothingButtonVariant.PRIMARY,
+    leadingIcon: (@Composable () -> Unit)? = null
 ) {
     val colors = when (variant) {
         NothingButtonVariant.PRIMARY -> ButtonDefaults.buttonColors(
@@ -64,6 +67,10 @@ fun NothingButton(
         border = border,
         contentPadding = PaddingValues(0.dp)
     ) {
+        if (leadingIcon != null) {
+            leadingIcon()
+            Spacer(Modifier.width(10.dp))
+        }
         Text(
             text = text.uppercase(),
             style = NothingType.titleCaps

@@ -16,10 +16,13 @@ interface CollectionListActions {
     fun setSortOrder(order: CollectionSortOrder)
     fun toggleCreateModal(show: Boolean)
     fun closeEditModal()
-    fun updateEditingCollection(newName: String, cropRule: CropRule, rotationFrequency: RotationFrequency)
-    fun setActiveEditingCollection()
+    // Edit-card instant-apply intents
+    fun renameEditingCollection(newName: String)
+    fun setEditingCropRule(rule: CropRule)
+    fun setEditingRotationFrequency(frequency: RotationFrequency)
     fun syncEditingCollection()
     fun restoreRemovedImages()
+
     fun clearImportSummary()
 
     // Long-press context menu intents

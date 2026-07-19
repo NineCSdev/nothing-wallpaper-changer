@@ -76,8 +76,7 @@ fun CollectionListScreen(
     onFolderSelect: () -> Unit,
     onPhotosSelect: () -> Unit,
     onCreateCollection: (name: String, rule: CropRule) -> Unit,
-    onDeleteCollection: () -> Unit,
-    onViewImages: () -> Unit
+    onDeleteCollection: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -196,15 +195,16 @@ fun CollectionListScreen(
         uiState.editingCollection?.let { collection ->
             EditCollectionCard(
                 collection = collection,
+                imageCount = uiState.previewStates[collection.id]?.totalCount ?: 0,
                 isProcessing = uiState.isProcessing,
                 excludedCount = uiState.editingExclusionCount,
                 onDismiss = actions::closeEditModal,
-                onEdit = actions::updateEditingCollection,
-                onSetActive = actions::setActiveEditingCollection,
+                onRename = actions::renameEditingCollection,
+                onCropRuleSelected = actions::setEditingCropRule,
+                onRotationFrequencySelected = actions::setEditingRotationFrequency,
                 onDelete = onDeleteCollection,
                 onSyncClick = actions::syncEditingCollection,
-                onRestoreRemoved = actions::restoreRemovedImages,
-                onViewImages = onViewImages
+                onRestoreRemoved = actions::restoreRemovedImages
             )
         }
     }
@@ -257,8 +257,7 @@ fun CollectionListScreenPopulatedPreview() {
             onFolderSelect = {},
             onPhotosSelect = {},
             onCreateCollection = { _, _ -> },
-            onDeleteCollection = {},
-            onViewImages = {}
+            onDeleteCollection = {}
         )
     }
 }
@@ -276,8 +275,7 @@ fun CollectionListScreenEmptyPreview() {
             onFolderSelect = {},
             onPhotosSelect = {},
             onCreateCollection = { _, _ -> },
-            onDeleteCollection = {},
-            onViewImages = {}
+            onDeleteCollection = {}
         )
     }
 }
@@ -287,8 +285,9 @@ private object PreviewCollectionListActions : CollectionListActions {
     override fun setSortOrder(order: CollectionSortOrder) {}
     override fun toggleCreateModal(show: Boolean) {}
     override fun closeEditModal() {}
-    override fun updateEditingCollection(newName: String, cropRule: CropRule, rotationFrequency: RotationFrequency) {}
-    override fun setActiveEditingCollection() {}
+    override fun renameEditingCollection(newName: String) {}
+    override fun setEditingCropRule(rule: CropRule) {}
+    override fun setEditingRotationFrequency(frequency: RotationFrequency) {}
     override fun syncEditingCollection() {}
     override fun restoreRemovedImages() {}
     override fun clearImportSummary() {}
