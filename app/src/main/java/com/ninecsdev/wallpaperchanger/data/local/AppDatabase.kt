@@ -5,6 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.ninecsdev.wallpaperchanger.model.FolderExclusion
 import com.ninecsdev.wallpaperchanger.model.Wallpaper
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperFile
@@ -17,7 +18,8 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperFile
 @Database(entities = [
     WallpaperCollection::class,
     WallpaperFile::class,
-    Wallpaper::class],
+    Wallpaper::class,
+    FolderExclusion::class],
     version = 5,
     exportSchema = true
 )
@@ -157,6 +159,26 @@ abstract class AppDatabase : RoomDatabase() {
                 // 4. User-set `isPinned` flag (pinned collections sort first). Folded into this
                 // migration like isFavorites. the lazily-created Favourites row is born pinned.
                 db.execSQL("ALTER TABLE collections ADD COLUMN isPinned INTEGER NOT NULL DEFAULT 0")
+
+                // 5. `folder_exclusions` table per-collection tombstones that make in-app
+                // deletions of folder-sourced images survive folder sync. Keyed by (collectionId, uri);
+                // the nullable edit columns snapshot the removed membership's edit for "Restore removed
+                // images". Starts empty: pre-existing deletions were already resurrected by past
+                // syncs, so there is nothing to backfill.
+                db.execSQL("""
+                    CREATE TABLE folder_exclusions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        collectionId INTEGER NOT NULL,
+                        uri TEXT NOT NULL,
+                        editZoom REAL,
+                        editOffsetX REAL,
+                        editOffsetY REAL,
+                        excludedAt INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY(collectionId) REFERENCES collections(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX index_folder_exclusions_collectionId ON folder_exclusions(collectionId)")
+                db.execSQL("CREATE UNIQUE INDEX index_folder_exclusions_collectionId_uri ON folder_exclusions(collectionId, uri)")
             }
         }
     }

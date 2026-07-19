@@ -8,6 +8,7 @@ import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
+import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
@@ -15,11 +16,16 @@ import com.ninecsdev.wallpaperchanger.model.pinnedFirst
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 import com.ninecsdev.wallpaperchanger.ui.components.collectionPreviewsFlow
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -55,6 +61,20 @@ class CollectionViewModel @Inject constructor(
         repository.collectionPreviewsFlow()
 
     /**
+     * Exclusion-tombstone count of the folder collection open in the edit modal (0 otherwise).
+     * Observed reactively so the "Restore removed images (N)" row hides itself.
+     * Paired with the modal state here because [combine] below is already at its five-flow limit.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val modalWithExclusionCount: Flow<Pair<ScreenModalState, Int>> = combine(
+        _screenState,
+        _screenState
+            .map { it.editingCollection?.takeIf { c -> c.type == CollectionType.FOLDER }?.id }
+            .distinctUntilChanged()
+            .flatMapLatest { id -> if (id == null) flowOf(0) else repository.observeExclusionCount(id) }
+    ) { modal, count -> modal to count }
+
+    /**
      * Combined public state built reactively.
      * Null until every source flow has emitted; the UI renders nothing until then so no
      * fabricated default (e.g. an empty collection list) can flash before the real data.
@@ -63,10 +83,10 @@ class CollectionViewModel @Inject constructor(
     val uiState: StateFlow<CollectionUiState?> = combine(
         repository.getAllCollections(),
         previewsFlow,
-        _screenState,
+        modalWithExclusionCount,
         _sortOrder,
         serviceStateManager.serviceState
-    ) { collections, previews, modal, sort, serviceState ->
+    ) { collections, previews, (modal, exclusionCount), sort, serviceState ->
         val sorted = when (sort) {
             CollectionSortOrder.NAME -> collections.sortedBy { it.name.lowercase() }
             CollectionSortOrder.LAST_USED -> collections.sortedByDescending { it.lastUsedAt }
@@ -82,6 +102,7 @@ class CollectionViewModel @Inject constructor(
             hasPendingFolder = modal.hasPendingFolder,
             hasPendingPhotos = modal.hasPendingPhotos,
             editingCollection = modal.editingCollection,
+            editingExclusionCount = exclusionCount,
             isProcessing = modal.isProcessing,
             importSummary = modal.importSummary,
             createError = modal.createError
@@ -200,6 +221,20 @@ class CollectionViewModel @Inject constructor(
         viewModelScope.launch {
             setProcessing(true)
             repository.syncCollection(collection.id)
+            setProcessing(false)
+        }
+    }
+
+    /**
+     * "Restore removed images" for the **folder** collection currently open in the edit modal:
+     * wipes its exclusion tombstones and re-syncs, bringing the in-app-deleted images back with
+     * their edits. The dialog stays open; its restore row hides itself once the count hits zero.
+     */
+    override fun restoreRemovedImages() {
+        val collection = _screenState.value.editingCollection ?: return
+        viewModelScope.launch {
+            setProcessing(true)
+            repository.restoreExcludedImages(collection.id)
             setProcessing(false)
         }
     }

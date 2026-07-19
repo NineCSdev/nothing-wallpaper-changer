@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 5,
-    "identityHash": "bc8f82a9c9f5612900284fe959847abf",
+    "identityHash": "210f9abae42cd932c3a0dc35429262d1",
     "entities": [
       {
         "tableName": "collections",
@@ -250,11 +250,96 @@
             ]
           }
         ]
+      },
+      {
+        "tableName": "folder_exclusions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `collectionId` INTEGER NOT NULL, `uri` TEXT NOT NULL, `excludedAt` INTEGER NOT NULL, `editZoom` REAL, `editOffsetX` REAL, `editOffsetY` REAL, FOREIGN KEY(`collectionId`) REFERENCES `collections`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "collectionId",
+            "columnName": "collectionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uri",
+            "columnName": "uri",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "excludedAt",
+            "columnName": "excludedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "editParams.zoom",
+            "columnName": "editZoom",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "editParams.offsetX",
+            "columnName": "editOffsetX",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "editParams.offsetY",
+            "columnName": "editOffsetY",
+            "affinity": "REAL"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_folder_exclusions_collectionId",
+            "unique": false,
+            "columnNames": [
+              "collectionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_folder_exclusions_collectionId` ON `${TABLE_NAME}` (`collectionId`)"
+          },
+          {
+            "name": "index_folder_exclusions_collectionId_uri",
+            "unique": true,
+            "columnNames": [
+              "collectionId",
+              "uri"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_folder_exclusions_collectionId_uri` ON `${TABLE_NAME}` (`collectionId`, `uri`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "collections",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "collectionId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'bc8f82a9c9f5612900284fe959847abf')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '210f9abae42cd932c3a0dc35429262d1')"
     ]
   }
 }

@@ -46,14 +46,12 @@ import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
  *
  * Selection mode guarantees ≥ 1 selection, so every action is always
  * applicable except edit, which needs exactly one ([canEdit] — shown dimmed
- * otherwise). Move is omitted (not disabled) when [isMoveAvailable] is false:
- * folder-synced collections would re-add a moved-out image on the next sync pass.
+ * otherwise).
  */
 @Composable
 internal fun SelectionActionBar(
     isAllFavorites: Boolean,
     canEdit: Boolean,
-    isMoveAvailable: Boolean,
     onFavoriteClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
@@ -141,29 +139,27 @@ internal fun SelectionActionBar(
                         onCopyClick()
                     }
                 )
-                if (isMoveAvailable) {
-                    DropdownMenuItem(
-                        leadingIcon = {
-                            Icon(
-                                painter = painterResource(R.drawable.icon_move),
-                                contentDescription = null,
-                                tint = NothingWhite,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        },
-                        text = {
-                            Text(
-                                text = stringResource(R.string.selection_menu_move),
-                                style = NothingType.dialogButton,
-                                color = NothingWhite
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            onMoveClick()
-                        }
-                    )
-                }
+                DropdownMenuItem(
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(R.drawable.icon_move),
+                            contentDescription = null,
+                            tint = NothingWhite,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    text = {
+                        Text(
+                            text = stringResource(R.string.selection_menu_move),
+                            style = NothingType.dialogButton,
+                            color = NothingWhite
+                        )
+                    },
+                    onClick = {
+                        menuExpanded = false
+                        onMoveClick()
+                    }
+                )
             }
         }
     }
@@ -179,7 +175,6 @@ private fun SelectionActionBarPreview() {
             SelectionActionBar(
                 isAllFavorites = false,
                 canEdit = true,
-                isMoveAvailable = true,
                 onFavoriteClick = {},
                 onEditClick = {},
                 onDeleteClick = {},
@@ -198,7 +193,6 @@ private fun SelectionActionBarMultiPreview() {
             SelectionActionBar(
                 isAllFavorites = true,
                 canEdit = false,
-                isMoveAvailable = false,
                 onFavoriteClick = {},
                 onEditClick = {},
                 onDeleteClick = {},

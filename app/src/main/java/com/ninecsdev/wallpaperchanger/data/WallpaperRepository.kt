@@ -14,6 +14,8 @@ import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.enums.SourceType
+import com.ninecsdev.wallpaperchanger.model.EditParams
+import com.ninecsdev.wallpaperchanger.model.FolderExclusion
 import com.ninecsdev.wallpaperchanger.model.Wallpaper
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
@@ -236,6 +238,11 @@ class WallpaperRepository @Inject constructor(
         if (files.isEmpty()) return
         val now = System.currentTimeMillis()
         database.withTransaction {
+            // Invariant: a uri is never both excluded from and a member of the same collection
+            // adding one back, drops its tombstone.
+            files.map { it.first }.distinct().chunked(SYNC_CHUNK_SIZE).forEach {
+                dao.deleteExclusionsForUris(collectionId, it)
+            }
             val rows = files.map { (uri, sourceType) ->
                 val fileId = dao.getOrCreateFile(uri, sourceType, now)
                 Wallpaper(
@@ -262,7 +269,8 @@ class WallpaperRepository @Inject constructor(
      * the source memberships. On duplicates the source row is still removed.
      * (the image already lives in the target; the target's edit wins).
      *
-     * Callers should not offer move out of FOLDER collections as sync would re-add the image.
+     * Note: Moving a folder-sourced member out of a FOLDER collection also records an exclusion
+     * tombstone in the same transaction so sync doesn't undo the move.
      */
     suspend fun moveImagesToCollection(images: List<WallpaperImage>, targetCollectionId: Long): TransferResult =
         transferImagesToCollection(images, targetCollectionId, removeFromSource = true)
@@ -317,7 +325,13 @@ class WallpaperRepository @Inject constructor(
                 }
 
                 newRows.chunked(SYNC_CHUNK_SIZE).forEach { dao.insertWallpapers(it) }
+                if (markManuallyAdded) {
+                    images.map { it.uri }.distinct().chunked(SYNC_CHUNK_SIZE).forEach {
+                        dao.deleteExclusionsForUris(targetCollectionId, it)
+                    }
+                }
                 if (removeFromSource) {
+                    excludeRemovedFolderImages(images)
                     images.map { it.id }.chunked(SYNC_CHUNK_SIZE).forEach { dao.deleteImagesByIds(it) }
                 }
                 TransferResult(transferred, alreadyPresent)
@@ -532,19 +546,48 @@ class WallpaperRepository @Inject constructor(
      * [computeFolderSyncDiff], then deletes stale rows and inserts new ones inside a single Room
      * transaction (so a crash mid-sync commits nothing). Returns the number of new images.
      *
+     * Exclusion tombstones filter the adds so an in-app-deleted image is never resurrected. With
+     * [restoreExclusions] the opposite happens ("Restore removed images"): every tombstone is
+     * wiped in the same transaction and each restored uri gets its edit back.
+     *
      * Callers must not pass a [freshUris] list produced by a *failed* scan.
      */
-    private suspend fun syncFolderImages(collectionId: Long, freshUris: List<Uri>): Int {
+    private suspend fun syncFolderImages(
+        collectionId: Long,
+        freshUris: List<Uri>,
+        restoreExclusions: Boolean = false
+    ): Int {
         val added = database.withTransaction {
+            val exclusions = dao.getExclusionsForCollection(collectionId)
+            val excludedUris: Set<Uri>
+            val restoredEdits: Map<Uri, EditParams>
+
+            if (restoreExclusions) {
+                dao.deleteExclusionsForCollection(collectionId)
+                excludedUris = emptySet()
+                restoredEdits = exclusions
+                    .mapNotNull { exclusion -> exclusion.editParams?.let { exclusion.uri to it } }
+                    .toMap()
+            } else {
+                excludedUris = exclusions.map { it.uri }.toSet()
+                restoredEdits = emptyMap()
+            }
+
             val existing = dao.getFolderImagesForCollection(collectionId)
-            val (staleIds, newUris) = computeFolderSyncDiff(existing, freshUris)
+            val (staleIds, newUris) = computeFolderSyncDiff(existing, freshUris, excludedUris)
             // Chunked to stay under SQLite's per-statement bind-variable limit on large folders.
             staleIds.chunked(SYNC_CHUNK_SIZE).forEach { dao.deleteImagesByIds(it) }
 
             val now = System.currentTimeMillis()
             val rows = newUris.map { uri ->
                 val fileId = dao.getOrCreateFile(uri, SourceType.FOLDER_DOC, now)
-                Wallpaper(collectionId = collectionId, fileId = fileId, isManuallyAdded = false, addedAt = now)
+                Wallpaper(
+                    collectionId = collectionId,
+                    fileId = fileId,
+                    editParams = restoredEdits[uri],
+                    isManuallyAdded = false,
+                    addedAt = now
+                )
             }
             // Chunked to stay under SQLite's per-statement bind-variable limit on large folders.
             rows.chunked(SYNC_CHUNK_SIZE).forEach { dao.insertWallpapers(it) }
@@ -556,9 +599,37 @@ class WallpaperRepository @Inject constructor(
     }
 
     /**
+     * "Restore removed images" bulk action for a folder collection: wipes all its exclusion
+     * tombstones and re-syncs in one flow, bringing back every in-app-deleted image still present
+     * in the folder with its old edit rehydrated (see [syncFolderImages]). The folder is scanned
+     * *before* anything is wiped, so a failed scan leaves the tombstones untouched.
+     */
+    // TODO tests: check "tests/Folder Exclusions Tests" note
+    suspend fun restoreExcludedImages(collectionId: Long) {
+        withContext(Dispatchers.IO) {
+            val collection = dao.getCollectionById(collectionId) ?: return@withContext
+            if (collection.type != CollectionType.FOLDER || collection.rootUri == null) return@withContext
+            try {
+                val freshUris = folderScanner.scan(collection.rootUri)
+                val added = syncFolderImages(collectionId, freshUris, restoreExclusions = true)
+                Log.d(TAG, "Restore complete for collection $collectionId: $added image(s) back")
+            } catch (e: Exception) {
+                Log.e(TAG, "Restore failed for collection $collectionId: ${e.message}")
+            }
+        }
+    }
+
+    /** Reactive tombstone count for a collection; drives the "Restore removed images (N)" row. */
+    fun observeExclusionCount(collectionId: Long): Flow<Int> =
+        dao.observeExclusionCount(collectionId)
+
+    /**
      * Removes wallpapers (join rows) from a collection, then garbage-collects any file that is left
      * unreferenced (deleting the app-private copy or releasing the picker grant as appropriate).
      * A file shared with another collection is kept.
+     *
+     * Deleting a folder-sourced member of a FOLDER collection also records an exclusion tombstone
+     * in the same transaction, so the deletion survives every future sync.
      *
      * Note: This is the single per-image deletion path.
      */
@@ -567,10 +638,35 @@ class WallpaperRepository @Inject constructor(
 
         withContext(Dispatchers.IO) {
             database.withTransaction {
+                excludeRemovedFolderImages(images)
                 images.map { it.id }.chunked(SYNC_CHUNK_SIZE).forEach { dao.deleteImagesByIds(it) }
             }
             gcOrphanFiles()
         }
+    }
+
+    /**
+     * Writes exclusion tombstones for the folder-sourced members of [images] (non-manual,
+     * [SourceType.FOLDER_DOC]) whose collection is FOLDER type, saving each membership's edit
+     * params for later restore. Manually-added members, non-folder sources, and members of manual
+     * collections (which may hold FOLDER_DOC references via copy) leave no tombstone.
+     *
+     * **MUST** run in the same transaction as the membership removal so a crash can't remove the
+     * wallpaper without protecting the removal from sync.
+     */
+    // TODO tests: check "tests/Folder Exclusions Tests" note
+    private suspend fun excludeRemovedFolderImages(images: List<WallpaperImage>) {
+        val now = System.currentTimeMillis()
+        images
+            .filter { !it.isManuallyAdded && it.sourceType == SourceType.FOLDER_DOC }
+            .groupBy { it.collectionId }
+            .forEach { (collectionId, members) ->
+                if (dao.getCollectionById(collectionId)?.type != CollectionType.FOLDER) return@forEach
+                members
+                    .map { FolderExclusion(collectionId = collectionId, uri = it.uri, editParams = it.editParams, excludedAt = now) }
+                    .chunked(SYNC_CHUNK_SIZE)
+                    .forEach { dao.insertExclusions(it) }
+            }
     }
 
     /**

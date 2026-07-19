@@ -19,6 +19,7 @@ interface CollectionListActions {
     fun updateEditingCollection(newName: String, cropRule: CropRule, rotationFrequency: RotationFrequency)
     fun setActiveEditingCollection()
     fun syncEditingCollection()
+    fun restoreRemovedImages()
     fun clearImportSummary()
 
     // Long-press context menu intents

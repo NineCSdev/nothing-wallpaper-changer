@@ -399,7 +399,6 @@ fun CollectionImageScreen(
                     SelectionActionBar(
                         isAllFavorites = uiState.isSelectionAllFavorites,
                         canEdit = uiState.selectedWallpaper != null,
-                        isMoveAvailable = uiState.isMoveAvailable,
                         onFavoriteClick = actions::toggleFavoriteSelected,
                         onEditClick = { uiState.selectedWallpaper?.let(onEditWallpaper) },
                         onDeleteClick = { showDeleteConfirmation = true },

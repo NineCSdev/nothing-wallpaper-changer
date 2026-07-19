@@ -197,11 +197,13 @@ fun CollectionListScreen(
             EditCollectionCard(
                 collection = collection,
                 isProcessing = uiState.isProcessing,
+                excludedCount = uiState.editingExclusionCount,
                 onDismiss = actions::closeEditModal,
                 onEdit = actions::updateEditingCollection,
                 onSetActive = actions::setActiveEditingCollection,
                 onDelete = onDeleteCollection,
                 onSyncClick = actions::syncEditingCollection,
+                onRestoreRemoved = actions::restoreRemovedImages,
                 onViewImages = onViewImages
             )
         }
@@ -288,6 +290,7 @@ private object PreviewCollectionListActions : CollectionListActions {
     override fun updateEditingCollection(newName: String, cropRule: CropRule, rotationFrequency: RotationFrequency) {}
     override fun setActiveEditingCollection() {}
     override fun syncEditingCollection() {}
+    override fun restoreRemovedImages() {}
     override fun clearImportSummary() {}
     override fun togglePinned(collectionId: Long) {}
     override fun setActiveCollection(collectionId: Long) {}

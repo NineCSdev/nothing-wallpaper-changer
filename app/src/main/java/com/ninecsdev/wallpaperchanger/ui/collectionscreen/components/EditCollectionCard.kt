@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -59,11 +60,13 @@ import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 internal fun EditCollectionCard(
     collection: WallpaperCollection,
     isProcessing: Boolean = false,
+    excludedCount: Int = 0,
     onDismiss: () -> Unit,
     onEdit: (String, CropRule, RotationFrequency) -> Unit,
     onDelete: () -> Unit,
     onSetActive: () -> Unit,
     onSyncClick: () -> Unit,
+    onRestoreRemoved: () -> Unit = {},
     onViewImages: () -> Unit
 ) {
     var nameText by remember { mutableStateOf(collection.name) }
@@ -78,6 +81,8 @@ internal fun EditCollectionCard(
         EditCollectionCardContent(
             collection = collection,
             isProcessing = isProcessing,
+            excludedCount = excludedCount,
+            onRestoreRemoved = onRestoreRemoved,
             nameText = nameText,
             onNameChange = { nameText = it },
             selectedRule = selectedRule,
@@ -105,6 +110,8 @@ private fun EditCollectionCardContent(
     collection: WallpaperCollection,
     isProcessing: Boolean,
     nameText: String,
+    excludedCount: Int = 0,
+    onRestoreRemoved: () -> Unit = {},
     onNameChange: (String) -> Unit,
     selectedRule: CropRule,
     onRuleSelected: (CropRule) -> Unit,
@@ -170,6 +177,9 @@ private fun EditCollectionCardContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         ManagementButtons(
+            showRestoreRemoved = collection.type == CollectionType.FOLDER && excludedCount > 0,
+            excludedCount = excludedCount,
+            onRestoreRemoved = onRestoreRemoved,
             onDeleteRequest = onDeleteRequest,
             onViewImages = onViewImages
         )
@@ -290,6 +300,9 @@ private fun EditCardHeader(
 
 @Composable
 private fun ManagementButtons(
+    showRestoreRemoved: Boolean,
+    excludedCount: Int,
+    onRestoreRemoved: () -> Unit,
     onDeleteRequest: () -> Unit,
     onViewImages: () -> Unit
 ) {
@@ -304,6 +317,27 @@ private fun ManagementButtons(
             Icon(painterResource(R.drawable.icon_collection), null, Modifier.size(18.dp))
             Spacer(Modifier.width(12.dp))
             Text(stringResource(R.string.edit_collection_action_manage_images), style = NothingType.dialogButton)
+        }
+
+        // Recovery for in-app-deleted folder images: wipes the exclusion tombstones and re-syncs.
+        // No confirmation, the row disappears once the count is 0.
+        if (showRestoreRemoved) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = onRestoreRemoved,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(SmallCornerRadius),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite),
+                border = BorderStroke(1.dp, NothingWhite.copy(alpha = 0.3f))
+            ) {
+                Icon(Icons.Default.Refresh, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    stringResource(R.string.edit_collection_action_restore_removed, excludedCount),
+                    style = NothingType.dialogButton
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -397,6 +431,40 @@ private fun PreviewEditCollectionCardFolder() {
             EditCollectionCardContent(
                 collection = previewFolderCollection,
                 isProcessing = false,
+                nameText = previewFolderCollection.name,
+                onNameChange = {},
+                selectedRule = previewFolderCollection.defaultCropRule,
+                onRuleSelected = {},
+                selectedRotationFrequency = previewFolderCollection.rotationFrequency,
+                onFrequencySelected = {},
+                showDeleteConfirmation = false,
+                onDeleteRequest = {},
+                onDeleteConfirm = {},
+                onDeleteCancel = {},
+                onDismiss = {},
+                onSyncClick = {},
+                onViewImages = {},
+                onSetActive = {},
+                onSave = {}
+            )
+        }
+    }
+}
+
+@Preview(
+    name = "Folder Collection (removed images)",
+    showBackground = true,
+    backgroundColor = 0xFF1A1A2E,
+    device = "spec:width=411dp,height=891dp,dpi=420"
+)
+@Composable
+private fun PreviewEditCollectionCardFolderWithRestore() {
+    WallpaperChangerTheme {
+        DialogScrim {
+            EditCollectionCardContent(
+                collection = previewFolderCollection,
+                isProcessing = false,
+                excludedCount = 4,
                 nameText = previewFolderCollection.name,
                 onNameChange = {},
                 selectedRule = previewFolderCollection.defaultCropRule,

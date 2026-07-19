@@ -10,6 +10,7 @@ import androidx.room.Transaction
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.enums.SourceType
+import com.ninecsdev.wallpaperchanger.model.FolderExclusion
 import com.ninecsdev.wallpaperchanger.model.Wallpaper
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperFile
@@ -265,5 +266,33 @@ interface WallpaperDao {
     /** Removes the Favourites membership (unfavourite) for the given files. */
     @Query("DELETE FROM wallpapers WHERE collectionId = :collectionId AND fileId IN (:fileIds)")
     suspend fun deleteJoinRowsForFiles(collectionId: Long, fileIds: List<Long>)
+
+    // Folder exclusions
+
+    /**
+     * Inserts exclusion tombstones. IGNORE keeps the *older* row on a (collectionId, uri) conflict:
+     * an already-excluded uri can't be a member (invariant).
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertExclusions(exclusions: List<FolderExclusion>)
+
+    /** All exclusion tombstones of a collection (sync reads these to filter re-adds). */
+    @Query("SELECT * FROM folder_exclusions WHERE collectionId = :collectionId")
+    suspend fun getExclusionsForCollection(collectionId: Long): List<FolderExclusion>
+
+    /** Reactive exclusion count; drives the "Restore removed images (N)" row in the edit card. */
+    @Query("SELECT COUNT(*) FROM folder_exclusions WHERE collectionId = :collectionId")
+    fun observeExclusionCount(collectionId: Long): Flow<Int>
+
+    /** Wipes every exclusion of a collection (the "Restore removed images" bulk action). */
+    @Query("DELETE FROM folder_exclusions WHERE collectionId = :collectionId")
+    suspend fun deleteExclusionsForCollection(collectionId: Long)
+
+    /**
+     * Clears exclusions matching the given uris, the add-path half of the invariant that a uri is
+     * never both excluded from and a member of the same collection. Callers chunk [uris].
+     */
+    @Query("DELETE FROM folder_exclusions WHERE collectionId = :collectionId AND uri IN (:uris)")
+    suspend fun deleteExclusionsForUris(collectionId: Long, uris: List<Uri>)
 
 }

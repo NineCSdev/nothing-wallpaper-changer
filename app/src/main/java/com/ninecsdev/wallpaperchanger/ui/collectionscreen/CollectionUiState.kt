@@ -19,6 +19,8 @@ data class CollectionUiState(
     val hasPendingFolder: Boolean = false,
     val hasPendingPhotos: Boolean = false,
     val editingCollection: WallpaperCollection? = null,
+    /** Exclusion-tombstone count of [editingCollection] (folder collections only); drives the "Restore removed images (N)" row. */
+    val editingExclusionCount: Int = 0,
     val isProcessing: Boolean = false,
     /** One-shot summary of the last manual-collection pick import; cleared via [CollectionViewModel.clearImportSummary]. */
     val importSummary: PickImportResult? = null,

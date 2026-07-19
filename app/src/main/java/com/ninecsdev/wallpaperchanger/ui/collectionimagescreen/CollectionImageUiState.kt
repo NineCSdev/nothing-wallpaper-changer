@@ -72,11 +72,4 @@ data class CollectionImageUiState(
     val isSelectionAllFavorites: Boolean
         get() = isSelectionMode && selectedIds.isNotEmpty() &&
             wallpapers.filter { it.id in selectedIds }.all { it.fileId in favoriteFileIds }
-
-    /**
-     * True when the move action is offered. Never for FOLDER collections: sync re-derives
-     * their membership from disk, so a moved-out image would just be re-added on the next sync.
-     */
-    val isMoveAvailable: Boolean
-        get() = collectionType == CollectionType.MANUAL
 }
