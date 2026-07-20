@@ -31,13 +31,16 @@ data class SettingsUiState(
     val compressionQualityLow: Int = 80,
     val keepLocalCopies: Boolean = false,
     val hasMediaAccess: Boolean = true,
+    val hasPartialMediaAccess: Boolean = false,
     val availableLanguages: List<LanguageOption> = emptyList(),
     val selectedLanguageTag: String = "",
     val appVersion: String = ""
 ) {
     /**
      * What "keep local copies" actually does right now: without `READ_MEDIA_IMAGES` every pick is
-     * internalized regardless of the stored preference, so the toggle renders ON and disabled.
+     * internalized regardless of the stored preference (a partial "selected photos" grant counts
+     * as without as [hasPartialMediaAccess] only picks the row's copy), so the toggle renders ON
+     * and disabled.
      * The stored [keepLocalCopies] is never overwritten so granting the permission restores user's choice.
      */
     val effectiveKeepLocalCopies: Boolean

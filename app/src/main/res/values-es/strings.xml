@@ -112,6 +112,7 @@
     <string name="settings_keep_local_copies_title">MANTENER COPIAS LOCALES</string>
     <string name="settings_keep_local_copies_subtitle">COPIAR LAS FOTOS AL ALMACENAMIENTO DE LA APP</string>
     <string name="settings_keep_local_copies_locked_subtitle">SIN ACCESO A FOTOS, LAS FOTOS SIEMPRE SE COPIAN</string>
+    <string name="settings_keep_local_copies_partial_subtitle">CON ACCESO PARCIAL, LAS FOTOS SIEMPRE SE COPIAN</string>
     <string name="settings_keep_local_copies_dialog_title">Mantener copias locales</string>
     <string name="settings_keep_local_copies_dialog_body">
         Normalmente la app usa tus fotos directamente desde donde están, sin guardar duplicados, pero un fondo deja de funcionar si su original se mueve o se borra.
@@ -240,6 +241,13 @@
     </string>
     <string name="media_access_prompt_allow">PERMITIR</string>
     <string name="media_access_prompt_skip">COPIAR</string>
+    <string name="media_access_prompt_partial_title">¿ACTUALIZAR ACCESO A FOTOS?</string>
+    <string name="media_access_prompt_partial_message">
+        El acceso está limitado a las fotos que seleccionaste, así que las fotos añadidas se copian en la app.
+        Para usar referencias, permite el acceso a todas las fotos en los permisos de la app en ajustes.
+    </string>
+    <string name="media_access_prompt_partial_allow">AJUSTES</string>
+    <string name="media_access_prompt_partial_skip">SEGUIR</string>
     <string name="media_access_banner_title">FALTA ACCESO A FOTOS</string>
     <plurals name="media_access_banner_message">
         <item quantity="one">%d imagen no puede cargarse hasta restaurar el acceso.</item>

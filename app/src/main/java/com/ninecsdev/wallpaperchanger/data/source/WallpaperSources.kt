@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
@@ -107,6 +108,18 @@ class WallpaperSources @Inject constructor(
     /** True while the app holds `READ_MEDIA_IMAGES`. */
     fun hasMediaAccess(): Boolean =
         appContext.checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
+
+    /**
+     * True while the app holds only the Android 14+ partial grant (`READ_MEDIA_VISUAL_USER_SELECTED`
+     * without `READ_MEDIA_IMAGES`). Re-requesting the permission from this state only re-opens the
+     * manage-selection sheet (no reliable "allow all" option), so upgrade flows send the user to the
+     * app's system settings page instead. Mutually exclusive with [hasMediaAccess].
+     */
+    fun hasPartialMediaAccess(): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+            !hasMediaAccess() &&
+            appContext.checkSelfPermission(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) ==
+            PackageManager.PERMISSION_GRANTED
 
     /** True if [uri] can currently be opened for reading. */
     fun isReadable(uri: Uri): Boolean = try {

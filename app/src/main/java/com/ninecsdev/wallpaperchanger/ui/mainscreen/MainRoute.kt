@@ -1,12 +1,15 @@
 package com.ninecsdev.wallpaperchanger.ui.mainscreen
 
-import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ninecsdev.wallpaperchanger.ui.components.hasPartialMediaAccess
+import com.ninecsdev.wallpaperchanger.ui.components.mediaAccessPermissions
+import com.ninecsdev.wallpaperchanger.ui.components.openAppSettings
 
 /**
  * Stateful entry point for the main screen: collects state and wires the ViewModel
@@ -26,11 +29,12 @@ fun MainRoute(
     onLaunchDefaultWallpaperPicker: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     // Re-grant request for the media-access banner; the result (either way) re-snapshots the
     // permission, and a grant re-runs the availability sweep so references self-heal.
     val mediaAccessLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
+        ActivityResultContracts.RequestMultiplePermissions()
     ) { viewModel.refreshMediaAccess() }
 
     // Permission state has no callback; re-check whenever the user comes back from system settings.
@@ -57,7 +61,10 @@ fun MainRoute(
         onToggleRevert = viewModel::setRevertToDefault,
         onSelectDefaultClick = onLaunchDefaultWallpaperPicker,
         onGrantMediaAccess = {
-            mediaAccessLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
+            // From the partial "selected photos" state a re-request only re-opens the
+            // manage-selection sheet; full access (what references need) lives in app settings.
+            if (context.hasPartialMediaAccess()) context.openAppSettings()
+            else mediaAccessLauncher.launch(mediaAccessPermissions())
         }
     )
 }

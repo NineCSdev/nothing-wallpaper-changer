@@ -114,6 +114,7 @@
     <string name="settings_keep_local_copies_title">KEEP LOCAL COPIES</string>
     <string name="settings_keep_local_copies_subtitle">COPY ADDED PHOTOS INTO APP STORAGE</string>
     <string name="settings_keep_local_copies_locked_subtitle">WITHOUT PHOTO ACCESS, PHOTOS ARE ALWAYS COPIED</string>
+    <string name="settings_keep_local_copies_partial_subtitle">WITH PARTIAL ACCESS, PHOTOS ARE ALWAYS COPIED</string>
     <string name="settings_keep_local_copies_dialog_title">Keep local copies</string>
     <string name="settings_keep_local_copies_dialog_body">
         Normally the app uses your picked photos directly from where they live, storing no duplicates, but a wallpaper breaks if its original is moved or deleted.
@@ -243,6 +244,14 @@
     </string>
     <string name="media_access_prompt_allow">ALLOW</string>
     <string name="media_access_prompt_skip">COPY</string>
+    <string name="media_access_prompt_partial_title">UPDATE PHOTO ACCESS?</string>
+    <string name="media_access_prompt_partial_message">
+        Photo access is limited to the photos you selected, so added photos are copied into app.
+        \nTo use references instead, allow access to all photos from the app\'s permissions page
+        in settings.
+    </string>
+    <string name="media_access_prompt_partial_allow">SETTINGS</string>
+    <string name="media_access_prompt_partial_skip">CONTINUE</string>
     <string name="media_access_banner_title">PHOTO ACCESS NEEDED</string>
     <plurals name="media_access_banner_message">
         <item quantity="one">%d referenced image can\'t load until access is restored.</item>

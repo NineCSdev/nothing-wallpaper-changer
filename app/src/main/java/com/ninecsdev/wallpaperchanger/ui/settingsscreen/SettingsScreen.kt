@@ -191,11 +191,16 @@ fun SettingsScreen(
 
                 // Without READ_MEDIA_IMAGES every pick is internalized, so the toggle shows the
                 // effective (forced-on) value; the stored preference is untouched, and tapping
-                // the toggle requests the permission instead of changing the setting.
+                // the toggle requests the permission instead of changing the setting. From the
+                // partial "selected photos" state that request re-shows the system dialog
+                // (select more / allow all), so this row doubles as the in-app upgrade path.
                 SettingsToggleRow(
                     title = stringResource(R.string.settings_keep_local_copies_title),
-                    subtitle = if (uiState.hasMediaAccess) stringResource(R.string.settings_keep_local_copies_subtitle)
-                                else stringResource(R.string.settings_keep_local_copies_locked_subtitle),
+                    subtitle = when {
+                        uiState.hasMediaAccess -> stringResource(R.string.settings_keep_local_copies_subtitle)
+                        uiState.hasPartialMediaAccess -> stringResource(R.string.settings_keep_local_copies_partial_subtitle)
+                        else -> stringResource(R.string.settings_keep_local_copies_locked_subtitle)
+                    },
                     checked = uiState.effectiveKeepLocalCopies,
                     onCheckedChange = { enabled ->
                         if (uiState.hasMediaAccess) actions.setKeepLocalCopies(enabled)

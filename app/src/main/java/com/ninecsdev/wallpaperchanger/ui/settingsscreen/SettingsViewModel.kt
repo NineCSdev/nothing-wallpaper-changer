@@ -63,18 +63,22 @@ class SettingsViewModel @Inject constructor(
         Triple(batterySaverPolicy, wallpaperZoomFix, wallpaperDestination)
     }
 
-    // Permission state has no system callback, so it's snapshot here and refreshed by the
-    // Route on every resume (the user may grant/revoke in system settings and come back).
-    private val hasMediaAccess = MutableStateFlow(wallpaperSources.hasMediaAccess())
+    // Permission state has no system callback, so it's snapshot here (full to partial) and
+    // refreshed by the Route on every resume (the user may grant/revoke in system settings
+    // and come back).
+    private val mediaAccess = MutableStateFlow(snapshotMediaAccess())
+
+    private fun snapshotMediaAccess(): Pair<Boolean, Boolean> =
+        wallpaperSources.hasMediaAccess() to wallpaperSources.hasPartialMediaAccess()
 
     // Nested so the outer combine (5-arg max) still has free slots for keepLocalCopies + language.
     private val lockscreenStorageLanguageFlow = combine(
         lockscreenSettingsFlow,
         appDataStore.keepLocalCopiesFlow(),
-        hasMediaAccess,
+        mediaAccess,
         selectedLanguageTag
-    ) { lockscreenSettings, keepLocalCopies, hasMediaAccess, languageTag ->
-        Triple(lockscreenSettings, keepLocalCopies to hasMediaAccess, languageTag)
+    ) { lockscreenSettings, keepLocalCopies, mediaAccess, languageTag ->
+        Triple(lockscreenSettings, keepLocalCopies to mediaAccess, languageTag)
     }
 
     // Null until every settings flow has emitted; the UI renders nothing until then so no
@@ -96,7 +100,8 @@ class SettingsViewModel @Inject constructor(
             compressionQualityHigh = qualityHigh,
             compressionQualityLow = qualityLow,
             keepLocalCopies = storageAccess.first,
-            hasMediaAccess = storageAccess.second,
+            hasMediaAccess = storageAccess.second.first,
+            hasPartialMediaAccess = storageAccess.second.second,
             availableLanguages = availableLanguages,
             selectedLanguageTag = languageTag,
             appVersion = appVersion
@@ -152,7 +157,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     override fun refreshMediaAccess() {
-        hasMediaAccess.value = wallpaperSources.hasMediaAccess()
+        mediaAccess.value = snapshotMediaAccess()
     }
 
     /**
