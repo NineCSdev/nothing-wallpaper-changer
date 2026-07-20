@@ -4,7 +4,7 @@
   <h1>Wallpaper Changer for Nothing OS</h1>
 
   <p align="center">
-    <img src="https://img.shields.io/badge/Status-v0.3.2--beta-blue.svg" alt="Status">
+    <img src="https://img.shields.io/badge/Status-v0.3.3--beta-blue.svg" alt="Status">
     <img src="https://img.shields.io/badge/Android-13%2B-green.svg" alt="Android 13+">
     <img src="https://img.shields.io/badge/Kotlin-2.3-purple.svg" alt="Kotlin">
     <img src="https://img.shields.io/badge/Jetpack%20Compose-Material%203-teal.svg" alt="Compose">
@@ -32,22 +32,25 @@ There weren't many solutions on the Play Store and the ones I found were either 
 
 - **Instant Wallpaper Swap:** Each wallpaper is pre-processed and ready to go before you lock your phone resulting in no lag or  no loading screens. *(Achieved via a disk-buffered pipeline: downsample → crop → WebP.)*
 - **Configurable Wallpaper Destination:** Apply the rotation to the lock screen, the home screen, or both.
-- **Wallpaper Collections/Lists:** Organize wallpapers in two ways:
-    - **Folder-based:** Point the app at a folder on your device and it picks up all the images inside, with re-sync on demand.
-    - **Manual:** Hand-pick individual photos; they're safely copied into the app's private storage so they're always available.
+- **Wallpaper Collections:** Organize wallpapers in two ways:
+    - **Folder-based:** Point the app at a folder on your device and it picks up all the images inside, with re-sync on demand. In-app deleting an image makes it not sync until it is restored.
+    - **Manual:** Hand-pick individual photos. By default they're referenced where they already live, so they cost no extra storage. Flip **Keep local copies** in Settings if you'd rather have in-app copies.
+- **Favourites:** Heart any wallpaper to add it to a built-in Favourites collection.
+- **Pinned Collections:** Pin the collections you use most so they sort to the top. Tap a collection to browse its wallpapers, long-press for pin, set-active, and edit actions.
+- **Copy & Move Between Collections:** Move or copy wallpapers across collections edits included, no re-picking.
 - **Collection Image Gallery:** Browse all wallpapers in a collection with a 3-column grid, full-screen preview with swipe-through, and multi-select for batch operations.
-- **Per-Image Wallpaper Editor:** Crop, zoom, and position individual wallpapers with pinch-to-zoom gestures, precision sliders, undo, and a fit-to-height control. Edits are rendered from the original image to avoid quality loss, and parameters are persisted so you can adjust them later.
+- **Per-Image Wallpaper Editor:** Crop, zoom, and position individual wallpapers with pinch-to-zoom, precision sliders, undo, and a fit-to-height control. Edits are applied on the fly to not use extra storage.
 - **Smart Shuffle:** Every image is shown exactly once before the collection reshuffles in order to never getting any individual wallpaper too often.
 - **Flexible Cropping:** Choose how images fit your screen per collection: center, left-aligned, right-aligned, or fit-to-screen.
 - **Wallpaper Zoom Fix:** Counteracts the auto-zoom some phones (especially Nothing OS) apply to screen wallpapers. Choose between blurred-edge or sharp-edge padding modes, or turn it off. Applied to both rotating and default wallpapers.
 - **Rotation Timer Modes:** Configure each collection to rotate on every lock, every 1 hour, or once per day.
-- **Settings Screen:** Tune the screen-off debounce delay (with a device-appropriate default out of the box), boot behavior, wallpaper destination, manual-image compression quality, Battery Saver behavior, wallpaper zoom fix, and app language from inside the app.
+- **Settings Screen:** Tune the screen-off debounce delay (with a device-appropriate default out of the box), boot behavior, wallpaper destination, keep-local-copies, manual-image compression quality, Battery Saver behavior, wallpaper zoom fix, and app language from inside the app.
 - **Quick Settings Tile:** Start, stop, or check status right from the notification shade letting you control it while doing something else.
 - **Default Wallpaper Fallback:** Pick a fallback lock screen image that's automatically restored when the service stops or pauses.
 - **Survives Reboots:** If the service was running before a restart, it picks right back up.
 - **Battery Aware:** Choose what happens during Battery Saver: stop the service, pause and auto-resume, or keep running.
 - **Language Selection:** Switch the app's language from Settings. English and Spanish are fully supported today.
-- **Self-Healing:** Failed images are retried, edited files can fall back to originals, and broken entries are removed after repeated failures.
+- **Self-Healing, Never Destructive:** Failed images are retried. An image whose source has genuinely gone away is **marked unavailable and badged**, and it comes back on its own if the source returns. You can also re-link a broken image to a new source by tapping it, keeping every collection membership and edit intact.
 - **Privacy First:** No internet permissions. Your images never leave your device.
 
 ---
@@ -103,10 +106,13 @@ No. The app doesn't run on a timer or poll in the background, it simply waits fo
 <details>
 <summary><b>How much storage does it use?</b></summary>
 
-- **Folder collections:** None. The app just references the images where they already are on your device.
-- **Manual collections:** Images are copied into the app's private storage as compressed WebP files at screen resolution. Expect roughly **0.2–1 MB per image**, so a 100-image collection might use around 20–100 MB.
+Almost none by default. As of v0.3.3 the app tries **reference** your images where they already are instead of copying them:
+
+- **Folder collections:** None. The app reads the images straight out of the folder you pointed it at.
+- **Manual collections:** None by default. Picked photos are stored as references to your gallery.
+- **The same photo in several collections** is stored once and shared, so copying wallpapers between collections is free.
+- **If you turn on "Keep local copies"** in Settings, newly added photos are copied into the app's private storage as compressed WebP files at screen resolution. Expect roughly **0.2–1 MB per image**. Settings shows a live readout of how much space those copies use. The toggle only affects photos added *after* you flip it.
 - A single **buffer file** (~1 MB) is kept in cache for the next wallpaper. That's it.
-- Adding extra wallpaper to an already existing Folder or Manual collection also copies this image so expect the same **0.2–1 MB per image**.
 </details>
 
 <details>
@@ -136,7 +142,9 @@ It can. Go to Settings and choose whether the rotation applies to the lock scree
 <details>
 <summary><b>Does the app have access to all my photos?</b></summary>
 
-No. When you select a folder, you're granting access to only that specific folder. For manual collections, only the photos you explicitly pick are copied. The app has **zero internet permissions**, so nothing ever leaves your device.
+The app asks for photo access (`READ_MEDIA_IMAGES`) because it needs to keep reading the wallpapers you picked, in the background, for as long as they're in a collection as that's the whole point of the app. Android 14+ also lets you grant access to **selected photos only** if you prefer but the app treats this as if **no photo access was granted** as currently it doesn't track which photos you give access to.
+
+It only ever reads the images you actually added to a collection. When you select a folder, you're granting access to only that specific folder. The app has **zero internet permissions**, so nothing ever leaves your device, and if you decline photo access the app falls back to keeping private copies of the photos you pick.
 </details>
 
 <details>
@@ -182,7 +190,7 @@ The current implementation uses Hilt-injected app-level dependencies, plain `@Hi
 4. **Screen turns off** → `ScreenOffReceiver` fires, streams the buffer to `WallpaperManager.setStream()` on whichever surface(s) the wallpaper destination setting targets (lock screen, home screen, or both), then triggers the repository to prepare the next image.
 5. **Battery Saver ON** → The configured policy is applied: stop the service, pause by unregistering the receiver and auto-resume later, or ignore Battery Saver.
 6. **User presses Stop** → Service stops; if "revert to default" is enabled, the saved default wallpaper is restored (including wallpaper zoom fix if enabled).
-7. **Device reboots** → `BootReceiver` checks persisted state and restarts the service if it was previously active.
+7. **Device reboots or the app updates** → `ServiceRestartReceiver` checks persisted state and restarts the service if it was previously meant to be running.
 
 ---
 
@@ -212,6 +220,7 @@ The current implementation uses Hilt-injected app-level dependencies, plain `@Hi
 | `POST_NOTIFICATIONS`                                    | Show the required foreground service notification          |
 | `RECEIVE_BOOT_COMPLETED`                                | Restart the service after a reboot                         |
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`                  | Improve reliability of boot-start and background operation |
+| `READ_MEDIA_IMAGES` / `READ_MEDIA_VISUAL_USER_SELECTED` | Keep reading the photos you added to a collection, in the background, for as long as they're in it |
 
 No internet permission is requested, your images never leave your device.
 
@@ -225,9 +234,15 @@ This is my first native Android project, built while actively learning about bac
 
 ## Status
 
-**v0.3.2-beta** is a customization and reliability release.
+**v0.3.3-beta** is a storage and curation release, the largest change to the app's data model so far.
 
-It adds on-the-fly edited processing (editing a wallpaper no longer creates a new file with the edits, saving storage), adds per-screen wallpaper destinations (lock screen, home screen, or both) and full Spanish language support, fixes three user-reported bugs (duplicate screens on rapid taps, a stuck "Setup needed" status, and sluggish screen-off timing), and closes out a round of service-layer stability fixes including a data-loss bug in folder sync, a startup crash, and an out-of-memory risk on the default wallpaper.
+**Your wallpapers no longer cost storage.** *(If given the necessary permission)* The database moved to a shared many-to-many schema: every physical image is registered once and referenced by any number of collections. Picked photos are now kept as stable MediaStore references instead of being copied into the app, so a manual collection is essentially free, the same photo in five collections is stored once, and copying or moving wallpapers between collections costs nothing. If you prefer the old behavior, **Keep local copies** in Settings brings it back for new picks.
+
+**Your curation is never destroyed.** An image whose source goes away is now marked unavailable and badged rather than deleted. It is re-linkable to a new source by hand (memberships and edits survive). Deleting an image from a folder collection now *sticks* across syncs.
+
+**Curation features on top of that:** a built-in Favourites collection, pinnable collections, copy/move between collections, and a reworked collection tile (tap to browse, hold for actions).
+
+**Plus a broad UI pass:** a redesigned edit-collection card, a unified collection-picker sheet, a floating selection pill in the gallery, improved editor and an info button on every setting.
 
 ---
 

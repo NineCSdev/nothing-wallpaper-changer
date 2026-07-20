@@ -40,7 +40,7 @@ data class PickImportOutcome(
 )
 
 /**
- * Owns the lifecycle of a wallpaper's backing source (acquire / probe / reclaim per [SourceType]),
+ * Owns the lifecycle of a wallpaper's backing source (acquire / reclaim per [SourceType]),
  * hiding the ContentResolver grant mechanics and the [ImageInternalizer] fallback from callers.
  * The counterpart split with [WallpaperRepository][com.ninecsdev.wallpaperchanger.data.WallpaperRepository]:
  * DB rows and transactions are the repository's; backing resources (grants, internal copies) are this
