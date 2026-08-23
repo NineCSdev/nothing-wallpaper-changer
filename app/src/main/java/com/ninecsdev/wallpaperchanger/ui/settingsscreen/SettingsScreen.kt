@@ -29,8 +29,10 @@ import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.logic.StorageUsage
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import com.ninecsdev.wallpaperchanger.ui.components.SettingsToggleRow
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.AtmosphereModeSection
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.LanguageSelector
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.QualitySlider
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.ScreenOffDelayField
@@ -52,7 +54,8 @@ fun SettingsScreen(
     storageUsage: StorageUsage?,
     actions: SettingsActions,
     onBackClick: () -> Unit,
-    onRequestMediaAccess: () -> Unit
+    onRequestMediaAccess: () -> Unit,
+    onSetAtmosphere: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -133,6 +136,16 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                AtmosphereModeSection(
+                    selectedMode = uiState.wallpaperMode,
+                    engineActive = uiState.atmosphereEngineActive,
+                    hasSource = uiState.hasAtmosphereSource,
+                    onModeChange = actions::setWallpaperMode,
+                    onSetAtmosphere = onSetAtmosphere
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
                 SettingsSegmentedSelector(
                     title = stringResource(R.string.settings_destination_title),
                     subtitle = stringResource(R.string.settings_destination_subtitle),
@@ -147,7 +160,9 @@ fun SettingsScreen(
                         }
                     },
                     infoDialogTitle = stringResource(R.string.settings_destination_dialog_title),
-                    infoDialogBody = stringResource(R.string.settings_destination_dialog_body)
+                    infoDialogBody = stringResource(R.string.settings_destination_dialog_body),
+                    // Destination only governs static delivery; greyed while atmosphere is desired.
+                    enabled = uiState.isDestinationEnabled
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -295,7 +310,8 @@ fun SettingsScreenPreview() {
             storageUsage = StorageUsage(totalBytes = 148_897_792, fileCount = 87),
             actions = PreviewSettingsActions,
             onBackClick = {},
-            onRequestMediaAccess = {}
+            onRequestMediaAccess = {},
+            onSetAtmosphere = {}
         )
     }
 }
@@ -306,10 +322,12 @@ private object PreviewSettingsActions : SettingsActions {
     override fun setStartOnBoot(enabled: Boolean) {}
     override fun setBatterySaverPolicy(policy: BatterySaverPolicy) {}
     override fun setWallpaperDestination(destination: WallpaperDestination) {}
+    override fun setWallpaperMode(mode: WallpaperMode) {}
     override fun setWallpaperZoomFix(zoomFix: WallpaperZoomFix) {}
     override fun setCompressionQualityHigh(quality: Int) {}
     override fun setCompressionQualityLow(quality: Int) {}
     override fun setKeepLocalCopies(enabled: Boolean) {}
     override fun setAppLanguage(tag: String) {}
     override fun refreshMediaAccess() {}
+    override fun refreshAtmosphereEngineActive() {}
 }

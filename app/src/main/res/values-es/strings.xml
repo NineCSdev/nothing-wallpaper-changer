@@ -93,6 +93,7 @@
     <string name="settings_destination_dialog_body">
         Selecciona donde se aplica el fondo de pantalla: en la pantalla de bloqueo, en la de inicio o en ambas.
         Las opcion no seleccionada mantiene el fondo que ya tenga.
+        Solo se aplica en el modo Estático; el modo Atmósfera cubre las pantallas que el sistema asigne al fondo animado.
     </string>
     <string name="settings_quality_high_label">CALIDAD ESTÁNDAR</string>
     <string name="settings_quality_high_subtitle">PARA LA MAYORÍA DE IMÁGENES</string>
@@ -325,4 +326,24 @@
     <string name="tile_no_collection_message">No hay colección activa. Configura una en la app.</string>
     <string name="tile_dialog_open_app">Abrir App</string>
     <string name="tile_dialog_cancel">Cancelar</string>
+
+    <!-- Atmosphere live wallpaper -->
+    <string name="atmosphere_wallpaper_label">NWC Atmosphere</string>
+    <string name="atmosphere_wallpaper_description">Tu fondo de pantalla se transforma en colores flotantes al desbloquear, al estilo Atmosphere de Nothing OS.</string>
+
+    <string name="settings_wallpaper_mode_title">EFECTO ATMÓSFERA</string>
+    <string name="settings_wallpaper_mode_subtitle">COLOR ANIMADO AL DESBLOQUEAR · APAGADO USA UNA IMAGEN ESTÁTICA</string>
+    <string name="settings_wallpaper_mode_dialog_title">Modo de fondo de pantalla</string>
+    <string name="settings_wallpaper_mode_dialog_body">
+        El modo Estático cambia una imagen fija al apagar la pantalla, como siempre.\n\n
+        El modo Atmósfera es un fondo animado que replica el efecto de desbloqueo de Nothing OS: tu foto nítida
+        aparece en la pantalla de bloqueo y se transforma en una atmósfera abstracta de colores al desbloquear.\n\n
+        Para activarlo tendrás que confirmarlo en una pantalla del sistema. Cubre las pantallas que el sistema
+        asigne al fondo animado, así que el ajuste de destino no se aplica. Se renderiza con la GPU y puede
+        consumir algo más de batería que un fondo estático.
+    </string>
+    <string name="settings_atmosphere_active">Atmósfera está fijada como fondo del sistema</string>
+    <string name="settings_atmosphere_not_set">Atmósfera aún no está fijada como fondo del sistema</string>
+    <string name="settings_atmosphere_set_button">Fijar fondo Atmósfera</string>
+    <string name="settings_atmosphere_no_source_hint">Añade imágenes a una colección o define un fondo predeterminado primero.</string>
 </resources>

@@ -16,6 +16,7 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
+import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.resolveDisplayName
@@ -47,6 +48,7 @@ class WallpaperService : Service() {
 
     private var screenOffReceiver: BroadcastReceiver? = null
     private var systemEventReceiver: BroadcastReceiver? = null
+    private var atmosphereDisplayedReceiver: BroadcastReceiver? = null
     // SupervisorJob ensures one failing task doesn't kill the whole service scope
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
@@ -88,6 +90,8 @@ class WallpaperService : Service() {
             addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
         }
         registerReceiver(systemEventReceiver, systemFilter, RECEIVER_NOT_EXPORTED)
+
+        registerAtmosphereDisplayedReceiver()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -216,6 +220,7 @@ class WallpaperService : Service() {
 
         unregisterScreenOffReceiver()
         systemEventReceiver?.let { unregisterReceiver(it) }
+        atmosphereDisplayedReceiver?.let { unregisterReceiver(it) }
 
         // Cancel the scope first so the engine's reactive collector stops before we clear its state.
         serviceScope.cancel()
@@ -231,6 +236,33 @@ class WallpaperService : Service() {
         val receiver = ScreenOffReceiver(serviceScope)
         registerReceiver(receiver, IntentFilter(Intent.ACTION_SCREEN_OFF), RECEIVER_NOT_EXPORTED)
         screenOffReceiver = receiver
+    }
+
+    /**
+     * Listens for the atmosphere engine's "I actually showed the delivered image" signal and
+     * advances the rotation in response — the deferred second half of a rotation whose first half
+     * (delivery) happened in [ScreenOffReceiver]. In atmosphere mode display is asynchronous and may
+     * never happen (a fast toggle holds the image), so advancement can't ride along with delivery;
+     * it waits for this confirmation instead.
+     */
+    private fun registerAtmosphereDisplayedReceiver() {
+        if (atmosphereDisplayedReceiver != null) return
+
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                serviceScope.launch {
+                    val active = repository.getActiveCollectionOnce() ?: return@launch
+                    repository.markWallpaperChanged(active.id)
+                    rotationEngine.refillDiskBuffer()
+                }
+            }
+        }
+        registerReceiver(
+            receiver,
+            IntentFilter(AtmosphereWallpaperService.ACTION_DISPLAYED),
+            RECEIVER_NOT_EXPORTED
+        )
+        atmosphereDisplayedReceiver = receiver
     }
 
     private fun unregisterScreenOffReceiver() {

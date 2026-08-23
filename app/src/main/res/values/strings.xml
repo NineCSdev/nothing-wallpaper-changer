@@ -95,6 +95,7 @@
     <string name="settings_destination_dialog_body">
         Selects which screen receive the rotating wallpapers: the lock screen, the home screen, or both.
         The screen not selected keeps whatever wallpaper it already has.
+        This only applies in Static mode; Atmosphere covers whichever screens the system assigns to the live wallpaper.
     </string>
     <string name="settings_quality_high_label">STANDARD QUALITY</string>
     <string name="settings_quality_high_subtitle">FOR MOST IMAGES</string>
@@ -328,4 +329,24 @@
     <string name="tile_no_collection_message">No collection active. Please set one up in the app.</string>
     <string name="tile_dialog_open_app">Open App</string>
     <string name="tile_dialog_cancel">Cancel</string>
+
+    <!-- Atmosphere live wallpaper -->
+    <string name="atmosphere_wallpaper_label">NWC Atmosphere</string>
+    <string name="atmosphere_wallpaper_description">Your wallpaper morphs into drifting colors when you unlock — Nothing OS Atmosphere style.</string>
+
+    <string name="settings_wallpaper_mode_title">ATMOSPHERE EFFECT</string>
+    <string name="settings_wallpaper_mode_subtitle">LIVE COLOR MORPH ON UNLOCK · OFF KEEPS A STATIC IMAGE</string>
+    <string name="settings_wallpaper_mode_dialog_title">Wallpaper mode</string>
+    <string name="settings_wallpaper_mode_dialog_body">
+        Static swaps a frozen image on screen-off, as usual.\n\n
+        Atmosphere is a live wallpaper that replicates Nothing OS\'s unlock effect: your sharp photo shows on the
+        lock screen and morphs into an abstract color atmosphere when you unlock.\n\n
+        Setting it requires confirming on a system screen. It covers whichever screens the system assigns to the
+        live wallpaper, so the destination setting doesn\'t apply. It renders with the GPU and may use slightly more
+        battery than a static wallpaper.
+    </string>
+    <string name="settings_atmosphere_active">Atmosphere is set as your system wallpaper</string>
+    <string name="settings_atmosphere_not_set">Atmosphere isn\'t set as your system wallpaper yet</string>
+    <string name="settings_atmosphere_set_button">Set atmosphere wallpaper</string>
+    <string name="settings_atmosphere_no_source_hint">Add images to a collection or set a default wallpaper first.</string>
 </resources>

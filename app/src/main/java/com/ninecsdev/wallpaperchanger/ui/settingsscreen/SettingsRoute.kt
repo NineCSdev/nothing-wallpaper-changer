@@ -1,11 +1,16 @@
 package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
+import android.app.WallpaperManager
+import android.content.ComponentName
+import android.content.Intent
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -18,6 +23,8 @@ import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService
+import kotlinx.coroutines.launch
 
 /**
  * Stateful entry point for the Settings screen: owns the ViewModel, collects state,
@@ -30,10 +37,13 @@ fun SettingsRoute(onBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val storageUsage by viewModel.storageUsage.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
-    // Permission state has no callback; re-check whenever the user comes back from system settings.
+    // Media-access and atmosphere-engine states have no system callback; re-check on every resume
+    // (the user may grant/revoke a permission, or set/replace the live wallpaper on the system picker).
     LifecycleResumeEffect(Unit) {
         viewModel.refreshMediaAccess()
+        viewModel.refreshAtmosphereEngineActive()
         onPauseOrDispose { }
     }
 
@@ -74,6 +84,25 @@ fun SettingsRoute(onBack: () -> Unit) {
             // manage-selection sheet; upgrading to full access lives in app settings.
             if (context.hasPartialMediaAccess()) showPartialPrompt = true
             else mediaAccessLauncher.launch(mediaAccessPermissions())
+        },
+        onSetAtmosphere = {
+            // Render the source image first (atomically written to disk), then hand off to the
+            // system live-wallpaper confirmation screen. onResume re-checks the engine state after.
+            scope.launch {
+                if (viewModel.prepareAtmosphereSource()) {
+                    val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).putExtra(
+                        WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                        ComponentName(context, AtmosphereWallpaperService::class.java)
+                    )
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Log.e("SettingsRoute", "No live-wallpaper picker available", e)
+                    }
+                } else {
+                    Log.w("SettingsRoute", "No atmosphere source could be prepared")
+                }
+            }
         }
     )
 }

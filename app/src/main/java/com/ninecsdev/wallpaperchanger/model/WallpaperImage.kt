@@ -69,7 +69,17 @@ data class WallpaperImage(
     @Embedded val editParams: EditParams? = null,
     val isManuallyAdded: Boolean = false,
     val addedAt: Long = System.currentTimeMillis()
-)
+) {
+    companion object {
+        /**
+         * The user's default wallpaper as a [WallpaperImage] so it can go through the same render
+         * pipeline as collection images. It belongs to no collection (hence [collectionId] 0, an id
+         * no row ever has) and carries no edits — the caller supplies the crop rule instead.
+         */
+        fun forDefaultWallpaper(uri: Uri): WallpaperImage =
+            WallpaperImage(collectionId = 0L, uri = uri, editParams = null)
+    }
+}
 
 /**
  * Per-image edit transform (zoom + normalized pan offsets), embedded into [Wallpaper] and applied

@@ -16,6 +16,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -46,6 +47,7 @@ private val KEY_COMPRESSION_QUALITY_LOW = intPreferencesKey("compression_quality
 private val KEY_BATTERY_SAVER_POLICY = stringPreferencesKey("battery_saver_policy")
 private val KEY_WALLPAPER_ZOOM_FIX = intPreferencesKey("lockscreen_zoom_fix")
 private val KEY_WALLPAPER_DESTINATION = stringPreferencesKey("wallpaper_destination")
+private val KEY_WALLPAPER_MODE = stringPreferencesKey("wallpaper_mode")
 private val KEY_KEEP_LOCAL_COPIES = booleanPreferencesKey("keep_local_copies")
 
 /**
@@ -152,6 +154,11 @@ class AppDataStore @Inject constructor(
             enumByName(it, WallpaperDestination.LOCK)
         }
 
+    fun wallpaperModeFlow(): Flow<WallpaperMode> =
+        mappedSettingFlow(KEY_WALLPAPER_MODE, WallpaperMode.STATIC) {
+            enumByName(it, WallpaperMode.STATIC)
+        }
+
     fun keepLocalCopiesFlow(): Flow<Boolean> =
         settingFlow(KEY_KEEP_LOCAL_COPIES, false)
 
@@ -186,6 +193,9 @@ class AppDataStore @Inject constructor(
 
     suspend fun getWallpaperDestination(): WallpaperDestination =
         wallpaperDestinationFlow().first()
+
+    suspend fun getWallpaperMode(): WallpaperMode =
+        wallpaperModeFlow().first()
 
     suspend fun getKeepLocalCopies(): Boolean =
         keepLocalCopiesFlow().first()
@@ -224,6 +234,9 @@ class AppDataStore @Inject constructor(
 
     suspend fun setWallpaperDestination(target: WallpaperDestination) =
         set(KEY_WALLPAPER_DESTINATION, target.name)
+
+    suspend fun setWallpaperMode(mode: WallpaperMode) =
+        set(KEY_WALLPAPER_MODE, mode.name)
 
     suspend fun setKeepLocalCopies(enabled: Boolean) =
         set(KEY_KEEP_LOCAL_COPIES, enabled)

@@ -14,18 +14,17 @@ import android.util.Log
 import androidx.core.graphics.createBitmap
 import kotlin.math.roundToInt
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileNotFoundException
-import java.nio.file.AtomicMoveNotSupportedException
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption.ATOMIC_MOVE
-import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -51,12 +50,14 @@ sealed class BufferPreparationResult {
 @Singleton
 class BufferManager @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
-    private val appDataStore: AppDataStore
+    private val appDataStore: AppDataStore,
+    private val wallpaperModeResolver: WallpaperModeResolver
 ) {
     private companion object {
         const val TAG = "BufferManager"
         const val BUFFER_FILENAME = "buffer_next.webp"
         const val TEMP_FILENAME = "buffer_temp.webp"
+        const val ATMOSPHERE_TEMP_FILENAME = "atmosphere_source_temp.webp"
         const val COMPRESSION_QUALITY = 95 // Quality left high as only 1 image will exist at any time
         const val ZOOM_INSET_FRACTION = 0.045f // Zoom that I observed in a 20:9 screen
         const val BLUR_DOWNSCALE_FACTOR = 24
@@ -97,37 +98,86 @@ class BufferManager @Inject constructor(
      * and the [cropRule] is **bypassed**.
      * Otherwise, the standard [cropRule] pipeline is used.
      */
+    // TODO tests: see vault note tests/Atmosphere Delivery Tests.md (zoom-fix gating by effective mode)
     suspend fun prepareNextWallpaper(wallpaper: WallpaperImage, cropRule: CropRule): BufferPreparationResult {
-        return withContext(Dispatchers.IO) {
-            try {
-                val targetSize = getTargetSize()
-                val zoomFix = appDataStore.getWallpaperZoomFix()
-                val hasEdit = wallpaper.editParams != null
-
-                val sourceBitmap = decodeSourceBitmap(
-                    wallpaper.uri,
-                    targetSize,
-                    oversample = if (hasEdit) EDIT_DECODE_SCALE else 1
-                ) ?: return@withContext BufferPreparationResult.Failure(definitive = false)
-
-                var finalBitmap: Bitmap? = null
-                try {
-                    finalBitmap = prepareFinalBitmap(wallpaper, sourceBitmap, targetSize, cropRule, zoomFix)
-                    writeBuffer(finalBitmap, cropRule)
-                    BufferPreparationResult.Success
-                } finally {
-                    recyclePreparedBitmaps(sourceBitmap, finalBitmap)
-                }
-            } catch (e: FileNotFoundException) {
-                Log.w(TAG, "Source unreadable, likely deleted: ${wallpaper.uri}", e)
-                BufferPreparationResult.Failure(definitive = true)
-            } catch (e: SecurityException) {
-                Log.w(TAG, "Permission revoked for source: ${wallpaper.uri}", e)
-                BufferPreparationResult.Failure(definitive = true)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to prepare buffer", e)
-                BufferPreparationResult.Failure(definitive = false)
+        return try {
+            // In effective atmosphere mode the buffer is destined for the live engine's source
+            // (delivered via AtmosphereDelivery), which opts out of the system zoom and counter-
+            // scales its quad instead — so it must stay un-padded. The user's zoom-fix setting
+            // only applies to the static setStream path.
+            val zoomFix = if (wallpaperModeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE) {
+                WallpaperZoomFix.OFF
+            } else {
+                appDataStore.getWallpaperZoomFix()
             }
+            val rendered = renderWallpaper(wallpaper, cropRule, zoomFix) { bitmap ->
+                writeBuffer(bitmap, cropRule)
+            }
+            if (rendered) BufferPreparationResult.Success
+            else BufferPreparationResult.Failure(definitive = false)
+        } catch (e: FileNotFoundException) {
+            Log.w(TAG, "Source unreadable, likely deleted: ${wallpaper.uri}", e)
+            BufferPreparationResult.Failure(definitive = true)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Permission revoked for source: ${wallpaper.uri}", e)
+            BufferPreparationResult.Failure(definitive = true)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to prepare buffer", e)
+            BufferPreparationResult.Failure(definitive = false)
+        }
+    }
+
+    /**
+     * Renders [wallpaper] (screen-fitted, edit params / [cropRule] applied) into the atmosphere live
+     * wallpaper's source file, atomically. Runs the exact same [renderWallpaper] pipeline as
+     * [prepareNextWallpaper], but forces [WallpaperZoomFix.OFF]: device testing (2026-07-20) showed
+     * Nothing OS zoom-animates the live wallpaper on the *lock screen only*, so padding can't be
+     * right on both screens — instead the atmosphere engine counter-scales its GL quad by the inverse
+     * of the system window scale (`onZoomChanged` → `uCounterScale`), so the source must stay un-padded.
+     *
+     * Returns true on success, false on any failure (logged). The file is
+     * [AtmosphereSource.FILE_NAME] in `filesDir` — the renderer's only disk input.
+     */
+    suspend fun prepareAtmosphereSource(wallpaper: WallpaperImage, cropRule: CropRule): Boolean {
+        return try {
+            renderWallpaper(wallpaper, cropRule, WallpaperZoomFix.OFF, ::writeAtmosphereSource)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to prepare atmosphere source", e)
+            false
+        }
+    }
+
+    /**
+     * The single decode → transform → write pipeline behind both [prepareNextWallpaper] and
+     * [prepareAtmosphereSource]. Decodes [wallpaper] at the screen's target size (oversampling when
+     * it carries edit params), applies the edit transform or [cropRule] plus [zoomFix], hands the
+     * result to [write], and always recycles both bitmaps.
+     *
+     * Returns false only when the source could not be decoded; every other failure propagates as an
+     * exception so callers can classify it (definitive vs. transient).
+     */
+    private suspend fun renderWallpaper(
+        wallpaper: WallpaperImage,
+        cropRule: CropRule,
+        zoomFix: WallpaperZoomFix,
+        write: (Bitmap) -> Unit
+    ): Boolean = withContext(Dispatchers.IO) {
+        val targetSize = getTargetSize()
+        val hasEdit = wallpaper.editParams != null
+
+        val sourceBitmap = decodeSourceBitmap(
+            wallpaper.uri,
+            targetSize,
+            oversample = if (hasEdit) EDIT_DECODE_SCALE else 1
+        ) ?: return@withContext false
+
+        var finalBitmap: Bitmap? = null
+        try {
+            finalBitmap = prepareFinalBitmap(wallpaper, sourceBitmap, targetSize, cropRule, zoomFix)
+            write(finalBitmap)
+            true
+        } finally {
+            recyclePreparedBitmaps(sourceBitmap, finalBitmap)
         }
     }
 
@@ -289,23 +339,31 @@ class BufferManager @Inject constructor(
     }
 
     private fun writeBuffer(bitmap: Bitmap, cropRule: CropRule) {
-        val tempFile = File(appContext.cacheDir, TEMP_FILENAME)
         val bufferFile = getBufferFile()
-
-        try {
-            ImageProcessingUtils.compressToFile(bitmap, tempFile, quality = COMPRESSION_QUALITY)
-            replaceBuffer(tempFile, bufferFile)
-            Log.d(TAG, "Buffer ready: ${bufferFile.length() / 1024} KB | Rule: $cropRule")
-        } finally {
-            if (tempFile.exists()) tempFile.delete()
-        }
+        writeAtomically(bitmap, File(appContext.cacheDir, TEMP_FILENAME), bufferFile)
+        Log.d(TAG, "Buffer ready: ${bufferFile.length() / 1024} KB | Rule: $cropRule")
     }
 
-    private fun replaceBuffer(tempFile: File, bufferFile: File) {
+    private fun writeAtmosphereSource(bitmap: Bitmap) {
+        val sourceFile = AtmosphereSource.file(appContext)
+        writeAtomically(bitmap, File(appContext.filesDir, ATMOSPHERE_TEMP_FILENAME), sourceFile)
+        Log.d(TAG, "Atmosphere source ready: ${sourceFile.length() / 1024} KB")
+    }
+
+    /**
+     * Compresses [bitmap] into [tempFile] and swaps it onto [destination] in place, so a crash
+     * mid-write can never leave a reader (the rotation buffer consumer or the atmosphere renderer)
+     * decoding a half-written file. [tempFile] must live on the same filesystem as [destination].
+     */
+    private fun writeAtomically(bitmap: Bitmap, tempFile: File, destination: File) {
         try {
-            Files.move(tempFile.toPath(), bufferFile.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
-        } catch (_: AtomicMoveNotSupportedException) {
-            Files.move(tempFile.toPath(), bufferFile.toPath(), REPLACE_EXISTING)
+            ImageProcessingUtils.compressToFile(bitmap, tempFile, quality = COMPRESSION_QUALITY)
+            replaceAtomically(tempFile, destination)
+        } finally {
+            // Only ever has an effect when one of the two steps above threw: on success the swap
+            // consumed the temp file. `delete()` returns false for a missing file rather than
+            // throwing, so it needs no existence guard.
+            tempFile.delete()
         }
     }
 

@@ -69,6 +69,19 @@
             </intent-filter>
         </service>
 
+        <service
+            android:name=".service.atmosphere.AtmosphereWallpaperService"
+            android:exported="true"
+            android:label="@string/atmosphere_wallpaper_label"
+            android:permission="android.permission.BIND_WALLPAPER">
+            <intent-filter>
+                <action android:name="android.service.wallpaper.WallpaperService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.wallpaper"
+                android:resource="@xml/atmosphere_wallpaper" />
+        </service>
+
     </application>
 
 </manifest>

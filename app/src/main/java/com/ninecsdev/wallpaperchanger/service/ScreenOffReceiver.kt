@@ -8,6 +8,7 @@ import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
+import com.ninecsdev.wallpaperchanger.logic.WallpaperApplyOutcome
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
 import com.ninecsdev.wallpaperchanger.model.shouldRotateAt
@@ -93,12 +94,32 @@ class ScreenOffReceiver(
                         return@withTimeout
                     }
 
-                    // Apply the pre-processed buffer image and prepare next image
-                    val applied = wallpaperApplier.applyBufferWallpaper()
-                    if (applied) {
-                        repository.markWallpaperChanged(activeCollection.id)
-                        if (broadcastFinished.compareAndSet(false, true)) pendingResult.finish()
-                        rotationEngine.refillDiskBuffer()
+                    // Apply the pre-processed buffer image and prepare next image.
+                    when (wallpaperApplier.applyBufferWallpaper()) {
+                        WallpaperApplyOutcome.APPLIED_STATIC -> {
+                            // Static: the wallpaper is on screen now, so advance the rotation now.
+                            repository.markWallpaperChanged(activeCollection.id)
+                            if (broadcastFinished.compareAndSet(false, true)) pendingResult.finish()
+                            rotationEngine.refillDiskBuffer()
+                        }
+                        WallpaperApplyOutcome.DELIVERED_ATMOSPHERE -> {
+                            // Atmosphere: the image was delivered to the live engine but isn't shown
+                            // until the engine confirms display via ACTION_DISPLAYED. WallpaperService
+                            // handles that broadcast and runs the advance + refill there instead, so a
+                            // fast toggle (delivery held, never shown) consumes no rotation and pays no
+                            // buffer refill at all.
+                            //
+                            // Caveat: the deferred half runs outside [isWorkInProgress], which is
+                            // released as soon as this branch returns. A screen-off landing between
+                            // ACTION_DISPLAYED and the end of that refill re-delivers the stale buffer,
+                            // showing one image twice and advancing twice. The window is the refill
+                            // duration (~450ms) minus this receiver's own screen-off delay (250ms by
+                            // default), and the failure is benign, so it is left unguarded: latching the
+                            // flag until a confirmation that may never arrive (a held delivery sends no
+                            // ACTION_DISPLAYED) would risk wedging rotation entirely.
+                            if (broadcastFinished.compareAndSet(false, true)) pendingResult.finish()
+                        }
+                        WallpaperApplyOutcome.FAILED -> Unit
                     }
                 }
             } catch (_: TimeoutCancellationException) {

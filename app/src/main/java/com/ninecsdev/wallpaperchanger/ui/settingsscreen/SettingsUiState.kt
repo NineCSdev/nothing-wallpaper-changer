@@ -2,6 +2,7 @@ package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 
 /**
@@ -26,6 +27,11 @@ data class SettingsUiState(
     val startOnBoot: Boolean = true,
     val batterySaverPolicy: BatterySaverPolicy = BatterySaverPolicy.PAUSE,
     val wallpaperDestination: WallpaperDestination = WallpaperDestination.LOCK,
+    val wallpaperMode: WallpaperMode = WallpaperMode.STATIC,
+    // Whether NWC's live wallpaper is actually the system wallpaper.
+    val atmosphereEngineActive: Boolean = false,
+    // Whether a source image exists to feed the atmosphere renderer gates the set-button up-front.
+    val hasAtmosphereSource: Boolean = false,
     val wallpaperZoomFix: WallpaperZoomFix = WallpaperZoomFix.OFF,
     val compressionQualityHigh: Int = 95,
     val compressionQualityLow: Int = 80,
@@ -45,4 +51,12 @@ data class SettingsUiState(
      */
     val effectiveKeepLocalCopies: Boolean
         get() = keepLocalCopies || !hasMediaAccess
+
+    /**
+     * The destination selector only governs static delivery, so it's greyed once the user has
+     * chosen atmosphere — desired mode, not effective: the row is inert from the moment they opt in,
+     * not only once the live wallpaper is confirmed on the system picker.
+     */
+    val isDestinationEnabled: Boolean
+        get() = wallpaperMode != WallpaperMode.ATMOSPHERE
 }

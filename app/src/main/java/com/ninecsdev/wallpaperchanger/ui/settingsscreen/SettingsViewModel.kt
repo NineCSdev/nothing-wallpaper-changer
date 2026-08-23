@@ -3,15 +3,26 @@ package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 import android.app.LocaleManager
 import android.content.Context
 import android.os.LocaleList
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
+import com.ninecsdev.wallpaperchanger.logic.BufferManager
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
+import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.logic.StorageUsage
+import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
+import com.ninecsdev.wallpaperchanger.logic.WallpaperApplyOutcome
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
+import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
+import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -19,6 +30,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -39,8 +51,18 @@ class SettingsViewModel @Inject constructor(
     private val appDataStore: AppDataStore,
     private val imageInternalizer: ImageInternalizer,
     private val wallpaperSources: WallpaperSources,
+    private val repository: WallpaperRepository,
+    private val bufferManager: BufferManager,
+    private val wallpaperApplier: WallpaperApplier,
+    private val wallpaperModeResolver: WallpaperModeResolver,
+    private val atmosphereDelivery: AtmosphereDelivery,
+    private val rotationEngine: RotationEngine,
     @param:ApplicationContext private val context: Context
 ) : ViewModel(), SettingsActions {
+
+    private companion object {
+        const val TAG = "SettingsViewModel"
+    }
 
     private val appVersion: String = try {
         context.packageManager
@@ -54,14 +76,38 @@ class SettingsViewModel @Inject constructor(
     private val availableLanguages: List<LanguageOption> = buildLanguageList(context)
     private val selectedLanguageTag = MutableStateFlow(currentLanguageTag())
 
-    // Separate in 2 flows as combine max is 5
+    /**
+     * Named intermediate groups. `combine` takes at most 5 flows, so the settings are folded in two
+     * stages; carrying the partials as small data classes instead of nested `Pair`/`Triple` keeps
+     * the fold one level deep and the fields readable at the point of use.
+     */
+    private data class LockscreenSettings(
+        val batterySaverPolicy: BatterySaverPolicy,
+        val wallpaperZoomFix: WallpaperZoomFix,
+        val wallpaperDestination: WallpaperDestination
+    )
+
+    private data class AtmosphereSettings(
+        val mode: WallpaperMode,
+        val engineActive: Boolean,
+        val hasSource: Boolean
+    )
+
+    private data class SettingsBundle(
+        val lockscreen: LockscreenSettings,
+        val keepLocalCopies: Boolean,
+        val hasMediaAccess: Boolean,
+        val hasPartialMediaAccess: Boolean,
+        val languageTag: String,
+        val atmosphere: AtmosphereSettings
+    )
+
     private val lockscreenSettingsFlow = combine(
         appDataStore.batterySaverPolicyFlow(),
         appDataStore.wallpaperZoomFixFlow(),
-        appDataStore.wallpaperDestinationFlow()
-    ) { batterySaverPolicy, wallpaperZoomFix, wallpaperDestination ->
-        Triple(batterySaverPolicy, wallpaperZoomFix, wallpaperDestination)
-    }
+        appDataStore.wallpaperDestinationFlow(),
+        ::LockscreenSettings
+    )
 
     // Permission state has no system callback, so it's snapshot here (full to partial) and
     // refreshed by the Route on every resume (the user may grant/revoke in system settings
@@ -71,14 +117,42 @@ class SettingsViewModel @Inject constructor(
     private fun snapshotMediaAccess(): Pair<Boolean, Boolean> =
         wallpaperSources.hasMediaAccess() to wallpaperSources.hasPartialMediaAccess()
 
-    // Nested so the outer combine (5-arg max) still has free slots for keepLocalCopies + language.
-    private val lockscreenStorageLanguageFlow = combine(
+    // Whether NWC's live wallpaper is actually the system wallpaper. Like [hasMediaAccess] this has
+    // no system callback (the user sets/replaces it via the system picker or another launcher), so
+    // it's a snapshot the Route re-checks on every resume.
+    private val atmosphereEngineActive = MutableStateFlow(wallpaperModeResolver.isAtmosphereEngineActive())
+
+    // Whether any image exists to feed the atmosphere renderer: an available image of the active
+    // collection, or the default wallpaper as fallback. Drives the set-button's disabled state.
+    private val hasAtmosphereSourceFlow = combine(
+        repository.activeCollectionImagesFlow(),
+        appDataStore.defaultWallpaperUriFlow()
+    ) { activeSnapshot, defaultUri ->
+        (activeSnapshot?.second?.isNotEmpty() == true) || defaultUri != null
+    }
+
+    private val atmosphereFlow = combine(
+        appDataStore.wallpaperModeFlow(),
+        atmosphereEngineActive,
+        hasAtmosphereSourceFlow,
+        ::AtmosphereSettings
+    )
+
+    private val settingsBundleFlow = combine(
         lockscreenSettingsFlow,
         appDataStore.keepLocalCopiesFlow(),
         mediaAccess,
-        selectedLanguageTag
-    ) { lockscreenSettings, keepLocalCopies, mediaAccess, languageTag ->
-        Triple(lockscreenSettings, keepLocalCopies to mediaAccess, languageTag)
+        selectedLanguageTag,
+        atmosphereFlow
+    ) { lockscreen, keepLocalCopies, access, languageTag, atmosphere ->
+        SettingsBundle(
+            lockscreen = lockscreen,
+            keepLocalCopies = keepLocalCopies,
+            hasMediaAccess = access.first,
+            hasPartialMediaAccess = access.second,
+            languageTag = languageTag,
+            atmosphere = atmosphere
+        )
     }
 
     // Null until every settings flow has emitted; the UI renders nothing until then so no
@@ -89,21 +163,24 @@ class SettingsViewModel @Inject constructor(
         appDataStore.startOnBootFlow(),
         appDataStore.compressionQualityHighFlow(),
         appDataStore.compressionQualityLowFlow(),
-        lockscreenStorageLanguageFlow
-    ) { delay, boot, qualityHigh, qualityLow, (lockscreenSettings, storageAccess, languageTag) ->
+        settingsBundleFlow
+    ) { delay, boot, qualityHigh, qualityLow, bundle ->
         SettingsUiState(
             screenOffDelayMs = delay,
             startOnBoot = boot,
-            batterySaverPolicy = lockscreenSettings.first,
-            wallpaperZoomFix = lockscreenSettings.second,
-            wallpaperDestination = lockscreenSettings.third,
+            batterySaverPolicy = bundle.lockscreen.batterySaverPolicy,
+            wallpaperZoomFix = bundle.lockscreen.wallpaperZoomFix,
+            wallpaperDestination = bundle.lockscreen.wallpaperDestination,
+            wallpaperMode = bundle.atmosphere.mode,
+            atmosphereEngineActive = bundle.atmosphere.engineActive,
+            hasAtmosphereSource = bundle.atmosphere.hasSource,
             compressionQualityHigh = qualityHigh,
             compressionQualityLow = qualityLow,
-            keepLocalCopies = storageAccess.first,
-            hasMediaAccess = storageAccess.second.first,
-            hasPartialMediaAccess = storageAccess.second.second,
+            keepLocalCopies = bundle.keepLocalCopies,
+            hasMediaAccess = bundle.hasMediaAccess,
+            hasPartialMediaAccess = bundle.hasPartialMediaAccess,
             availableLanguages = availableLanguages,
-            selectedLanguageTag = languageTag,
+            selectedLanguageTag = bundle.languageTag,
             appVersion = appVersion
         )
     }.stateIn(
@@ -148,8 +225,60 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { appDataStore.setWallpaperDestination(destination) }
     }
 
+    // Note: no atmosphere re-render needed here the atmosphere source always renders with the zoom-fix
+    // forced OFF as the live engine opts out of the system zoom instead.
     override fun setWallpaperZoomFix(zoomFix: WallpaperZoomFix) {
         viewModelScope.launch { appDataStore.setWallpaperZoomFix(zoomFix) }
+    }
+
+    /**
+     * Persists the desired [mode]. Switching ATMOSPHERE → STATIC while the live engine is set is the
+     * deliberate exit-live-wallpaper path: a static wallpaper is applied immediately to replace it
+     * (entering atmosphere, by contrast, needs the user to confirm on the system picker).
+     *
+     * The setting is written first so everything downstream sees the new effective mode, but it is
+     * **rolled back** if the exit fails to actually replace the live wallpaper. A stored STATIC with
+     * the atmosphere engine still running is a state [SettingsUiState] cannot describe (the engine
+     * reads as active while the mode says static, so the UI shows neither the mismatch prompt nor a
+     * plain static screen), so the switch is reported as not having happened.
+     *
+     * Note there is no buffer refill on the *entry* path. Entry only records a desire — the engine
+     * is not live until the user confirms on the system picker, so `effectiveMode()` still reports
+     * STATIC here and a refill would render the zoom-fix-padded buffer that
+     * [refreshAtmosphereEngineActive] has to throw away and re-render anyway once the engine
+     * actually goes live.
+     */
+    // TODO tests: see vault note tests/Atmosphere Delivery Tests.md (mode-switch refill + exit)
+    override fun setWallpaperMode(mode: WallpaperMode) {
+        viewModelScope.launch {
+            val previous = appDataStore.getWallpaperMode()
+            appDataStore.setWallpaperMode(mode)
+
+            val leavingActiveAtmosphere = previous == WallpaperMode.ATMOSPHERE &&
+                mode == WallpaperMode.STATIC &&
+                wallpaperModeResolver.isAtmosphereEngineActive()
+
+            if (leavingActiveAtmosphere) {
+                // Effective mode is STATIC from here on, so this re-renders the buffer *without* the
+                // atmosphere zoom-fix bypass — which is exactly what the static apply below needs.
+                val refilled = rotationEngine.refillDiskBuffer()
+                val replaced = (refilled &&
+                    wallpaperApplier.applyBufferWallpaper() == WallpaperApplyOutcome.APPLIED_STATIC) ||
+                    wallpaperApplier.applyDefaultWallpaper()
+                if (!replaced) {
+                    Log.w(TAG, "Could not replace the live wallpaper; reverting mode to ATMOSPHERE.")
+                    appDataStore.setWallpaperMode(WallpaperMode.ATMOSPHERE)
+                }
+                refreshAtmosphereEngineActive()
+                // Reclaim the source file, but only once the engine is confirmed gone — a still-live
+                // engine re-reads it on every cold start.
+                if (replaced && !atmosphereEngineActive.value) atmosphereDelivery.clearSource()
+            } else if (mode == WallpaperMode.ATMOSPHERE) {
+                // No-op unless the engine is somehow already live (re-entering after an external
+                // wallpaper change); the normal entry path renders via the set button instead.
+                refreshAtmosphereSourceIfLive()
+            }
+        }
     }
 
     override fun setKeepLocalCopies(enabled: Boolean) {
@@ -158,6 +287,65 @@ class SettingsViewModel @Inject constructor(
 
     override fun refreshMediaAccess() {
         mediaAccess.value = snapshotMediaAccess()
+    }
+
+    override fun refreshAtmosphereEngineActive() {
+        val wasActive = atmosphereEngineActive.value
+        val isActive = wallpaperModeResolver.isAtmosphereEngineActive()
+        atmosphereEngineActive.value = isActive
+
+        // The engine just went live so any buffer refilled while entering atmosphere was rendered
+        // WITH the user's zoom-fix padding. Refill now that effectiveMode() reports ATMOSPHERE
+        // so the buffer is padding-free.
+        if (isActive && !wasActive) {
+            viewModelScope.launch {
+                if (appDataStore.getWallpaperMode() == WallpaperMode.ATMOSPHERE) {
+                    rotationEngine.refillDiskBuffer()
+                }
+            }
+        }
+    }
+
+    /**
+     * Renders the atmosphere source image to disk in preparation for entering live-wallpaper mode,
+     * returning true once it's ready (the caller then launches the system live-wallpaper picker).
+     *
+     * Not part of [SettingsActions]: it's a suspend call the Route awaits before firing the
+     * activity intent (mirrors how `onRequestMediaAccess` is a plain Route-level callback).
+     */
+    suspend fun prepareAtmosphereSource(): Boolean {
+        val (wallpaper, cropRule) = resolveAtmosphereSource() ?: return false
+        val prepared = bufferManager.prepareAtmosphereSource(wallpaper, cropRule)
+        // If the engine is already running (re-set, or a settings-triggered re-render), tell it to
+        // re-decode the file now; harmless no-op when nothing is registered for the action yet.
+        if (prepared) atmosphereDelivery.sendReload()
+        return prepared
+    }
+
+    /**
+     * Picks the image + crop rule to feed the atmosphere renderer (see [prepareAtmosphereSource]).
+     * Reuses [WallpaperRepository.activeCollectionImagesFlow] (already excludes unavailable files) for
+     * the active-collection case.
+     */
+    private suspend fun resolveAtmosphereSource(): Pair<WallpaperImage, CropRule>? {
+        val activeSnapshot = repository.activeCollectionImagesFlow().first()
+        val firstAvailable = activeSnapshot?.second?.firstOrNull()
+        if (activeSnapshot != null && firstAvailable != null) {
+            return firstAvailable to activeSnapshot.first.defaultCropRule
+        }
+
+        val defaultUri = appDataStore.getDefaultWallpaperUri() ?: return null
+        return WallpaperImage.forDefaultWallpaper(defaultUri) to CropRule.FIT
+    }
+
+    /**
+     * Re-renders the atmosphere source and signals the engine, but only while the engine is
+     * actually live and atmosphere is desired.
+     */
+    private suspend fun refreshAtmosphereSourceIfLive() {
+        if (appDataStore.getWallpaperMode() != WallpaperMode.ATMOSPHERE) return
+        if (!wallpaperModeResolver.isAtmosphereEngineActive()) return
+        prepareAtmosphereSource()
     }
 
     /**

@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,9 +34,12 @@ internal fun <T> SettingsSegmentedSelector(
     onOptionChange: (T) -> Unit,
     optionLabel: @Composable (T) -> String,
     infoDialogTitle: String? = null,
-    infoDialogBody: String? = null
+    infoDialogBody: String? = null,
+    enabled: Boolean = true
 ) {
-    Column {
+    // Greyed and inert when disabled (e.g. the destination row while atmosphere mode is desired).
+    // The stored value is untouched; the row re-enables when the gating condition clears.
+    Column(modifier = Modifier.alpha(if (enabled) 1f else 0.4f)) {
         SettingsRowHeader(
             title = title,
             subtitle = subtitle,
@@ -52,18 +56,22 @@ internal fun <T> SettingsSegmentedSelector(
             options.forEach { option ->
                 val isSelected = option == selected
 
+                val containerColor = if (isSelected) NothingWhite.copy(alpha = 0.12f) else NothingBlack
+                val contentColor = if (isSelected) NothingWhite else NothingWhite.copy(alpha = 0.5f)
+
                 TextButton(
                     onClick = { onOptionChange(option) },
                     modifier = Modifier.weight(1f),
+                    enabled = enabled,
                     border = BorderStroke(
                         width = if (isSelected) 2.dp else 1.dp,
                         color = if (isSelected) NothingWhite else NothingWhite.copy(alpha = 0.25f)
                     ),
                     colors = ButtonDefaults.textButtonColors(
-                        containerColor = if (isSelected) NothingWhite.copy(alpha = 0.12f)
-                        else NothingBlack,
-                        contentColor = if (isSelected) NothingWhite
-                        else NothingWhite.copy(alpha = 0.5f)
+                        containerColor = containerColor,
+                        contentColor = contentColor,
+                        disabledContainerColor = containerColor,
+                        disabledContentColor = contentColor
                     ),
                     shape = MaterialTheme.shapes.small
                 ) {
