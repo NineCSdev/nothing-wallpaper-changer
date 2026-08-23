@@ -54,6 +54,8 @@ android {
 
     buildFeatures {
         compose = true
+        // The atmosphere engine's frame scrub is debug-only and gates on BuildConfig.DEBUG.
+        buildConfig = true
     }
 }
 
@@ -66,6 +68,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.palette)
     implementation(libs.material)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
