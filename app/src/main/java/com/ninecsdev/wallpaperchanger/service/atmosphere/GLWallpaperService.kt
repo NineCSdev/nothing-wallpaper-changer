@@ -35,9 +35,29 @@ abstract class GLWallpaperService : WallpaperService() {
             // renderer that actually uses the offset.
         }
 
+        /**
+         * Attaches [renderer] and pins dirty-mode rendering.
+         *
+         * Dirty mode is not a caller's choice: a renderer here re-arms itself with
+         * [requestRender] while it animates and idles completely between morphs, so a continuous
+         * loop would redraw a bit-identical frame forever. Pinned here rather than left to each
+         * service, which is how it once got set twice.
+         */
         fun setRenderer(renderer: GLSurfaceView.Renderer) {
             glSurfaceView?.setRenderer(renderer)
             glSurfaceView?.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+        }
+
+        /**
+         * Runs [action] on the GL thread, where a live context is required — releasing GL objects
+         * at teardown, principally.
+         *
+         * Best-effort: `GLSurfaceView`'s thread checks its exit flag *before* draining the event
+         * queue, so anything queued after the exit request may never run. That is survivable for
+         * releases, since the dying context takes its objects with it regardless.
+         */
+        protected fun queueGlEvent(action: Runnable) {
+            glSurfaceView?.queueEvent(action)
         }
 
         fun requestRender() {
@@ -80,41 +100,37 @@ abstract class GLWallpaperService : WallpaperService() {
         override fun onDestroy() {
             super.onDestroy()
             pauseHandler.removeCallbacks(pauseRunnable)
-            glSurfaceView?.onPause()
+            // `onPause()` alone parks the GL thread but never ends it. A GLSurfaceView normally
+            // dies with its window; a wallpaper engine has no window, so nothing ever calls
+            // onDetachedFromWindow and every destroyed engine used to leave its GL thread and
+            // context alive. The picker opens and closes preview engines freely, so that
+            // accumulated.
+            glSurfaceView?.detach()
+            glSurfaceView = null
         }
 
-        override fun onSurfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-            super.onSurfaceChanged(holder, format, width, height)
-            glSurfaceView?.surfaceChanged(holder, format, width, height)
-        }
+        // No onSurfaceCreated/Changed/Destroyed overrides here, deliberately.
+        //
+        // GLSurfaceView's constructor registers itself as a callback on whatever getHolder()
+        // returns — which the subclass below points at the *engine's* holder. The engine already
+        // dispatches to every callback on that holder, so the view is notified without our help.
+        // Forwarding as well delivered each event twice, and a second surfaceChanged re-fires the
+        // renderer's onSurfaceChanged with the same dimensions.
 
-        override fun onSurfaceCreated(holder: SurfaceHolder) {
-            super.onSurfaceCreated(holder)
-            glSurfaceView?.surfaceCreated(holder)
-        }
-
-        override fun onSurfaceDestroyed(holder: SurfaceHolder) {
-            super.onSurfaceDestroyed(holder)
-            glSurfaceView?.surfaceDestroyed(holder)
-        }
-
-        inner class WallpaperGLSurfaceView(context: Context) : GLSurfaceView(context) {
+        private inner class WallpaperGLSurfaceView(context: Context) : GLSurfaceView(context) {
             init {
                 setEGLConfigChooser(8, 8, 8, 0, 16, 0)
                 setEGLContextClientVersion(3)
+                // Survives the pause/resume of an app switch. Without it the context is destroyed
+                // and rebuilt on every return to the home screen, and the rebuild re-fires both
+                // onSurfaceCreated and onSurfaceChanged.
                 preserveEGLContextOnPause = true
             }
 
-            override fun getHolder(): SurfaceHolder {
-                return this@GLEngine.surfaceHolder
-            }
+            override fun getHolder(): SurfaceHolder = this@GLEngine.surfaceHolder
+
+            /** There is no window to detach from, so the teardown has to be invoked directly. */
+            fun detach() = onDetachedFromWindow()
         }
     }
-
-    /**
-     * Builds a **fresh** renderer. Called once per engine (each engine owns its own GL context, so
-     * renderers are never shared between them) — this is a factory, not an accessor. Subclasses may
-     * narrow the return type so their engine can hold the concrete renderer without a cast.
-     */
-    abstract fun createRenderer(): GLSurfaceView.Renderer
 }

@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.BitmapFactory
-import android.opengl.GLSurfaceView
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -116,10 +115,9 @@ class AtmosphereWallpaperService : GLWallpaperService() {
 
         override fun onCreate(surfaceHolder: android.view.SurfaceHolder) {
             super.onCreate(surfaceHolder)
-            setEGLContextClientVersion(3)
+            // GLEngine already requests a GLES 3 context and pins dirty-mode rendering; setting
+            // either here as well is how they came to disagree.
             setRenderer(renderer)
-            // The renderer re-arms itself while animating and idles completely between morphs.
-            setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY)
 
             val filter = IntentFilter().apply {
                 addAction(Intent.ACTION_SCREEN_OFF)
