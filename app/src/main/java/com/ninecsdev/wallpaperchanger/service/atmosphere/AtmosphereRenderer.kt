@@ -516,8 +516,10 @@ internal class AtmosphereRenderer(
 
     private fun adoptSource(newSeeds: List<VertexInfo>, bitmap: Bitmap) {
         try {
+            // Upload first, swap second in case upload throws so we keep a working wallpaper
+            val newTexture = AtmosphereGl.uploadPhoto(bitmap)
             AtmosphereGl.deleteTexture(photoTexture)
-            photoTexture = AtmosphereGl.uploadPhoto(bitmap)
+            photoTexture = newTexture
             photoWidth = bitmap.width
             photoHeight = bitmap.height
             seeds = newSeeds

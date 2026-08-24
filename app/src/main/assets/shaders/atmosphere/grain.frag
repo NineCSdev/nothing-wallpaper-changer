@@ -12,6 +12,7 @@ uniform float uNoiseGrowth;
 // ever sees a padded image.
 uniform float uCounterScale;
 
+// Safe for continuous UVs; coordinate quantization can amplify sin-hash artifacts.
 float random (vec2 st) {
     return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
 }

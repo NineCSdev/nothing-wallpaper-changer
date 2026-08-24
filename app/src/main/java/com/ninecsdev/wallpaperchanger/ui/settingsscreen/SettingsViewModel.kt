@@ -291,6 +291,14 @@ class SettingsViewModel @Inject constructor(
         mediaAccess.value = snapshotMediaAccess()
     }
 
+    /**
+     * Re-snapshots engine liveness and, on the false -> true edge, brings everything that was
+     * rendered for the static path up to the framing atmosphere actually wants.
+     *
+     * That edge is the moment [WallpaperModeResolver.effectiveMode] starts answering ATMOSPHERE,
+     * so it is also the first moment anything can be rendered correctly for it. Re-rendering the
+     * source is what fixes the image on screen; the buffer refill is for next rotation.
+     */
     override fun refreshAtmosphereEngineActive() {
         val wasActive = atmosphereEngineActive.value
         val isActive = wallpaperModeResolver.isAtmosphereEngineActive()
@@ -300,16 +308,16 @@ class SettingsViewModel @Inject constructor(
             // Ensure the engine owns both screens so atmosphere works correctly
             wallpaperModeResolver.ensureEngineOwnsLockScreen()
             viewModelScope.launch {
-                if (appDataStore.getWallpaperMode() == WallpaperMode.ATMOSPHERE) {
-                    rotationEngine.refillDiskBuffer()
-                }
+                if (appDataStore.getWallpaperMode() != WallpaperMode.ATMOSPHERE) return@launch
+                // Re-render to correctly shown the atmosphere wallpaper
+                prepareAtmosphereSource()
+                rotationEngine.refillDiskBuffer()
             }
         }
     }
 
     /**
-     * Renders the atmosphere source image to disk in preparation for entering live-wallpaper mode,
-     * returning true once it's ready (the caller then launches the system live-wallpaper picker).
+     * Renders the atmosphere source image to disk and delivers it, returning true once it's ready.
      *
      * Not part of [SettingsActions]: it's a suspend call the Route awaits before firing the
      * activity intent (mirrors how `onRequestMediaAccess` is a plain Route-level callback).

@@ -76,7 +76,6 @@ class AtmosphereWallpaperService : GLWallpaperService() {
          * is unaffected: this only ever runs while the screen is going dark, and a wake inside the
          * window cancels it.
          */
-        // TODO: should probably be the same as the screen off delay user setting
         private const val LOCK_DELAY_MS = 300L
 
         /**
