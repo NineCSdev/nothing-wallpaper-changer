@@ -2,95 +2,123 @@ package com.ninecsdev.wallpaperchanger.logic.atmosphere
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Log
-import com.ninecsdev.wallpaperchanger.logic.replaceAtomically
+import com.ninecsdev.wallpaperchanger.logic.BufferManager
 import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereSource
 import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Atmosphere *delivery*, the final hop of the rotation pipeline when atmosphere mode is effective.
  *
- * Delivery is a cheap file copy plus a reload broadcast; **no rendering happens here**. The buffer
- * was already rendered (zoom-fix forced off) at buffer-fill time by
- * [BufferManager.prepareNextWallpaper][com.ninecsdev.wallpaperchanger.logic.BufferManager]. Delivering it means publishing that buffer to the live
- * engine's on-disk input ([AtmosphereSource.FILE_NAME] in `filesDir`) and telling the
- * engine to re-decode it.
+ * **No rendering happens here.** The image arrives already screen-fitted and delivery's job is
+ * to publish it into the engine's on-disk source and say so.
  *
- * The buffer is **copied, never moved**: the running engine may cold-start and re-read the source
- * at any time, while the buffer file itself keeps getting overwritten by subsequent refills. The
- * copy lands in a temp file first and is swapped in with an atomic move so the engine can never
- * decode a half-written source.
+ * What it does add is **seed extraction**. The palette scan and its per-swatch nearest-pixel search
+ * cost ~250-60ms.
+ *
+ * Seeds and pixels travel in **one container**, swapped in with a single rename. Two files could not
+ * be swapped atomically, and a reader that got fresh pixels with stale seeds would paint one photo's
+ * blobs from another photo's palette.
  */
 @Singleton
 class AtmosphereDelivery @Inject constructor(
-    @param:ApplicationContext private val appContext: Context
+    @param:ApplicationContext private val appContext: Context,
+    private val bufferManager: BufferManager,
+    private val seedExtractor: SeedExtractor
 ) {
     private companion object {
         const val TAG = "AtmosphereDelivery"
-        const val DELIVERY_TEMP_FILENAME = "atmosphere_delivery_temp.webp"
+        const val COMPRESSION_QUALITY = 95
     }
 
-    private fun sourceFile(): File = AtmosphereSource.file(appContext)
-
     /**
-     * Copies [bufferFile] into the atmosphere source path atomically, then broadcasts a reload.
-     * Returns false (and logs) if the buffer is missing or the copy/move fails.
+     * Publishes [bufferFile] to the atmosphere source and broadcasts a rotation reload.
+     * Returns false (and logs) if the buffer is missing, unreadable, or fails to decode.
      *
-     * TODO tests: see vault note tests/Atmosphere Delivery Tests.md
+     * The buffer is **read, never moved**: the running engine may cold-start and re-read its source
+     * at any time, while the buffer file itself keeps getting overwritten by subsequent refills.
      */
-    fun deliverBuffer(bufferFile: File): Boolean {
+    // TODO tests: see vault note tests/Atmosphere Delivery Tests.md
+    suspend fun deliverBuffer(bufferFile: File): Boolean = withContext(Dispatchers.IO) {
         if (!bufferFile.exists()) {
             Log.w(TAG, "Buffer file missing; nothing to deliver to atmosphere engine.")
-            return false
+            return@withContext false
         }
 
-        val tempFile = File(appContext.filesDir, DELIVERY_TEMP_FILENAME)
-        return try {
-            // Copy (not move) the buffer so subsequent refills can keep overwriting it freely.
-            Files.copy(bufferFile.toPath(), tempFile.toPath(), REPLACE_EXISTING)
-            replaceAtomically(tempFile, sourceFile())
-            // Tag as a rotation delivery: its display (and only its display) advances the magazine.
-            sendReload(fromRotation = true)
-            Log.i(TAG, "Delivered buffer to atmosphere source.")
-            true
+        val bytes = try {
+            bufferFile.readBytes()
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to deliver buffer to atmosphere source", e)
-            // Cleanup belongs here rather than in a `finally`: the successful path's swap already
-            // consumed the temp file, so this is reachable only after a failed copy or failed swap.
-            tempFile.delete()
+            Log.e(TAG, "Could not read the buffer", e)
+            return@withContext false
+        }
+
+        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        if (bitmap == null) {
+            Log.w(TAG, "Buffer did not decode; nothing delivered")
+            return@withContext false
+        }
+
+        try {
+            // Tagged as a rotation delivery: its display, and only its display, advances the
+            // magazine.
+            publish(bytes, bitmap, fromRotation = true)
+        } finally {
+            bitmap.recycle()
+        }
+    }
+
+    /**
+     * Publishes an already-rendered [bitmap] and broadcasts a non-rotation reload.
+     *
+     * The entry point for images that never go through the rotation buffer: the default wallpaper,
+     * the revert-to-default path that runs when a collection empties, and the pre-render that
+     * happens before the system picker is launched. None of those is a rotation, so none of them
+     * may advance the magazine.
+     *
+     * The caller keeps ownership of [bitmap] and is responsible for recycling it.
+     */
+    suspend fun deliverBitmap(bitmap: Bitmap): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val stream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, COMPRESSION_QUALITY, stream)
+            publish(stream.toByteArray(), bitmap, fromRotation = false)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to deliver a rendered bitmap", e)
             false
         }
     }
 
     /**
      * Deletes the on-disk source once the engine is confirmed gone (the user left atmosphere mode
-     * and a static wallpaper actually replaced the live one). It is a screen-sized WebP that would
+     * and a static wallpaper actually replaced the live one). It is a screen-sized image that would
      * otherwise sit in `filesDir` indefinitely; re-entering atmosphere re-renders it.
      *
      * Only call after confirming the engine is no longer the system wallpaper — a live engine
      * cold-starts by re-reading this file, so deleting it out from under one shows black.
      */
     fun clearSource() {
-        val source = sourceFile()
+        val source = AtmosphereSource.file(appContext)
         if (source.exists() && !source.delete()) {
             Log.w(TAG, "Could not delete the atmosphere source file.")
         }
     }
 
     /**
-     * Signals the live engine to re-decode its on-disk source. Same-app only
-     * ([AtmosphereWallpaperService.ACTION_RELOAD] is RECEIVER_NOT_EXPORTED, so the explicit package
-     * keeps delivery in-app).
+     * Signals the live engine to re-decode its on-disk source.
      *
-     * [fromRotation] marks whether the reload is a rotation delivery: only then does showing it
-     * advance the magazine. The revert-to-default path calls this directly with the default
-     * (`false`) — it renders straight into the source file and must not count as a rotation.
+     * The file is the source of truth, because the system starts the engine at boot
+     * and recreates it on surface changes, both of which can happen with this process gone.
+     *
+     * [fromRotation] marks whether the reload is a rotation delivery that should advance the magazine
      */
     fun sendReload(fromRotation: Boolean = false) {
         appContext.sendBroadcast(
@@ -98,5 +126,20 @@ class AtmosphereDelivery @Inject constructor(
                 .setPackage(appContext.packageName)
                 .putExtra(AtmosphereWallpaperService.EXTRA_FROM_ROTATION, fromRotation)
         )
+    }
+
+    private suspend fun publish(
+        imageBytes: ByteArray,
+        bitmap: Bitmap,
+        fromRotation: Boolean
+    ): Boolean {
+        // Measured off the bitmap rather than read from settings
+        val seeds = seedExtractor.extract(bitmap, bufferManager.hasZoomFixPadding(bitmap))
+
+        if (!AtmosphereSource.write(appContext, seeds, imageBytes)) return false
+
+        sendReload(fromRotation)
+        Log.i(TAG, "Delivered atmosphere source (fromRotation=$fromRotation).")
+        return true
     }
 }

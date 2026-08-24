@@ -2,13 +2,10 @@ package com.ninecsdev.wallpaperchanger.service.atmosphere
 
 import android.content.Context
 import android.util.Log
+import com.ninecsdev.wallpaperchanger.logic.replaceAtomically
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
-import java.nio.file.AtomicMoveNotSupportedException
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption.ATOMIC_MOVE
-import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 
 /**
  * The on-disk hand-off between the app and the live-wallpaper engine.
@@ -30,9 +27,6 @@ object AtmosphereSource {
     /** 'ATMO'. Guards against decoding an unrelated file left at the same path. */
     private const val MAGIC = 0x41544D4F
     private const val VERSION = 1
-
-    /** Sent after a successful [write]. Namespaced, and registered `RECEIVER_NOT_EXPORTED`. */
-    const val ACTION_RELOAD = "com.ninecsdev.wallpaperchanger.action.ATMOSPHERE_RELOAD"
 
     /** A decoded container: the seeds, and the still-encoded image bytes. */
     class Payload(val seeds: List<VertexInfo>, val imageBytes: ByteArray)
@@ -70,7 +64,7 @@ object AtmosphereSource {
                 out.writeInt(imageBytes.size)
                 out.write(imageBytes)
             }
-            moveIntoPlace(temp, file(context))
+            replaceAtomically(temp, file(context))
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to write atmosphere source", e)
@@ -129,14 +123,6 @@ object AtmosphereSource {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to read atmosphere source", e)
             null
-        }
-    }
-
-    private fun moveIntoPlace(temp: File, target: File) {
-        try {
-            Files.move(temp.toPath(), target.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
-        } catch (_: AtomicMoveNotSupportedException) {
-            Files.move(temp.toPath(), target.toPath(), REPLACE_EXISTING)
         }
     }
 }

@@ -51,24 +51,48 @@ class WallpaperApplier @Inject constructor(
         const val TAG = "WallpaperApplier"
     }
 
+    /**
+     * Warns when a static write is about to happen while the user still wants atmosphere.
+     *
+     * That combination is legitimate, it is the documented mismatch state, where the mode was
+     * chosen but never confirmed on the system picker — but it is also what a *stale or failed*
+     * engine-liveness read looks like, and in that case the write below replaces our own live
+     * wallpaper and silently drops the user out of the mode. The two are indistinguishable from
+     * inside, so the least this path can do is say so.
+     */
+    private suspend fun warnIfDesiringAtmosphere(path: String) {
+        if (appDataStore.getWallpaperMode() != WallpaperMode.ATMOSPHERE) return
+
+        Log.w(
+            TAG,
+            "$path: atmosphere is the desired mode but the engine does not read as the system " +
+                "wallpaper, so this is taking the static path. If the engine was in fact live, " +
+                "this write has just replaced it."
+        )
+    }
+
     // TODO tests: see vault note tests/Atmosphere Delivery Tests.md
     suspend fun applyDefaultWallpaper(): Boolean = withContext(Dispatchers.IO) {
         val uri = appDataStore.getDefaultWallpaperUri() ?: return@withContext false
 
         if (wallpaperModeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE) {
-            // Revert-to-default flows through the atmosphere path: render the default into the
-            // engine's source file and signal a reload instead of setBitmap.
-            val prepared = bufferManager.prepareAtmosphereSource(
+            // Revert-to-default flows through the atmosphere path: render the default and hand it
+            // to the engine instead of setBitmap, which would evict the engine and end the mode.
+            val rendered = bufferManager.renderForAtmosphere(
                 WallpaperImage.forDefaultWallpaper(uri),
                 CropRule.FIT
-            )
-            if (prepared) {
-                atmosphereDelivery.sendReload()
-                Log.i(TAG, "Applied default wallpaper through atmosphere source.")
+            ) ?: return@withContext false
+
+            return@withContext try {
+                atmosphereDelivery.deliverBitmap(rendered).also { delivered ->
+                    if (delivered) Log.i(TAG, "Applied default wallpaper through atmosphere source.")
+                }
+            } finally {
+                rendered.recycle()
             }
-            return@withContext prepared
         }
 
+        warnIfDesiringAtmosphere("applyDefaultWallpaper")
         val destination = appDataStore.getWallpaperDestination()
 
         try {
@@ -112,6 +136,7 @@ class WallpaperApplier @Inject constructor(
             }
         }
 
+        warnIfDesiringAtmosphere("applyBufferWallpaper")
         val destination = appDataStore.getWallpaperDestination()
         try {
             val bufferFile = bufferManager.getBufferFile()

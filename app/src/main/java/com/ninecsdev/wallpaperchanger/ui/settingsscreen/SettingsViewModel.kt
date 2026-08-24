@@ -225,10 +225,12 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { appDataStore.setWallpaperDestination(destination) }
     }
 
-    // Note: no atmosphere re-render needed here the atmosphere source always renders with the zoom-fix
-    // forced OFF as the live engine opts out of the system zoom instead.
     override fun setWallpaperZoomFix(zoomFix: WallpaperZoomFix) {
-        viewModelScope.launch { appDataStore.setWallpaperZoomFix(zoomFix) }
+        viewModelScope.launch {
+            appDataStore.setWallpaperZoomFix(zoomFix)
+            // The zoom fix now applies in atmosphere mode too, so a change to it has to reach the engine.
+            refreshAtmosphereSourceIfLive()
+        }
     }
 
     /**
@@ -294,10 +296,9 @@ class SettingsViewModel @Inject constructor(
         val isActive = wallpaperModeResolver.isAtmosphereEngineActive()
         atmosphereEngineActive.value = isActive
 
-        // The engine just went live so any buffer refilled while entering atmosphere was rendered
-        // WITH the user's zoom-fix padding. Refill now that effectiveMode() reports ATMOSPHERE
-        // so the buffer is padding-free.
         if (isActive && !wasActive) {
+            // Ensure the engine owns both screens so atmosphere works correctly
+            wallpaperModeResolver.ensureEngineOwnsLockScreen()
             viewModelScope.launch {
                 if (appDataStore.getWallpaperMode() == WallpaperMode.ATMOSPHERE) {
                     rotationEngine.refillDiskBuffer()
@@ -315,11 +316,15 @@ class SettingsViewModel @Inject constructor(
      */
     suspend fun prepareAtmosphereSource(): Boolean {
         val (wallpaper, cropRule) = resolveAtmosphereSource() ?: return false
-        val prepared = bufferManager.prepareAtmosphereSource(wallpaper, cropRule)
-        // If the engine is already running (re-set, or a settings-triggered re-render), tell it to
-        // re-decode the file now; harmless no-op when nothing is registered for the action yet.
-        if (prepared) atmosphereDelivery.sendReload()
-        return prepared
+        val rendered = bufferManager.renderForAtmosphere(wallpaper, cropRule) ?: return false
+        // deliverBitmap writes the container and broadcasts the reload itself. If the engine is
+        // already running (re-set, or a settings-triggered re-render) it re-decodes now; the
+        // broadcast is a harmless no-op when nothing is registered for the action yet.
+        return try {
+            atmosphereDelivery.deliverBitmap(rendered)
+        } finally {
+            rendered.recycle()
+        }
     }
 
     /**

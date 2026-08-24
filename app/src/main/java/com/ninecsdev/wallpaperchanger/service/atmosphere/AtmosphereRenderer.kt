@@ -31,7 +31,14 @@ import kotlin.math.sqrt
  */
 internal class AtmosphereRenderer(
     private val context: Context,
-    private val requestRender: () -> Unit
+    private val requestRender: () -> Unit,
+    /** Whether the panel is genuinely dark right now, so a swap cannot be seen happening. */
+    private val isPanelDark: () -> Boolean = { true },
+    /**
+     * Fired on the **GL thread** the moment a queued source is committed to the screen, with the
+     * flag it was queued under. That instant is what the rotation advance keys off.
+     */
+    private val onSourceAdopted: (fromRotation: Boolean) -> Unit = {}
 ) : GLSurfaceView.Renderer {
 
     private companion object {
@@ -86,9 +93,19 @@ internal class AtmosphereRenderer(
 
     // Hand-off from other threads
 
-    private val pendingSource = AtomicReference<Pair<List<VertexInfo>, Bitmap>?>(null)
+    /** A source waiting to be adopted, and whether showing it should advance the rotation. */
+    private class PendingSource(
+        val seeds: List<VertexInfo>,
+        val bitmap: Bitmap,
+        val fromRotation: Boolean
+    )
+
+    private val pendingSource = AtomicReference<PendingSource?>(null)
     private val locked = AtomicBoolean(true)
     private val lockStateDirty = AtomicBoolean(false)
+
+    /** Whether the pending unlock should play the morph or land on the settled frame directly. */
+    private val animateUnlock = AtomicBoolean(true)
 
     /** Debug frame scrub. Below zero means "run normally". */
     private val pinnedFrame = AtomicInteger(-1)
@@ -145,21 +162,27 @@ internal class AtmosphereRenderer(
      *
      * It is *not* applied here. A morph derives its blob anchors, its palette and its background
      * from one image, so swapping mid-flight would leave blobs anchored to a photo that is gone.
-     * The swap happens on entering the lock state, or immediately if already locked -- a window
-     * during which the panel is dark, so it is never visible either way.
+     *
+     * When it *is* applied depends on [fromRotation]. A rotation delivery is a reveal and waits for
+     * [isPanelDark], so the change is never seen happening. Anything else is a user-initiated action
+     * whose result should appear at once and is adopted on the next frame.
      */
-    fun queueSource(newSeeds: List<VertexInfo>, bitmap: Bitmap) {
-        pendingSource.getAndSet(newSeeds to bitmap)?.second?.recycle()
-        if (locked.get()) requestRender()
+    fun queueSource(newSeeds: List<VertexInfo>, bitmap: Bitmap, fromRotation: Boolean) {
+        pendingSource
+            .getAndSet(PendingSource(newSeeds, bitmap, fromRotation))
+            ?.bitmap?.recycle()
     }
 
     /**
-     * @param isLocked true on screen-off, false once the keyguard is dismissed. The false edge is
-     * what starts a morph.
+     * @param isLocked true while the plain photo should be shown, false for the effect.
+     * @param animate whether a false edge plays the morph. Pass false to land on the settled frame
+     * with no transition — see [animateUnlock] for when that is the right answer.
      */
-    fun setLocked(isLocked: Boolean) {
+    fun setLocked(isLocked: Boolean, animate: Boolean = true) {
         if (locked.getAndSet(isLocked) != isLocked) {
+            animateUnlock.set(animate)
             lockStateDirty.set(true)
+            Log.d(TAG, "Lock state -> $isLocked (animate=$animate)")
             requestRender()
         }
     }
@@ -169,8 +192,6 @@ internal class AtmosphereRenderer(
         pinnedFrame.set(frameNumber)
         requestRender()
     }
-
-    fun hasSource(): Boolean = photoTexture != 0
 
     // GLSurfaceView.Renderer
 
@@ -229,6 +250,7 @@ internal class AtmosphereRenderer(
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+        val dimensionsChanged = width != surfaceWidth || height != surfaceHeight
         surfaceWidth = width
         surfaceHeight = height
         prerollTargets.ensure(
@@ -240,7 +262,7 @@ internal class AtmosphereRenderer(
             (AtmosphereConstants.EFFECT_RASTER_WIDTH * height / width.coerceAtLeast(1))
                 .coerceAtLeast(1)
         )
-        shapes.reset(width, height)
+        if (dimensionsChanged) shapes.reset(width, height)
     }
 
     override fun onDrawFrame(gl: GL10?) {
@@ -447,29 +469,31 @@ internal class AtmosphereRenderer(
     // Source handling
 
     private fun applyPendingWork() {
-        val lockChanged = lockStateDirty.getAndSet(false)
-        if (lockChanged) {
+        if (lockStateDirty.getAndSet(false)) {
             if (locked.get()) {
                 frame = 0
                 animating = false
                 shapes.reset(surfaceWidth, surfaceHeight)
-            } else {
+            } else if (animateUnlock.get()) {
                 frame = 0
                 animating = true
                 lastFrameAt = 0L
-            }
-        }
-
-        // Consumed on entering the lock state, or on arrival if already locked. Both parties key
-        // off screen-off and their order is undefined, so waiting for the *edge* specifically
-        // would push every rotation a full cycle late.
-        if (locked.get()) {
-            pendingSource.getAndSet(null)?.let { (newSeeds, bitmap) ->
-                adoptSource(newSeeds, bitmap)
-                frame = 0
+            } else {
                 animating = false
             }
         }
+
+        val pending = pendingSource.get() ?: return
+        // Evaluated only with a source in hand: isPanelDark crosses a binder for PowerManager, and
+        // that is not something to pay on every frame of a morph.
+        if (pending.fromRotation && !isPanelDark()) return
+        if (!pendingSource.compareAndSet(pending, null)) return
+
+        adoptSource(pending.seeds, pending.bitmap)
+        frame = 0
+        animating = false
+        // The image is committed to the screen as of this frame
+        onSourceAdopted(pending.fromRotation)
     }
 
     private fun adoptSource(newSeeds: List<VertexInfo>, bitmap: Bitmap) {
@@ -523,6 +547,6 @@ internal class AtmosphereRenderer(
             fbo = 0
         }
         quad.release()
-        pendingSource.getAndSet(null)?.second?.recycle()
+        pendingSource.getAndSet(null)?.bitmap?.recycle()
     }
 }

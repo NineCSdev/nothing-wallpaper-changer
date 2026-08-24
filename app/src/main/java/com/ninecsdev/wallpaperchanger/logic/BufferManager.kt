@@ -15,11 +15,10 @@ import androidx.core.graphics.createBitmap
 import kotlin.math.roundToInt
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
-import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
+import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
-import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -51,18 +50,30 @@ sealed class BufferPreparationResult {
 class BufferManager @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
     private val appDataStore: AppDataStore,
-    private val wallpaperModeResolver: WallpaperModeResolver
+    private val modeResolver: WallpaperModeResolver
 ) {
     private companion object {
         const val TAG = "BufferManager"
         const val BUFFER_FILENAME = "buffer_next.webp"
         const val TEMP_FILENAME = "buffer_temp.webp"
-        const val ATMOSPHERE_TEMP_FILENAME = "atmosphere_source_temp.webp"
         const val COMPRESSION_QUALITY = 95 // Quality left high as only 1 image will exist at any time
         const val ZOOM_INSET_FRACTION = 0.045f // Zoom that I observed in a 20:9 screen
         const val BLUR_DOWNSCALE_FACTOR = 24
         const val EDIT_DECODE_SCALE = 2
     }
+
+    /**
+     * What to do about the platform's parallax zoom, which is **not** the same question in the two
+     * delivery modes.
+     *
+     * - static, zoom fix off: the platform crops ~4.5%, and we do nothing.
+     * - static, blurred/edge: we pad ~4.5% and the platform's crop eats exactly the padding.
+     * - **atmosphere, zoom fix off**: nothing will crop for us, so we [CROP_IN] ourselves to land on
+     *   the same framing the static path gets for free.
+     * - **atmosphere, blurred/edge**: the user's whole image already survives, and padding it would
+     *   only put permanent bars on screen with nothing to eat them so [NONE].
+     */
+    private enum class Framing { NONE, PAD_BLURRED, PAD_EDGE, CROP_IN }
 
     private data class TargetSize(
         val width: Int, val height: Int
@@ -83,12 +94,9 @@ class BufferManager @Inject constructor(
      */
     suspend fun applyZoomFixIfNeeded(bitmap: Bitmap): Bitmap {
         // Used in WallpaperApplier for default wallpaper
-        val zoomFix = appDataStore.getWallpaperZoomFix()
-        if (zoomFix == WallpaperZoomFix.OFF) return bitmap
-
-        val padded = addZoomFixPadding(bitmap, zoomFix)
-        // Don't recycle the input as caller owns it
-        return padded
+        // Don't recycle the input; the caller owns it. applyFraming returns it unchanged when
+        // there is nothing to do.
+        return applyFraming(bitmap, framing())
     }
 
     /**
@@ -101,20 +109,14 @@ class BufferManager @Inject constructor(
     // TODO tests: see vault note tests/Atmosphere Delivery Tests.md (zoom-fix gating by effective mode)
     suspend fun prepareNextWallpaper(wallpaper: WallpaperImage, cropRule: CropRule): BufferPreparationResult {
         return try {
-            // In effective atmosphere mode the buffer is destined for the live engine's source
-            // (delivered via AtmosphereDelivery), which opts out of the system zoom and counter-
-            // scales its quad instead — so it must stay un-padded. The user's zoom-fix setting
-            // only applies to the static setStream path.
-            val zoomFix = if (wallpaperModeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE) {
-                WallpaperZoomFix.OFF
-            } else {
-                appDataStore.getWallpaperZoomFix()
+            val rendered = renderWallpaper(wallpaper, cropRule, framing())
+                ?: return BufferPreparationResult.Failure(definitive = false)
+            try {
+                writeBuffer(rendered, cropRule)
+            } finally {
+                rendered.recycle()
             }
-            val rendered = renderWallpaper(wallpaper, cropRule, zoomFix) { bitmap ->
-                writeBuffer(bitmap, cropRule)
-            }
-            if (rendered) BufferPreparationResult.Success
-            else BufferPreparationResult.Failure(definitive = false)
+            BufferPreparationResult.Success
         } catch (e: FileNotFoundException) {
             Log.w(TAG, "Source unreadable, likely deleted: ${wallpaper.uri}", e)
             BufferPreparationResult.Failure(definitive = true)
@@ -128,40 +130,72 @@ class BufferManager @Inject constructor(
     }
 
     /**
-     * Renders [wallpaper] (screen-fitted, edit params / [cropRule] applied) into the atmosphere live
-     * wallpaper's source file, atomically. Runs the exact same [renderWallpaper] pipeline as
-     * [prepareNextWallpaper], but forces [WallpaperZoomFix.OFF]: device testing (2026-07-20) showed
-     * Nothing OS zoom-animates the live wallpaper on the *lock screen only*, so padding can't be
-     * right on both screens — instead the atmosphere engine counter-scales its GL quad by the inverse
-     * of the system window scale (`onZoomChanged` → `uCounterScale`), so the source must stay un-padded.
+     * The user's zoom-fix setting resolved against the mode that will actually deliver the image.
+     * See [Framing] for why the two modes need opposite treatment.
      *
-     * Returns true on success, false on any failure (logged). The file is
-     * [AtmosphereSource.FILE_NAME] in `filesDir` — the renderer's only disk input.
+     * Read per call, so changing the setting or mode between two refills takes effect on the
+     * next one without a service restart.
      */
-    suspend fun prepareAtmosphereSource(wallpaper: WallpaperImage, cropRule: CropRule): Boolean {
-        return try {
-            renderWallpaper(wallpaper, cropRule, WallpaperZoomFix.OFF, ::writeAtmosphereSource)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to prepare atmosphere source", e)
-            false
+    private suspend fun framing(): Framing {
+        val zoomFix = appDataStore.getWallpaperZoomFix()
+        if (modeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE) {
+            return if (zoomFix == WallpaperZoomFix.OFF) Framing.CROP_IN else Framing.NONE
+        }
+        return when (zoomFix) {
+            WallpaperZoomFix.OFF -> Framing.NONE
+            WallpaperZoomFix.BLURRED -> Framing.PAD_BLURRED
+            WallpaperZoomFix.EDGE -> Framing.PAD_EDGE
         }
     }
 
     /**
-     * The single decode → transform → write pipeline behind both [prepareNextWallpaper] and
-     * [prepareAtmosphereSource]. Decodes [wallpaper] at the screen's target size (oversampling when
-     * it carries edit params), applies the edit transform or [cropRule] plus [zoomFix], hands the
-     * result to [write], and always recycles both bitmaps.
+     * True when [bitmap] carries zoom-fix padding, judged by size against the screen it was fitted
+     * to. Measured rather than looked up on purpose as the stored bitmap might not correspond with the
+     * stored setting.
      *
-     * Returns false only when the source could not be decoded; every other failure propagates as an
+     * In practice this is false for everything the atmosphere path delivers, since [Framing] never
+     * pads in that mode. It stays a measurement rather than a constant so it keeps telling the truth
+     * if that changes.
+     */
+    fun hasZoomFixPadding(bitmap: Bitmap): Boolean {
+        val target = getTargetSize()
+
+        return bitmap.width > target.width + calculateZoomInset(target.width) / 2
+    }
+
+    /**
+     * Renders [wallpaper] for the atmosphere engine and hands the bitmap back; the **caller owns it
+     * and must recycle it**.
+     *
+     * It returns a bitmap rather than writing a file because the seeds have to be extracted from the
+     * pixels before anything can be written, and that belongs to
+     * [AtmosphereDelivery][com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery],
+     * which already depends on this class.
+     */
+    suspend fun renderForAtmosphere(wallpaper: WallpaperImage, cropRule: CropRule): Bitmap? {
+        return try {
+            renderWallpaper(wallpaper, cropRule, framing())
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to render the atmosphere source", e)
+            null
+        }
+    }
+
+    /**
+     * The single decode → transform pipeline behind both [prepareNextWallpaper] and
+     * [renderForAtmosphere]. Decodes [wallpaper] at the screen's target size (oversampling when it
+     * carries edit params), applies the edit transform or [cropRule] plus [zoomFix], and returns the
+     * result. The intermediate source bitmap is always recycled; **the returned bitmap is the
+     * caller's.**
+     *
+     * Returns null only when the source could not be decoded; every other failure propagates as an
      * exception so callers can classify it (definitive vs. transient).
      */
     private suspend fun renderWallpaper(
         wallpaper: WallpaperImage,
         cropRule: CropRule,
-        zoomFix: WallpaperZoomFix,
-        write: (Bitmap) -> Unit
-    ): Boolean = withContext(Dispatchers.IO) {
+        framing: Framing
+    ): Bitmap? = withContext(Dispatchers.IO) {
         val targetSize = getTargetSize()
         val hasEdit = wallpaper.editParams != null
 
@@ -169,15 +203,12 @@ class BufferManager @Inject constructor(
             wallpaper.uri,
             targetSize,
             oversample = if (hasEdit) EDIT_DECODE_SCALE else 1
-        ) ?: return@withContext false
+        ) ?: return@withContext null
 
-        var finalBitmap: Bitmap? = null
         try {
-            finalBitmap = prepareFinalBitmap(wallpaper, sourceBitmap, targetSize, cropRule, zoomFix)
-            write(finalBitmap)
-            true
+            prepareFinalBitmap(wallpaper, sourceBitmap, targetSize, cropRule, framing)
         } finally {
-            recyclePreparedBitmaps(sourceBitmap, finalBitmap)
+            sourceBitmap.recycle()
         }
     }
 
@@ -208,27 +239,60 @@ class BufferManager @Inject constructor(
         sourceBitmap: Bitmap,
         targetSize: TargetSize,
         cropRule: CropRule,
-        zoomFix: WallpaperZoomFix
+        framing: Framing
     ): Bitmap {
         val editParams = wallpaper.editParams
-        return if (editParams != null) {
-            val edited = applyEditTransform(
+        val screenBitmap = if (editParams != null) {
+            applyEditTransform(
                 source = sourceBitmap,
                 targetSize = targetSize,
                 zoom = editParams.zoom,
                 normalizedOffsetX = editParams.offsetX,
                 normalizedOffsetY = editParams.offsetY
             )
-            if (zoomFix == WallpaperZoomFix.OFF) {
-                edited
-            } else {
-                val padded = addZoomFixPadding(edited, zoomFix)
-                if (padded !== edited) edited.recycle()
-                padded
-            }
         } else {
-            processBitmap(sourceBitmap, targetSize, cropRule, zoomFix)
+            renderScreenBitmap(sourceBitmap, targetSize, cropRule)
         }
+
+        val framed = applyFraming(screenBitmap, framing)
+        if (framed !== screenBitmap) screenBitmap.recycle()
+        return framed
+    }
+
+    /**
+     * Applies [framing] to a screen-sized [bitmap], returning it unchanged when there is nothing to
+     * do. The result is always screen-sized except for the padded cases, which are deliberately
+     * larger so the platform's crop has something to eat.
+     */
+    private fun applyFraming(bitmap: Bitmap, framing: Framing): Bitmap = when (framing) {
+        Framing.NONE -> bitmap
+        Framing.PAD_BLURRED -> addZoomFixPadding(bitmap, WallpaperZoomFix.BLURRED)
+        Framing.PAD_EDGE -> addZoomFixPadding(bitmap, WallpaperZoomFix.EDGE)
+        Framing.CROP_IN -> cropToZoomInset(bitmap)
+    }
+
+    /**
+     * Reproduces the platform's parallax crop: takes the center region an inset in from each edge
+     * and scales it back out to fill the screen.
+     *
+     * The live-wallpaper surface never gets this treatment from the system, so with the zoom fix off
+     * the atmosphere path applies it here instead to show the same behavior on static and atmosphere.
+     */
+    private fun cropToZoomInset(source: Bitmap): Bitmap {
+        val width = source.width
+        val height = source.height
+        val insetX = calculateZoomInset(width)
+        val insetY = calculateZoomInset(height)
+        if (insetX <= 0 && insetY <= 0) return source
+
+        val cropped = createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        Canvas(cropped).drawBitmap(
+            source,
+            Rect(insetX, insetY, width - insetX, height - insetY),
+            RectF(0f, 0f, width.toFloat(), height.toFloat()),
+            ImageProcessingUtils.createRenderPaint()
+        )
+        return cropped
     }
 
     /**
@@ -270,28 +334,6 @@ class BufferManager @Inject constructor(
         canvas.drawBitmap(source, matrix, ImageProcessingUtils.createRenderPaint())
 
         return output
-    }
-
-    private fun processBitmap(
-        source: Bitmap,
-        targetSize: TargetSize,
-        rule: CropRule,
-        zoomFix: WallpaperZoomFix
-    ): Bitmap {
-        val screenBitmap = renderScreenBitmap(source, targetSize, rule)
-
-        if (zoomFix == WallpaperZoomFix.OFF) {
-            return screenBitmap
-        }
-
-        var paddedBitmap: Bitmap? = null
-        try {
-            val padded = addZoomFixPadding(screenBitmap, zoomFix)
-            paddedBitmap = padded
-            return padded
-        } finally {
-            if (paddedBitmap !== screenBitmap) screenBitmap.recycle()
-        }
     }
 
     private fun renderScreenBitmap(source: Bitmap, targetSize: TargetSize, rule: CropRule): Bitmap {
@@ -342,12 +384,6 @@ class BufferManager @Inject constructor(
         val bufferFile = getBufferFile()
         writeAtomically(bitmap, File(appContext.cacheDir, TEMP_FILENAME), bufferFile)
         Log.d(TAG, "Buffer ready: ${bufferFile.length() / 1024} KB | Rule: $cropRule")
-    }
-
-    private fun writeAtmosphereSource(bitmap: Bitmap) {
-        val sourceFile = AtmosphereSource.file(appContext)
-        writeAtomically(bitmap, File(appContext.filesDir, ATMOSPHERE_TEMP_FILENAME), sourceFile)
-        Log.d(TAG, "Atmosphere source ready: ${sourceFile.length() / 1024} KB")
     }
 
     /**

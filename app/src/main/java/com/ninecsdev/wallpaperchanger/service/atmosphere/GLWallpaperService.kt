@@ -100,11 +100,8 @@ abstract class GLWallpaperService : WallpaperService() {
         override fun onDestroy() {
             super.onDestroy()
             pauseHandler.removeCallbacks(pauseRunnable)
-            // `onPause()` alone parks the GL thread but never ends it. A GLSurfaceView normally
-            // dies with its window; a wallpaper engine has no window, so nothing ever calls
-            // onDetachedFromWindow and every destroyed engine used to leave its GL thread and
-            // context alive. The picker opens and closes preview engines freely, so that
-            // accumulated.
+            // `onPause()` alone parks the GL thread but never ends it. The picker opens and closes
+            // preview engines freely, so that accumulated.
             glSurfaceView?.detach()
             glSurfaceView = null
         }

@@ -9,13 +9,11 @@ import android.content.IntentFilter
 import android.graphics.BitmapFactory
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
+import android.os.SystemClock
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.BuildConfig
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
+import java.util.concurrent.Executors
 
 /**
  * The live wallpaper. Owns the GL surface, the lock/unlock state machine, and the reload channel.
@@ -26,6 +24,23 @@ class AtmosphereWallpaperService : GLWallpaperService() {
 
     companion object {
         private const val TAG = "AtmosphereWallpaper"
+
+        /** Same-app broadcast the host sends after replacing the source container on disk. */
+        const val ACTION_RELOAD = "com.ninecsdev.wallpaperchanger.ACTION_ATMOSPHERE_RELOAD"
+
+        /**
+         * Boolean extra on [ACTION_RELOAD]: true when the reload is a rotation delivery (whose
+         * display should advance the magazine), false for non-rotation reloads (revert-to-default,
+         * settings re-renders). Absent is treated as false.
+         */
+        const val EXTRA_FROM_ROTATION = "from_rotation"
+
+        /**
+         * Same-app broadcast the engine sends back once a **rotation** delivery has actually been
+         * adopted. The host's rotation service advances the magazine on this, so a delivery that is
+         * queued and never shown doesn't consume a wallpaper.
+         */
+        const val ACTION_DISPLAYED = "com.ninecsdev.wallpaperchanger.ACTION_ATMOSPHERE_DISPLAYED"
 
         /**
          * Holds the renderer at one frame so a still can be compared against the real effect.
@@ -40,10 +55,30 @@ class AtmosphereWallpaperService : GLWallpaperService() {
          *
          * `ACTION_USER_PRESENT` is the semantically correct signal but arrives late relative to
          * the unlock animation, and late here eats the opening of the morph — the part where the
-         * photo is still legible. Polling catches the edge sooner. It is bounded to screen-on, so
-         * it cannot run in the background.
+         * photo is still legible. Polling catches the edge sooner.
          */
         private const val KEYGUARD_POLL_MS = 50L
+
+        /**
+         * Hard cap on how long the poll may run. Screen-off and unlock both stop it, but neither is
+         * guaranteed to arrive soon: a phone left sitting on the lock screen with the screen on
+         * would otherwise ask [KeyguardManager] 20x/second indefinitely. Past this window the
+         * `ACTION_USER_PRESENT` backstop takes over, costing a slightly later morph on an unlock
+         * that happens minutes after wake — the rare case.
+         */
+        private const val POLL_WINDOW_MS = 15_000L
+
+        /**
+         * Delay between screen-off and returning to the lock visual.
+         *
+         * The reset rewinds the frame counter and re-rolls the blob layout, and the panel is still
+         * fading when `ACTION_SCREEN_OFF` arrives — so doing it immediately shows the home screen
+         * visibly changing on the way out. Waiting for the fade to finish hides it. Unlock latency
+         * is unaffected: this only ever runs while the screen is going dark, and a wake inside the
+         * window cancels it.
+         */
+        // TODO: should probably be the same as the screen off delay user setting
+        private const val LOCK_DELAY_MS = 300L
 
         fun componentName(context: Context): ComponentName =
             ComponentName(context, AtmosphereWallpaperService::class.java)
@@ -53,8 +88,18 @@ class AtmosphereWallpaperService : GLWallpaperService() {
 
     private inner class AtmosphereEngine : GLEngine() {
 
-        private val renderer = AtmosphereRenderer(this@AtmosphereWallpaperService) { requestRender() }
-        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private val renderer = AtmosphereRenderer(
+            context = this@AtmosphereWallpaperService,
+            requestRender = { requestRender() },
+            isPanelDark = ::isPanelDark,
+            onSourceAdopted = ::onSourceAdopted
+        )
+
+        /**
+         * Single-threaded on purpose: deliveries are serialized, so a burst of reloads decodes one
+         * at a time instead of piling several full-size bitmaps into memory at once.
+         */
+        private val decodeExecutor = Executors.newSingleThreadExecutor()
         private val handler = Handler(Looper.getMainLooper())
         private val keyguardManager by lazy {
             getSystemService(KEYGUARD_SERVICE) as KeyguardManager
@@ -62,17 +107,61 @@ class AtmosphereWallpaperService : GLWallpaperService() {
 
         private var screenOn = true
 
+        private val powerManager by lazy {
+            getSystemService(POWER_SERVICE) as PowerManager
+        }
+
+        /** Deferred by [LOCK_DELAY_MS] so the reset lands after the panel is dark. */
+        private val lockRunnable = Runnable { renderer.setLocked(true) }
+
+        /** uptimeMillis deadline for [keyguardPoll]; see [POLL_WINDOW_MS]. */
+        private var pollDeadlineMs = 0L
+
+        /**
+         * Set in [onDestroy] so work already queued on the main looper can tell it is running
+         * against a torn-down engine. Main-thread confined: every reader and the writer run there.
+         */
+        private var destroyed = false
+
         private val keyguardPoll = object : Runnable {
             override fun run() {
-                if (!screenOn) return
+                if (!screenOn || destroyed) return
                 // On a device with no secure lock screen this is false immediately, which is the
                 // correct reading: there is no keyguard to dismiss.
                 if (!keyguardManager.isKeyguardLocked) {
-                    renderer.setLocked(false)
+                    unlock()
                     return
                 }
-                handler.postDelayed(this, KEYGUARD_POLL_MS)
+                if (SystemClock.uptimeMillis() < pollDeadlineMs) {
+                    handler.postDelayed(this, KEYGUARD_POLL_MS)
+                }
+                // Window elapsed while still locked: stop, and let ACTION_USER_PRESENT drive it.
             }
+        }
+
+        /**
+         * Leaves the lock visual, morphing only if there is somebody to watch it.
+         *
+         * An unlock straight into an app is not something the user sees, so it settles
+         * silently instead of queueing a transition to replay whenever that app is dismissed.
+         */
+        private fun unlock() {
+            renderer.setLocked(false, animate = isVisible)
+        }
+
+        /**
+         * True when a swap cannot be seen: the engine is not being shown *and* the device is not
+         * interactive.
+         */
+        // Both halves are needed, and they disagree exactly when it matters. Pressing power marks
+        // the device non-interactive immediately while the visibility callback arrives a beat
+        // later, and on a fast off/on that gap is precisely when a delivery lands.
+        private fun isPanelDark(): Boolean = !isVisible && !powerManager.isInteractive
+
+        private fun startKeyguardPoll() {
+            pollDeadlineMs = SystemClock.uptimeMillis() + POLL_WINDOW_MS
+            handler.removeCallbacks(keyguardPoll)
+            handler.post(keyguardPoll)
         }
 
         private val systemReceiver = object : BroadcastReceiver() {
@@ -81,20 +170,23 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                     Intent.ACTION_SCREEN_OFF -> {
                         screenOn = false
                         handler.removeCallbacks(keyguardPoll)
-                        // Early on purpose: this rewinds the counter and re-rolls the layout, and
-                        // landing late would show the settled home state on the lock screen.
-                        renderer.setLocked(true)
+                        handler.removeCallbacks(lockRunnable)
+                        handler.postDelayed(lockRunnable, LOCK_DELAY_MS)
                     }
 
                     Intent.ACTION_SCREEN_ON -> {
                         screenOn = true
-                        handler.post(keyguardPoll)
+                        // A wake inside the lock delay: the reset would now be visible, and the
+                        // engine is about to be told the real state by the poll anyway.
+                        handler.removeCallbacks(lockRunnable)
+                        startKeyguardPoll()
                     }
 
                     // Backstop for the poll, not the primary signal.
-                    Intent.ACTION_USER_PRESENT -> renderer.setLocked(false)
+                    Intent.ACTION_USER_PRESENT -> unlock()
 
-                    AtmosphereSource.ACTION_RELOAD -> reloadSource()
+                    ACTION_RELOAD ->
+                        reloadSource(intent.getBooleanExtra(EXTRA_FROM_ROTATION, false))
                 }
             }
         }
@@ -123,7 +215,7 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                 addAction(Intent.ACTION_SCREEN_OFF)
                 addAction(Intent.ACTION_SCREEN_ON)
                 addAction(Intent.ACTION_USER_PRESENT)
-                addAction(AtmosphereSource.ACTION_RELOAD)
+                addAction(ACTION_RELOAD)
             }
             // Not exported: the reload action is ours and nothing else should be able to drive it.
             // The three screen actions are protected system broadcasts, which the platform
@@ -136,21 +228,34 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                 )
             }
 
-            // The picker preview has no keyguard to dismiss, so show the effect rather than the
-            // bare photo the lock state would give.
-            if (isPreview) renderer.setLocked(false)
+            // Seed the visual from the real keyguard rather than assuming locked.
+            // No morph: this is the state the device is already in, not a transition into it.
+            val startLocked = !isPreview && keyguardManager.isKeyguardLocked
+            renderer.setLocked(startLocked, animate = false)
         }
 
         override fun onVisibilityChanged(visible: Boolean) {
             super.onVisibilityChanged(visible)
-            if (!visible) handler.removeCallbacks(keyguardPoll)
+            if (!visible) {
+                handler.removeCallbacks(keyguardPoll)
+                return
+            }
+            if (isPreview) return
+            // Becoming visible with the keyguard already gone settles without a morph.
+            // A real wake still arrives here *while locked*, takes the other branch, and lets the
+            // poll drive the transition.
+            renderer.setLocked(keyguardManager.isKeyguardLocked, animate = false)
         }
 
         override fun onDestroy() {
+            destroyed = true
             handler.removeCallbacks(keyguardPoll)
+            handler.removeCallbacks(lockRunnable)
             runCatching { unregisterReceiver(systemReceiver) }
             if (BuildConfig.DEBUG) runCatching { unregisterReceiver(seekReceiver) }
-            scope.cancel()
+            // Stops decodes that have not started; ones already past the decode are caught by the
+            // `destroyed` guard in the hand-off below.
+            decodeExecutor.shutdownNow()
             // Queued before super, which stops the GL thread. The context takes the GL objects
             // with it either way; this just does it in the right order when the thread is still
             // alive to run it.
@@ -164,22 +269,45 @@ class AtmosphereWallpaperService : GLWallpaperService() {
          *
          * A failure here leaves whatever is already loaded on screen. Nothing in this path is
          * allowed to produce a blank wallpaper.
+         *
+         * Ends with [renderPendingWork].
          */
-        private fun reloadSource() {
-            scope.launch {
+        private fun reloadSource(fromRotation: Boolean) {
+            decodeExecutor.execute {
                 val payload = AtmosphereSource.read(this@AtmosphereWallpaperService)
                 if (payload == null) {
                     Log.w(TAG, "Reload requested but no readable source; keeping current")
-                    return@launch
+                    return@execute
                 }
                 val bitmap = BitmapFactory.decodeByteArray(
                     payload.imageBytes, 0, payload.imageBytes.size
                 )
                 if (bitmap == null) {
                     Log.w(TAG, "Reload source failed to decode; keeping current")
-                    return@launch
+                    return@execute
                 }
-                renderer.queueSource(payload.seeds, bitmap)
+                handler.post {
+                    if (destroyed) {
+                        bitmap.recycle()
+                        return@post
+                    }
+                    renderer.queueSource(payload.seeds, bitmap, fromRotation)
+                    renderPendingWork()
+                }
+            }
+        }
+
+        /**
+         * The renderer has committed a queued source to the screen.
+         *
+         * Called on the **GL thread**, so it hops to the main looper before broadcasting. Only a
+         * rotation delivery advances the magazine, and never from a preview engine.
+         */
+        private fun onSourceAdopted(fromRotation: Boolean) {
+            if (!fromRotation || isPreview) return
+            handler.post {
+                if (destroyed) return@post
+                sendBroadcast(Intent(ACTION_DISPLAYED).setPackage(packageName))
             }
         }
     }

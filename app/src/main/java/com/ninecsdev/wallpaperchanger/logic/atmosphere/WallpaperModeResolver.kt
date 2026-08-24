@@ -2,6 +2,7 @@ package com.ninecsdev.wallpaperchanger.logic.atmosphere
 
 import android.app.WallpaperManager
 import android.content.Context
+import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService
@@ -28,6 +29,10 @@ class WallpaperModeResolver @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
     private val appDataStore: AppDataStore
 ) {
+    private companion object {
+        const val TAG = "WallpaperModeResolver"
+    }
+
     /**
      * True when NWC's [AtmosphereWallpaperService] is the currently-set system live wallpaper.
      * A live wallpaper reports its component via [WallpaperManager.getWallpaperInfo]; a static
@@ -60,5 +65,19 @@ class WallpaperModeResolver @Inject constructor(
         } else {
             WallpaperMode.STATIC
         }
+    }
+
+    /**
+     * Removes any separate lock-screen wallpaper so the engine receives both screens.
+     * Safe to call repeatedly; it does nothing when no lock wallpaper is set.
+     */
+    fun ensureEngineOwnsLockScreen() {
+        runCatching {
+            val manager = WallpaperManager.getInstance(appContext)
+            if (manager.getWallpaperId(WallpaperManager.FLAG_LOCK) > 0) {
+                manager.clear(WallpaperManager.FLAG_LOCK)
+                Log.i(TAG, "Cleared the separate lock wallpaper; the engine now owns both screens")
+            }
+        }.onFailure { Log.w(TAG, "Could not clear the lock wallpaper", it) }
     }
 }
