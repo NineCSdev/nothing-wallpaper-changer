@@ -107,12 +107,26 @@ class AtmosphereWallpaperService : GLWallpaperService() {
 
         private var screenOn = true
 
+        /**
+         * Whether this engine has actually observed the keyguard up since the last unlock.
+         *
+         * It is what separates *watching the keyguard get dismissed* — which deserves the morph —
+         * from *arriving into a world that is already unlocked*, which does not: applying from the
+         * picker, cold-starting at boot, or simply becoming visible again after an app was
+         * dismissed. Sampling `isKeyguardLocked` when we become visible cannot tell those apart,
+         * because by then the keyguard is gone in every one of them.
+         */
+        private var sawKeyguard = false
+
         private val powerManager by lazy {
             getSystemService(POWER_SERVICE) as PowerManager
         }
 
         /** Deferred by [LOCK_DELAY_MS] so the reset lands after the panel is dark. */
-        private val lockRunnable = Runnable { renderer.setLocked(true) }
+        private val lockRunnable = Runnable {
+            sawKeyguard = true
+            renderer.setLocked(true)
+        }
 
         /** uptimeMillis deadline for [keyguardPoll]; see [POLL_WINDOW_MS]. */
         private var pollDeadlineMs = 0L
@@ -125,7 +139,10 @@ class AtmosphereWallpaperService : GLWallpaperService() {
 
         private val keyguardPoll = object : Runnable {
             override fun run() {
-                if (!screenOn || destroyed) return
+                if (!screenOn || destroyed) {
+                    Log.d(TAG, "Keyguard poll stopped (screenOn=$screenOn, destroyed=$destroyed)")
+                    return
+                }
                 // On a device with no secure lock screen this is false immediately, which is the
                 // correct reading: there is no keyguard to dismiss.
                 if (!keyguardManager.isKeyguardLocked) {
@@ -134,7 +151,9 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                 }
                 if (SystemClock.uptimeMillis() < pollDeadlineMs) {
                     handler.postDelayed(this, KEYGUARD_POLL_MS)
+                    return
                 }
+                Log.d(TAG, "Keyguard poll window elapsed while still locked; stopping")
                 // Window elapsed while still locked: stop, and let ACTION_USER_PRESENT drive it.
             }
         }
@@ -146,7 +165,13 @@ class AtmosphereWallpaperService : GLWallpaperService() {
          * silently instead of queueing a transition to replay whenever that app is dismissed.
          */
         private fun unlock() {
-            renderer.setLocked(false, animate = isVisible)
+            // Animate only for an unlock this engine watched happen *and* is on screen for. The
+            // second half is a weak guard on its own — during the unlock transition the keyguard is
+            // still showing the wallpaper, so we read as visible even when an app is about to cover
+            // us — which is why settleNow() on going invisible backs it up.
+            val animate = sawKeyguard && isVisible
+            sawKeyguard = false
+            renderer.setLocked(false, animate = animate)
         }
 
         /**
@@ -159,6 +184,7 @@ class AtmosphereWallpaperService : GLWallpaperService() {
         private fun isPanelDark(): Boolean = !isVisible && !powerManager.isInteractive
 
         private fun startKeyguardPoll() {
+            Log.d(TAG, "Keyguard poll armed (screenOn=$screenOn, visible=$isVisible)")
             pollDeadlineMs = SystemClock.uptimeMillis() + POLL_WINDOW_MS
             handler.removeCallbacks(keyguardPoll)
             handler.post(keyguardPoll)
@@ -168,6 +194,7 @@ class AtmosphereWallpaperService : GLWallpaperService() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 when (intent?.action) {
                     Intent.ACTION_SCREEN_OFF -> {
+                        Log.d(TAG, "ACTION_SCREEN_OFF")
                         screenOn = false
                         handler.removeCallbacks(keyguardPoll)
                         handler.removeCallbacks(lockRunnable)
@@ -175,6 +202,7 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                     }
 
                     Intent.ACTION_SCREEN_ON -> {
+                        Log.d(TAG, "ACTION_SCREEN_ON")
                         screenOn = true
                         // A wake inside the lock delay: the reset would now be visible, and the
                         // engine is about to be told the real state by the poll anyway.
@@ -183,7 +211,10 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                     }
 
                     // Backstop for the poll, not the primary signal.
-                    Intent.ACTION_USER_PRESENT -> unlock()
+                    Intent.ACTION_USER_PRESENT -> {
+                        Log.d(TAG, "ACTION_USER_PRESENT")
+                        unlock()
+                    }
 
                     ACTION_RELOAD ->
                         reloadSource(intent.getBooleanExtra(EXTRA_FROM_ROTATION, false))
@@ -232,19 +263,42 @@ class AtmosphereWallpaperService : GLWallpaperService() {
             // No morph: this is the state the device is already in, not a transition into it.
             val startLocked = !isPreview && keyguardManager.isKeyguardLocked
             renderer.setLocked(startLocked, animate = false)
+            if (startLocked) {
+                // Created behind the keyguard, which is the boot case. Arm the poll here rather
+                // than waiting for ACTION_SCREEN_ON, which has usually already fired by the time
+                // the engine exists — otherwise nothing watches for the dismissal and the first
+                // unlock after a reboot never morphs.
+                sawKeyguard = true
+                startKeyguardPoll()
+            }
         }
 
         override fun onVisibilityChanged(visible: Boolean) {
+            if (!visible) {
+                // Before super, which draws one last frame before parking the GL thread: settling
+                // first makes that frame the settled state rather than a half-finished morph.
+                renderer.settleNow()
+            }
             super.onVisibilityChanged(visible)
+            Log.d(TAG, "Visibility -> $visible")
+
             if (!visible) {
                 handler.removeCallbacks(keyguardPoll)
                 return
             }
             if (isPreview) return
-            // Becoming visible with the keyguard already gone settles without a morph.
-            // A real wake still arrives here *while locked*, takes the other branch, and lets the
-            // poll drive the transition.
-            renderer.setLocked(keyguardManager.isKeyguardLocked, animate = false)
+
+            if (keyguardManager.isKeyguardLocked) {
+                // A wake onto the lock screen. Re-arm in case ACTION_SCREEN_ON was missed, and
+                // record that there is a keyguard here to be dismissed.
+                sawKeyguard = true
+                renderer.setLocked(true, animate = false)
+                startKeyguardPoll()
+            } else {
+                // Already unlocked. Whether this is *the* unlock or merely a return to an unlocked
+                // home screen is exactly what sawKeyguard answers.
+                unlock()
+            }
         }
 
         override fun onDestroy() {

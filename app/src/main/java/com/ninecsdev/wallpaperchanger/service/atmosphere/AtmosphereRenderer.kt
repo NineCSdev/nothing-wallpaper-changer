@@ -107,6 +107,9 @@ internal class AtmosphereRenderer(
     /** Whether the pending unlock should play the morph or land on the settled frame directly. */
     private val animateUnlock = AtomicBoolean(true)
 
+    /** Set from off the GL thread to cut a morph short; consumed in [applyPendingWork]. */
+    private val settleRequested = AtomicBoolean(false)
+
     /** Debug frame scrub. Below zero means "run normally". */
     private val pinnedFrame = AtomicInteger(-1)
 
@@ -185,6 +188,11 @@ internal class AtmosphereRenderer(
             Log.d(TAG, "Lock state -> $isLocked (animate=$animate)")
             requestRender()
         }
+    }
+
+    /** Abandons any morph in flight and jumps to the settled frame. For when unlock lands on an open app */
+    fun settleNow() {
+        if (settleRequested.compareAndSet(false, true)) requestRender()
     }
 
     /** Debug only: hold at [frameNumber], or pass a negative to resume. */
@@ -469,6 +477,8 @@ internal class AtmosphereRenderer(
     // Source handling
 
     private fun applyPendingWork() {
+        if (settleRequested.getAndSet(false)) animating = false
+
         if (lockStateDirty.getAndSet(false)) {
             if (locked.get()) {
                 frame = 0
