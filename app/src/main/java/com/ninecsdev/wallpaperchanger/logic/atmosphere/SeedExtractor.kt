@@ -118,7 +118,6 @@ class SeedExtractor @Inject constructor() {
                 .generate()
                 .swatches
                 .sortedByDescending { it.population }
-                .toMutableList()
 
             if (swatches.isEmpty()) {
                 Log.w(TAG, "Palette returned no swatches; falling back to a flat seed set")
@@ -126,7 +125,7 @@ class SeedExtractor @Inject constructor() {
             }
 
             val seeds = nearestPixelPerSwatch(scan, swatches)
-            padToSeedCount(seeds, swatches)
+            padToSeedCount(seeds, swatches[0])
 
             Log.d(
                 TAG,
@@ -302,12 +301,12 @@ class SeedExtractor @Inject constructor() {
      * steps — half of them down, the rest up — wrapping by 0.6 when they run off either end.
      * They are placed at random positions, the only true randomness in the seed list.
      *
-     * `swatches[0].hsl` hands back Palette's **own** array, and this re-fetches and mutates it in
+     * [base]`.hsl` hands back Palette's **own** array, and this re-fetches and mutates it in
      * place on every iteration so the steps compound instead of each starting from the base
      * saturation. That is deliberate and load-bearing: hoisting the fetch out of the loop, or
      * copying the array, changes the colors this produces.
      */
-    private fun padToSeedCount(seeds: MutableList<VertexInfo>, swatches: MutableList<Palette.Swatch>) {
+    private fun padToSeedCount(seeds: MutableList<VertexInfo>, base: Palette.Swatch) {
         val missing = AtmosphereConstants.SEED_COUNT - seeds.size
         if (missing <= 0) return
 
@@ -316,28 +315,26 @@ class SeedExtractor @Inject constructor() {
         val height = seeds[0].bitmapHeight
 
         for (k in half downTo 1) {
-            val hsl = swatches[0].hsl
+            val hsl = base.hsl
             hsl[1] -= k * 0.1f
             if (hsl[1] < 0f) hsl[1] += 0.6f
-            appendSynthesised(seeds, swatches, ColorUtils.HSLToColor(hsl), width, height)
+            appendSynthesised(seeds, ColorUtils.HSLToColor(hsl), width, height)
         }
 
         for (k in 1..(missing - half)) {
-            val hsl = swatches[0].hsl
+            val hsl = base.hsl
             hsl[1] += k * 0.1f
             if (hsl[1] > 1f) hsl[1] -= 0.6f
-            appendSynthesised(seeds, swatches, ColorUtils.HSLToColor(hsl), width, height)
+            appendSynthesised(seeds, ColorUtils.HSLToColor(hsl), width, height)
         }
     }
 
     private fun appendSynthesised(
         seeds: MutableList<VertexInfo>,
-        swatches: MutableList<Palette.Swatch>,
         rgb: Int,
         width: Int,
         height: Int
     ) {
-        swatches += Palette.Swatch(rgb, -1)
         seeds += VertexInfo(
             x = (Random.nextFloat() * width).toInt().coerceIn(0, width - 1),
             y = (Random.nextFloat() * height).toInt().coerceIn(0, height - 1),

@@ -9,6 +9,7 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.net.Uri
 import androidx.core.graphics.createBitmap
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 
@@ -85,6 +86,16 @@ object ImageProcessingUtils {
             bitmap.compress(format, quality, out)
         }
     }
+
+    /**
+     * [compressToFile]'s in-memory sibling, for the atmosphere source container, which carries the
+     * encoded bytes inline rather than as a file of their own.
+     */
+    fun compressToBytes(
+        bitmap: Bitmap,
+        format: Bitmap.CompressFormat = Bitmap.CompressFormat.WEBP_LOSSY,
+        quality: Int = 95
+    ): ByteArray = ByteArrayOutputStream().also { bitmap.compress(format, quality, it) }.toByteArray()
 
     /**
      * Recycles both the [source] and [processed] bitmaps.

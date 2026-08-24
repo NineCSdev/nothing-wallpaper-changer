@@ -184,7 +184,7 @@ class BufferManager @Inject constructor(
     /**
      * The single decode → transform pipeline behind both [prepareNextWallpaper] and
      * [renderForAtmosphere]. Decodes [wallpaper] at the screen's target size (oversampling when it
-     * carries edit params), applies the edit transform or [cropRule] plus [zoomFix], and returns the
+     * carries edit params), applies the edit transform or [cropRule] plus [framing], and returns the
      * result. The intermediate source bitmap is always recycled; **the returned bitmap is the
      * caller's.**
      *
@@ -382,33 +382,11 @@ class BufferManager @Inject constructor(
 
     private fun writeBuffer(bitmap: Bitmap, cropRule: CropRule) {
         val bufferFile = getBufferFile()
-        writeAtomically(bitmap, File(appContext.cacheDir, TEMP_FILENAME), bufferFile)
+        // Written aside and swapped in: the rotation consumer may open this file at any moment.
+        writeAtomically(File(appContext.cacheDir, TEMP_FILENAME), bufferFile) { temp ->
+            ImageProcessingUtils.compressToFile(bitmap, temp, quality = COMPRESSION_QUALITY)
+        }
         Log.d(TAG, "Buffer ready: ${bufferFile.length() / 1024} KB | Rule: $cropRule")
-    }
-
-    /**
-     * Compresses [bitmap] into [tempFile] and swaps it onto [destination] in place, so a crash
-     * mid-write can never leave a reader (the rotation buffer consumer or the atmosphere renderer)
-     * decoding a half-written file. [tempFile] must live on the same filesystem as [destination].
-     */
-    private fun writeAtomically(bitmap: Bitmap, tempFile: File, destination: File) {
-        try {
-            ImageProcessingUtils.compressToFile(bitmap, tempFile, quality = COMPRESSION_QUALITY)
-            replaceAtomically(tempFile, destination)
-        } finally {
-            // Only ever has an effect when one of the two steps above threw: on success the swap
-            // consumed the temp file. `delete()` returns false for a missing file rather than
-            // throwing, so it needs no existence guard.
-            tempFile.delete()
-        }
-    }
-
-    private fun recyclePreparedBitmaps(sourceBitmap: Bitmap, finalBitmap: Bitmap?) {
-        if (finalBitmap == null) {
-            sourceBitmap.recycle()
-        } else {
-            ImageProcessingUtils.recycleSafely(sourceBitmap, finalBitmap)
-        }
     }
 
     private fun addZoomFixPadding(screenBitmap: Bitmap, zoomFix: WallpaperZoomFix): Bitmap {

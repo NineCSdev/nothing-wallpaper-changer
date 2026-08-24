@@ -24,3 +24,17 @@ fun replaceAtomically(tempFile: File, destination: File) {
         Files.move(tempFile.toPath(), destination.toPath(), REPLACE_EXISTING)
     }
 }
+
+/**
+ * Runs [write] against [tempFile] and swaps the result onto [destination] through
+ * [replaceAtomically], deleting the temp file on any failure.
+ */
+inline fun writeAtomically(tempFile: File, destination: File, write: (File) -> Unit) {
+    try {
+        write(tempFile)
+        replaceAtomically(tempFile, destination)
+    } finally {
+        // Only has an effect when one of the steps above threw, on success delete() is NOOP as tempFile doesn't exist
+        tempFile.delete()
+    }
+}

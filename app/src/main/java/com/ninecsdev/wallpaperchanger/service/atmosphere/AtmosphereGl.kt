@@ -41,7 +41,7 @@ internal object AtmosphereGl {
 
     private const val FLOATS_PER_VERTEX = 4
     private const val QUAD_VERTEX_COUNT = 6
-    private const val BYTES_PER_FLOAT = 4
+    const val BYTES_PER_FLOAT = 4
 
     // Programs
 
@@ -126,6 +126,20 @@ internal object AtmosphereGl {
         return ids[0]
     }
 
+    fun deleteFramebuffer(id: Int) {
+        if (id != 0) GLES30.glDeleteFramebuffers(1, intArrayOf(id), 0)
+    }
+
+    fun createBuffer(): Int {
+        val ids = IntArray(1)
+        GLES30.glGenBuffers(1, ids, 0)
+        return ids[0]
+    }
+
+    fun deleteBuffer(id: Int) {
+        if (id != 0) GLES30.glDeleteBuffers(1, intArrayOf(id), 0)
+    }
+
     fun bindFramebuffer(fbo: Int, texture: Int, width: Int, height: Int) {
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, fbo)
         GLES30.glFramebufferTexture2D(
@@ -162,10 +176,27 @@ internal object AtmosphereGl {
         if (id != 0) GLES30.glDeleteTextures(1, intArrayOf(id), 0)
     }
 
-    fun bindTextureUnit0(texture: Int, samplerLocation: Int) {
-        GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
+    /**
+     * Every pass samples from unit 0 and nothing here ever changes the active unit, so both the
+     * unit selection and each program's sampler uniform are set once at startup (see
+     * [AtmosphereRenderer.onSurfaceCreated]) rather than re-sent on every bind.
+     */
+    fun bindTexture0(texture: Int) {
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, texture)
-        GLES30.glUniform1i(samplerLocation, 0)
+    }
+
+    /** Points [program]'s [samplerName] at texture unit 0. Program state, so once after link. */
+    fun bindSamplerToUnit0(program: Int, samplerName: String) {
+        if (program == 0) return
+        GLES30.glUseProgram(program)
+        GLES30.glUniform1i(GLES30.glGetUniformLocation(program, samplerName), 0)
+    }
+
+    /** Unpacks the low 24 bits of an ARGB int into `out` as three 0..1 floats. */
+    fun unpackRgb(color: Int, out: FloatArray) {
+        out[0] = ((color shr 16) and 0xFF) / 255f
+        out[1] = ((color shr 8) and 0xFF) / 255f
+        out[2] = (color and 0xFF) / 255f
     }
 
     // The full-screen quad
@@ -182,16 +213,10 @@ internal object AtmosphereGl {
         private var vbo = 0
 
         fun create() {
-            val buffer: FloatBuffer = ByteBuffer
-                .allocateDirect(QUAD.size * BYTES_PER_FLOAT)
-                .order(ByteOrder.nativeOrder())
-                .asFloatBuffer()
-                .put(QUAD)
+            val buffer: FloatBuffer = newFloatBuffer(QUAD.size).put(QUAD)
             buffer.position(0)
 
-            val ids = IntArray(1)
-            GLES30.glGenBuffers(1, ids, 0)
-            vbo = ids[0]
+            vbo = createBuffer()
             GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, vbo)
             GLES30.glBufferData(
                 GLES30.GL_ARRAY_BUFFER, QUAD.size * BYTES_PER_FLOAT, buffer, GLES30.GL_STATIC_DRAW
@@ -214,10 +239,8 @@ internal object AtmosphereGl {
         }
 
         fun release() {
-            if (vbo != 0) {
-                GLES30.glDeleteBuffers(1, intArrayOf(vbo), 0)
-                vbo = 0
-            }
+            deleteBuffer(vbo)
+            vbo = 0
         }
     }
 

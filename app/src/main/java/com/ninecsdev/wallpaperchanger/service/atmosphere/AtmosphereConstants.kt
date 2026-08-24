@@ -91,7 +91,7 @@ internal object AtmosphereConstants {
     )
 
     /** Shoelace centroid of [DEFAULT_VERTICES], derived rather than stored. */
-    val DEFAULT_CENTROID: FloatArray = centroidOf(DEFAULT_VERTICES)
+    private val DEFAULT_CENTROID: FloatArray = centroidOf(DEFAULT_VERTICES)
 
     val DEFAULT_CENTROID_X: Float = DEFAULT_CENTROID[0]
     val DEFAULT_CENTROID_Y: Float = DEFAULT_CENTROID[1]
@@ -186,15 +186,27 @@ internal object AtmosphereConstants {
      * were authored against. Returns 1.0 on any panel at least that wide, so on the reference
      * device this is a no-op and every absolute distance is already in native units.
      *
-     * @param type 0 scales linearly, 1 eases, anything else pins to 1.0.
+     * Scales linearly below the reference width; [easedRenderRate] is the same adaptation on a
+     * curve, and the two are not interchangeable.
      */
-    fun renderRate(width: Int, type: Int): Float {
+    fun renderRate(width: Int): Float {
         if (width > REFERENCE_WIDTH - 1f) return 1f
-        val x = width / REFERENCE_WIDTH
-        return when (type) {
-            0 -> x
-            1 -> RENDER_RATE_EASE.getInterpolation(x)
-            else -> 1f
-        }
+        return width / REFERENCE_WIDTH
     }
+
+    /** [renderRate] through [RENDER_RATE_EASE]. Used by the grain ramp alone. */
+    fun easedRenderRate(width: Int): Float {
+        if (width > REFERENCE_WIDTH - 1f) return 1f
+        return RENDER_RATE_EASE.getInterpolation(width / REFERENCE_WIDTH)
+    }
+
+    // Frame ramps
+
+    /** Linear 0..1 progress of [frame] across the window `[from, to]`, clamped at both ends. */
+    fun ramp(frame: Int, from: Int = 0, to: Int): Float =
+        ((frame - from).toFloat() / (to - from)).coerceIn(0f, 1f)
+
+    /** [ramp] through [ANIM_EASE], which is what every window but the grain uses. */
+    fun easedRamp(frame: Int, from: Int = 0, to: Int): Float =
+        ANIM_EASE.getInterpolation(ramp(frame, from, to))
 }

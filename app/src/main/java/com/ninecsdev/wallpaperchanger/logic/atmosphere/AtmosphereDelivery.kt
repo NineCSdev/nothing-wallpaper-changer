@@ -6,12 +6,12 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.logic.BufferManager
+import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
 import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereSource
 import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -37,7 +37,6 @@ class AtmosphereDelivery @Inject constructor(
 ) {
     private companion object {
         const val TAG = "AtmosphereDelivery"
-        const val COMPRESSION_QUALITY = 95
     }
 
     /**
@@ -88,9 +87,7 @@ class AtmosphereDelivery @Inject constructor(
      */
     suspend fun deliverBitmap(bitmap: Bitmap): Boolean = withContext(Dispatchers.IO) {
         try {
-            val stream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, COMPRESSION_QUALITY, stream)
-            publish(stream.toByteArray(), bitmap, fromRotation = false)
+            publish(ImageProcessingUtils.compressToBytes(bitmap), bitmap, fromRotation = false)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to deliver a rendered bitmap", e)
             false
@@ -120,7 +117,7 @@ class AtmosphereDelivery @Inject constructor(
      *
      * [fromRotation] marks whether the reload is a rotation delivery that should advance the magazine
      */
-    fun sendReload(fromRotation: Boolean = false) {
+    private fun sendReload(fromRotation: Boolean) {
         appContext.sendBroadcast(
             Intent(AtmosphereWallpaperService.ACTION_RELOAD)
                 .setPackage(appContext.packageName)

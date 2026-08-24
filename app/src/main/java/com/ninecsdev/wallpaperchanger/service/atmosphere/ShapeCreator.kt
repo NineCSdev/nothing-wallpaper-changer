@@ -21,14 +21,12 @@ internal class ShapeCreator {
     private companion object {
         /**
          * Rolled **once per process** and only advanced thereafter. This is not the same lifetime
-         * as [targetRandom] and the difference shows: blob sizes and the path shape evolve slowly
+         * as `targetRandom` and the difference shows: blob sizes and the path shape evolve slowly
          * across the process's life, while the layout jumps on every lock.
          */
         val PROCESS_RANDOM = Random(System.currentTimeMillis() / 1000L)
 
         const val FLOATS_PER_POSITION = 2
-        const val FLOATS_PER_COLOR = 3
-        const val BYTES_PER_FLOAT = 4
     }
 
     private val outlines = Array(AtmosphereConstants.BLOB_COUNT) { BlobOutline() }
@@ -41,6 +39,9 @@ internal class ShapeCreator {
         FloatArray(AtmosphereConstants.ANCHOR_COUNT)
     }
 
+    /** The width-scaled pentagon every outline is rewound to; rebuilt by [fillBaseAnchors]. */
+    private val baseAnchors = FloatArray(AtmosphereConstants.ANCHOR_COUNT * 2)
+
     /** 0 straight, 1 and 2 the two semicircular arcs. Shared by all five blobs, not per blob. */
     private var rotationMode = 0
 
@@ -51,13 +52,11 @@ internal class ShapeCreator {
     private var program = 0
     private var uMvpMatrix = 0
     private var uAlpha = 0
+    private var uColor = 0
     private var vbo = 0
 
     private val positions = FloatArray(BlobOutline.MAX_STRIP_VERTICES * FLOATS_PER_POSITION)
     private val positionBuffer = AtmosphereGl.newFloatBuffer(positions.size)
-    private val colorBuffer = AtmosphereGl.newFloatBuffer(
-        BlobOutline.MAX_STRIP_VERTICES * FLOATS_PER_COLOR
-    )
 
     /** Reused by [positionAt]; five blobs a frame is not the place to box floats. */
     private val blobPosition = FloatArray(2)
@@ -65,10 +64,8 @@ internal class ShapeCreator {
     private val mvp = FloatArray(16)
     private val projection = FloatArray(16)
     private val model = FloatArray(16)
-    private val scratch = FloatArray(16)
 
-    private val positionBytes = positions.size * BYTES_PER_FLOAT
-    private val colorBytes = BlobOutline.MAX_STRIP_VERTICES * FLOATS_PER_COLOR * BYTES_PER_FLOAT
+    private val positionBytes = positions.size * AtmosphereGl.BYTES_PER_FLOAT
 
     val isReady: Boolean get() = program != 0 && seeds.size == AtmosphereConstants.SEED_COUNT
 
@@ -79,24 +76,19 @@ internal class ShapeCreator {
         if (program == 0) return
         uMvpMatrix = GLES30.glGetUniformLocation(program, "uMVPMatrix")
         uAlpha = GLES30.glGetUniformLocation(program, "uAlpha")
+        uColor = GLES30.glGetUniformLocation(program, "uColor")
 
         // Sized once at the worst case and only ever sub-loaded after this, so the per-frame path
         // never re-specifies buffer storage — five blobs a frame is not the place to reallocate.
-        val ids = IntArray(1)
-        GLES30.glGenBuffers(1, ids, 0)
-        vbo = ids[0]
+        vbo = AtmosphereGl.createBuffer()
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, vbo)
-        GLES30.glBufferData(
-            GLES30.GL_ARRAY_BUFFER, positionBytes + colorBytes, null, GLES30.GL_DYNAMIC_DRAW
-        )
+        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, positionBytes, null, GLES30.GL_DYNAMIC_DRAW)
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, 0)
     }
 
     fun release() {
-        if (vbo != 0) {
-            GLES30.glDeleteBuffers(1, intArrayOf(vbo), 0)
-            vbo = 0
-        }
+        AtmosphereGl.deleteBuffer(vbo)
+        vbo = 0
         if (program != 0) {
             GLES30.glDeleteProgram(program)
             program = 0
@@ -125,13 +117,15 @@ internal class ShapeCreator {
 
         rotationMode = PROCESS_RANDOM.nextInt(3)
 
-        val rate = AtmosphereConstants.renderRate(width, 0)
+        val rate = AtmosphereConstants.renderRate(width)
+        // One pentagon for all five
+        fillBaseAnchors(rate)
         for (s in 0 until AtmosphereConstants.BLOB_COUNT) {
             for (j in 0 until AtmosphereConstants.ANCHOR_COUNT) {
                 steps[s][j] = ((PROCESS_RANDOM.nextInt(3) * 2 + 2).toFloat()) * rate
             }
             // Seed 0 is the background color; the blobs are 1..5.
-            outlines[s].reset(baseAnchors(width), steps[s], seeds[s + 1].pixelColor)
+            outlines[s].reset(baseAnchors, steps[s], seeds[s + 1].pixelColor)
         }
     }
 
@@ -139,17 +133,13 @@ internal class ShapeCreator {
      * The base pentagon, scaled about its centroid by the render rate. On a panel at least
      * as wide as the reference this is the literal constant.
      */
-    private fun baseAnchors(width: Int): FloatArray {
-        val rate = AtmosphereConstants.renderRate(width, 0)
-        val out = FloatArray(AtmosphereConstants.ANCHOR_COUNT * 2)
-
+    private fun fillBaseAnchors(rate: Float) {
         for (i in 0 until AtmosphereConstants.ANCHOR_COUNT) {
             val dx = AtmosphereConstants.DEFAULT_VERTICES[i * 2] - AtmosphereConstants.DEFAULT_CENTROID_X
             val dy = AtmosphereConstants.DEFAULT_VERTICES[i * 2 + 1] - AtmosphereConstants.DEFAULT_CENTROID_Y
-            out[i * 2] = AtmosphereConstants.DEFAULT_CENTROID_X + dx * rate
-            out[i * 2 + 1] = AtmosphereConstants.DEFAULT_CENTROID_Y + dy * rate
+            baseAnchors[i * 2] = AtmosphereConstants.DEFAULT_CENTROID_X + dx * rate
+            baseAnchors[i * 2 + 1] = AtmosphereConstants.DEFAULT_CENTROID_Y + dy * rate
         }
-        return out
     }
 
     // Drawing
@@ -174,25 +164,17 @@ internal class ShapeCreator {
         GLES30.glUseProgram(program)
         GLES30.glUniform1f(uAlpha, alphaAt(frame))
 
-        // Identity first so a blob that somehow skipped its own
-        // matrix would draw in clip space rather than inheriting the previous blob's.
-        Matrix.setIdentityM(mvp, 0)
-        GLES30.glUniformMatrix4fv(uMvpMatrix, 1, false, mvp, 0)
-
         Matrix.orthoM(projection, 0, 0f, width.toFloat(), 0f, height.toFloat(), -1f, 1f)
 
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, vbo)
         GLES30.glEnableVertexAttribArray(0)
         GLES30.glVertexAttribPointer(0, FLOATS_PER_POSITION, GLES30.GL_FLOAT, false, 0, 0)
-        GLES30.glEnableVertexAttribArray(1)
-        GLES30.glVertexAttribPointer(1, FLOATS_PER_COLOR, GLES30.GL_FLOAT, false, 0, positionBytes)
 
         for (s in 0 until AtmosphereConstants.BLOB_COUNT) {
-            drawBlob(s, frame, isInit, eased, width, height)
+            drawBlob(s, frame, isInit, travel, eased, width, height)
         }
 
         GLES30.glDisableVertexAttribArray(0)
-        GLES30.glDisableVertexAttribArray(1)
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, 0)
     }
 
@@ -200,6 +182,7 @@ internal class ShapeCreator {
         index: Int,
         frame: Int,
         isInit: Boolean,
+        travel: Float,
         easedTravel: Float,
         width: Int,
         height: Int
@@ -207,7 +190,7 @@ internal class ShapeCreator {
         val outline = outlines[index]
         outline.advanceTo(frame, isInit)
 
-        val vertexCount = outline.tessellate(travelProgress(frame), positions)
+        val vertexCount = outline.tessellate(travel, positions)
         if (vertexCount < 3) return
 
         positionBuffer.position(0)
@@ -215,26 +198,19 @@ internal class ShapeCreator {
         positionBuffer.position(0)
         GLES30.glBufferSubData(
             GLES30.GL_ARRAY_BUFFER, 0,
-            vertexCount * FLOATS_PER_POSITION * BYTES_PER_FLOAT, positionBuffer
+            vertexCount * FLOATS_PER_POSITION * AtmosphereGl.BYTES_PER_FLOAT, positionBuffer
         )
 
-        colorBuffer.position(0)
-        repeat(vertexCount) { colorBuffer.put(outline.color) }
-        colorBuffer.position(0)
-        GLES30.glBufferSubData(
-            GLES30.GL_ARRAY_BUFFER, positionBytes,
-            vertexCount * FLOATS_PER_COLOR * BYTES_PER_FLOAT, colorBuffer
-        )
-
+        // Constant across the strip and only changes on reset, so a uniform rather than a
+        // per-vertex attribute streamed five times a frame.
+        GLES30.glUniform3fv(uColor, 1, outline.color, 0)
         applyMvp(index, easedTravel, width, height)
         GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, vertexCount)
     }
 
     /**
-     * Places the blob on screen: translate to its drifted position, rotate about its own
-     * centroid, then project surface pixels into NDC.
-     *
-     * The rotation factor is present and held at zero.
+     * Places the blob on screen: translate to its drifted position, offset by the base pentagon's
+     * centroid so the outline sits on that point, then project surface pixels into NDC.
      */
     private fun applyMvp(index: Int, easedTravel: Float, width: Int, height: Int) {
         val seed = seeds[index + 1]
@@ -248,17 +224,15 @@ internal class ShapeCreator {
         positionAt(anchorX, anchorY, targetX, targetY, easedTravel)
 
         Matrix.setIdentityM(model, 0)
-        Matrix.translateM(model, 0, blobPosition[0], blobPosition[1], 0f)
-        Matrix.rotateM(model, 0, 0f, 0f, 0f, 1f)
         Matrix.translateM(
             model, 0,
-            -AtmosphereConstants.DEFAULT_CENTROID_X,
-            -AtmosphereConstants.DEFAULT_CENTROID_Y,
+            blobPosition[0] - AtmosphereConstants.DEFAULT_CENTROID_X,
+            blobPosition[1] - AtmosphereConstants.DEFAULT_CENTROID_Y,
             0f
         )
 
-        Matrix.multiplyMM(scratch, 0, projection, 0, model, 0)
-        System.arraycopy(scratch, 0, mvp, 0, 16)
+        // multiplyMM only forbids aliasing between the result and its inputs, and mvp is neither.
+        Matrix.multiplyMM(mvp, 0, projection, 0, model, 0)
         GLES30.glUniformMatrix4fv(uMvpMatrix, 1, false, mvp, 0)
     }
 
@@ -309,21 +283,20 @@ internal class ShapeCreator {
     }
 
     /** Linear 0..1 across the travel window; the ease is applied by the caller. */
-    private fun travelProgress(frame: Int): Float {
-        val span = (AtmosphereConstants.TOTAL_ANIM_FRAMES - AtmosphereConstants.FIRST_BLOB_FRAME).toFloat()
-        return ((frame - AtmosphereConstants.FIRST_BLOB_FRAME) / span).coerceIn(0f, 1f)
-    }
+    private fun travelProgress(frame: Int): Float = AtmosphereConstants.ramp(
+        frame,
+        from = AtmosphereConstants.FIRST_BLOB_FRAME,
+        to = AtmosphereConstants.TOTAL_ANIM_FRAMES
+    )
 
     /**
      * Blob opacity. Full at frame [AtmosphereConstants.RANDOMIZE_SHAPES_TRANSITION] -- barely a
      * third of the way in, while the photo is still more than half visible and the blobs are
      * still traveling.
      */
-    private fun alphaAt(frame: Int): Float {
-        val span = (
-            AtmosphereConstants.RANDOMIZE_SHAPES_TRANSITION - AtmosphereConstants.FIRST_BLOB_FRAME
-            ).toFloat()
-        val t = ((frame - AtmosphereConstants.FIRST_BLOB_FRAME) / span).coerceIn(0f, 1f)
-        return AtmosphereConstants.ANIM_EASE.getInterpolation(t)
-    }
+    private fun alphaAt(frame: Int): Float = AtmosphereConstants.easedRamp(
+        frame,
+        from = AtmosphereConstants.FIRST_BLOB_FRAME,
+        to = AtmosphereConstants.RANDOMIZE_SHAPES_TRANSITION
+    )
 }

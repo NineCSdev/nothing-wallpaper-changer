@@ -9,21 +9,18 @@ uniform float uKernel[124];
 uniform int   uBlurRadius;
 uniform vec2  uBlurOffset;
 
-float getWeight(int i) { return uKernel[i]; }
-
-// Matches the CLAMP_TO_EDGE wrap on every texture here: edges smear outward
-// rather than wrapping.
-vec2 clampCoordinate(vec2 c) { return clamp(c, vec2(0.0), vec2(1.0)); }
-
+// No coordinate clamp: every texture this samples is CLAMP_TO_EDGE (AtmosphereGl.createFboTexture),
+// so the sampler already smears the edge outward and clamping in ALU would repeat that on every tap
+// of the hottest shader in the pipeline.
 void main() {
     vec4 sourceColor = texture(screenTexture, vTexCoord);
     if (uBlurRadius <= 1) { FragColor = sourceColor; return; }
-    float weight = getWeight(0);
-    vec3 finalColor = sourceColor.rgb * weight;
+    vec3 finalColor = sourceColor.rgb * uKernel[0];
     for (int i = 1; i < uBlurRadius; i++) {
-        weight = getWeight(i);
-        finalColor += texture(screenTexture, clampCoordinate(vTexCoord - uBlurOffset * float(i))).rgb * weight;
-        finalColor += texture(screenTexture, clampCoordinate(vTexCoord + uBlurOffset * float(i))).rgb * weight;
+        float weight = uKernel[i];
+        vec2 tap = uBlurOffset * float(i);
+        finalColor += texture(screenTexture, vTexCoord - tap).rgb * weight;
+        finalColor += texture(screenTexture, vTexCoord + tap).rgb * weight;
     }
     FragColor = vec4(finalColor, sourceColor.a);
 }

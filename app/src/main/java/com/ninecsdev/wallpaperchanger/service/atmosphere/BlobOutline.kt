@@ -48,9 +48,7 @@ internal class BlobOutline {
         growthSteps.copyInto(steps)
         curveScale = 0f
 
-        color[0] = ((blobColor shr 16) and 0xFF) / 255f
-        color[1] = ((blobColor shr 8) and 0xFF) / 255f
-        color[2] = (blobColor and 0xFF) / 255f
+        AtmosphereGl.unpackRgb(blobColor, color)
 
         computeCentroid()
     }

@@ -1,8 +1,10 @@
 package com.ninecsdev.wallpaperchanger.service.atmosphere
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Log
-import com.ninecsdev.wallpaperchanger.logic.replaceAtomically
+import com.ninecsdev.wallpaperchanger.logic.writeAtomically
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
@@ -31,9 +33,10 @@ object AtmosphereSource {
     /** A decoded container: the seeds, and the still-encoded image bytes. */
     class Payload(val seeds: List<VertexInfo>, val imageBytes: ByteArray)
 
-    fun file(context: Context): File = File(context.filesDir, FILE_NAME)
+    /** A read whose image bytes have been decoded. The caller owns [bitmap]. */
+    class Decoded(val seeds: List<VertexInfo>, val bitmap: Bitmap)
 
-    fun exists(context: Context): Boolean = file(context).let { it.exists() && it.length() > 0 }
+    fun file(context: Context): File = File(context.filesDir, FILE_NAME)
 
     /**
      * Replaces the current source. Returns false and leaves the existing file untouched on any
@@ -46,31 +49,48 @@ object AtmosphereSource {
             "expected ${AtmosphereConstants.SEED_COUNT} seeds, got ${seeds.size}"
         }
 
-        val temp = File(context.filesDir, TEMP_FILE_NAME)
         return try {
-            DataOutputStream(temp.outputStream().buffered()).use { out ->
-                out.writeInt(MAGIC)
-                out.writeInt(VERSION)
-                out.writeInt(seeds.size)
-                for (seed in seeds) {
-                    out.writeInt(seed.x)
-                    out.writeInt(seed.y)
-                    out.writeInt(seed.bitmapWidth)
-                    out.writeInt(seed.bitmapHeight)
-                    out.writeInt(seed.pixelColor)
-                    out.writeInt(seed.population)
+            writeAtomically(File(context.filesDir, TEMP_FILE_NAME), file(context)) { temp ->
+                DataOutputStream(temp.outputStream().buffered()).use { out ->
+                    out.writeInt(MAGIC)
+                    out.writeInt(VERSION)
+                    out.writeInt(seeds.size)
+                    for (seed in seeds) {
+                        out.writeInt(seed.x)
+                        out.writeInt(seed.y)
+                        out.writeInt(seed.bitmapWidth)
+                        out.writeInt(seed.bitmapHeight)
+                        out.writeInt(seed.pixelColor)
+                        out.writeInt(seed.population)
+                    }
+                    out.writeInt(imageBytes.size)
+                    out.write(imageBytes)
                 }
-                out.writeInt(imageBytes.size)
-                out.write(imageBytes)
             }
-            replaceAtomically(temp, file(context))
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to write atmosphere source", e)
             false
-        } finally {
-            if (temp.exists()) temp.delete()
         }
+    }
+
+    /**
+     * [read] plus the bitmap decode, which every caller does and none of them differently.
+     *
+     * Returns null whenever the source is unreadable or the image does not decode.
+     * That is never a reason to blank the screen: callers keep whatever is already loaded.
+     */
+    fun readDecoded(context: Context): Decoded? {
+        val payload = read(context) ?: run {
+            Log.w(TAG, "No readable source; keeping whatever is loaded")
+            return null
+        }
+        val bitmap = BitmapFactory.decodeByteArray(payload.imageBytes, 0, payload.imageBytes.size)
+        if (bitmap == null) {
+            Log.w(TAG, "Source image failed to decode; keeping whatever is loaded")
+            return null
+        }
+        return Decoded(payload.seeds, bitmap)
     }
 
     /** Reads the current source, or null if it is absent, truncated or of an unknown version. */

@@ -2,16 +2,15 @@ package com.ninecsdev.wallpaperchanger.service.atmosphere
 
 import android.app.KeyguardManager
 import android.content.BroadcastReceiver
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.BitmapFactory
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
+import android.view.Surface
 import com.ninecsdev.wallpaperchanger.BuildConfig
 import java.util.concurrent.Executors
 
@@ -80,8 +79,11 @@ class AtmosphereWallpaperService : GLWallpaperService() {
         // TODO: should probably be the same as the screen off delay user setting
         private const val LOCK_DELAY_MS = 300L
 
-        fun componentName(context: Context): ComponentName =
-            ComponentName(context, AtmosphereWallpaperService::class.java)
+        /**
+         * Refresh rate the morph votes its own surface to, for the morph's duration; 0 disables it
+         */
+        private const val PIN_MORPH_FRAME_RATE_HZ = 120f
+
     }
 
     override fun onCreateEngine(): Engine = AtmosphereEngine()
@@ -92,7 +94,8 @@ class AtmosphereWallpaperService : GLWallpaperService() {
             context = this@AtmosphereWallpaperService,
             requestRender = { requestRender() },
             isPanelDark = ::isPanelDark,
-            onSourceAdopted = ::onSourceAdopted
+            onSourceAdopted = ::onSourceAdopted,
+            onMorphActive = ::onMorphActive
         )
 
         /**
@@ -241,11 +244,11 @@ class AtmosphereWallpaperService : GLWallpaperService() {
             // Not exported: the reload action is ours and nothing else should be able to drive it.
             // The three screen actions are protected system broadcasts, which the platform
             // delivers to a not-exported receiver regardless.
-            registerReceiver(systemReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(systemReceiver, filter, RECEIVER_NOT_EXPORTED)
 
             if (BuildConfig.DEBUG) {
                 registerReceiver(
-                    seekReceiver, IntentFilter(ACTION_SEEK), Context.RECEIVER_EXPORTED
+                    seekReceiver, IntentFilter(ACTION_SEEK), RECEIVER_EXPORTED
                 )
             }
 
@@ -291,6 +294,7 @@ class AtmosphereWallpaperService : GLWallpaperService() {
         }
 
         override fun onDestroy() {
+            pinMorphFrameRate(false)
             destroyed = true
             handler.removeCallbacks(keyguardPoll)
             handler.removeCallbacks(lockRunnable)
@@ -317,26 +321,53 @@ class AtmosphereWallpaperService : GLWallpaperService() {
          */
         private fun reloadSource(fromRotation: Boolean) {
             decodeExecutor.execute {
-                val payload = AtmosphereSource.read(this@AtmosphereWallpaperService)
-                if (payload == null) {
-                    Log.w(TAG, "Reload requested but no readable source; keeping current")
-                    return@execute
-                }
-                val bitmap = BitmapFactory.decodeByteArray(
-                    payload.imageBytes, 0, payload.imageBytes.size
-                )
-                if (bitmap == null) {
-                    Log.w(TAG, "Reload source failed to decode; keeping current")
-                    return@execute
-                }
+                val decoded = AtmosphereSource.readDecoded(this@AtmosphereWallpaperService)
+                    ?: return@execute
                 handler.post {
                     if (destroyed) {
-                        bitmap.recycle()
+                        decoded.bitmap.recycle()
                         return@post
                     }
-                    renderer.queueSource(payload.seeds, bitmap, fromRotation)
+                    renderer.queueSource(decoded.seeds, decoded.bitmap, fromRotation)
                     renderPendingWork()
                 }
+            }
+        }
+
+        /**
+         * A morph started or ended. Called on the **GL thread**, so it hops to the main looper
+         * before touching the surface.
+         *
+         * Both edges come from the renderer rather than from [unlock] because only the renderer
+         * knows whether a morph actually began: `setLocked(false)` on an already-unlocked engine
+         * is a no-op, and pinning there would leave the vote held forever.
+         */
+        private fun onMorphActive(active: Boolean) {
+            handler.post { if (!destroyed) pinMorphFrameRate(active) }
+        }
+
+        /**
+         * Holds the panel at [PIN_MORPH_FRAME_RATE_HZ] across the morph, or releases the vote.
+         *
+         * [Surface.CHANGE_FRAME_RATE_ALWAYS] on purpose: the point is to take the mode change we
+         * would otherwise get mid-morph and move it to the morph boundary.
+         */
+        private fun pinMorphFrameRate(pin: Boolean) {
+            // Safety check to disable this
+            if (PIN_MORPH_FRAME_RATE_HZ <= 0f) return
+
+            val surface = surfaceHolder?.surface ?: return
+            if (!surface.isValid) return
+            try {
+                surface.setFrameRate(
+                    if (pin) PIN_MORPH_FRAME_RATE_HZ else 0f,
+                    if (pin) Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE
+                    else Surface.FRAME_RATE_COMPATIBILITY_DEFAULT,
+                    Surface.CHANGE_FRAME_RATE_ALWAYS
+                )
+            } catch (e: IllegalStateException) {
+                // Surface torn down between the isValid check and the call; nothing to hold.
+                Log.w(TAG, "setFrameRate($pin) on a dead surface", e)
             }
         }
 

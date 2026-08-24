@@ -20,14 +20,17 @@ import javax.inject.Singleton
  * Outcome of [WallpaperApplier.applyBufferWallpaper]. The distinction the caller acts on is
  * *when the image becomes visible*:
  *
- * - [APPLIED_STATIC]: shown synchronously (setStream returned) — the caller advances the rotation now.
- * - [DELIVERED_ATMOSPHERE]: handed to the live engine, shown later (or held and never shown) — the
- *   caller must NOT advance now; the engine reports back via
- *   [AtmosphereWallpaperService.ACTION_DISPLAYED][com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService]
- *   once (and only if) it actually shows the image.
+ * - [SHOWN]: on screen as of this call (the static path's setStream returned) — the caller
+ *   advances the rotation now.
+ * - [DEFERRED]: accepted but shown later, or held and never shown — the caller must NOT advance
+ *   now and waits for the delivery channel's own confirmation. As of writing that is the atmosphere engine
+ *   reporting back via [AtmosphereWallpaperService.ACTION_DISPLAYED][com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService].
  * - [FAILED]: nothing was applied or delivered.
+ *
+ * Named for *when the image lands*, not for which mode produced it, so a caller deciding whether
+ * to advance the rotation never has to know the modes exist.
  */
-enum class WallpaperApplyOutcome { APPLIED_STATIC, DELIVERED_ATMOSPHERE, FAILED }
+enum class WallpaperApplyOutcome { SHOWN, DEFERRED, FAILED }
 
 /**
  * Applies prepared images to the Android screen wallpaper.
@@ -128,9 +131,9 @@ class WallpaperApplier @Inject constructor(
             // Delivery is a cheap copy of the already-rendered buffer into the engine's source file
             // plus a reload broadcast — no setStream, which would replace the live wallpaper. The
             // image is shown later (or held), so the caller defers the rotation advance until the
-            // engine confirms display; hence DELIVERED_ATMOSPHERE rather than APPLIED_STATIC.
+            // engine confirms display; hence DEFERRED rather than SHOWN.
             return@withContext if (atmosphereDelivery.deliverBuffer(bufferManager.getBufferFile())) {
-                WallpaperApplyOutcome.DELIVERED_ATMOSPHERE
+                WallpaperApplyOutcome.DEFERRED
             } else {
                 WallpaperApplyOutcome.FAILED
             }
@@ -156,7 +159,7 @@ class WallpaperApplier @Inject constructor(
             }
 
             Log.i(TAG, "Wallpaper applied successfully from disk buffer to $destination.")
-            WallpaperApplyOutcome.APPLIED_STATIC
+            WallpaperApplyOutcome.SHOWN
         } catch (e: Exception) {
             Log.e(TAG, "Failed to stream buffer to $destination", e)
             WallpaperApplyOutcome.FAILED

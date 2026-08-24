@@ -1,5 +1,5 @@
 #version 300 es
-precision mediump float;
+precision highp float;
 in vec2 vTexCoord;
 out vec4 outColor;
 

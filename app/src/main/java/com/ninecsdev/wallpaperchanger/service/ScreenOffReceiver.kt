@@ -96,18 +96,16 @@ class ScreenOffReceiver(
 
                     // Apply the pre-processed buffer image and prepare next image.
                     when (wallpaperApplier.applyBufferWallpaper()) {
-                        WallpaperApplyOutcome.APPLIED_STATIC -> {
-                            // Static: the wallpaper is on screen now, so advance the rotation now.
+                        WallpaperApplyOutcome.SHOWN -> {
+                            // On screen as of now, so advance the rotation now.
                             repository.markWallpaperChanged(activeCollection.id)
                             if (broadcastFinished.compareAndSet(false, true)) pendingResult.finish()
                             rotationEngine.refillDiskBuffer()
                         }
-                        WallpaperApplyOutcome.DELIVERED_ATMOSPHERE -> {
-                            // Atmosphere: the image was delivered to the live engine but isn't shown
+                        WallpaperApplyOutcome.DEFERRED -> {
+                            // The image was delivered to the live engine but isn't shown
                             // until the engine confirms display via ACTION_DISPLAYED. WallpaperService
-                            // handles that broadcast and runs the advance + refill there instead, so a
-                            // fast toggle (delivery held, never shown) consumes no rotation and pays no
-                            // buffer refill at all.
+                            // handles that broadcast and runs the advance + refill there instead
                             //
                             // Caveat: the deferred half runs outside [isWorkInProgress], which is
                             // released as soon as this branch returns. A screen-off landing between

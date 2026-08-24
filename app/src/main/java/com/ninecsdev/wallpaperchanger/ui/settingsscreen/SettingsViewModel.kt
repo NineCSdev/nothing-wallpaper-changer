@@ -265,7 +265,7 @@ class SettingsViewModel @Inject constructor(
                 // atmosphere zoom-fix bypass — which is exactly what the static apply below needs.
                 val refilled = rotationEngine.refillDiskBuffer()
                 val replaced = (refilled &&
-                    wallpaperApplier.applyBufferWallpaper() == WallpaperApplyOutcome.APPLIED_STATIC) ||
+                    wallpaperApplier.applyBufferWallpaper() == WallpaperApplyOutcome.SHOWN) ||
                     wallpaperApplier.applyDefaultWallpaper()
                 if (!replaced) {
                     Log.w(TAG, "Could not replace the live wallpaper; reverting mode to ATMOSPHERE.")

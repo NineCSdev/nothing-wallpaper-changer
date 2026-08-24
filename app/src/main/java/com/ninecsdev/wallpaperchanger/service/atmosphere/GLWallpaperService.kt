@@ -77,8 +77,7 @@ abstract class GLWallpaperService : WallpaperService() {
         fun renderPendingWork() {
             pauseHandler.removeCallbacks(pauseRunnable)
             glSurfaceView?.onResume()
-            glSurfaceView?.requestRender()
-            if (!isVisible) pauseHandler.postDelayed(pauseRunnable, pauseDelayMs)
+            renderThenReArmPause()
         }
 
         override fun onVisibilityChanged(visible: Boolean) {
@@ -91,10 +90,15 @@ abstract class GLWallpaperService : WallpaperService() {
                 // frames later instead of immediately. Pausing the GL thread the instant
                 // we go invisible leaves a stale frame latched in the surface, which the
                 // compositor flashes on the next wake. Present a fresh frame first.
-                glSurfaceView?.requestRender()
-                pauseHandler.removeCallbacks(pauseRunnable)
-                pauseHandler.postDelayed(pauseRunnable, pauseDelayMs)
+                renderThenReArmPause()
             }
+        }
+
+        /** Presents one frame and, while nobody is looking, re-arms the deferred pause. */
+        private fun renderThenReArmPause() {
+            glSurfaceView?.requestRender()
+            pauseHandler.removeCallbacks(pauseRunnable)
+            if (!isVisible) pauseHandler.postDelayed(pauseRunnable, pauseDelayMs)
         }
 
         override fun onDestroy() {
@@ -116,7 +120,7 @@ abstract class GLWallpaperService : WallpaperService() {
 
         private inner class WallpaperGLSurfaceView(context: Context) : GLSurfaceView(context) {
             init {
-                setEGLConfigChooser(8, 8, 8, 0, 16, 0)
+                setEGLConfigChooser(8, 8, 8, 0, 0, 0)
                 setEGLContextClientVersion(3)
                 // Survives the pause/resume of an app switch. Without it the context is destroyed
                 // and rebuilt on every return to the home screen, and the rebuild re-fires both

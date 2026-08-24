@@ -38,7 +38,12 @@ internal class AtmosphereRenderer(
      * Fired on the **GL thread** the moment a queued source is committed to the screen, with the
      * flag it was queued under. That instant is what the rotation advance keys off.
      */
-    private val onSourceAdopted: (fromRotation: Boolean) -> Unit = {}
+    private val onSourceAdopted: (fromRotation: Boolean) -> Unit = {},
+    /**
+     * Fired on the **GL thread** on each edge of the morph which is what the frame-rate vote
+     * hanging off it needs: a missed falling edge leaves the panel pinned.
+     */
+    private val onMorphActive: (active: Boolean) -> Unit = {}
 ) : GLSurfaceView.Renderer {
 
     private companion object {
@@ -119,17 +124,14 @@ internal class AtmosphereRenderer(
     private var blurProgram = 0
     private var grainProgram = 0
 
-    private var uCompositeSampler = 0
     private var uBgColor = 0
     private var uMixBlend = 0
     private var uCoverScale = 0
 
-    private var uBlurSampler = 0
     private var uKernel = 0
     private var uBlurRadius = 0
     private var uBlurOffset = 0
 
-    private var uGrainSampler = 0
     private var uNoiseGrowth = 0
     private var uCounterScale = 0
 
@@ -147,7 +149,16 @@ internal class AtmosphereRenderer(
 
     private var surfaceWidth = 0
     private var surfaceHeight = 0
+
+    /**
+     * [AtmosphereConstants.renderRate] and its eased twin depend on the surface width alone, and
+     * the eased one costs a `PathInterpolator` lookup. Sampled on resize instead of every frame.
+     */
+    private var linearRenderRate = 1f
+    private var easedRenderRate = 1f
     private var frame = AtmosphereConstants.SETTLED_FRAME
+
+    /** Only ever assigned through [setAnimating], so no edge of the morph goes unreported. */
     private var animating = false
     private var lastFrameAt = 0L
 
@@ -226,19 +237,21 @@ internal class AtmosphereRenderer(
             AtmosphereGl.readAsset(context, "$SHADER_DIR/blob.frag")
         )
 
-        uCompositeSampler = GLES30.glGetUniformLocation(compositeProgram, "s_TextureMap")
         uBgColor = GLES30.glGetUniformLocation(compositeProgram, "uBgColor")
         uMixBlend = GLES30.glGetUniformLocation(compositeProgram, "uMixBlend")
         uCoverScale = GLES30.glGetUniformLocation(compositeProgram, "uCoverScale")
 
-        uBlurSampler = GLES30.glGetUniformLocation(blurProgram, "screenTexture")
         uKernel = GLES30.glGetUniformLocation(blurProgram, "uKernel")
         uBlurRadius = GLES30.glGetUniformLocation(blurProgram, "uBlurRadius")
         uBlurOffset = GLES30.glGetUniformLocation(blurProgram, "uBlurOffset")
 
-        uGrainSampler = GLES30.glGetUniformLocation(grainProgram, "uSampler")
         uNoiseGrowth = GLES30.glGetUniformLocation(grainProgram, "uNoiseGrowth")
         uCounterScale = GLES30.glGetUniformLocation(grainProgram, "uCounterScale")
+
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
+        AtmosphereGl.bindSamplerToUnit0(compositeProgram, "s_TextureMap")
+        AtmosphereGl.bindSamplerToUnit0(blurProgram, "screenTexture")
+        AtmosphereGl.bindSamplerToUnit0(grainProgram, "uSampler")
 
         // A surface can be recreated without the source changing; reload so we never come back
         // to a blank screen.
@@ -260,6 +273,9 @@ internal class AtmosphereRenderer(
         val dimensionsChanged = width != surfaceWidth || height != surfaceHeight
         surfaceWidth = width
         surfaceHeight = height
+        linearRenderRate = AtmosphereConstants.renderRate(width)
+        easedRenderRate = AtmosphereConstants.easedRenderRate(width)
+        updateCoverScale()
         prerollTargets.ensure(
             (width / AtmosphereConstants.PREROLL_DOWNSCALE).coerceAtLeast(1),
             (height / AtmosphereConstants.PREROLL_DOWNSCALE).coerceAtLeast(1)
@@ -289,22 +305,17 @@ internal class AtmosphereRenderer(
             return
         }
 
-        val arg: Int
-        if (!animating) {
-            frame = AtmosphereConstants.SETTLED_FRAME
-            arg = AtmosphereConstants.SETTLED_FRAME
-        } else {
-            arg = -1
-        }
-
-        if (arg < 0) drawFrame(frame, isInit = false) else drawFrame(arg, isInit = true)
+        // Not animating means the settled frame, drawn as a seek; animating means step the frame
+        // we are already on.
+        if (!animating) frame = AtmosphereConstants.SETTLED_FRAME
+        drawFrame(frame, isInit = !animating)
 
         if (animating) {
             if (frame <= AtmosphereConstants.TOTAL_ANIM_FRAMES) {
                 frame++
                 requestRender()
             } else {
-                animating = false
+                setAnimating(false)
             }
         }
     }
@@ -336,7 +347,7 @@ internal class AtmosphereRenderer(
         // Pass 1+2 -- the photo, pulled toward the background color, with the blobs over it.
         AtmosphereGl.bindFramebuffer(fbo, targets.texA, w, h)
         GLES30.glClearColor(1f, 1f, 1f, 1f)
-        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT or GLES30.GL_DEPTH_BUFFER_BIT)
+        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
         GLES30.glEnable(GLES30.GL_BLEND)
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA)
 
@@ -345,13 +356,11 @@ internal class AtmosphereRenderer(
 
         // Pass 3+4 -- one separable Gaussian over the composite. The blur runs over photo and
         // blobs together, never over the blobs alone.
-        val blurRate = AtmosphereConstants.ANIM_EASE.getInterpolation(
-            (frameNumber.coerceAtMost(AtmosphereConstants.BG_BLUR_GROWTH) /
-                AtmosphereConstants.BG_BLUR_GROWTH.toFloat()).coerceIn(0f, 1f)
+        val blurRate = AtmosphereConstants.easedRamp(
+            frameNumber, to = AtmosphereConstants.BG_BLUR_GROWTH
         )
-        val rate = AtmosphereConstants.renderRate(surfaceWidth, 0)
-        val radius = (rate * blurRate * AtmosphereConstants.MAX_BLUR_RADIUS).toInt()
-        val offset = rate * blurRate * AtmosphereConstants.MAX_BLUR_OFFSET
+        val radius = (linearRenderRate * blurRate * AtmosphereConstants.MAX_BLUR_RADIUS).toInt()
+        val offset = linearRenderRate * blurRate * AtmosphereConstants.MAX_BLUR_OFFSET
 
         GLES30.glDisable(GLES30.GL_BLEND)
         GLES30.glUseProgram(blurProgram)
@@ -374,7 +383,7 @@ internal class AtmosphereRenderer(
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
         GLES30.glViewport(0, 0, surfaceWidth, surfaceHeight)
         GLES30.glUseProgram(grainProgram)
-        AtmosphereGl.bindTextureUnit0(targets.texA, uGrainSampler)
+        AtmosphereGl.bindTexture0(targets.texA)
         GLES30.glUniform1f(uNoiseGrowth, noiseGrowthAt(frameNumber))
         GLES30.glUniform1f(uCounterScale, SURFACE_COUNTER_SCALE)
         quad.draw()
@@ -392,16 +401,15 @@ internal class AtmosphereRenderer(
 
     private fun drawComposite(mixBlend: Float) {
         GLES30.glUseProgram(compositeProgram)
-        AtmosphereGl.bindTextureUnit0(photoTexture, uCompositeSampler)
+        AtmosphereGl.bindTexture0(photoTexture)
         GLES30.glUniform3f(uBgColor, bgColor[0], bgColor[1], bgColor[2])
         GLES30.glUniform1f(uMixBlend, mixBlend)
-        updateCoverScale()
         GLES30.glUniform2f(uCoverScale, coverScale[0], coverScale[1])
         quad.draw()
     }
 
     private fun drawBlurPass(source: Int, radius: Int, offsetX: Float, offsetY: Float) {
-        AtmosphereGl.bindTextureUnit0(source, uBlurSampler)
+        AtmosphereGl.bindTexture0(source)
         GLES30.glUniform1i(uBlurRadius, radius)
         GLES30.glUniform2f(uBlurOffset, offsetX, offsetY)
         quad.draw()
@@ -418,7 +426,7 @@ internal class AtmosphereRenderer(
         if (radius == uploadedKernelRadius) return
         uploadedKernelRadius = radius
 
-        java.util.Arrays.fill(kernel, 0f)
+        kernel.fill(0f)
         if (radius > 0) {
             val sigma = radius / 3f
             val norm = 1f / sqrt(2f * Math.PI.toFloat() * sigma * sigma)
@@ -438,26 +446,20 @@ internal class AtmosphereRenderer(
         GLES30.glUniform1fv(uKernel, AtmosphereConstants.BLUR_RADIUS_LIMIT, kernel, 0)
     }
 
-    private fun mixBlendAt(frameNumber: Int): Float {
-        val span = (
-            AtmosphereConstants.BG_TEXTURE_TRANSITION - AtmosphereConstants.FIRST_BLOB_FRAME
-            ).toFloat()
-        val t = (
-            (frameNumber.coerceAtMost(AtmosphereConstants.BG_TEXTURE_TRANSITION) -
-                AtmosphereConstants.FIRST_BLOB_FRAME) / span
-            ).coerceIn(0f, 1f)
-        return AtmosphereConstants.ANIM_EASE.getInterpolation(t)
-    }
+    private fun mixBlendAt(frameNumber: Int): Float = AtmosphereConstants.easedRamp(
+        frameNumber,
+        from = AtmosphereConstants.FIRST_BLOB_FRAME,
+        to = AtmosphereConstants.BG_TEXTURE_TRANSITION
+    )
 
     /** The one window with a linear ramp; every other eases. */
-    private fun noiseGrowthAt(frameNumber: Int): Float {
-        val rate = AtmosphereConstants.renderRate(surfaceWidth, 1)
-        val t = (frameNumber / AtmosphereConstants.NOISE_GROWTH.toFloat()).coerceIn(0f, 1f)
-        return rate * AtmosphereConstants.MAX_NOISE * t
-    }
+    private fun noiseGrowthAt(frameNumber: Int): Float =
+        easedRenderRate * AtmosphereConstants.MAX_NOISE *
+        AtmosphereConstants.ramp(frameNumber, to = AtmosphereConstants.NOISE_GROWTH)
 
     /**
-     * Center-crop factors for the composite's excoriates.
+     * Center-crop factors for the composite's texture coordinates. They depend only on the photo
+     * and the surface, so this is sampled when either changes rather than on every frame.
      */
     private fun updateCoverScale() {
         coverScale[0] = 1f
@@ -476,19 +478,19 @@ internal class AtmosphereRenderer(
     // Source handling
 
     private fun applyPendingWork() {
-        if (settleRequested.getAndSet(false)) animating = false
+        if (settleRequested.getAndSet(false)) setAnimating(false)
 
         if (lockStateDirty.getAndSet(false)) {
             if (locked.get()) {
                 frame = 0
-                animating = false
+                setAnimating(false)
                 shapes.reset(surfaceWidth, surfaceHeight)
             } else if (animateUnlock.get()) {
                 frame = 0
-                animating = true
+                setAnimating(true)
                 lastFrameAt = 0L
             } else {
-                animating = false
+                setAnimating(false)
             }
         }
 
@@ -500,9 +502,16 @@ internal class AtmosphereRenderer(
 
         adoptSource(pending.seeds, pending.bitmap)
         frame = 0
-        animating = false
+        setAnimating(false)
         // The image is committed to the screen as of this frame
         onSourceAdopted(pending.fromRotation)
+    }
+
+    /** Reports [onMorphActive] once per real transition; a repeated assignment is not an edge. */
+    private fun setAnimating(value: Boolean) {
+        if (animating == value) return
+        animating = value
+        onMorphActive(value)
     }
 
     private fun adoptSource(newSeeds: List<VertexInfo>, bitmap: Bitmap) {
@@ -512,12 +521,10 @@ internal class AtmosphereRenderer(
             photoWidth = bitmap.width
             photoHeight = bitmap.height
             seeds = newSeeds
+            updateCoverScale()
 
             // Entry 0 is the background the whole composite is pulled toward, not a blob.
-            val background = newSeeds[0].pixelColor
-            bgColor[0] = ((background shr 16) and 0xFF) / 255f
-            bgColor[1] = ((background shr 8) and 0xFF) / 255f
-            bgColor[2] = (background and 0xFF) / 255f
+            AtmosphereGl.unpackRgb(newSeeds[0].pixelColor, bgColor)
 
             shapes.setSeeds(newSeeds)
             shapes.reset(surfaceWidth, surfaceHeight)
@@ -535,14 +542,8 @@ internal class AtmosphereRenderer(
      * A failure here is never a reason to blank the screen -- whatever is already loaded stays.
      */
     private fun loadSourceFromDisk() {
-        val payload = AtmosphereSource.read(context) ?: return
-        val bitmap = android.graphics.BitmapFactory
-            .decodeByteArray(payload.imageBytes, 0, payload.imageBytes.size)
-        if (bitmap == null) {
-            Log.w(TAG, "Source image failed to decode; keeping whatever is loaded")
-            return
-        }
-        adoptSource(payload.seeds, bitmap)
+        val decoded = AtmosphereSource.readDecoded(context) ?: return
+        adoptSource(decoded.seeds, decoded.bitmap)
     }
 
     fun release() {
@@ -551,10 +552,8 @@ internal class AtmosphereRenderer(
         effectTargets.release()
         AtmosphereGl.deleteTexture(photoTexture)
         photoTexture = 0
-        if (fbo != 0) {
-            GLES30.glDeleteFramebuffers(1, intArrayOf(fbo), 0)
-            fbo = 0
-        }
+        AtmosphereGl.deleteFramebuffer(fbo)
+        fbo = 0
         quad.release()
         pendingSource.getAndSet(null)?.bitmap?.recycle()
     }
