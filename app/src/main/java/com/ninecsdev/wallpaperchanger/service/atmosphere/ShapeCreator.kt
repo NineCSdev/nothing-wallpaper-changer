@@ -20,10 +20,9 @@ internal class ShapeCreator {
 
     private companion object {
         /**
-         * Rolled **once per process** and only advanced thereafter, matching the original's
-         * flag-guarded seeding. This is not the same lifetime as [targetRandom] and the difference
-         * shows: blob sizes and the path shape evolve slowly across the process's life, while the
-         * layout jumps on every lock.
+         * Rolled **once per process** and only advanced thereafter. This is not the same lifetime
+         * as [targetRandom] and the difference shows: blob sizes and the path shape evolve slowly
+         * across the process's life, while the layout jumps on every lock.
          */
         val PROCESS_RANDOM = Random(System.currentTimeMillis() / 1000L)
 
@@ -81,8 +80,8 @@ internal class ShapeCreator {
         uMvpMatrix = GLES30.glGetUniformLocation(program, "uMVPMatrix")
         uAlpha = GLES30.glGetUniformLocation(program, "uAlpha")
 
-        // Sized once at the worst case and only ever sub-loaded after this. The original
-        // re-specifies storage every blob every frame; that cannot change a pixel, so it goes.
+        // Sized once at the worst case and only ever sub-loaded after this, so the per-frame path
+        // never re-specifies buffer storage — five blobs a frame is not the place to reallocate.
         val ids = IntArray(1)
         GLES30.glGenBuffers(1, ids, 0)
         vbo = ids[0]
@@ -137,7 +136,7 @@ internal class ShapeCreator {
     }
 
     /**
-     * The base pentagon, scaled about its stored centroid by the render rate. On a panel at least
+     * The base pentagon, scaled about its centroid by the render rate. On a panel at least
      * as wide as the reference this is the literal constant.
      */
     private fun baseAnchors(width: Int): FloatArray {

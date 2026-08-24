@@ -185,7 +185,6 @@ internal class AtmosphereRenderer(
         if (locked.getAndSet(isLocked) != isLocked) {
             animateUnlock.set(animate)
             lockStateDirty.set(true)
-            Log.d(TAG, "Lock state -> $isLocked (animate=$animate)")
             requestRender()
         }
     }

@@ -7,8 +7,9 @@ uniform sampler2D s_TextureMap;
 uniform vec3  uBgColor;
 uniform float uMixBlend;
 
-// DEVIATION: For the live-wallpaper picker preview,
-// freeform windows, rotation. Identity when the aspects match, which is the normal path.
+// Centre-crop factors for the texcoords, for the surfaces whose aspect is not the panel's: the
+// live-wallpaper picker preview, freeform windows, rotation. Identity when the aspects match,
+// which is the normal path.
 uniform vec2 uCoverScale;
 
 void main() {

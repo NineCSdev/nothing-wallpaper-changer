@@ -83,16 +83,52 @@ internal object AtmosphereConstants {
      * as five (x, y) pairs.
      */
     val DEFAULT_VERTICES = floatArrayOf(
-        334f, 550f,
-        330f, 537f,
-        338f, 532f,
-        349f, 535f,
-        343f, 546f
+        8.5873f, 3.8233f,
+        -0.7394f, 10.5742f,
+        -7.5481f, 3.2040f,
+        -6.1544f, -9.4770f,
+        4.2499f, -6.3007f
     )
 
-    /** Stored as its own constant in the original rather than recomputed from [DEFAULT_VERTICES]. */
-    const val DEFAULT_CENTROID_X = 338.71884f
-    const val DEFAULT_CENTROID_Y = 540.05786f
+    /** Shoelace centroid of [DEFAULT_VERTICES], derived rather than stored. */
+    val DEFAULT_CENTROID: FloatArray = centroidOf(DEFAULT_VERTICES)
+
+    val DEFAULT_CENTROID_X: Float = DEFAULT_CENTROID[0]
+    val DEFAULT_CENTROID_Y: Float = DEFAULT_CENTROID[1]
+
+    /**
+     * Shoelace centroid of a closed polygon given as flat (x, y) pairs.
+     *
+     * Falls back to the arithmetic mean of the vertices when the polygon encloses no area, which a
+     * shoelace centroid cannot describe (it divides by that area).
+     */
+    fun centroidOf(points: FloatArray): FloatArray {
+        val n = points.size / 2
+        var area = 0f
+        var cx = 0f
+        var cy = 0f
+        for (i in 0 until n) {
+            val x0 = points[i * 2]
+            val y0 = points[i * 2 + 1]
+            val x1 = points[((i + 1) % n) * 2]
+            val y1 = points[((i + 1) % n) * 2 + 1]
+            val cross = x0 * y1 - x1 * y0
+            area += cross
+            cx += (x0 + x1) * cross
+            cy += (y0 + y1) * cross
+        }
+        area *= 0.5f
+        if (area == 0f) {
+            var mx = 0f
+            var my = 0f
+            for (i in 0 until n) {
+                mx += points[i * 2]
+                my += points[i * 2 + 1]
+            }
+            return floatArrayOf(mx / n, my / n)
+        }
+        return floatArrayOf(cx / (6f * area), cy / (6f * area))
+    }
 
     /** Minimum spacing between blob targets, in **surface pixels**. */
     const val MIN_TARGET_SEPARATION = 500f

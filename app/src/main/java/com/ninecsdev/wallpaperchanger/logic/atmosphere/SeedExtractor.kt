@@ -253,7 +253,6 @@ class SeedExtractor @Inject constructor() {
                 bitmapWidth = scan.referenceWidth,
                 bitmapHeight = scan.referenceHeight,
                 pixelColor = pixels[index],
-                swatchColor = swatches[s].rgb,
                 population = swatches[s].population
             )
         }
@@ -303,8 +302,10 @@ class SeedExtractor @Inject constructor() {
      * steps — half of them down, the rest up — wrapping by 0.6 when they run off either end.
      * They are placed at random positions, the only true randomness in the seed list.
      *
-     * Two details are transcribed rather than tidied. The `hsl` array is fetched fresh inside each
-     * iteration and mutated in place.
+     * `swatches[0].hsl` hands back Palette's **own** array, and this re-fetches and mutates it in
+     * place on every iteration so the steps compound instead of each starting from the base
+     * saturation. That is deliberate and load-bearing: hoisting the fetch out of the loop, or
+     * copying the array, changes the colors this produces.
      */
     private fun padToSeedCount(seeds: MutableList<VertexInfo>, swatches: MutableList<Palette.Swatch>) {
         val missing = AtmosphereConstants.SEED_COUNT - seeds.size
@@ -343,7 +344,6 @@ class SeedExtractor @Inject constructor() {
             bitmapWidth = width,
             bitmapHeight = height,
             pixelColor = rgb,
-            swatchColor = rgb,
             population = -1
         )
     }
@@ -362,7 +362,6 @@ class SeedExtractor @Inject constructor() {
                 bitmapWidth = scan.referenceWidth.coerceAtLeast(1),
                 bitmapHeight = scan.referenceHeight.coerceAtLeast(1),
                 pixelColor = grey,
-                swatchColor = grey,
                 population = -1
             )
         }

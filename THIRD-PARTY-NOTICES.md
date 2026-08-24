@@ -1,6 +1,8 @@
 # Third-Party Notices
 
-NWC's atmosphere live-wallpaper feature (files under `app/src/main/java/com/ninecsdev/wallpaperchanger/service/atmosphere/` and `app/src/main/assets/shaders/atmosphere/`) is adapted from [NOSAtmosphereEffect](https://github.com/saad-khan-rind/NOSAtmosphereEffect) by Saad Ullah Khan, used under the MIT License with modifications.
+NWC's atmosphere live-wallpaper feature was originally adapted from [NOSAtmosphereEffect](https://github.com/saad-khan-rind/NOSAtmosphereEffect) by Saad Ullah Khan, used under the MIT License.
+
+The effect itself has since been replaced by an independent implementation and no longer derives from that work. What remains derived is `app/src/main/java/com/ninecsdev/wallpaperchanger/service/atmosphere/GLWallpaperService.kt`, the shim that lets a `GLSurfaceView` draw into a wallpaper engine's surface, which is still adapted from the original.
 
 ```
 MIT License

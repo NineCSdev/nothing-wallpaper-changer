@@ -104,28 +104,9 @@ internal class BlobOutline {
 
     /** Shoelace centroid over the *base* anchors, computed once per reset. */
     private fun computeCentroid() {
-        val n = AtmosphereConstants.ANCHOR_COUNT
-        var area = 0f
-        var cx = 0f
-        var cy = 0f
-        for (i in 0 until n) {
-            val x0 = pristine[i * 2]
-            val y0 = pristine[i * 2 + 1]
-            val x1 = pristine[((i + 1) % n) * 2]
-            val y1 = pristine[((i + 1) % n) * 2 + 1]
-            val cross = x0 * y1 - x1 * y0
-            area += cross
-            cx += (x0 + x1) * cross
-            cy += (y0 + y1) * cross
-        }
-        area *= 0.5f
-        if (area == 0f) {
-            centroidX = AtmosphereConstants.DEFAULT_CENTROID_X
-            centroidY = AtmosphereConstants.DEFAULT_CENTROID_Y
-            return
-        }
-        centroidX = cx / (6f * area)
-        centroidY = cy / (6f * area)
+        val centroid = AtmosphereConstants.centroidOf(pristine)
+        centroidX = centroid[0]
+        centroidY = centroid[1]
     }
 
     /**

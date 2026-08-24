@@ -139,10 +139,7 @@ class AtmosphereWallpaperService : GLWallpaperService() {
 
         private val keyguardPoll = object : Runnable {
             override fun run() {
-                if (!screenOn || destroyed) {
-                    Log.d(TAG, "Keyguard poll stopped (screenOn=$screenOn, destroyed=$destroyed)")
-                    return
-                }
+                if (!screenOn || destroyed) return
                 // On a device with no secure lock screen this is false immediately, which is the
                 // correct reading: there is no keyguard to dismiss.
                 if (!keyguardManager.isKeyguardLocked) {
@@ -153,7 +150,6 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                     handler.postDelayed(this, KEYGUARD_POLL_MS)
                     return
                 }
-                Log.d(TAG, "Keyguard poll window elapsed while still locked; stopping")
                 // Window elapsed while still locked: stop, and let ACTION_USER_PRESENT drive it.
             }
         }
@@ -184,7 +180,6 @@ class AtmosphereWallpaperService : GLWallpaperService() {
         private fun isPanelDark(): Boolean = !isVisible && !powerManager.isInteractive
 
         private fun startKeyguardPoll() {
-            Log.d(TAG, "Keyguard poll armed (screenOn=$screenOn, visible=$isVisible)")
             pollDeadlineMs = SystemClock.uptimeMillis() + POLL_WINDOW_MS
             handler.removeCallbacks(keyguardPoll)
             handler.post(keyguardPoll)
@@ -194,7 +189,6 @@ class AtmosphereWallpaperService : GLWallpaperService() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 when (intent?.action) {
                     Intent.ACTION_SCREEN_OFF -> {
-                        Log.d(TAG, "ACTION_SCREEN_OFF")
                         screenOn = false
                         handler.removeCallbacks(keyguardPoll)
                         handler.removeCallbacks(lockRunnable)
@@ -202,7 +196,6 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                     }
 
                     Intent.ACTION_SCREEN_ON -> {
-                        Log.d(TAG, "ACTION_SCREEN_ON")
                         screenOn = true
                         // A wake inside the lock delay: the reset would now be visible, and the
                         // engine is about to be told the real state by the poll anyway.
@@ -211,10 +204,7 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                     }
 
                     // Backstop for the poll, not the primary signal.
-                    Intent.ACTION_USER_PRESENT -> {
-                        Log.d(TAG, "ACTION_USER_PRESENT")
-                        unlock()
-                    }
+                    Intent.ACTION_USER_PRESENT -> unlock()
 
                     ACTION_RELOAD ->
                         reloadSource(intent.getBooleanExtra(EXTRA_FROM_ROTATION, false))
@@ -280,7 +270,6 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                 renderer.settleNow()
             }
             super.onVisibilityChanged(visible)
-            Log.d(TAG, "Visibility -> $visible")
 
             if (!visible) {
                 handler.removeCallbacks(keyguardPoll)

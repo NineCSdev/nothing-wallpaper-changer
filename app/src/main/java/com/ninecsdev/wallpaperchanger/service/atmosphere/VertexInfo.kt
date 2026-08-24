@@ -12,12 +12,11 @@ package com.ninecsdev.wallpaperchanger.service.atmosphere
  * five blobs. Getting this backwards paints the photo's dominant mass *over* everything instead
  * of *under* it.
  *
- * [swatchColor] and [population] are carried for layout parity with the original's 28-byte stride
- * and are never read by the renderer.
- *
  * @param x X of the pixel in [bitmapWidth]-space closest to this swatch in CIE-LAB.
  * @param y Y of the same pixel. Note the renderer flips this into GL's origin.
  * @param pixelColor That pixel's raw color (this, not the swatch's own color) is what is drawn.
+ * @param population How much of the photo quantized to this swatch. Used to order the list, which
+ * is the only thing that decides which seed becomes the background; synthesized seeds carry -1.
  */
 data class VertexInfo(
     val x: Int,
@@ -25,11 +24,5 @@ data class VertexInfo(
     val bitmapWidth: Int,
     val bitmapHeight: Int,
     val pixelColor: Int,
-    val swatchColor: Int,
     val population: Int
-) {
-    companion object {
-        /** Field count, and the stride used by the on-disk container. */
-        const val INT_COUNT = 7
-    }
-}
+)

@@ -58,7 +58,6 @@ object AtmosphereSource {
                     out.writeInt(seed.bitmapWidth)
                     out.writeInt(seed.bitmapHeight)
                     out.writeInt(seed.pixelColor)
-                    out.writeInt(seed.swatchColor)
                     out.writeInt(seed.population)
                 }
                 out.writeInt(imageBytes.size)
@@ -105,7 +104,6 @@ object AtmosphereSource {
                         bitmapWidth = input.readInt(),
                         bitmapHeight = input.readInt(),
                         pixelColor = input.readInt(),
-                        swatchColor = input.readInt(),
                         population = input.readInt()
                     )
                 }
