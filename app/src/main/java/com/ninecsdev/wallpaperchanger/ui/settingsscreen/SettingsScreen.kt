@@ -148,7 +148,10 @@ fun SettingsScreen(
 
                 SettingsSegmentedSelector(
                     title = stringResource(R.string.settings_destination_title),
-                    subtitle = stringResource(R.string.settings_destination_subtitle),
+                    subtitle = stringResource(
+                        if (uiState.isDestinationEnabled) R.string.settings_destination_subtitle
+                        else R.string.settings_destination_subtitle_atmosphere
+                    ),
                     options = WallpaperDestination.entries,
                     selected = uiState.wallpaperDestination,
                     onOptionChange = actions::setWallpaperDestination,

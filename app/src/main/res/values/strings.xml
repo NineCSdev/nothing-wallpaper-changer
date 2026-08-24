@@ -81,13 +81,16 @@
     <string name="settings_battery_saver_dialog_title">Battery saver policy</string>
     <string name="settings_battery_saver_dialog_body">
         Chooses what the rotation service does while Android\'s Battery Saver is active.
-        \nStop shuts the service down completely until you start it again yourself.
+        \n\nStop shuts the service down completely until you start it again yourself.
         \nPause keeps the service alive but stops swapping wallpapers making it consume close to no battery,
         resuming automatically when Battery Saver turns off.
         Ignore keeps rotating normally.
     </string>
     <string name="settings_destination_title">WALLPAPER DESTINATION</string>
     <string name="settings_destination_subtitle">APPLY TO YOUR LOCK SCREEN, HOME SCREEN OR BOTH</string>
+    <!-- Shown in place of the subtitle above while the selector is greyed out, so the reason is on
+         screen rather than only behind the info dialog. -->
+    <string name="settings_destination_subtitle_atmosphere">ATMOSPHERE EFFECT ALWAYS COVERS BOTH SCREENS</string>
     <string name="settings_destination_lock">LOCK</string>
     <string name="settings_destination_home">HOME</string>
     <string name="settings_destination_both">BOTH</string>
@@ -95,7 +98,7 @@
     <string name="settings_destination_dialog_body">
         Selects which screen receive the rotating wallpapers: the lock screen, the home screen, or both.
         The screen not selected keeps whatever wallpaper it already has.
-        This only applies in Static mode; Atmosphere covers whichever screens the system assigns to the live wallpaper.
+        \n\nWhen Atmosphere effect uses both screens regardless of this setting.
     </string>
     <string name="settings_quality_high_label">STANDARD QUALITY</string>
     <string name="settings_quality_high_subtitle">FOR MOST IMAGES</string>
@@ -119,7 +122,7 @@
     <string name="settings_keep_local_copies_dialog_title">Keep local copies</string>
     <string name="settings_keep_local_copies_dialog_body">
         Normally the app uses your picked photos directly from where they live, storing no duplicates, but a wallpaper breaks if its original is moved or deleted.
-        \nWith this on, the app saves its own compressed copy of every photo, so wallpapers keep working no matter what happens to the originals, at the cost of storage space.
+        \n\nWith this on, the app saves its own compressed copy of every photo, so wallpapers keep working no matter what happens to the originals, at the cost of storage space.
         Without photo access permission, copies are always kept regardless of this setting to have background access to them.
     </string>
     <string name="settings_storage_usage_title">STORAGE USED</string>
@@ -161,7 +164,7 @@
     <string name="settings_zoom_fix_dialog_body">
         Certain phone operating systems (like Nothing OS) automatically zoom in on wallpapers to create a parallax effect.
         This setting adds hidden padding to your image, ensuring the OS crops the padding rather than the wallpaper itself.
-        \nBecause this zoom behavior varies, two padding styles are available in case it doesn\'t apply: choose Blur for most cases,
+        \n\nBecause this zoom behavior varies, two padding styles are available in case it doesn\'t apply: choose Blur for most cases,
          or Edge for sharper borders.
     </string>
     <string name="settings_info_dialog_ok" translatable="false">OK</string>
@@ -331,21 +334,18 @@
     <string name="tile_dialog_cancel">Cancel</string>
 
     <!-- Atmosphere live wallpaper -->
-    <string name="atmosphere_wallpaper_label">NWC Atmosphere</string>
+    <string name="atmosphere_wallpaper_label">Atmosphere effect</string>
     <string name="atmosphere_wallpaper_description">Your wallpaper morphs into drifting colors when you unlock — Nothing OS Atmosphere style.</string>
 
     <string name="settings_wallpaper_mode_title">ATMOSPHERE EFFECT</string>
-    <string name="settings_wallpaper_mode_subtitle">LIVE COLOR MORPH ON UNLOCK · OFF KEEPS A STATIC IMAGE</string>
-    <string name="settings_wallpaper_mode_dialog_title">Wallpaper mode</string>
+    <string name="settings_wallpaper_mode_subtitle">RECREATION OF NOTHING OS ATMOSPHERE EFFECT</string>
+    <string name="settings_wallpaper_mode_dialog_title">Atmosphere effect</string>
     <string name="settings_wallpaper_mode_dialog_body">
-        Static swaps a frozen image on screen-off, as usual.\n\n
-        Atmosphere is a live wallpaper that replicates Nothing OS\'s unlock effect: your sharp photo shows on the
-        lock screen and morphs into an abstract color atmosphere when you unlock.\n\n
-        Setting it requires confirming on a system screen. It covers whichever screens the system assigns to the
-        live wallpaper, so the destination setting doesn\'t apply. It renders with the GPU and may use slightly more
-        battery than a static wallpaper.
+        Atmosphere is a live wallpaper that replicates Nothing OS\'s unlock effect of the same name: your sharp photo shows on the
+        lock screen and morphs into an abstract color atmosphere when you unlock.
+        \n\nIt requires confirming on a system screen. May use slightly more battery than a static wallpaper.
     </string>
-    <string name="settings_atmosphere_active">Atmosphere is set as your system wallpaper</string>
+    <string name="settings_atmosphere_active">Atmosphere effect is Active</string>
     <string name="settings_atmosphere_not_set">Atmosphere isn\'t set as your system wallpaper yet</string>
     <string name="settings_atmosphere_set_button">Set atmosphere wallpaper</string>
     <string name="settings_atmosphere_no_source_hint">Add images to a collection or set a default wallpaper first.</string>

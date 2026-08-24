@@ -63,7 +63,7 @@ internal fun AtmosphereModeSection(
         )
 
         if (selectedMode == WallpaperMode.ATMOSPHERE) {
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(2.dp))
 
             if (engineActive) {
                 StatusRow(
@@ -148,6 +148,26 @@ private fun AtmosphereModeSectionActivePreview() {
                 selectedMode = WallpaperMode.ATMOSPHERE,
                 engineActive = true,
                 hasSource = true,
+                onModeChange = {},
+                onSetAtmosphere = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Active", backgroundColor = 0xFF000000)
+@Composable
+private fun AtmosphereModeSectionNoSourcePreview() {
+    WallpaperChangerTheme {
+        Box(
+            modifier = Modifier
+                .background(NothingBlack)
+                .padding(16.dp)
+        ) {
+            AtmosphereModeSection(
+                selectedMode = WallpaperMode.ATMOSPHERE,
+                engineActive = false,
+                hasSource = false,
                 onModeChange = {},
                 onSetAtmosphere = {}
             )

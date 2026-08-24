@@ -79,13 +79,14 @@
     <string name="settings_battery_saver_dialog_title">Política de ahorro de batería</string>
     <string name="settings_battery_saver_dialog_body">
         Decide qué hace el servicio de rotación mientras el modo de ahorro de batería está activo.
-        \nParar detiene el servicio por completo hasta que lo inicies de nuevo.
+        \n\nParar detiene el servicio por completo hasta que lo inicies de nuevo.
         \nPausar mantiene el servicio vivo, pero deja de cambiar fondos haciendo que prácticamente no use bateria,
         reanudándose automáticamente al desactivarse el ahorro.
         \nIgnorar sigue rotando con normalidad.
     </string>
     <string name="settings_destination_title">DESTINO DEL FONDO DE PANTALLA</string>
     <string name="settings_destination_subtitle">APLICAR A PANTALLA DE BLOQUEO, PANTALLA DE INICIO O AMBAS</string>
+    <string name="settings_destination_subtitle_atmosphere">ATMOSPHERE SIEMPRE ABARCA AMBAS PANTALLAS</string>
     <string name="settings_destination_lock">BLOQUEO</string>
     <string name="settings_destination_home">INICIO</string>
     <string name="settings_destination_both">AMBAS</string>
@@ -93,7 +94,7 @@
     <string name="settings_destination_dialog_body">
         Selecciona donde se aplica el fondo de pantalla: en la pantalla de bloqueo, en la de inicio o en ambas.
         Las opcion no seleccionada mantiene el fondo que ya tenga.
-        Solo se aplica en el modo Estático; el modo Atmósfera cubre las pantallas que el sistema asigne al fondo animado.
+        \n\nEl efecto atmosfera siempre utiliza ambas pantallas, por tanto, no utiliza este ajuste.
     </string>
     <string name="settings_quality_high_label">CALIDAD ESTÁNDAR</string>
     <string name="settings_quality_high_subtitle">PARA LA MAYORÍA DE IMÁGENES</string>
@@ -117,7 +118,7 @@
     <string name="settings_keep_local_copies_dialog_title">Mantener copias locales</string>
     <string name="settings_keep_local_copies_dialog_body">
         Normalmente la app usa tus fotos directamente desde donde están, sin guardar duplicados, pero un fondo deja de funcionar si su original se mueve o se borra.
-        Con esta opción, la app guarda su propia copia comprimida de cada foto, de modo que los fondos siguen funcionando pase lo que pase con los originales, a cambio de usar espacio de almacenamiento.
+        \n\nCon esta opción, la app guarda su propia copia comprimida de cada foto, de modo que los fondos siguen funcionando pase lo que pase con los originales, a cambio de usar espacio de almacenamiento.
         Sin el permiso de acceso a fotos, las copias se guardan siempre, independientemente de este ajuste para poder aceder en segundo plano a ellas.
     </string>
     <string name="settings_storage_usage_title">ESPACIO USADO</string>
@@ -158,7 +159,7 @@
     <string name="settings_zoom_fix_dialog_body">
         Algunos sistemas operativos de móviles (como Nothing OS) hacen un zoom automático al fondo de pantalla para crear efecto "parallax".
         Este ajuste añade un margen oculto al fondo para que el SO recorte este margen en vez del fondo de pantalla en sí.
-        \nDado que el comportamiento del zoom varía hay dos estilos de margen en caso de que este no se aplique:
+        \n\nDado que el comportamiento del zoom varía hay dos estilos de margen en caso de que este no se aplique:
         elige Desenfoque para la mayoría, o Borde para bordes más marcado.
     </string>
 
@@ -328,22 +329,19 @@
     <string name="tile_dialog_cancel">Cancelar</string>
 
     <!-- Atmosphere live wallpaper -->
-    <string name="atmosphere_wallpaper_label">NWC Atmosphere</string>
+    <string name="atmosphere_wallpaper_label">Efecto Atmosphere</string>
     <string name="atmosphere_wallpaper_description">Tu fondo de pantalla se transforma en colores flotantes al desbloquear, al estilo Atmosphere de Nothing OS.</string>
 
-    <string name="settings_wallpaper_mode_title">EFECTO ATMÓSFERA</string>
-    <string name="settings_wallpaper_mode_subtitle">COLOR ANIMADO AL DESBLOQUEAR · APAGADO USA UNA IMAGEN ESTÁTICA</string>
-    <string name="settings_wallpaper_mode_dialog_title">Modo de fondo de pantalla</string>
+    <string name="settings_wallpaper_mode_title">EFECTO ATMOSPHERE</string>
+    <string name="settings_wallpaper_mode_subtitle">RECREACIÓN DEL EFECTO ATMOSPHERE DE NOTHING OS</string>
+    <string name="settings_wallpaper_mode_dialog_title">Efecto atmosphere</string>
     <string name="settings_wallpaper_mode_dialog_body">
-        El modo Estático cambia una imagen fija al apagar la pantalla, como siempre.\n\n
-        El modo Atmósfera es un fondo animado que replica el efecto de desbloqueo de Nothing OS: tu foto nítida
-        aparece en la pantalla de bloqueo y se transforma en una atmósfera abstracta de colores al desbloquear.\n\n
-        Para activarlo tendrás que confirmarlo en una pantalla del sistema. Cubre las pantallas que el sistema
-        asigne al fondo animado, así que el ajuste de destino no se aplica. Se renderiza con la GPU y puede
-        consumir algo más de batería que un fondo estático.
+        El efecto Atmosphere es un fondo animado que replica el efecto de desbloqueo del mismo nombre de Nothing OS: tu foto nítida
+        aparece en la pantalla de bloqueo y se transforma en una atmósfera abstracta de colores al desbloquear.
+        \n\nPara activarlo tendrás que confirmarlo en una pantalla del sistema. Puede consumir algo más de batería que un fondo estático.
     </string>
-    <string name="settings_atmosphere_active">Atmósfera está fijada como fondo del sistema</string>
-    <string name="settings_atmosphere_not_set">Atmósfera aún no está fijada como fondo del sistema</string>
-    <string name="settings_atmosphere_set_button">Fijar fondo Atmósfera</string>
-    <string name="settings_atmosphere_no_source_hint">Añade imágenes a una colección o define un fondo predeterminado primero.</string>
+    <string name="settings_atmosphere_active">El efecto Atmosphere está Activo</string>
+    <string name="settings_atmosphere_not_set">Atmosphere aún no está fijado como fondo del sistema</string>
+    <string name="settings_atmosphere_set_button">Fijar fondo Atmosphere</string>
+    <string name="settings_atmosphere_no_source_hint">Añade imágenes a una colección o pon un fondo predeterminado.</string>
 </resources>
