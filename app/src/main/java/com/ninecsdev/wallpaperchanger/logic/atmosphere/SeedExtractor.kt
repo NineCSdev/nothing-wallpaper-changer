@@ -5,8 +5,7 @@ import android.graphics.Matrix
 import android.util.Log
 import androidx.core.graphics.ColorUtils
 import androidx.palette.graphics.Palette
-import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereConstants
-import com.ninecsdev.wallpaperchanger.service.atmosphere.VertexInfo
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.VertexInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -22,7 +21,7 @@ import kotlin.random.Random
  * This runs on the app side rather than inside the engine, keeps the cost off the wallpaper thread,
  * where it would show as a black frame at boot and on every surface recreate.
  *
- * The output is always exactly [AtmosphereConstants.SEED_COUNT] entries, sorted by population
+ * The output is always exactly [VertexInfo.SEED_COUNT] entries, sorted by population
  * descending, and **entry 0 is the background color, not a blob** — see [VertexInfo].
  */
 @Singleton
@@ -36,7 +35,7 @@ class SeedExtractor @Inject constructor() {
          * tones are all eligible and there is no Vibrant/Muted bias. Both are deliberate — the
          * default filter would drop exactly the dark dominant colors this effect leans on.
          */
-        const val MAX_COLOR_COUNT = AtmosphereConstants.SEED_COUNT
+        const val MAX_COLOR_COUNT = VertexInfo.SEED_COUNT
 
         /**
          * Linear divisor applied before the scan, so the cost falls by its square.
@@ -294,35 +293,38 @@ class SeedExtractor @Inject constructor() {
         }
 
     /**
-     * Tops the list up to [AtmosphereConstants.SEED_COUNT] when the photo quantized to fewer than
+     * Tops the list up to [VertexInfo.SEED_COUNT] when the photo quantized to fewer than
      * six colors, which happens on near-monochrome sources.
      *
      * Synthesised colors are the most populous swatch with its saturation walked away in 0.1
      * steps — half of them down, the rest up — wrapping by 0.6 when they run off either end.
      * They are placed at random positions, the only true randomness in the seed list.
      *
-     * [base]`.hsl` hands back Palette's **own** array, and this re-fetches and mutates it in
-     * place on every iteration so the steps compound instead of each starting from the base
-     * saturation. That is deliberate and load-bearing: hoisting the fetch out of the loop, or
-     * copying the array, changes the colors this produces.
+     * Every step is measured from the base saturation, not from the previous step: the offsets
+     * are k * 0.1 with k counting away from the base in both directions, so the pair either side
+     * of it is the nearest and the outermost is the furthest.
+     *
+     * The copies matter. `Swatch.hsl` hands back the swatch's own array, and writing to it would
+     * leave the caller's swatch holding a saturation it never had.
      */
     private fun padToSeedCount(seeds: MutableList<VertexInfo>, base: Palette.Swatch) {
-        val missing = AtmosphereConstants.SEED_COUNT - seeds.size
+        val missing = VertexInfo.SEED_COUNT - seeds.size
         if (missing <= 0) return
 
         val half = missing / 2
         val width = seeds[0].bitmapWidth
         val height = seeds[0].bitmapHeight
+        val baseHsl = base.hsl.copyOf()
 
         for (k in half downTo 1) {
-            val hsl = base.hsl
+            val hsl = baseHsl.copyOf()
             hsl[1] -= k * 0.1f
             if (hsl[1] < 0f) hsl[1] += 0.6f
             appendSynthesised(seeds, ColorUtils.HSLToColor(hsl), width, height)
         }
 
         for (k in 1..(missing - half)) {
-            val hsl = base.hsl
+            val hsl = baseHsl.copyOf()
             hsl[1] += k * 0.1f
             if (hsl[1] > 1f) hsl[1] -= 0.6f
             appendSynthesised(seeds, ColorUtils.HSLToColor(hsl), width, height)
@@ -352,7 +354,7 @@ class SeedExtractor @Inject constructor() {
      */
     private fun flatFallback(scan: Scan): List<VertexInfo> {
         val grey = 0xFF808080.toInt()
-        return List(AtmosphereConstants.SEED_COUNT) {
+        return List(VertexInfo.SEED_COUNT) {
             VertexInfo(
                 x = 0,
                 y = 0,

@@ -13,6 +13,7 @@ import android.util.Log
 import android.view.Surface
 import com.ninecsdev.wallpaperchanger.BuildConfig
 import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereSource
 import java.util.concurrent.Executors
 
 /**
@@ -175,9 +176,12 @@ class AtmosphereWallpaperService : GLWallpaperService() {
             setRenderer(renderer)
 
             val filter = IntentFilter().apply {
-                addAction(Intent.ACTION_SCREEN_OFF)
-                addAction(Intent.ACTION_SCREEN_ON)
-                addAction(Intent.ACTION_USER_PRESENT)
+                // Preview doesn't care about these intents
+                if (!isPreview) {
+                    addAction(Intent.ACTION_SCREEN_OFF)
+                    addAction(Intent.ACTION_SCREEN_ON)
+                    addAction(Intent.ACTION_USER_PRESENT)
+                }
                 addAction(ACTION_RELOAD)
             }
             // Not exported: the reload action is ours and nothing else should be able to drive it.
@@ -274,7 +278,7 @@ class AtmosphereWallpaperService : GLWallpaperService() {
          */
         private fun reloadSource(fromRotation: Boolean) {
             decodeAndQueue(fromRotation) {
-                AtmosphereSource.readDecoded(this@AtmosphereWallpaperService)
+                AtmosphereSource.readDecoded(this@AtmosphereWallpaperService.filesDir)
             }
         }
 

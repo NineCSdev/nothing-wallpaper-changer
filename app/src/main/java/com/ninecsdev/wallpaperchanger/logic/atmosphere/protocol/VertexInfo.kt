@@ -1,7 +1,10 @@
-package com.ninecsdev.wallpaperchanger.service.atmosphere
+package com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol
 
 /**
  * One seed: a color the photo is mostly made of, plus where that color actually lives in it.
+ *
+ * This and [AtmosphereSource] are the app/engine hand-off contract, which is why they sit outside
+ * both sides: the producer should not have to see the engine's tuning table to know what to write.
  *
  * Six of these describe a wallpaper completely as far as the renderer is concerned. They are
  * produced by [SeedExtractor][com.ninecsdev.wallpaperchanger.logic.atmosphere.SeedExtractor] and
@@ -29,5 +32,8 @@ data class VertexInfo(
     companion object {
         /** [population] for a seed whose color was invented rather than measured */
         const val SYNTHESIZED_POPULATION = -1
+
+        /** Entries in a seed list. Entry 0 is the background color and the rest are one per blob. */
+        const val SEED_COUNT = 6
     }
 }

@@ -6,6 +6,8 @@ import android.opengl.GLES30
 import android.opengl.GLSurfaceView
 import android.os.SystemClock
 import android.util.Log
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereSource
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.VertexInfo
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
@@ -377,7 +379,7 @@ internal class AtmosphereRenderer(
     // Frame
 
     private fun drawFrame(frameNumber: Int, isInit: Boolean) {
-        if (photoTexture == 0 || seeds.size != AtmosphereConstants.SEED_COUNT) {
+        if (photoTexture == 0 || seeds.size != VertexInfo.SEED_COUNT) {
             GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
             GLES30.glViewport(0, 0, surfaceWidth, surfaceHeight)
             GLES30.glClearColor(0f, 0f, 0f, 1f)
@@ -626,7 +628,7 @@ internal class AtmosphereRenderer(
      * Finding *nothing* is a different case, and the one this reports [onSourceMissing].
      */
     private fun loadSourceFromDisk() {
-        val decoded = AtmosphereSource.readDecoded(context)
+        val decoded = AtmosphereSource.readDecoded(context.filesDir)
         if (decoded == null) {
             Log.w(TAG, "No source on disk; asking for one")
             onSourceMissing()

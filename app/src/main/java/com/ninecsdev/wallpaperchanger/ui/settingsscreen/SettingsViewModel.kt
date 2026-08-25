@@ -302,9 +302,9 @@ class SettingsViewModel @Inject constructor(
         atmosphereEngineActive.value = isActive
 
         if (isActive && !wasActive) {
-            // Ensure the engine owns both screens so atmosphere works correctly
-            wallpaperModeResolver.ensureEngineOwnsLockScreen()
             viewModelScope.launch {
+                // Ensure the engine owns both screens so atmosphere works correctly
+                wallpaperModeResolver.ensureEngineOwnsLockScreen()
                 // Already correct when the set button ran; re-rendered for the paths that skipped
                 // it. Ungated by the desired mode
                 atmosphereSourceProvisioner.provision()

@@ -7,7 +7,7 @@ import android.graphics.BitmapFactory
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.logic.BufferManager
 import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
-import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereSource
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereSource
 import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -120,7 +120,7 @@ class AtmosphereDelivery @Inject constructor(
      * cold-starts by re-reading this file, so deleting it out from under one shows black.
      */
     fun clearSource() {
-        val source = AtmosphereSource.file(appContext)
+        val source = AtmosphereSource.file(appContext.filesDir)
         if (source.exists() && !source.delete()) {
             Log.w(TAG, "Could not delete the atmosphere source file.")
         }
@@ -150,7 +150,7 @@ class AtmosphereDelivery @Inject constructor(
         // Measured off the bitmap rather than read from settings
         val seeds = seedExtractor.extract(bitmap, bufferManager.hasZoomFixPadding(bitmap))
 
-        if (!AtmosphereSource.write(appContext, seeds, imageBytes)) return false
+        if (!AtmosphereSource.write(appContext.filesDir, seeds, imageBytes)) return false
 
         sendReload(fromRotation)
         Log.i(TAG, "Delivered atmosphere source (fromRotation=$fromRotation).")

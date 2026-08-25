@@ -2,6 +2,7 @@ package com.ninecsdev.wallpaperchanger.service.atmosphere
 
 import android.view.animation.Interpolator
 import android.view.animation.PathInterpolator
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.VertexInfo
 
 /**
  * Every tuning value the effect runs on.
@@ -52,7 +53,7 @@ internal object AtmosphereConstants {
     /** Gaussian radius at full ramp. Clamped to [BLUR_RADIUS_LIMIT] upstream; 30 is well under. */
     const val MAX_BLUR_RADIUS = 30
 
-    /** Per-tap step of the separable blur, in render-target pixels, at full ramp. */
+    /** Per-tap step of the separable blur at full ramp, in 1080-panel pixels */
     const val MAX_BLUR_OFFSET = 14f
 
     /** Grain mix at full ramp. */
@@ -71,12 +72,9 @@ internal object AtmosphereConstants {
 
     // Geometry
 
-    /** Five blobs, five anchors each. Both are structural, not tunable. */
-    const val BLOB_COUNT = 5
+    /** Five blobs, five anchors each. Both are structural, not tunable. Entry 0 of SEED_COUNT is the background*/
+    const val BLOB_COUNT = VertexInfo.SEED_COUNT - 1
     const val ANCHOR_COUNT = 5
-
-    /** Entry 0 of the seed list is the background color, so the array is one longer than [BLOB_COUNT]. */
-    const val SEED_COUNT = BLOB_COUNT + 1
 
     /**
      * The base outline every blob starts from: a jittered pentagon roughly 20 units across,

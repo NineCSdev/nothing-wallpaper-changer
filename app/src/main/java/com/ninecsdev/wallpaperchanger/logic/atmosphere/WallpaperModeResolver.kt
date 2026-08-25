@@ -55,7 +55,7 @@ class WallpaperModeResolver @Inject constructor(
      *
      * Runs on [Dispatchers.IO] because [isAtmosphereEngineActive] blocks on binder: callers reach
      * this from whatever dispatcher they happen to be on, and two of the three
-     * ([RotationEngine.refillDiskBuffer] via `SettingsViewModel`'s `viewModelScope` and via the
+     * ([RotationEngine.refillDiskBuffer][com.ninecsdev.wallpaperchanger.logic.RotationEngine.refillDiskBuffer] via `SettingsViewModel`'s `viewModelScope` and via the
      * foreground service's main-dispatcher scope) are on the main thread.
      */
     suspend fun effectiveMode(): WallpaperMode = withContext(Dispatchers.IO) {
@@ -70,8 +70,11 @@ class WallpaperModeResolver @Inject constructor(
     /**
      * Removes any separate lock-screen wallpaper so the engine receives both screens.
      * Safe to call repeatedly; it does nothing when no lock wallpaper is set.
+     *
+     * Runs on [Dispatchers.IO]: unlike the cheap [isAtmosphereEngineActive] snapshot, clearing makes
+     * system_server delete the lock wallpaper, reset its bitmap and notify listeners.
      */
-    fun ensureEngineOwnsLockScreen() {
+    suspend fun ensureEngineOwnsLockScreen() = withContext(Dispatchers.IO) {
         runCatching {
             val manager = WallpaperManager.getInstance(appContext)
             if (manager.getWallpaperId(WallpaperManager.FLAG_LOCK) > 0) {
@@ -79,5 +82,6 @@ class WallpaperModeResolver @Inject constructor(
                 Log.i(TAG, "Cleared the separate lock wallpaper; the engine now owns both screens")
             }
         }.onFailure { Log.w(TAG, "Could not clear the lock wallpaper", it) }
+        Unit
     }
 }

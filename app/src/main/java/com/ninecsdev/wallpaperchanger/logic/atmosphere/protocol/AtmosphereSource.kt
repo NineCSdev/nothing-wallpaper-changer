@@ -1,6 +1,5 @@
-package com.ninecsdev.wallpaperchanger.service.atmosphere
+package com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
@@ -17,7 +16,7 @@ import java.io.File
  * The image and its six seeds live in **one container**, written to a temp file and moved into
  * place with a single rename.
  *
- * This object owns the path and the format; nothing else should know either.
+ * This object owns the file names and the format; nothing else should know either.
  */
 object AtmosphereSource {
 
@@ -36,7 +35,8 @@ object AtmosphereSource {
     /** A read whose image bytes have been decoded. The caller owns [bitmap]. */
     class Decoded(val seeds: List<VertexInfo>, val bitmap: Bitmap)
 
-    fun file(context: Context): File = File(context.filesDir, FILE_NAME)
+    /** @param dir the app's `filesDir`. */
+    fun file(dir: File): File = File(dir, FILE_NAME)
 
     /**
      * Replaces the current source. Returns false and leaves the existing file untouched on any
@@ -44,13 +44,14 @@ object AtmosphereSource {
      *
      * @param imageBytes the encoded (WebP) fitted image, exactly as it should be uploaded.
      */
-    fun write(context: Context, seeds: List<VertexInfo>, imageBytes: ByteArray): Boolean {
-        require(seeds.size == AtmosphereConstants.SEED_COUNT) {
-            "expected ${AtmosphereConstants.SEED_COUNT} seeds, got ${seeds.size}"
+    // TODO tests: see vault note tests/Atmosphere Delivery Tests.md (container round-trip)
+    fun write(dir: File, seeds: List<VertexInfo>, imageBytes: ByteArray): Boolean {
+        require(seeds.size == VertexInfo.SEED_COUNT) {
+            "expected ${VertexInfo.SEED_COUNT} seeds, got ${seeds.size}"
         }
 
         return try {
-            writeAtomically(File(context.filesDir, TEMP_FILE_NAME), file(context)) { temp ->
+            writeAtomically(File(dir, TEMP_FILE_NAME), file(dir)) { temp ->
                 DataOutputStream(temp.outputStream().buffered()).use { out ->
                     out.writeInt(MAGIC)
                     out.writeInt(VERSION)
@@ -80,8 +81,8 @@ object AtmosphereSource {
      * Returns null whenever the source is unreadable or the image does not decode.
      * That is never a reason to blank the screen: callers keep whatever is already loaded.
      */
-    fun readDecoded(context: Context): Decoded? {
-        val payload = read(context) ?: run {
+    fun readDecoded(dir: File): Decoded? {
+        val payload = read(dir) ?: run {
             Log.w(TAG, "No readable source; keeping whatever is loaded")
             return null
         }
@@ -94,8 +95,8 @@ object AtmosphereSource {
     }
 
     /** Reads the current source, or null if it is absent, truncated or of an unknown version. */
-    fun read(context: Context): Payload? {
-        val source = file(context)
+    fun read(dir: File): Payload? {
+        val source = file(dir)
         if (!source.exists()) return null
 
         return try {
@@ -111,8 +112,8 @@ object AtmosphereSource {
                 }
 
                 val count = input.readInt()
-                if (count != AtmosphereConstants.SEED_COUNT) {
-                    Log.w(TAG, "Expected ${AtmosphereConstants.SEED_COUNT} seeds, found $count; ignoring")
+                if (count != VertexInfo.SEED_COUNT) {
+                    Log.w(TAG, "Expected ${VertexInfo.SEED_COUNT} seeds, found $count; ignoring")
                     return null
                 }
 

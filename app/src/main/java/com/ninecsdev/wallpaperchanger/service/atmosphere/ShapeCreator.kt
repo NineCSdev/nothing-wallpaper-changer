@@ -2,6 +2,7 @@ package com.ninecsdev.wallpaperchanger.service.atmosphere
 
 import android.opengl.GLES30
 import android.opengl.Matrix
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.VertexInfo
 import java.util.Random
 import kotlin.math.cos
 import kotlin.math.sin
@@ -67,7 +68,7 @@ internal class ShapeCreator {
 
     private val positionBytes = positions.size * AtmosphereGl.BYTES_PER_FLOAT
 
-    val isReady: Boolean get() = program != 0 && seeds.size == AtmosphereConstants.SEED_COUNT
+    val isReady: Boolean get() = program != 0 && seeds.size == VertexInfo.SEED_COUNT
 
     // Lifecycle
 
@@ -109,7 +110,7 @@ internal class ShapeCreator {
     fun reset(width: Int, height: Int) {
         surfaceWidth = width
         surfaceHeight = height
-        if (seeds.size != AtmosphereConstants.SEED_COUNT) return
+        if (seeds.size != VertexInfo.SEED_COUNT) return
 
         // Re-seeded from the wall clock on every call, unlike PROCESS_RANDOM.
         val targetRandom = Random(System.currentTimeMillis() / 1000L)

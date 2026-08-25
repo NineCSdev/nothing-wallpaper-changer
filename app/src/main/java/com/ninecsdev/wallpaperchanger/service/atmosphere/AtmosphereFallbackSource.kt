@@ -8,6 +8,8 @@ import android.graphics.Color
 import android.util.Log
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereSource
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.VertexInfo
 import kotlin.math.roundToInt
 
 /**
@@ -86,7 +88,7 @@ internal object AtmosphereFallbackSource {
         thumbnail.getPixels(pixels, 0, width, 0, 0, width, height)
         if (thumbnail !== bitmap) thumbnail.recycle()
 
-        val seeds = ArrayList<VertexInfo>(AtmosphereConstants.SEED_COUNT)
+        val seeds = ArrayList<VertexInfo>(VertexInfo.SEED_COUNT)
         // Entry 0 is the background so it wants the image's mean color. Its position doesn't matter
         seeds += VertexInfo(
             0, 0, width, height, meanColor(pixels), VertexInfo.SYNTHESIZED_POPULATION
