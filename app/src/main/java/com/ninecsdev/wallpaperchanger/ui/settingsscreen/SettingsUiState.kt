@@ -32,6 +32,8 @@ data class SettingsUiState(
     val atmosphereEngineActive: Boolean = false,
     // Whether a source image exists to feed the atmosphere renderer gates the set-button up-front.
     val hasAtmosphereSource: Boolean = false,
+    /** Drives the error snackbar; cleared via [SettingsViewModel.clearAtmosphereExitFailed]. */
+    val atmosphereExitFailed: Boolean = false,
     val wallpaperZoomFix: WallpaperZoomFix = WallpaperZoomFix.OFF,
     val compressionQualityHigh: Int = 95,
     val compressionQualityLow: Int = 80,

@@ -87,7 +87,8 @@ class SettingsViewModel @Inject constructor(
     private data class AtmosphereSettings(
         val mode: WallpaperMode,
         val engineActive: Boolean,
-        val hasSource: Boolean
+        val hasSource: Boolean,
+        val exitFailed: Boolean
     )
 
     private data class SettingsBundle(
@@ -128,10 +129,14 @@ class SettingsViewModel @Inject constructor(
         (activeSnapshot?.second?.isNotEmpty() == true) || defaultUri != null
     }
 
+    // One-shot: set when an atmosphere exit finds nothing to replace the live wallpaper with
+    private val atmosphereExitFailed = MutableStateFlow(false)
+
     private val atmosphereFlow = combine(
         appDataStore.wallpaperModeFlow(),
         atmosphereEngineActive,
         hasAtmosphereSourceFlow,
+        atmosphereExitFailed,
         ::AtmosphereSettings
     )
 
@@ -171,6 +176,7 @@ class SettingsViewModel @Inject constructor(
             wallpaperMode = bundle.atmosphere.mode,
             atmosphereEngineActive = bundle.atmosphere.engineActive,
             hasAtmosphereSource = bundle.atmosphere.hasSource,
+            atmosphereExitFailed = bundle.atmosphere.exitFailed,
             compressionQualityHigh = qualityHigh,
             compressionQualityLow = qualityLow,
             keepLocalCopies = bundle.keepLocalCopies,
@@ -267,6 +273,7 @@ class SettingsViewModel @Inject constructor(
                 if (!replaced) {
                     Log.w(TAG, "Could not replace the live wallpaper; reverting mode to ATMOSPHERE.")
                     appDataStore.setWallpaperMode(WallpaperMode.ATMOSPHERE)
+                    atmosphereExitFailed.value = true
                 }
                 refreshAtmosphereEngineActive()
                 // Reclaim the source file, but only once the engine is confirmed gone — a still-live
@@ -278,6 +285,11 @@ class SettingsViewModel @Inject constructor(
                 refreshAtmosphereSourceIfLive()
             }
         }
+    }
+
+    /** Clears the exit-failure flag once the UI has shown the snackbar. */
+    override fun clearAtmosphereExitFailed() {
+        atmosphereExitFailed.value = false
     }
 
     override fun setKeepLocalCopies(enabled: Boolean) {

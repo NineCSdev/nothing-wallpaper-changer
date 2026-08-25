@@ -563,16 +563,16 @@ internal class AtmosphereRenderer(
         if (pending.fromRotation && !isPanelDark()) return
         if (!pendingSource.compareAndSet(pending, null)) return
 
-        adoptSource(pending.seeds, pending.bitmap)
-        // A new photo rewinds the replay rather than ending it
+        val adopted = adoptSource(pending.seeds, pending.bitmap)
+        // A new photo rewinds the replay rather than ending it.
         if (loopMorph.get()) {
             restartMorph()
         } else {
             frame = 0
             setAnimating(false)
         }
-        // The image is committed to the screen as of this frame
-        onSourceAdopted(pending.fromRotation)
+        // The image is committed to the screen as of this frame, but only if it was really taken.
+        if (adopted) onSourceAdopted(pending.fromRotation)
     }
 
     /**
@@ -596,8 +596,13 @@ internal class AtmosphereRenderer(
         onMorphActive(value)
     }
 
-    private fun adoptSource(newSeeds: List<VertexInfo>, bitmap: Bitmap) {
-        try {
+    /**
+     * Binds [bitmap] and [newSeeds] as the photo being drawn, reporting whether it actually took.
+     *
+     * False means nothing changed and the previous photo is still the one on screen.
+     */
+    private fun adoptSource(newSeeds: List<VertexInfo>, bitmap: Bitmap): Boolean {
+        return try {
             // Upload first, swap second in case upload throws so we keep a working wallpaper
             val newTexture = AtmosphereGl.uploadPhoto(bitmap)
             AtmosphereGl.deleteTexture(photoTexture)
@@ -612,8 +617,10 @@ internal class AtmosphereRenderer(
 
             shapes.setSeeds(newSeeds)
             shapes.reset(surfaceWidth, surfaceHeight)
+            true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to adopt new source; keeping the previous one", e)
+            false
         } finally {
             bitmap.recycle()
         }

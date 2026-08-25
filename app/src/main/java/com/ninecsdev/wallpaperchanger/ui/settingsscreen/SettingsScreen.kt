@@ -16,10 +16,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -32,6 +35,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import com.ninecsdev.wallpaperchanger.ui.components.SettingsToggleRow
+import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.AtmosphereModeSection
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.LanguageSelector
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.QualitySlider
@@ -57,6 +61,17 @@ fun SettingsScreen(
     onRequestMediaAccess: () -> Unit,
     onSetAtmosphere: () -> Unit
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Leaving atmosphere can fail, the mode rolls itself back. This is feedback for the user.
+    val exitFailedMessage = stringResource(R.string.settings_atmosphere_exit_failed_snackbar)
+    LaunchedEffect(uiState.atmosphereExitFailed) {
+        if (uiState.atmosphereExitFailed) {
+            snackbarHostState.showSnackbar(exitFailedMessage)
+            actions.clearAtmosphereExitFailed()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -81,6 +96,7 @@ fun SettingsScreen(
                 )
             )
         },
+        snackbarHost = { NothingSnackbarHost(snackbarHostState) },
         containerColor = NothingBlack
     ) { padding ->
         Column(
@@ -333,4 +349,5 @@ private object PreviewSettingsActions : SettingsActions {
     override fun setAppLanguage(tag: String) {}
     override fun refreshMediaAccess() {}
     override fun refreshAtmosphereEngineActive() {}
+    override fun clearAtmosphereExitFailed() {}
 }

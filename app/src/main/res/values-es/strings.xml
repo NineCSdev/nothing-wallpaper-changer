@@ -344,4 +344,5 @@
     <string name="settings_atmosphere_not_set">Atmosphere aún no está fijado como fondo del sistema</string>
     <string name="settings_atmosphere_set_button">Fijar fondo Atmosphere</string>
     <string name="settings_atmosphere_no_source_hint">Añade imágenes a una colección o pon un fondo predeterminado.</string>
+    <string name="settings_atmosphere_exit_failed_snackbar">No se pudo salir: no hay fondo de reemplazo</string>
 </resources>

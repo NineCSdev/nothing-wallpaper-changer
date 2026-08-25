@@ -382,7 +382,13 @@ class BufferManager @Inject constructor(
         return BitmapPlacement(scale, xOffset, yOffset)
     }
 
-    private fun writeBuffer(bitmap: Bitmap, cropRule: CropRule) {
+    /**
+     * Compression plus the atomic write is the expensive half of a refill, and two of the three
+     * refill callers (the atmosphere-confirmed rotation in the foreground service, and the mode
+     * switch in settings) reach here from a main-thread scope. So this hops to IO itself rather
+     * than inheriting whatever dispatcher the caller happens to be on.
+     */
+    private suspend fun writeBuffer(bitmap: Bitmap, cropRule: CropRule) = withContext(Dispatchers.IO) {
         val bufferFile = getBufferFile()
         // Written aside and swapped in: the rotation consumer may open this file at any moment.
         writeAtomically(File(appContext.cacheDir, TEMP_FILENAME), bufferFile) { temp ->

@@ -77,14 +77,21 @@ class AtmosphereDelivery @Inject constructor(
             return@withContext false
         }
 
+        // Tagged as a rotation delivery: its display, and only its display, advances the
+        // magazine. Latched before publishing so the confirmation can never arrive ahead
+        val latched = collectionId ?: NO_DELIVERY
         try {
-            // Tagged as a rotation delivery: its display, and only its display, advances the
-            // magazine. Latched before publishing so the confirmation can never arrive ahead
-            val latched = collectionId ?: NO_DELIVERY
             inFlightCollectionId.set(latched)
             publish(bytes, bitmap, fromRotation = true).also { published ->
                 if (!published) inFlightCollectionId.compareAndSet(latched, NO_DELIVERY)
             }
+        } catch (e: Exception) {
+            // Seed extraction and the source writer's own contract checks can throw, and an escape
+            // here would leave the latch set: the next display confirmation would then credit a
+            // rotation whose image never reached the engine.
+            Log.e(TAG, "Failed to publish the buffer to the atmosphere source", e)
+            inFlightCollectionId.compareAndSet(latched, NO_DELIVERY)
+            false
         } finally {
             bitmap.recycle()
         }
