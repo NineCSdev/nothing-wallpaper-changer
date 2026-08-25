@@ -31,3 +31,12 @@ fun computeFolderSyncDiff(
         fresh.filter { it !in existingUris && it !in excluded }
     )
 }
+
+/**
+ * Whether [displayName] belongs to a hidden document: a file the platform's media model treats as
+ * invisible because its name starts with a dot.
+ */
+// TODO tests: check "tests/Folder Scan Visibility Tests" note
+//  (unblocked on JVM, unlike the diff above: this takes a String?, not an android.net.Uri)
+fun isHiddenDocumentName(displayName: String?): Boolean =
+    displayName?.startsWith(".") == true

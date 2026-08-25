@@ -7,6 +7,7 @@ import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,7 +26,7 @@ class FolderScanner @Inject constructor(
      * Scans ONLY (no subfolders) the user-selected folder for images.
      *
      * **Throws on scan failure instead of returning an empty list to
-     * avoid giving the impression the folder is empty.** .
+     * avoid giving the impression the folder is empty.**
      *
      * @param rootFolderUri The top-level folder URI granted by the user.
      * @return The document URIs of the images found in the folder.
@@ -33,39 +34,52 @@ class FolderScanner @Inject constructor(
     suspend fun scan(rootFolderUri: Uri): List<Uri> {
         return withContext(Dispatchers.IO) {
             val imageList = mutableListOf<Uri>()
+            var hiddenSkipped = 0
             val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
                 rootFolderUri, DocumentsContract.getTreeDocumentId(rootFolderUri)
             )
 
             try {
-                appContext.contentResolver.query(
+                val cursor = appContext.contentResolver.query(
                     childrenUri,
                     arrayOf(
                         DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                        DocumentsContract.Document.COLUMN_MIME_TYPE
+                        DocumentsContract.Document.COLUMN_MIME_TYPE,
+                        DocumentsContract.Document.COLUMN_DISPLAY_NAME
                     ),
                     null,
                     null,
                     null
-                )?.use { cursor ->
+                ) ?: throw IOException("Folder scan failed: provider returned no cursor for $rootFolderUri")
+
+                cursor.use {
                     val idCol = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
                     val mimeTypeCol = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE)
+                    // Deliberately not OrThrow: a provider that omits display names must cost us the
+                    // hidden-document filter, not the whole folder.
+                    val displayNameCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
 
                     while (cursor.moveToNext()) {
                         val mimeType = cursor.getString(mimeTypeCol)
+                        if (mimeType == null || !mimeType.startsWith("image/")) continue
 
-                        if (mimeType != null && mimeType.startsWith("image/")) {
-                            val docId = cursor.getString(idCol)
-                            val docUri = DocumentsContract.buildDocumentUriUsingTree(rootFolderUri, docId)
-                            imageList.add(docUri)
+                        val displayName = if (displayNameCol >= 0) cursor.getString(displayNameCol) else null
+                        if (isHiddenDocumentName(displayName)) {
+                            hiddenSkipped++
+                            continue
                         }
+
+                        val docId = cursor.getString(idCol)
+                        val docUri = DocumentsContract.buildDocumentUriUsingTree(rootFolderUri, docId)
+                        imageList.add(docUri)
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Folder scan failed, aborting: $e")
                 throw e
             }
-            Log.d(TAG, "Folder scan found ${imageList.size} valid images.")
+            // The skipped count is the only diagnostic a user report will ever give us for this filter.
+            Log.d(TAG, "Folder scan found ${imageList.size} valid images, skipped $hiddenSkipped hidden.")
             imageList
         }
     }
