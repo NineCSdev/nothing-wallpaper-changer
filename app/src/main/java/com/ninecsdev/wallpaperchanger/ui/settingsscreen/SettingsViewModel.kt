@@ -11,16 +11,14 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
-import com.ninecsdev.wallpaperchanger.logic.BufferManager
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereSourceProvisioner
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.logic.StorageUsage
 import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
 import com.ninecsdev.wallpaperchanger.logic.WallpaperApplyOutcome
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
-import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
-import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
@@ -30,7 +28,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -52,10 +49,10 @@ class SettingsViewModel @Inject constructor(
     private val imageInternalizer: ImageInternalizer,
     private val wallpaperSources: WallpaperSources,
     private val repository: WallpaperRepository,
-    private val bufferManager: BufferManager,
     private val wallpaperApplier: WallpaperApplier,
     private val wallpaperModeResolver: WallpaperModeResolver,
     private val atmosphereDelivery: AtmosphereDelivery,
+    private val atmosphereSourceProvisioner: AtmosphereSourceProvisioner,
     private val rotationEngine: RotationEngine,
     @param:ApplicationContext private val context: Context
 ) : ViewModel(), SettingsActions {
@@ -308,10 +305,12 @@ class SettingsViewModel @Inject constructor(
             // Ensure the engine owns both screens so atmosphere works correctly
             wallpaperModeResolver.ensureEngineOwnsLockScreen()
             viewModelScope.launch {
-                if (appDataStore.getWallpaperMode() != WallpaperMode.ATMOSPHERE) return@launch
-                // Already correct when the set button ran; re-rendered for the paths that skipped it.
-                prepareAtmosphereSource()
-                rotationEngine.refillDiskBuffer()
+                // Already correct when the set button ran; re-rendered for the paths that skipped
+                // it. Ungated by the desired mode
+                atmosphereSourceProvisioner.provision()
+                if (appDataStore.getWallpaperMode() == WallpaperMode.ATMOSPHERE) {
+                    rotationEngine.refillDiskBuffer()
+                }
             }
         }
     }
@@ -322,34 +321,7 @@ class SettingsViewModel @Inject constructor(
      * Not part of [SettingsActions]: it's a suspend call the Route awaits before firing the
      * activity intent (mirrors how `onRequestMediaAccess` is a plain Route-level callback).
      */
-    suspend fun prepareAtmosphereSource(): Boolean {
-        val (wallpaper, cropRule) = resolveAtmosphereSource() ?: return false
-        val rendered = bufferManager.renderForAtmosphere(wallpaper, cropRule) ?: return false
-        // deliverBitmap writes the container and broadcasts the reload itself. If the engine is
-        // already running (re-set, or a settings-triggered re-render) it re-decodes now; the
-        // broadcast is a harmless no-op when nothing is registered for the action yet.
-        return try {
-            atmosphereDelivery.deliverBitmap(rendered)
-        } finally {
-            rendered.recycle()
-        }
-    }
-
-    /**
-     * Picks the image + crop rule to feed the atmosphere renderer (see [prepareAtmosphereSource]).
-     * Reuses [WallpaperRepository.activeCollectionImagesFlow] (already excludes unavailable files) for
-     * the active-collection case.
-     */
-    private suspend fun resolveAtmosphereSource(): Pair<WallpaperImage, CropRule>? {
-        val activeSnapshot = repository.activeCollectionImagesFlow().first()
-        val firstAvailable = activeSnapshot?.second?.firstOrNull()
-        if (activeSnapshot != null && firstAvailable != null) {
-            return firstAvailable to activeSnapshot.first.defaultCropRule
-        }
-
-        val defaultUri = appDataStore.getDefaultWallpaperUri() ?: return null
-        return WallpaperImage.forDefaultWallpaper(defaultUri) to CropRule.FIT
-    }
+    suspend fun prepareAtmosphereSource(): Boolean = atmosphereSourceProvisioner.provision()
 
     /**
      * Re-renders the atmosphere source and signals the engine, but only while the engine is
@@ -358,7 +330,7 @@ class SettingsViewModel @Inject constructor(
     private suspend fun refreshAtmosphereSourceIfLive() {
         if (appDataStore.getWallpaperMode() != WallpaperMode.ATMOSPHERE) return
         if (!wallpaperModeResolver.isAtmosphereEngineActive()) return
-        prepareAtmosphereSource()
+        atmosphereSourceProvisioner.provision()
     }
 
     /**

@@ -12,6 +12,7 @@ import android.os.PowerManager
 import android.util.Log
 import android.view.Surface
 import com.ninecsdev.wallpaperchanger.BuildConfig
+import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
 import java.util.concurrent.Executors
 
 /**
@@ -40,6 +41,14 @@ class AtmosphereWallpaperService : GLWallpaperService() {
          * queued and never shown doesn't consume a wallpaper.
          */
         const val ACTION_DISPLAYED = "com.ninecsdev.wallpaperchanger.ACTION_ATMOSPHERE_DISPLAYED"
+
+        /**
+         * Same-app broadcast the engine sends when it starts and finds no source on disk. The app
+         * answers by rendering one and delivering it; see
+         * [AtmosphereSourceRequestReceiver].
+         */
+        const val ACTION_SOURCE_REQUESTED =
+            "com.ninecsdev.wallpaperchanger.ACTION_ATMOSPHERE_SOURCE_REQUESTED"
 
         /**
          * Holds the renderer at one frame so a still can be compared against the real effect.
@@ -82,7 +91,8 @@ class AtmosphereWallpaperService : GLWallpaperService() {
             requestRender = { requestRender() },
             isPanelDark = ::isPanelDark,
             onSourceAdopted = ::onSourceAdopted,
-            onMorphActive = ::onMorphActive
+            onMorphActive = ::onMorphActive,
+            onSourceMissing = ::onSourceMissing
         )
 
         /**
@@ -263,9 +273,24 @@ class AtmosphereWallpaperService : GLWallpaperService() {
          * Ends with [renderPendingWork].
          */
         private fun reloadSource(fromRotation: Boolean) {
+            decodeAndQueue(fromRotation) {
+                AtmosphereSource.readDecoded(this@AtmosphereWallpaperService)
+            }
+        }
+
+        /**
+         * The hand-off every source goes through, whatever produced it: [decode] runs on
+         * [decodeExecutor], the result is adopted on the main looper, and a decode that outlived
+         * the engine recycles its bitmap instead of handing it to a dead renderer.
+         *
+         * A null [decode] leaves whatever is already loaded on screen.
+         */
+        private fun decodeAndQueue(
+            fromRotation: Boolean,
+            decode: () -> AtmosphereSource.Decoded?
+        ) {
             decodeExecutor.execute {
-                val decoded = AtmosphereSource.readDecoded(this@AtmosphereWallpaperService)
-                    ?: return@execute
+                val decoded = decode() ?: return@execute
                 handler.post {
                     if (destroyed) {
                         decoded.bitmap.recycle()
@@ -274,6 +299,40 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                     renderer.queueSource(decoded.seeds, decoded.bitmap, fromRotation)
                     renderPendingWork()
                 }
+            }
+        }
+
+        /**
+         * The renderer came up with no source to load. Called on the **GL thread**, so it hops to
+         * the main looper first.
+         *
+         * A preview engine asks too. It is the same black screen there, and the request is
+         * answered the same way.
+         */
+        private fun onSourceMissing() {
+            handler.post {
+                if (destroyed) return@post
+
+                sendBroadcast(Intent(ACTION_SOURCE_REQUESTED).setPackage(packageName))
+                loadFallbackSource()
+            }
+        }
+
+        /**
+         * Draws the built-in wallpaper into a source and queues it, off the GL thread.
+         *
+         * Sized from the surface when the holder already knows, and from the display otherwise.
+         */
+        private fun loadFallbackSource() {
+            val frame = surfaceHolder?.surfaceFrame
+            val (screenWidth, screenHeight) =
+                ImageProcessingUtils.getScreenDimensions(this@AtmosphereWallpaperService)
+            val width = frame?.width()?.takeIf { it > 0 } ?: screenWidth
+            val height = frame?.height()?.takeIf { it > 0 } ?: screenHeight
+
+            // Not a rotation: it must show at once, and it must never advance the magazine.
+            decodeAndQueue(fromRotation = false) {
+                AtmosphereFallbackSource.load(this@AtmosphereWallpaperService, width, height)
             }
         }
 

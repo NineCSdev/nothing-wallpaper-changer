@@ -33,6 +33,16 @@
             </intent-filter>
         </receiver>
 
+
+        <receiver
+            android:name=".service.atmosphere.AtmosphereSourceRequestReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.ninecsdev.wallpaperchanger.ACTION_ATMOSPHERE_SOURCE_REQUESTED" />
+            </intent-filter>
+        </receiver>
+
         <activity
             android:name=".ui.MainActivity"
             android:exported="true">

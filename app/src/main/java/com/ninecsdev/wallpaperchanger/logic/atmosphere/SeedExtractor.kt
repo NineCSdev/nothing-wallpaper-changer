@@ -294,10 +294,10 @@ class SeedExtractor @Inject constructor() {
         }
 
     /**
-     * Tops the list up to [AtmosphereConstants.SEED_COUNT] when the photo quantised to fewer than
-     * six colours, which happens on near-monochrome sources.
+     * Tops the list up to [AtmosphereConstants.SEED_COUNT] when the photo quantized to fewer than
+     * six colors, which happens on near-monochrome sources.
      *
-     * Synthesised colours are the most populous swatch with its saturation walked away in 0.1
+     * Synthesised colors are the most populous swatch with its saturation walked away in 0.1
      * steps — half of them down, the rest up — wrapping by 0.6 when they run off either end.
      * They are placed at random positions, the only true randomness in the seed list.
      *
@@ -341,7 +341,7 @@ class SeedExtractor @Inject constructor() {
             bitmapWidth = width,
             bitmapHeight = height,
             pixelColor = rgb,
-            population = -1
+            population = VertexInfo.SYNTHESIZED_POPULATION
         )
     }
 
@@ -359,7 +359,7 @@ class SeedExtractor @Inject constructor() {
                 bitmapWidth = scan.referenceWidth.coerceAtLeast(1),
                 bitmapHeight = scan.referenceHeight.coerceAtLeast(1),
                 pixelColor = grey,
-                population = -1
+                population = VertexInfo.SYNTHESIZED_POPULATION
             )
         }
     }

@@ -16,7 +16,7 @@ package com.ninecsdev.wallpaperchanger.service.atmosphere
  * @param y Y of the same pixel. Note the renderer flips this into GL's origin.
  * @param pixelColor That pixel's raw color (this, not the swatch's own color) is what is drawn.
  * @param population How much of the photo quantized to this swatch. Used to order the list, which
- * is the only thing that decides which seed becomes the background; synthesized seeds carry -1.
+ * is the only thing that decides which seed becomes the background; synthesized seeds carry [SYNTHESIZED_POPULATION].
  */
 data class VertexInfo(
     val x: Int,
@@ -25,4 +25,9 @@ data class VertexInfo(
     val bitmapHeight: Int,
     val pixelColor: Int,
     val population: Int
-)
+) {
+    companion object {
+        /** [population] for a seed whose color was invented rather than measured */
+        const val SYNTHESIZED_POPULATION = -1
+    }
+}

@@ -43,7 +43,12 @@ internal class AtmosphereRenderer(
      * Fired on the **GL thread** on each edge of the morph which is what the frame-rate vote
      * hanging off it needs: a missed falling edge leaves the panel pinned.
      */
-    private val onMorphActive: (active: Boolean) -> Unit = {}
+    private val onMorphActive: (active: Boolean) -> Unit = {},
+    /**
+     * Fired on the **GL thread** when there is no source on disk to load, which without an answer
+     * means a black panel for as long as the engine stays set. See [loadSourceFromDisk].
+     */
+    private val onSourceMissing: () -> Unit = {}
 ) : GLSurfaceView.Renderer {
 
     private companion object {
@@ -616,10 +621,17 @@ internal class AtmosphereRenderer(
      * Reads whatever is on disk. Called on surface creation, which includes the very first start
      * at boot with the app's own process absent.
      *
-     * A failure here is never a reason to blank the screen -- whatever is already loaded stays.
+     * A failure here is never a reason to blank the screen - whatever is already loaded stays.
+     *
+     * Finding *nothing* is a different case, and the one this reports [onSourceMissing].
      */
     private fun loadSourceFromDisk() {
-        val decoded = AtmosphereSource.readDecoded(context) ?: return
+        val decoded = AtmosphereSource.readDecoded(context)
+        if (decoded == null) {
+            Log.w(TAG, "No source on disk; asking for one")
+            onSourceMissing()
+            return
+        }
         adoptSource(decoded.seeds, decoded.bitmap)
     }
 
