@@ -125,14 +125,24 @@ class WallpaperApplier @Inject constructor(
         }
     }
 
+    /**
+     * @param rotatingCollectionId the collection the buffered image was drawn from, when this apply
+     * is a rotation.
+     */
     // TODO tests: see vault note tests/Atmosphere Delivery Tests.md
-    suspend fun applyBufferWallpaper(): WallpaperApplyOutcome = withContext(Dispatchers.IO) {
+    suspend fun applyBufferWallpaper(
+        rotatingCollectionId: Long? = null
+    ): WallpaperApplyOutcome = withContext(Dispatchers.IO) {
         if (wallpaperModeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE) {
             // Delivery is a cheap copy of the already-rendered buffer into the engine's source file
             // plus a reload broadcast — no setStream, which would replace the live wallpaper. The
             // image is shown later (or held), so the caller defers the rotation advance until the
             // engine confirms display; hence DEFERRED rather than SHOWN.
-            return@withContext if (atmosphereDelivery.deliverBuffer(bufferManager.getBufferFile())) {
+            val delivered = atmosphereDelivery.deliverBuffer(
+                bufferManager.getBufferFile(),
+                rotatingCollectionId
+            )
+            return@withContext if (delivered) {
                 WallpaperApplyOutcome.DEFERRED
             } else {
                 WallpaperApplyOutcome.FAILED

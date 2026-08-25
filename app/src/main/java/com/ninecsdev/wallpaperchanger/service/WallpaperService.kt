@@ -16,6 +16,7 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
 import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.ServiceState
@@ -45,6 +46,7 @@ class WallpaperService : Service() {
     @Inject lateinit var lifecycleTracker: ServiceLifecycleTracker
     @Inject lateinit var serviceStateManager: ServiceStateManager
     @Inject lateinit var appDataStore: AppDataStore
+    @Inject lateinit var atmosphereDelivery: AtmosphereDelivery
 
     private var screenOffReceiver: BroadcastReceiver? = null
     private var systemEventReceiver: BroadcastReceiver? = null
@@ -244,16 +246,27 @@ class WallpaperService : Service() {
      * (delivery) happened in [ScreenOffReceiver]. In atmosphere mode display is asynchronous and may
      * never happen (a fast toggle holds the image), so advancement can't ride along with delivery;
      * it waits for this confirmation instead.
+     *
+     * Which collection gets advanced comes from the delivery, not from whatever is active.
      */
+    // TODO tests: see vault note tests/Collection Switch Rotation Gate Tests.md
     private fun registerAtmosphereDisplayedReceiver() {
         if (atmosphereDisplayedReceiver != null) return
 
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 serviceScope.launch {
-                    val active = repository.getActiveCollectionOnce() ?: return@launch
-                    repository.markWallpaperChanged(active.id)
-                    rotationEngine.refillDiskBuffer()
+                    val deliveredId = atmosphereDelivery.takeInFlightCollectionId()
+
+                    if (deliveredId == null) {
+                        Log.w(tag, "Atmosphere display with no delivery on record; not advancing.")
+                        return@launch
+                    }
+
+                    repository.markWallpaperChanged(deliveredId)
+
+                    val active = repository.getActiveCollectionOnce()
+                    if (active?.id == deliveredId) rotationEngine.refillDiskBuffer()
                 }
             }
         }

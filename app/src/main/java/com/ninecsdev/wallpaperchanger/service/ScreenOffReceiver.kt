@@ -95,7 +95,7 @@ class ScreenOffReceiver(
                     }
 
                     // Apply the pre-processed buffer image and prepare next image.
-                    when (wallpaperApplier.applyBufferWallpaper()) {
+                    when (wallpaperApplier.applyBufferWallpaper(activeCollection.id)) {
                         WallpaperApplyOutcome.SHOWN -> {
                             // On screen as of now, so advance the rotation now.
                             repository.markWallpaperChanged(activeCollection.id)

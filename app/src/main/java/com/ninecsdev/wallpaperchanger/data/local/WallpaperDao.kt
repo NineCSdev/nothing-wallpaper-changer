@@ -77,12 +77,14 @@ interface WallpaperDao {
         newFrequency: RotationFrequency
     )
 
-    /** Toggles the active collection atomically */
+    /** Toggles the active collection atomically and zeroes last rotation time*/
+    // TODO tests: see vault note tests/Collection Switch Rotation Gate Tests.md
     @Transaction
     suspend fun setActiveCollection(collectionId: Long) {
         resetActiveCollection()
         markCollectionActive(collectionId)
         updateLastUsed(collectionId)
+        updateLastWallpaperChangeAt(collectionId, 0L)
     }
 
     /** Sets the user-controlled pin flag (pinned collections sort first in every collection grid). */

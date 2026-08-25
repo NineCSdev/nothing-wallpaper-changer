@@ -495,10 +495,14 @@ class WallpaperRepository @Inject constructor(
 
 
     /**
-     * Sets the active collection and auto-syncs if it is a folder type.
+     * Sets the active collection and auto-syncs if it is a folder type. If [collectionId] already
+     * active this is a NOOP
      */
+    // TODO tests: see vault note tests/Collection Switch Rotation Gate Tests.md
     suspend fun setActiveCollection(collectionId: Long) {
         withContext(Dispatchers.IO) {
+            if (dao.getCollectionById(collectionId)?.isActive == true) return@withContext
+
             dao.setActiveCollection(collectionId)
             val collection = dao.getCollectionById(collectionId)
             if (collection?.type == CollectionType.FOLDER) {
