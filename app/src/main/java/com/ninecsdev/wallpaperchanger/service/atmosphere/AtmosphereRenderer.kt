@@ -115,6 +115,12 @@ internal class AtmosphereRenderer(
     /** Set from off the GL thread to cut a morph short; consumed in [applyPendingWork]. */
     private val settleRequested = AtomicBoolean(false)
 
+    /** Whether the morph replays instead of ending; see [startMorphLoop]. */
+    private val loopMorph = AtomicBoolean(false)
+
+    /** Set to rewind the replay to the photo; consumed in [applyPendingWork]. */
+    private val loopRestart = AtomicBoolean(false)
+
     /** Debug frame scrub. Below zero means "run normally". */
     private val pinnedFrame = AtomicInteger(-1)
 
@@ -162,6 +168,12 @@ internal class AtmosphereRenderer(
     private var animating = false
     private var lastFrameAt = 0L
 
+    /** Frames held on the settled effect so far in this pass of the replay. GL thread only. */
+    private var loopDwell = 0
+
+    /** Frames of the photo still owed before this pass of the replay morphs. GL thread only. */
+    private var loopPhotoHold = 0
+
     private var seeds: List<VertexInfo> = emptyList()
     private val bgColor = FloatArray(3)
 
@@ -200,9 +212,34 @@ internal class AtmosphereRenderer(
         }
     }
 
-    /** Abandons any morph in flight and jumps to the settled frame. For when unlock lands on an open app */
+    /**
+     * Abandons any morph in flight and jumps to the settled frame. For when unlock lands on an
+     * open app, and how a replay is cut short.
+     */
     fun settleNow() {
         if (settleRequested.compareAndSet(false, true)) requestRender()
+    }
+
+    /**
+     * Replays the morph for as long as it is on, holding
+     * [AtmosphereConstants.LOOP_DWELL_FRAMES] on the settled effect between passes. Calling it
+     * again rewinds the pass in flight.
+     */
+    fun startMorphLoop() {
+        loopMorph.set(true)
+        loopRestart.set(true)
+        requestRender()
+    }
+
+    /**
+     * Ends the replay. The pass in flight finishes rather than being cut mid-morph; [settleNow]
+     * is what abandons it.
+     */
+    fun stopMorphLoop() {
+        loopMorph.set(false)
+        // A restart that never reached a frame would otherwise still be waiting in
+        // [applyPendingWork], and would re-arm the morph the settle is about to end.
+        loopRestart.set(false)
     }
 
     /** Debug only: hold at [frameNumber], or pass a negative to resume. */
@@ -311,9 +348,21 @@ internal class AtmosphereRenderer(
         drawFrame(frame, isInit = !animating)
 
         if (animating) {
-            if (frame <= AtmosphereConstants.TOTAL_ANIM_FRAMES) {
+            if (loopPhotoHold > 0) {
+                // Still on the photo; the morph has not started stepping yet.
+                loopPhotoHold--
+                requestRender()
+            } else if (frame <= AtmosphereConstants.TOTAL_ANIM_FRAMES) {
                 frame++
                 requestRender()
+            } else if (loopMorph.get()) {
+                // Past the end with the replay on: dwell on the settled effect, then rewind.
+                if (loopDwell < AtmosphereConstants.LOOP_DWELL_FRAMES) {
+                    loopDwell++
+                    requestRender()
+                } else {
+                    restartMorph()
+                }
             } else {
                 setAnimating(false)
             }
@@ -331,7 +380,8 @@ internal class AtmosphereRenderer(
             return
         }
 
-        if (locked.get()) {
+        // The replay's photo hold wants exactly what the lock screen wants: the sharp photo full resolution
+        if (locked.get() || loopPhotoHold > 0) {
             drawLockScreen()
             return
         }
@@ -478,9 +528,13 @@ internal class AtmosphereRenderer(
     // Source handling
 
     private fun applyPendingWork() {
-        if (settleRequested.getAndSet(false)) setAnimating(false)
+        if (settleRequested.getAndSet(false)) {
+            loopPhotoHold = 0
+            setAnimating(false)
+        }
 
         if (lockStateDirty.getAndSet(false)) {
+            loopPhotoHold = 0
             if (locked.get()) {
                 frame = 0
                 setAnimating(false)
@@ -494,6 +548,8 @@ internal class AtmosphereRenderer(
             }
         }
 
+        if (loopRestart.getAndSet(false)) restartMorph()
+
         val pending = pendingSource.get() ?: return
         // Evaluated only with a source in hand: isPanelDark crosses a binder for PowerManager, and
         // that is not something to pay on every frame of a morph.
@@ -501,10 +557,29 @@ internal class AtmosphereRenderer(
         if (!pendingSource.compareAndSet(pending, null)) return
 
         adoptSource(pending.seeds, pending.bitmap)
-        frame = 0
-        setAnimating(false)
+        // A new photo rewinds the replay rather than ending it
+        if (loopMorph.get()) {
+            restartMorph()
+        } else {
+            frame = 0
+            setAnimating(false)
+        }
         // The image is committed to the screen as of this frame
         onSourceAdopted(pending.fromRotation)
+    }
+
+    /**
+     * Rewinds the replay to the photo and re-rolls the blob layout, so no two passes are the same.
+     * GL thread only, from both ends of [applyPendingWork] and from [onDrawFrame].
+     */
+    private fun restartMorph() {
+        frame = 0
+        loopDwell = 0
+        loopPhotoHold = AtmosphereConstants.LOOP_PHOTO_HOLD_FRAMES
+        lastFrameAt = 0L
+        shapes.reset(surfaceWidth, surfaceHeight)
+        setAnimating(true)
+        requestRender()
     }
 
     /** Reports [onMorphActive] once per real transition; a repeated assignment is not an edge. */

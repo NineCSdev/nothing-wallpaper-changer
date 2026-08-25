@@ -167,6 +167,12 @@ internal object AtmosphereConstants {
      */
     const val FRAME_INTERVAL_MS = 16L
 
+    /** Frames the replaying morph holds on the settled effect before rewinding to the photo ~0.75 s at [FRAME_INTERVAL_MS]. */
+    const val LOOP_DWELL_FRAMES = 45
+
+    /** Frames the replay holds the untouched photo before each morph. */
+    const val LOOP_PHOTO_HOLD_FRAMES = 45
+
     /** Reference panel width. Above this, [renderRate] is identically 1.0. */
     const val REFERENCE_WIDTH = 1080f
 

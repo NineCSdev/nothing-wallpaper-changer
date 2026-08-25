@@ -187,6 +187,9 @@ class AtmosphereWallpaperService : GLWallpaperService() {
             // Created behind the keyguard is the boot case, and seeding the lock visual is also
             // what arms the first unlock after a reboot to morph.
             renderer.setLocked(startLocked, animate = false)
+
+            // A preview engine plays the morph on repeat instead. Stopped on the way out of visibility
+            if (isPreview) renderer.startMorphLoop()
         }
 
         /**
@@ -209,12 +212,19 @@ class AtmosphereWallpaperService : GLWallpaperService() {
             if (!visible) {
                 // Before super, which draws one last frame before parking the GL thread: settling
                 // first makes that frame the settled state rather than a half-finished morph.
+                // Ending the replay first is what lets that settle stick.
+                renderer.stopMorphLoop()
                 renderer.settleNow()
             }
             super.onVisibilityChanged(visible)
 
             if (!visible) return
-            if (isPreview) return
+
+            if (isPreview) {
+                // Being looked at again: replay preview
+                renderer.startMorphLoop()
+                return
+            }
 
             if (keyguardManager.isKeyguardLocked) {
                 // A wake onto the lock screen: show the photo the keyguard will be dismissed from.
@@ -276,6 +286,8 @@ class AtmosphereWallpaperService : GLWallpaperService() {
          * is a no-op, and pinning there would leave the vote held forever.
          */
         private fun onMorphActive(active: Boolean) {
+            // Guard against a preview reaching here
+            if (isPreview) return
             handler.post { if (!destroyed) pinMorphFrameRate(active) }
         }
 
