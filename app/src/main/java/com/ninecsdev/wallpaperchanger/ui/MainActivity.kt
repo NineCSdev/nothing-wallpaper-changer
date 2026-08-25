@@ -3,8 +3,6 @@ package com.ninecsdev.wallpaperchanger.ui
 import android.Manifest
 import android.content.Intent
 import android.os.Bundle
-import android.os.PowerManager
-import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.PickVisualMediaRequest
@@ -12,7 +10,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
-import androidx.core.net.toUri
 import androidx.navigation.compose.rememberNavController
 import com.ninecsdev.wallpaperchanger.service.WallpaperService
 import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionViewModel
@@ -37,7 +34,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) {
         // The service starts even if denied: POST_NOTIFICATIONS only gates drawer display
-        requestBatteryExemptionThenStartService()
+        startWallpaperServiceNow()
     }
 
     // Folder picker
@@ -65,13 +62,6 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         uri?.let { mainViewModel.internalizeAndSaveDefaultWallpaper(it) }
-    }
-
-    // Battery optimization exemption (Required for boot-start)
-    private val batteryExemptionLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) {
-        startWallpaperServiceNow()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -109,23 +99,6 @@ class MainActivity : ComponentActivity() {
             action = WallpaperService.ACTION_STOP_SERVICE
         }
         startService(intent)
-    }
-
-    /**
-     * Requests battery optimization exemption if needed before service start.
-     * Service still starts even if user declines the exemption.
-     */
-    private fun requestBatteryExemptionThenStartService() {
-        val pm = getSystemService(POWER_SERVICE) as PowerManager
-        if (pm.isIgnoringBatteryOptimizations(packageName)) {
-            startWallpaperServiceNow()
-            return
-        }
-
-        val exemptionIntent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-            data = "package:$packageName".toUri()
-        }
-        batteryExemptionLauncher.launch(exemptionIntent)
     }
 
     private fun startWallpaperServiceNow() {

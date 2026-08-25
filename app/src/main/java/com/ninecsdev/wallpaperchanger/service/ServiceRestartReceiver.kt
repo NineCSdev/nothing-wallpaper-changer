@@ -61,7 +61,8 @@ class ServiceRestartReceiver : BroadcastReceiver() {
         try {
             context.startForegroundService(Intent(context, WallpaperService::class.java))
         } catch (e: ForegroundServiceStartNotAllowedException) {
-            Log.w(tag, "Cannot start service: app is not exempted from battery optimization.", e)
+            // Defensive only: this is not expected to fire on a stock platform.
+            Log.w(tag, "System refused the background foreground-service start after $action.", e)
         } catch (e: Exception) {
             Log.e(tag, "Failed to start service after $action.", e)
         }
