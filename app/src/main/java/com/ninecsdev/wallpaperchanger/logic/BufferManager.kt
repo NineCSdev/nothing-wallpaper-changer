@@ -96,7 +96,7 @@ class BufferManager @Inject constructor(
         // Used in WallpaperApplier for default wallpaper
         // Don't recycle the input; the caller owns it. applyFraming returns it unchanged when
         // there is nothing to do.
-        return applyFraming(bitmap, framing())
+        return applyFraming(bitmap, framing(modeResolver.effectiveMode()))
     }
 
     /**
@@ -109,7 +109,7 @@ class BufferManager @Inject constructor(
     // TODO tests: see vault note tests/Atmosphere Delivery Tests.md (zoom-fix gating by effective mode)
     suspend fun prepareNextWallpaper(wallpaper: WallpaperImage, cropRule: CropRule): BufferPreparationResult {
         return try {
-            val rendered = renderWallpaper(wallpaper, cropRule, framing())
+            val rendered = renderWallpaper(wallpaper, cropRule, framing(modeResolver.effectiveMode()))
                 ?: return BufferPreparationResult.Failure(definitive = false)
             try {
                 writeBuffer(rendered, cropRule)
@@ -130,15 +130,15 @@ class BufferManager @Inject constructor(
     }
 
     /**
-     * The user's zoom-fix setting resolved against the mode that will actually deliver the image.
-     * See [Framing] for why the two modes need opposite treatment.
+     * The user's zoom-fix setting resolved against [mode], the mode that will actually deliver
+     * the image. See [Framing] for why the two modes need opposite treatment.
      *
-     * Read per call, so changing the setting or mode between two refills takes effect on the
+     * The zoom-fix setting is read per call, so changing it between two refills takes effect on the
      * next one without a service restart.
      */
-    private suspend fun framing(): Framing {
+    private suspend fun framing(mode: WallpaperMode): Framing {
         val zoomFix = appDataStore.getWallpaperZoomFix()
-        if (modeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE) {
+        if (mode == WallpaperMode.ATMOSPHERE) {
             return if (zoomFix == WallpaperZoomFix.OFF) Framing.CROP_IN else Framing.NONE
         }
         return when (zoomFix) {
@@ -174,7 +174,9 @@ class BufferManager @Inject constructor(
      */
     suspend fun renderForAtmosphere(wallpaper: WallpaperImage, cropRule: CropRule): Bitmap? {
         return try {
-            renderWallpaper(wallpaper, cropRule, framing())
+            // Framed for atmosphere unconditionally: this renders images the engine will show, including
+            // the one prepared before the engine is live, when the effective mode still reads STATIC.
+            renderWallpaper(wallpaper, cropRule, framing(WallpaperMode.ATMOSPHERE))
         } catch (e: Exception) {
             Log.e(TAG, "Failed to render the atmosphere source", e)
             null

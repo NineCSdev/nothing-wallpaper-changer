@@ -295,9 +295,9 @@ class SettingsViewModel @Inject constructor(
      * Re-snapshots engine liveness and, on the false -> true edge, brings everything that was
      * rendered for the static path up to the framing atmosphere actually wants.
      *
-     * That edge is the moment [WallpaperModeResolver.effectiveMode] starts answering ATMOSPHERE,
-     * so it is also the first moment anything can be rendered correctly for it. Re-rendering the
-     * source is what fixes the image on screen; the buffer refill is for next rotation.
+     * That edge is the moment [WallpaperModeResolver.effectiveMode] starts answering ATMOSPHERE, so
+     * it is the first moment the *buffer* can be rendered correctly for it; that is what the refill
+     * below fixes, for the next rotation. The source re-render is a safety net.
      */
     override fun refreshAtmosphereEngineActive() {
         val wasActive = atmosphereEngineActive.value
@@ -309,7 +309,7 @@ class SettingsViewModel @Inject constructor(
             wallpaperModeResolver.ensureEngineOwnsLockScreen()
             viewModelScope.launch {
                 if (appDataStore.getWallpaperMode() != WallpaperMode.ATMOSPHERE) return@launch
-                // Re-render to correctly shown the atmosphere wallpaper
+                // Already correct when the set button ran; re-rendered for the paths that skipped it.
                 prepareAtmosphereSource()
                 rotationEngine.refillDiskBuffer()
             }
