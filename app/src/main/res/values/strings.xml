@@ -69,12 +69,12 @@
     <string name="settings_title">SETTINGS</string>
     <string name="settings_section_general">OTHERS</string>
     <string name="settings_language_title">APP LANGUAGE</string>
-    <string name="settings_language_subtitle">CHOOSE YOUR PREFERRED LANGUAGE</string>
+    <string name="settings_language_subtitle">Choose your preferred language</string>
     <string name="settings_language_system">System</string>
     <string name="settings_section_service">SERVICE</string>
     <string name="settings_section_quality">STORAGE IMAGE QUALITY</string>
     <string name="settings_battery_saver_title">BATTERY SAVER POLICY</string>
-    <string name="settings_battery_saver_subtitle">WHAT TO DO WHEN BATTERY SAVER ACTIVATES</string>
+    <string name="settings_battery_saver_subtitle">What to do when Battery Saver activates</string>
     <string name="settings_battery_stop">STOP</string>
     <string name="settings_battery_pause">PAUSE</string>
     <string name="settings_battery_ignore">IGNORE</string>
@@ -87,10 +87,10 @@
         Ignore keeps rotating normally.
     </string>
     <string name="settings_destination_title">WALLPAPER DESTINATION</string>
-    <string name="settings_destination_subtitle">APPLY TO YOUR LOCK SCREEN, HOME SCREEN OR BOTH</string>
+    <string name="settings_destination_subtitle">Apply to your lock screen, home screen or both</string>
     <!-- Shown in place of the subtitle above while the selector is greyed out, so the reason is on
          screen rather than only behind the info dialog. -->
-    <string name="settings_destination_subtitle_atmosphere">ATMOSPHERE EFFECT ALWAYS COVERS BOTH SCREENS</string>
+    <string name="settings_destination_subtitle_atmosphere">Atmosphere effect always covers both screens</string>
     <string name="settings_destination_lock">LOCK</string>
     <string name="settings_destination_home">HOME</string>
     <string name="settings_destination_both">BOTH</string>
@@ -98,17 +98,17 @@
     <string name="settings_destination_dialog_body">
         Selects which screen receive the rotating wallpapers: the lock screen, the home screen, or both.
         The screen not selected keeps whatever wallpaper it already has.
-        \n\nWhen Atmosphere effect uses both screens regardless of this setting.
+        \n\nAtmosphere effect uses both screens regardless of this setting.
     </string>
     <string name="settings_quality_high_label">STANDARD QUALITY</string>
-    <string name="settings_quality_high_subtitle">FOR MOST IMAGES</string>
+    <string name="settings_quality_high_subtitle">For most images</string>
     <string name="settings_quality_high_dialog_title">Standard quality</string>
     <string name="settings_quality_high_dialog_body" formatted="false">
         The compression quality used when the app saves its own copy of a normal-sized image (up to 2 MB).
         Higher values keep more detail but use more storage. The recommended value is 95% as the copy is visually indistinguishable from the original.
     </string>
     <string name="settings_quality_low_label">REDUCED QUALITY</string>
-    <string name="settings_quality_low_subtitle">FOR HEAVY IMAGES</string>
+    <string name="settings_quality_low_subtitle">For heavy images</string>
     <string name="settings_quality_low_dialog_title">Reduced quality</string>
     <string name="settings_quality_low_dialog_body" formatted="false">
         The compression quality used for heavy images (over 2 MB), where stronger compression saves the most storage.
@@ -116,9 +116,9 @@
     </string>
     <string name="settings_section_storage">STORAGE</string>
     <string name="settings_keep_local_copies_title">KEEP LOCAL COPIES</string>
-    <string name="settings_keep_local_copies_subtitle">COPY ADDED PHOTOS INTO APP STORAGE</string>
-    <string name="settings_keep_local_copies_locked_subtitle">WITHOUT PHOTO ACCESS, PHOTOS ARE ALWAYS COPIED</string>
-    <string name="settings_keep_local_copies_partial_subtitle">WITH PARTIAL ACCESS, PHOTOS ARE ALWAYS COPIED</string>
+    <string name="settings_keep_local_copies_subtitle">Copy added photos into app storage</string>
+    <string name="settings_keep_local_copies_locked_subtitle">Without photo access, photos are always copied</string>
+    <string name="settings_keep_local_copies_partial_subtitle">With partial access, photos are always copied</string>
     <string name="settings_keep_local_copies_dialog_title">Keep local copies</string>
     <string name="settings_keep_local_copies_dialog_body">
         Normally the app uses your picked photos directly from where they live, storing no duplicates, but a wallpaper breaks if its original is moved or deleted.
@@ -135,7 +135,7 @@
 
     <!-- Boot toggle -->
     <string name="settings_autostart_title">AUTOSTART ON BOOT</string>
-    <string name="settings_autostart_subtitle">RESUME SERVICE AFTER REBOOT</string>
+    <string name="settings_autostart_subtitle">Resume service after reboot</string>
     <string name="settings_autostart_dialog_title">Autostart on boot</string>
     <string name="settings_autostart_dialog_body">
         When enabled, the rotation service starts again automatically after the phone reboots, as long as it was running before shutdown.
@@ -144,7 +144,7 @@
 
     <!-- Screen off delay -->
     <string name="settings_screen_off_delay_title">SCREEN OFF DELAY</string>
-    <string name="settings_screen_off_delay_subtitle">DELAY FOR SCREEN OFF ANIMATION</string>
+    <string name="settings_screen_off_delay_subtitle">Delay for screen off animation</string>
     <string name="settings_screen_off_delay_unit" translatable="false">ms</string>
     <string name="settings_screen_off_delay_dialog_title">Screen off delay</string>
     <string name="settings_screen_off_delay_dialog_body">
@@ -156,7 +156,7 @@
 
     <!-- Lockscreen zoom fix -->
     <string name="settings_zoom_fix_title">WALLPAPER ZOOM FIX</string>
-    <string name="settings_zoom_fix_subtitle">FIXES NOTHING OS WALLPAPER AUTOZOOM</string>
+    <string name="settings_zoom_fix_subtitle">Fixes Nothing OS wallpaper autozoom</string>
     <string name="settings_zoom_fix_off">OFF</string>
     <string name="settings_zoom_fix_blur">BLUR</string>
     <string name="settings_zoom_fix_edge">EDGE</string>
@@ -338,7 +338,7 @@
     <string name="atmosphere_wallpaper_description">Your wallpaper morphs into drifting colors when you unlock — Nothing OS Atmosphere style.</string>
 
     <string name="settings_wallpaper_mode_title">ATMOSPHERE EFFECT</string>
-    <string name="settings_wallpaper_mode_subtitle">RECREATION OF NOTHING OS ATMOSPHERE EFFECT</string>
+    <string name="settings_wallpaper_mode_subtitle">Recreation of the Nothing OS Atmosphere effect</string>
     <string name="settings_wallpaper_mode_dialog_title">Atmosphere effect</string>
     <string name="settings_wallpaper_mode_dialog_body">
         Atmosphere is a live wallpaper that replicates Nothing OS\'s unlock effect of the same name: your sharp photo shows on the
