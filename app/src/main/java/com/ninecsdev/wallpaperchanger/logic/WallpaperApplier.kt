@@ -81,9 +81,10 @@ class WallpaperApplier @Inject constructor(
         if (wallpaperModeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE) {
             // Revert-to-default flows through the atmosphere path: render the default and hand it
             // to the engine instead of setBitmap, which would evict the engine and end the mode.
-            val rendered = bufferManager.renderForAtmosphere(
+            val rendered = bufferManager.renderFramed(
                 WallpaperImage.forDefaultWallpaper(uri),
-                CropRule.FIT
+                CropRule.FIT,
+                WallpaperMode.ATMOSPHERE
             ) ?: return@withContext false
 
             return@withContext try {

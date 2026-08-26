@@ -11,12 +11,12 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereExit
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereExitOutcome
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereSourceProvisioner
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.logic.StorageUsage
-import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
-import com.ninecsdev.wallpaperchanger.logic.WallpaperApplyOutcome
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
@@ -49,9 +49,9 @@ class SettingsViewModel @Inject constructor(
     private val imageInternalizer: ImageInternalizer,
     private val wallpaperSources: WallpaperSources,
     private val repository: WallpaperRepository,
-    private val wallpaperApplier: WallpaperApplier,
     private val wallpaperModeResolver: WallpaperModeResolver,
     private val atmosphereDelivery: AtmosphereDelivery,
+    private val atmosphereExit: AtmosphereExit,
     private val atmosphereSourceProvisioner: AtmosphereSourceProvisioner,
     private val rotationEngine: RotationEngine,
     @param:ApplicationContext private val context: Context
@@ -88,7 +88,7 @@ class SettingsViewModel @Inject constructor(
         val mode: WallpaperMode,
         val engineActive: Boolean,
         val hasSource: Boolean,
-        val exitFailed: Boolean
+        val exitOutcome: AtmosphereExitOutcome?
     )
 
     private data class SettingsBundle(
@@ -129,14 +129,14 @@ class SettingsViewModel @Inject constructor(
         (activeSnapshot?.second?.isNotEmpty() == true) || defaultUri != null
     }
 
-    // One-shot: set when an atmosphere exit finds nothing to replace the live wallpaper with
-    private val atmosphereExitFailed = MutableStateFlow(false)
+    // One-shot: what the last atmosphere exit did, when the user needs telling
+    private val atmosphereExitOutcome = MutableStateFlow<AtmosphereExitOutcome?>(null)
 
     private val atmosphereFlow = combine(
         appDataStore.wallpaperModeFlow(),
         atmosphereEngineActive,
         hasAtmosphereSourceFlow,
-        atmosphereExitFailed,
+        atmosphereExitOutcome,
         ::AtmosphereSettings
     )
 
@@ -176,7 +176,7 @@ class SettingsViewModel @Inject constructor(
             wallpaperMode = bundle.atmosphere.mode,
             atmosphereEngineActive = bundle.atmosphere.engineActive,
             hasAtmosphereSource = bundle.atmosphere.hasSource,
-            atmosphereExitFailed = bundle.atmosphere.exitFailed,
+            atmosphereExitOutcome = bundle.atmosphere.exitOutcome,
             compressionQualityHigh = qualityHigh,
             compressionQualityLow = qualityLow,
             keepLocalCopies = bundle.keepLocalCopies,
@@ -238,14 +238,17 @@ class SettingsViewModel @Inject constructor(
 
     /**
      * Persists the desired [mode]. Switching ATMOSPHERE → STATIC while the live engine is set is the
-     * deliberate exit-live-wallpaper path: a static wallpaper is applied immediately to replace it
-     * (entering atmosphere, by contrast, needs the user to confirm on the system picker).
+     * deliberate exit-live-wallpaper path, delegated to [AtmosphereExit] (entering atmosphere, by
+     * contrast, needs the user to confirm on the system picker).
      *
-     * The setting is written first so everything downstream sees the new effective mode, but it is
-     * **rolled back** if the exit fails to actually replace the live wallpaper. A stored STATIC with
-     * the atmosphere engine still running is a state [SettingsUiState] cannot describe (the engine
-     * reads as active while the mode says static, so the UI shows neither the mismatch prompt nor a
-     * plain static screen), so the switch is reported as not having happened.
+     * What stays here is the **compensating transaction** around that exit. The setting is written
+     * first so everything downstream — including the exit's own re-render — frames off the new
+     * effective mode, and it is rolled back only on [AtmosphereExitOutcome.FAILED]. A stored STATIC
+     * with the atmosphere engine still running is a state [SettingsUiState] cannot describe (the
+     * engine reads as active while the mode says static, so the UI shows neither the mismatch prompt
+     * nor a plain static screen), so a failed switch is reported as not having happened.
+     * [AtmosphereExitOutcome.CLEARED] is a success — the user did leave — and only owes them a
+     * notice that their own wallpaper went with it.
      *
      * Note there is no buffer refill on the *entry* path. Entry only records a desire — the engine
      * is not live until the user confirms on the system picker, so `effectiveMode()` still reports
@@ -264,21 +267,26 @@ class SettingsViewModel @Inject constructor(
                 wallpaperModeResolver.isAtmosphereEngineActive()
 
             if (leavingActiveAtmosphere) {
-                // Effective mode is STATIC from here on, so this re-renders the buffer *without* the
-                // atmosphere zoom-fix bypass — which is exactly what the static apply below needs.
-                val refilled = rotationEngine.refillDiskBuffer()
-                val replaced = (refilled &&
-                    wallpaperApplier.applyBufferWallpaper() == WallpaperApplyOutcome.SHOWN) ||
-                    wallpaperApplier.applyDefaultWallpaper()
-                if (!replaced) {
+                val outcome = atmosphereExit.leave()
+                if (outcome == AtmosphereExitOutcome.FAILED) {
                     Log.w(TAG, "Could not replace the live wallpaper; reverting mode to ATMOSPHERE.")
                     appDataStore.setWallpaperMode(WallpaperMode.ATMOSPHERE)
-                    atmosphereExitFailed.value = true
+                } else {
+                    // Effective mode is STATIC from here on, so this re-renders the buffer *without*
+                    // the atmosphere zoom-fix bypass, ready for the next rotation. A no-op with the
+                    // service stopped and the magazine empty, which is fine: starting it reloads
+                    // and refills anyway.
+                    rotationEngine.refillDiskBuffer()
                 }
+                // REPLACED says nothing the user did not just ask for; the other two do.
+                atmosphereExitOutcome.value = outcome.takeIf { it != AtmosphereExitOutcome.REPLACED }
+
                 refreshAtmosphereEngineActive()
                 // Reclaim the source file, but only once the engine is confirmed gone — a still-live
                 // engine re-reads it on every cold start.
-                if (replaced && !atmosphereEngineActive.value) atmosphereDelivery.clearSource()
+                if (outcome != AtmosphereExitOutcome.FAILED && !atmosphereEngineActive.value) {
+                    atmosphereDelivery.clearSource()
+                }
             } else if (mode == WallpaperMode.ATMOSPHERE) {
                 // No-op unless the engine is somehow already live (re-entering after an external
                 // wallpaper change); the normal entry path renders via the set button instead.
@@ -287,9 +295,9 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /** Clears the exit-failure flag once the UI has shown the snackbar. */
-    override fun clearAtmosphereExitFailed() {
-        atmosphereExitFailed.value = false
+    /** Clears the exit notice once the UI has shown the snackbar. */
+    override fun clearAtmosphereExitNotice() {
+        atmosphereExitOutcome.value = null
     }
 
     override fun setKeepLocalCopies(enabled: Boolean) {

@@ -30,6 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.logic.StorageUsage
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereExitOutcome
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
@@ -63,12 +64,18 @@ fun SettingsScreen(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Leaving atmosphere can fail, the mode rolls itself back. This is feedback for the user.
+    // Leaving atmosphere has two outcomes to report: cleared their wallpaper or failed leaving
+    val exitClearedMessage = stringResource(R.string.settings_atmosphere_exit_cleared_snackbar)
     val exitFailedMessage = stringResource(R.string.settings_atmosphere_exit_failed_snackbar)
-    LaunchedEffect(uiState.atmosphereExitFailed) {
-        if (uiState.atmosphereExitFailed) {
-            snackbarHostState.showSnackbar(exitFailedMessage)
-            actions.clearAtmosphereExitFailed()
+    LaunchedEffect(uiState.atmosphereExitOutcome) {
+        val message = when (uiState.atmosphereExitOutcome) {
+            AtmosphereExitOutcome.CLEARED -> exitClearedMessage
+            AtmosphereExitOutcome.FAILED -> exitFailedMessage
+            AtmosphereExitOutcome.REPLACED, null -> null
+        }
+        if (message != null) {
+            snackbarHostState.showSnackbar(message)
+            actions.clearAtmosphereExitNotice()
         }
     }
 
@@ -349,5 +356,5 @@ private object PreviewSettingsActions : SettingsActions {
     override fun setAppLanguage(tag: String) {}
     override fun refreshMediaAccess() {}
     override fun refreshAtmosphereEngineActive() {}
-    override fun clearAtmosphereExitFailed() {}
+    override fun clearAtmosphereExitNotice() {}
 }

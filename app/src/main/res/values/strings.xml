@@ -344,10 +344,12 @@
         Atmosphere is a live wallpaper that replicates Nothing OS\'s unlock effect of the same name: your sharp photo shows on the
         lock screen and morphs into an abstract color atmosphere when you unlock.
         \n\nIt requires confirming on a system screen. May use slightly more battery than a static wallpaper.
+        \n\nRequires both screens, so turning it on removes any separate lock screen wallpaper you have set.
     </string>
     <string name="settings_atmosphere_active">Atmosphere effect is Active</string>
     <string name="settings_atmosphere_not_set">Atmosphere isn\'t set as your system wallpaper yet</string>
     <string name="settings_atmosphere_set_button">Set atmosphere wallpaper</string>
     <string name="settings_atmosphere_no_source_hint">Add images to a collection or set a default wallpaper first.</string>
     <string name="settings_atmosphere_exit_failed_snackbar">Couldn\'t leave: no wallpaper to replace it</string>
+    <string name="settings_atmosphere_exit_cleared_snackbar">Left atmosphere. Your wallpaper was reset as you don\'t have one to replace it.</string>
 </resources>

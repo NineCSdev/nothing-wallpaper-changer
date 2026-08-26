@@ -12,6 +12,7 @@ import android.graphics.RectF
 import android.net.Uri
 import android.util.Log
 import androidx.core.graphics.createBitmap
+import kotlinx.coroutines.CancellationException
 import kotlin.math.roundToInt
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
@@ -112,11 +113,16 @@ class BufferManager @Inject constructor(
             val rendered = renderWallpaper(wallpaper, cropRule, framing(modeResolver.effectiveMode()))
                 ?: return BufferPreparationResult.Failure(definitive = false)
             try {
+                appDataStore.setBufferedWallpaperId(null)
                 writeBuffer(rendered, cropRule)
+                appDataStore.setBufferedWallpaperId(wallpaper.id)
             } finally {
                 rendered.recycle()
             }
             BufferPreparationResult.Success
+        } catch (e: CancellationException) {
+            // Not a preparation failure: the caller is being torn down
+            throw e
         } catch (e: FileNotFoundException) {
             Log.w(TAG, "Source unreadable, likely deleted: ${wallpaper.uri}", e)
             BufferPreparationResult.Failure(definitive = true)
@@ -164,28 +170,33 @@ class BufferManager @Inject constructor(
     }
 
     /**
-     * Renders [wallpaper] for the atmosphere engine and hands the bitmap back; the **caller owns it
-     * and must recycle it**.
+     * Renders [wallpaper] framed for an **explicitly named** [mode] and hands the bitmap back; the
+     * **caller owns it and must recycle it**.
      *
-     * It returns a bitmap rather than writing a file because the seeds have to be extracted from the
-     * pixels before anything can be written, and that belongs to
-     * [AtmosphereDelivery][com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery],
-     * which already depends on this class.
+     * It returns a bitmap rather than writing a file because callers need the pixels: seed
+     * extraction on the way in, `setBitmap` on the way out. The bytes already published to the
+     * engine are never reusable for a static apply — they carry atmosphere framing, which the
+     * platform's parallax crop would then eat a second time.
      */
-    suspend fun renderForAtmosphere(wallpaper: WallpaperImage, cropRule: CropRule): Bitmap? {
+    suspend fun renderFramed(
+        wallpaper: WallpaperImage,
+        cropRule: CropRule,
+        mode: WallpaperMode
+    ): Bitmap? {
         return try {
-            // Framed for atmosphere unconditionally: this renders images the engine will show, including
-            // the one prepared before the engine is live, when the effective mode still reads STATIC.
-            renderWallpaper(wallpaper, cropRule, framing(WallpaperMode.ATMOSPHERE))
+            renderWallpaper(wallpaper, cropRule, framing(mode))
+        } catch (e: CancellationException) {
+            // Rethrown rather than reported as a failed render. A canceled render must abort, not fall through.
+            throw e
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to render the atmosphere source", e)
+            Log.e(TAG, "Failed to render $wallpaper framed for $mode", e)
             null
         }
     }
 
     /**
      * The single decode → transform pipeline behind both [prepareNextWallpaper] and
-     * [renderForAtmosphere]. Decodes [wallpaper] at the screen's target size (oversampling when it
+     * [renderFramed]. Decodes [wallpaper] at the screen's target size (oversampling when it
      * carries edit params), applies the edit transform or [cropRule] plus [framing], and returns the
      * result. The intermediate source bitmap is always recycled; **the returned bitmap is the
      * caller's.**

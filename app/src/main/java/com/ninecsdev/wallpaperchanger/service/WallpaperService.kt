@@ -274,7 +274,8 @@ class WallpaperService : Service() {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 serviceScope.launch {
-                    val deliveredId = atmosphereDelivery.takeInFlightCollectionId()
+                    // The moment the delivered image becomes the live one
+                    val deliveredId = atmosphereDelivery.confirmDisplayed()
 
                     if (deliveredId == null) {
                         Log.w(tag, "Atmosphere display with no delivery on record; not advancing.")

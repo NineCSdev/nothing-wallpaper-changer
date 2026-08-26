@@ -1,5 +1,6 @@
 package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereExitOutcome
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
@@ -32,8 +33,7 @@ data class SettingsUiState(
     val atmosphereEngineActive: Boolean = false,
     // Whether a source image exists to feed the atmosphere renderer gates the set-button up-front.
     val hasAtmosphereSource: Boolean = false,
-    /** Drives the error snackbar; cleared via [SettingsViewModel.clearAtmosphereExitFailed]. */
-    val atmosphereExitFailed: Boolean = false,
+    val atmosphereExitOutcome: AtmosphereExitOutcome? = null,
     val wallpaperZoomFix: WallpaperZoomFix = WallpaperZoomFix.OFF,
     val compressionQualityHigh: Int = 95,
     val compressionQualityLow: Int = 80,
