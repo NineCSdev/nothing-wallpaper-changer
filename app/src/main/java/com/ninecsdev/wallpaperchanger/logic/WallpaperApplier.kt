@@ -25,12 +25,14 @@ import javax.inject.Singleton
  * - [DEFERRED]: accepted but shown later, or held and never shown — the caller must NOT advance
  *   now and waits for the delivery channel's own confirmation. As of writing that is the atmosphere engine
  *   reporting back via [AtmosphereWallpaperService.ACTION_DISPLAYED][com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService].
+ * - [ALREADY_LIVE]: the buffered image is the one already on screen, so nothing was applied and
+ *   the caller must NOT advance — advancing would re-show it and burn the image being prepared.
  * - [FAILED]: nothing was applied or delivered.
  *
  * Named for *when the image lands*, not for which mode produced it, so a caller deciding whether
  * to advance the rotation never has to know the modes exist.
  */
-enum class WallpaperApplyOutcome { SHOWN, DEFERRED, FAILED }
+enum class WallpaperApplyOutcome { SHOWN, DEFERRED, ALREADY_LIVE, FAILED }
 
 /**
  * Applies prepared images to the Android screen wallpaper.
@@ -135,6 +137,14 @@ class WallpaperApplier @Inject constructor(
         rotatingCollectionId: Long? = null
     ): WallpaperApplyOutcome = withContext(Dispatchers.IO) {
         if (wallpaperModeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE) {
+            // Keyed on ids rather than on timing: an unknown buffer id (null, written while a refill
+            // is in flight) never matches, so this can never decide to sit out forever.
+            val bufferedId = appDataStore.getBufferedWallpaperId()
+            if (bufferedId != null && bufferedId == appDataStore.getAtmosphereLiveWallpaperId()) {
+                Log.i(TAG, "Buffered image $bufferedId is already live; not delivering or advancing.")
+                return@withContext WallpaperApplyOutcome.ALREADY_LIVE
+            }
+
             // Delivery is a cheap copy of the already-rendered buffer into the engine's source file
             // plus a reload broadcast — no setStream, which would replace the live wallpaper. The
             // image is shown later (or held), so the caller defers the rotation advance until the

@@ -113,7 +113,6 @@ class BufferManager @Inject constructor(
             val rendered = renderWallpaper(wallpaper, cropRule, framing(modeResolver.effectiveMode()))
                 ?: return BufferPreparationResult.Failure(definitive = false)
             try {
-                appDataStore.setBufferedWallpaperId(null)
                 writeBuffer(rendered, cropRule)
                 appDataStore.setBufferedWallpaperId(wallpaper.id)
             } finally {
