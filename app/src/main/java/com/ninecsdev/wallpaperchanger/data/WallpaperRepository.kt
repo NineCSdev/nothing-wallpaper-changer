@@ -99,6 +99,9 @@ class WallpaperRepository @Inject constructor(
                 else dao.observeAvailableImagesForCollection(collection.id).map { collection to it }
             }
 
+    /** The active collection itself, re-emitting on every change to its row — identity *and* name. */
+    fun activeCollectionFlow(): Flow<WallpaperCollection?> = dao.observeActiveCollection()
+
     /** Preview thumbnails (newest first) for a collection's grid item, observed reactively. */
     fun observePreviewImages(collectionId: Long, limit: Int = 4): Flow<List<WallpaperImage>> =
         dao.observePreviewImages(collectionId, limit)

@@ -20,13 +20,16 @@ import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
 import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.ServiceState
-import com.ninecsdev.wallpaperchanger.model.resolveDisplayName
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -51,6 +54,7 @@ class WallpaperService : Service() {
     private var screenOffReceiver: BroadcastReceiver? = null
     private var systemEventReceiver: BroadcastReceiver? = null
     private var atmosphereDisplayedReceiver: BroadcastReceiver? = null
+    private var notificationJob: Job? = null
     // SupervisorJob ensures one failing task doesn't kill the whole service scope
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
@@ -100,7 +104,7 @@ class WallpaperService : Service() {
         try {
             startForeground(
                 NotificationHelper.NOTIFICATION_ID,
-                notificationHelper.buildInitializingNotification()
+                notificationHelper.build(requireNotNull(notificationHelper.textFor(NotificationContent.Initializing)))
             )
         } catch (e: Exception) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
@@ -150,22 +154,43 @@ class WallpaperService : Service() {
             // buffer is prepared, so we only mark Running once a wallpaper is ready to apply.
             rotationEngine.start(serviceScope)
 
+            startNotificationCollector()
+
             if (pm.isPowerSaveMode && policy == BatterySaverPolicy.PAUSE) {
                 pauseEngine()
             } else {
                 serviceStateManager.markServiceRunning()
-
-                val activeName = repository.getActiveCollectionOnce()?.resolveDisplayName(this@WallpaperService)
-                notificationHelper.showCycling(activeName)
             }
         }
 
         return START_STICKY
     }
 
+    /**
+     * Renders the foreground notification as a function of the service's own state and the active
+     * collection, so a collection switch or rename shows up without waiting for a restart.
+     */
+    // TODO tests: see vault note tests/Notification Rendering Tests.md
+    private fun startNotificationCollector() {
+        notificationJob?.cancel()
+        notificationJob = serviceScope.launch {
+            combine(
+                serviceStateManager.rawServiceState,
+                repository.activeCollectionFlow()
+            ) { state, collection -> notificationContentFor(state, collection) }
+                .map { notificationHelper.textFor(it) }
+                .distinctUntilChanged()
+                .collect { text -> text?.let(notificationHelper::post) }
+        }
+    }
+
     private fun handleStopCommand() {
         Log.i(tag, "Stopping service via command.")
         serviceStateManager.markServiceStopping()
+        // Belt and braces with the Hidden mapping: no notify() can arrive once teardown starts,
+        // which would otherwise outlive stopForeground(STOP_FOREGROUND_REMOVE) as an undismissable
+        // notification with no service behind it.
+        notificationJob?.cancel()
 
         serviceScope.launch {
             withContext(NonCancellable) {
@@ -195,8 +220,6 @@ class WallpaperService : Service() {
                 }
             }
         }
-
-        notificationHelper.showPausedPowerSave()
     }
 
     /**
@@ -208,11 +231,6 @@ class WallpaperService : Service() {
         serviceStateManager.markServiceRunning()
 
         registerScreenOffReceiver()
-
-        serviceScope.launch {
-            val activeName = repository.getActiveCollectionOnce()?.name
-            notificationHelper.showCycling(activeName)
-        }
     }
 
     override fun onDestroy() {
