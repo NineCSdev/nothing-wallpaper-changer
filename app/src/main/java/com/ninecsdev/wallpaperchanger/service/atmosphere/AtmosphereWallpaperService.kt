@@ -13,6 +13,7 @@ import android.util.Log
 import android.view.Surface
 import com.ninecsdev.wallpaperchanger.BuildConfig
 import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereSource
 import java.util.concurrent.Executors
 
@@ -26,32 +27,9 @@ class AtmosphereWallpaperService : GLWallpaperService() {
     companion object {
         private const val TAG = "AtmosphereWallpaper"
 
-        /** Same-app broadcast the host sends after replacing the source container on disk. */
-        const val ACTION_RELOAD = "com.ninecsdev.wallpaperchanger.ACTION_ATMOSPHERE_RELOAD"
-
         /**
-         * Boolean extra on [ACTION_RELOAD]: true when the reload is a rotation delivery (whose
-         * display should advance the magazine), false for non-rotation reloads (revert-to-default,
-         * settings re-renders). Absent is treated as false.
-         */
-        const val EXTRA_FROM_ROTATION = "from_rotation"
-
-        /**
-         * Same-app broadcast the engine sends back once a **rotation** delivery has actually been
-         * adopted. The host's rotation service advances the magazine on this, so a delivery that is
-         * queued and never shown doesn't consume a wallpaper.
-         */
-        const val ACTION_DISPLAYED = "com.ninecsdev.wallpaperchanger.ACTION_ATMOSPHERE_DISPLAYED"
-
-        /**
-         * Same-app broadcast the engine sends when it starts and finds no source on disk. The app
-         * answers by rendering one and delivering it; see
-         * [AtmosphereSourceRequestReceiver].
-         */
-        const val ACTION_SOURCE_REQUESTED =
-            "com.ninecsdev.wallpaperchanger.ACTION_ATMOSPHERE_SOURCE_REQUESTED"
-
-        /**
+         * Engine-internal.
+         *
          * Holds the renderer at one frame so a still can be compared against the real effect.
          * Debug builds only:
          * `adb shell am broadcast -a <ACTION_SEEK> --ei frame 40`, or a negative frame to resume.
@@ -149,8 +127,8 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                     // it, at the cost of a morph that starts a beat into the unlock.
                     Intent.ACTION_USER_PRESENT -> unlock()
 
-                    ACTION_RELOAD ->
-                        reloadSource(intent.getBooleanExtra(EXTRA_FROM_ROTATION, false))
+                    AtmosphereProtocol.ACTION_RELOAD ->
+                        reloadSource(intent.getBooleanExtra(AtmosphereProtocol.EXTRA_FROM_ROTATION, false))
                 }
             }
         }
@@ -182,7 +160,7 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                     addAction(Intent.ACTION_SCREEN_ON)
                     addAction(Intent.ACTION_USER_PRESENT)
                 }
-                addAction(ACTION_RELOAD)
+                addAction(AtmosphereProtocol.ACTION_RELOAD)
             }
             // Not exported: the reload action is ours and nothing else should be able to drive it.
             // The three screen actions are protected system broadcasts, which the platform
@@ -317,7 +295,7 @@ class AtmosphereWallpaperService : GLWallpaperService() {
             handler.post {
                 if (destroyed) return@post
 
-                sendBroadcast(Intent(ACTION_SOURCE_REQUESTED).setPackage(packageName))
+                sendBroadcast(Intent(AtmosphereProtocol.ACTION_SOURCE_REQUESTED).setPackage(packageName))
                 loadFallbackSource()
             }
         }
@@ -389,7 +367,7 @@ class AtmosphereWallpaperService : GLWallpaperService() {
             if (!fromRotation || isPreview) return
             handler.post {
                 if (destroyed) return@post
-                sendBroadcast(Intent(ACTION_DISPLAYED).setPackage(packageName))
+                sendBroadcast(Intent(AtmosphereProtocol.ACTION_DISPLAYED).setPackage(packageName))
             }
         }
     }

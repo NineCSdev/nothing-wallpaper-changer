@@ -39,6 +39,7 @@
             android:enabled="true"
             android:exported="false">
             <intent-filter>
+                <!-- Must stay identical to AtmosphereProtocol.ACTION_SOURCE_REQUESTED -->
                 <action android:name="com.ninecsdev.wallpaperchanger.ACTION_ATMOSPHERE_SOURCE_REQUESTED" />
             </intent-filter>
         </receiver>

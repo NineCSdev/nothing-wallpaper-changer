@@ -8,8 +8,8 @@ import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.BufferManager
 import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereSource
-import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -166,9 +166,9 @@ class AtmosphereDelivery @Inject constructor(
      */
     private fun sendReload(fromRotation: Boolean) {
         appContext.sendBroadcast(
-            Intent(AtmosphereWallpaperService.ACTION_RELOAD)
+            Intent(AtmosphereProtocol.ACTION_RELOAD)
                 .setPackage(appContext.packageName)
-                .putExtra(AtmosphereWallpaperService.EXTRA_FROM_ROTATION, fromRotation)
+                .putExtra(AtmosphereProtocol.EXTRA_FROM_ROTATION, fromRotation)
         )
     }
 

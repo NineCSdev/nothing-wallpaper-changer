@@ -17,7 +17,7 @@ import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
-import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import dagger.hilt.android.AndroidEntryPoint
@@ -291,7 +291,7 @@ class WallpaperService : Service() {
         }
         registerReceiver(
             receiver,
-            IntentFilter(AtmosphereWallpaperService.ACTION_DISPLAYED),
+            IntentFilter(AtmosphereProtocol.ACTION_DISPLAYED),
             RECEIVER_NOT_EXPORTED
         )
         atmosphereDisplayedReceiver = receiver

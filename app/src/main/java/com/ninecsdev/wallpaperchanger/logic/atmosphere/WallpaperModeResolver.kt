@@ -45,6 +45,8 @@ class WallpaperModeResolver @Inject constructor(
      */
     fun isAtmosphereEngineActive(): Boolean {
         val info = WallpaperManager.getInstance(appContext).wallpaperInfo ?: return false
+        // The direct class reference is deliberate. This is not the app talking to the engine, it is the
+        // app asking the platform which wallpaper is live, so not part of AtmosphereProtocol.kt
         return info.packageName == appContext.packageName &&
             info.serviceName == AtmosphereWallpaperService::class.java.name
     }

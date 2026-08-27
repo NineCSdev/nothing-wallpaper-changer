@@ -24,7 +24,7 @@ import javax.inject.Singleton
  *   advances the rotation now.
  * - [DEFERRED]: accepted but shown later, or held and never shown — the caller must NOT advance
  *   now and waits for the delivery channel's own confirmation. As of writing that is the atmosphere engine
- *   reporting back via [AtmosphereWallpaperService.ACTION_DISPLAYED][com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService].
+ *   reporting back via [AtmosphereProtocol.ACTION_DISPLAYED][com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol].
  * - [ALREADY_LIVE]: the buffered image is the one already on screen, so nothing was applied and
  *   the caller must NOT advance — advancing would re-show it and burn the image being prepared.
  * - [FAILED]: nothing was applied or delivered.

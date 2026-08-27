@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereSourceProvisioner
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -12,7 +13,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Answers [AtmosphereWallpaperService.ACTION_SOURCE_REQUESTED] by rendering a source and handing it
+ * Answers [AtmosphereProtocol.ACTION_SOURCE_REQUESTED] by rendering a source and handing it
  * to the engine.
  *
  * **Manifest-declared on purpose.** The engine can be running with this app's process dead.
@@ -29,7 +30,7 @@ class AtmosphereSourceRequestReceiver : BroadcastReceiver() {
     @Inject lateinit var provisioner: AtmosphereSourceProvisioner
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != AtmosphereWallpaperService.ACTION_SOURCE_REQUESTED) return
+        if (intent.action != AtmosphereProtocol.ACTION_SOURCE_REQUESTED) return
 
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {

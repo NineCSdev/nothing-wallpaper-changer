@@ -8,6 +8,7 @@ import android.graphics.Color
 import android.util.Log
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereSource
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.VertexInfo
 import kotlin.math.roundToInt
@@ -18,7 +19,7 @@ import kotlin.math.roundToInt
  * The system starts this engine whenever it likes. In the case [AtmosphereSource]
  * holds nothing the renderer's guard would leave the panel cleared to black
  * with nothing scheduled to ever fix it. So the engine falls back to the device's built-in
- * wallpaper while it asks the app for a real source (see [AtmosphereWallpaperService.ACTION_SOURCE_REQUESTED]).
+ * wallpaper while it asks the app for a real source (see [AtmosphereProtocol.ACTION_SOURCE_REQUESTED]).
  *
  * Seeds here are **sampled, not analyzed**.
  */
