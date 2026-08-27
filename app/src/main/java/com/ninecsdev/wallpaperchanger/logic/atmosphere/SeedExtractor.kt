@@ -40,11 +40,15 @@ class SeedExtractor @Inject constructor() {
         /**
          * Linear divisor applied before the scan, so the cost falls by its square.
          *
-         * It trades color: downscaling pre-averages pixels, so the pixel chosen
-         * as nearest to a swatch is slightly less extreme than the true one.
+         * **It is not only a cost knob.** The reduction decides how many pixels the quantizer
+         * sees and therefore where its median-cut boxes split, so it moves the *colors* the
+         * palette reports -- not merely how extreme the pixel picked for each one is. It also
+         * decides whether [Palette] resamples again: above its 112x112 budget it subsamples the
+         * scan a second time with the filter off, and below that threshold it leaves it alone.
          *
-         * Have tried 2 (gives more saturated blobs but takes ~300ms) and
-         * 4 (gives a bit less saturated blobs but takes ~60ms)
+         * Have tried 2 (more saturated blobs, ~300 ms) and 4 (a bit less saturated, ~60 ms).
+         *
+         * **16 was measured on device across four photos and rejected.**
          */
         const val SCAN_DOWNSCALE = 4
 
@@ -56,31 +60,28 @@ class SeedExtractor @Inject constructor() {
         const val SCAN_ZOOM_INSET_FRACTION = 0.045f
 
         /**
-         * Image is delivered un-zoomed, so without this crop the two analyses run on different framing of
-         * the same photo.
-         *
-         * **One step per layer of framing between the delivered bitmap and the panel**, which is
-         * why [scanZoom] takes an exponent rather than reading this constant directly. An unpadded
-         * delivery is one step from the panel: the platform's own zoom. A zoom-fix-padded delivery
-         * is two, because its padding exists precisely to be eaten by that zoom, so undoing it only
-         * gets back to the un-zoomed framing and the platform's step still has to be applied on
-         * top. Both cases land on the same pixels of the same photo, which is the point -- the
-         * palette must not shift because the user changed a presentation setting.
-         *
-         * Nine percent sounds too small to matter and is not. Palette is a six-box median cut and a
-         * swatch is its box's population-weighted mean, so on a photo built from a few near-equal
-         * masses the split points sit on a knife edge: the 2026-08-23 `wallpaper1` case has its top
-         * three swatches within 1% of each other in population. Un-zoomed, the black splatter shares
-         * a box with the red and averages to a brown that then wins rank 0 and becomes the
-         * background; at the OS's framing it shares a box with the navy instead, which yields a dark
-         * purple background *and* frees a box for the magenta the OS visibly renders.
-         *
-         * Only the analysis is cropped. Anchors are still reported in the full bitmap's coordinates
-         * (see [Scan]), because the composite draws the whole delivered bitmap and a blob has to
-         * start where its color actually appears on the panel.
+         * One step of the analysis crop. [ANALYSIS_STEPS] of these is the framing the palette is
+         * quantized at, whatever framing the delivery itself carries.
          */
         const val SCAN_ZOOM_STEP = 1f + 2f * SCAN_ZOOM_INSET_FRACTION
 
+        /**
+         * How far in the palette is measured, in [SCAN_ZOOM_STEP]s: the center ~84% of the photo.
+         *
+         * **Pinned by measurement, not derived.**
+         *
+         * **No mechanism is claimed.** One step would be the presentation zoom; nothing yet
+         * explains the second, and inventing a story for it would be worse than admitting the gap.
+         * Treat the number as load-bearing and unexplained: verify against a reference render
+         * before changing it, and do not "simplify" it back to one step.
+         *
+         * Why so little slack: Palette is a six-box median cut and a swatch is its box's
+         * population-weighted mean, so on a photo built from a few near-equal masses the split
+         * points sit on a knife edge. The `wallpaper1` case has ranks 2 and 3 separated by 13
+         * counts out of ~12,660 -- a few percent of framing either way moves a box, and moving a
+         * box changes a color, its population rank, and therefore which blob is drawn over which.
+         */
+        const val ANALYSIS_STEPS = 2
         // D65 white point and the pivot thresholds, matching androidx.core's ColorUtils exactly.
         const val WHITE_X = 95.047
         const val WHITE_Y = 100.0
@@ -97,16 +98,16 @@ class SeedExtractor @Inject constructor() {
 
     /**
      * @param bitmap the fitted, edit-applied image that will be delivered to the engine, exactly
-     * as the engine will receive it — padding included, if the user's zoom fix adds any.
-     * @param padded whether [bitmap] carries zoom-fix padding, from
-     * [BufferManager.hasZoomFixPadding][com.ninecsdev.wallpaperchanger.logic.BufferManager.hasZoomFixPadding].
-     * It only sets how far the scan crops in (see [SCAN_ZOOM_STEP]); the padding itself is never
-     * quantized either way, so the palette is identical whichever the user picked.
+     * as the engine will receive it.
+     * @param deliveredCropSteps how many [SCAN_ZOOM_STEP]s the framing already took out of
+     * [bitmap] before it got here. The scan makes up the difference so that every framing is
+     * quantized at the same [ANALYSIS_STEPS] (the palette must not shift because the user changed
+     * a presentation setting).
      */
-    suspend fun extract(bitmap: Bitmap, padded: Boolean): List<VertexInfo> = withContext(Dispatchers.Default) {
+    suspend fun extract(bitmap: Bitmap, deliveredCropSteps: Int): List<VertexInfo> = withContext(Dispatchers.Default) {
         val started = System.currentTimeMillis()
 
-        val scan = prepareScan(bitmap, scanZoom(padded))
+        val scan = prepareScan(bitmap, scanZoom(deliveredCropSteps))
         try {
             // Palette quantizes on its own 112x112 downscale regardless, so feeding it the same
             // reduced bitmap keeps the swatches and the pixels they are matched against consistent.
@@ -161,14 +162,21 @@ class SeedExtractor @Inject constructor() {
     }
 
     /**
-     * Total inset from the delivered bitmap to the framing the panel shows: one
-     * [SCAN_ZOOM_STEP] for the platform's zoom, plus another to undo zoom-fix padding when it is
-     * present.
+     * The crop this scan still owes: [ANALYSIS_STEPS] less whatever the framing already spent.
+     * Clamped at zero so a delivery cropped further than the analysis target is read whole.
      */
-    private fun scanZoom(padded: Boolean): Float =
-        if (padded) SCAN_ZOOM_STEP * SCAN_ZOOM_STEP else SCAN_ZOOM_STEP
+    private fun scanZoom(deliveredCropSteps: Int): Float {
+        val remaining = (ANALYSIS_STEPS - deliveredCropSteps).coerceAtLeast(0)
+        return SCAN_ZOOM_STEP.pow(remaining)
+    }
 
-    /** Crops to the OS's framing and reduces, in one allocation. */
+    /**
+     * Crops to the analysis framing and reduces, in one allocation.
+     *
+     * **Only the analysis is cropped.** Anchors come back in the full bitmap's coordinates (see
+     * [Scan]), because the composite draws the whole delivered bitmap and a blob has to start where
+     * its color actually appears on the panel.
+     */
     private fun prepareScan(bitmap: Bitmap, scanZoom: Float): Scan {
         val cropWidth = (bitmap.width / scanZoom).roundToInt().coerceIn(1, bitmap.width)
         val cropHeight = (bitmap.height / scanZoom).roundToInt().coerceIn(1, bitmap.height)
@@ -181,7 +189,7 @@ class SeedExtractor @Inject constructor() {
         val matrix = Matrix().apply {
             setScale(scanWidth.toFloat() / cropWidth, scanHeight.toFloat() / cropHeight)
         }
-        // Filtered, because the reduction resamples either way and a nearest-neighbour one would
+        // Filtered, because the reduction resamples either way and a nearest-neighbor one would
         // hand the palette whichever pixels the grid happened to land on.
         val scan = Bitmap.createBitmap(bitmap, cropX, cropY, cropWidth, cropHeight, matrix, true)
 

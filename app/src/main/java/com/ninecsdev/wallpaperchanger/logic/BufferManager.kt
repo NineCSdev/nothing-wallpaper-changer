@@ -154,21 +154,6 @@ class BufferManager @Inject constructor(
     }
 
     /**
-     * True when [bitmap] carries zoom-fix padding, judged by size against the screen it was fitted
-     * to. Measured rather than looked up on purpose as the stored bitmap might not correspond with the
-     * stored setting.
-     *
-     * In practice this is false for everything the atmosphere path delivers, since [Framing] never
-     * pads in that mode. It stays a measurement rather than a constant so it keeps telling the truth
-     * if that changes.
-     */
-    fun hasZoomFixPadding(bitmap: Bitmap): Boolean {
-        val target = getTargetSize()
-
-        return bitmap.width > target.width + calculateZoomInset(target.width) / 2
-    }
-
-    /**
      * Renders [wallpaper] framed for an **explicitly named** [mode] and hands the bitmap back; the
      * **caller owns it and must recycle it**.
      *

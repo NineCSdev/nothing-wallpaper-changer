@@ -6,10 +6,10 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
-import com.ninecsdev.wallpaperchanger.logic.BufferManager
 import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereSource
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -34,7 +34,6 @@ import javax.inject.Singleton
 @Singleton
 class AtmosphereDelivery @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
-    private val bufferManager: BufferManager,
     private val seedExtractor: SeedExtractor,
     private val appDataStore: AppDataStore
 ) {
@@ -177,8 +176,7 @@ class AtmosphereDelivery @Inject constructor(
         bitmap: Bitmap,
         fromRotation: Boolean
     ): Boolean {
-        // Measured off the bitmap rather than read from settings
-        val seeds = seedExtractor.extract(bitmap, bufferManager.hasZoomFixPadding(bitmap))
+        val seeds = seedExtractor.extract(bitmap, deliveredCropSteps())
 
         if (!AtmosphereSource.write(appContext.filesDir, seeds, imageBytes)) return false
 
@@ -186,4 +184,14 @@ class AtmosphereDelivery @Inject constructor(
         Log.i(TAG, "Delivered atmosphere source (fromRotation=$fromRotation).")
         return true
     }
+
+    /**
+     * How many crop steps the framing already took out of the image being published, which is what
+     * [SeedExtractor] subtracts from its own fixed analysis crop.
+     */
+    //TODO: the framing that produced the bitmap should travel with it instead of being
+    // re-derived here as a setting changed between the render and this call gives the wrong answer.
+    // See the framing-as-a-parameter work; this is the same ambient read one stage further on.
+    private suspend fun deliveredCropSteps(): Int =
+        if (appDataStore.getWallpaperZoomFix() == WallpaperZoomFix.OFF) 1 else 0
 }
