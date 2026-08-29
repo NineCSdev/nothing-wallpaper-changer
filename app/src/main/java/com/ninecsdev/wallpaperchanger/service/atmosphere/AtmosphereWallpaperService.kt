@@ -136,9 +136,14 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                         handler.postDelayed(lockRunnable, LOCK_DELAY_MS)
                     }
 
-                    // A wake inside the lock delay: the reset would now be visible, and
-                    // onVisibilityChanged re-reads the keyguard on the way in regardless.
-                    Intent.ACTION_SCREEN_ON -> handler.removeCallbacks(lockRunnable)
+                    // The event a fast toggle cannot skip. Visibility takes ~190 ms to drop after the panel goes off,
+                    // so a toggle quicker than leaves the effect up behind the keyguard. Skipped while an unlock is held
+                    Intent.ACTION_SCREEN_ON -> {
+                        handler.removeCallbacks(lockRunnable)
+                        if (unlockAwaitingViewer == 0L) {
+                            renderer.setLocked(keyguardManager.isKeyguardLocked, animate = false)
+                        }
+                    }
 
                     // Backstop for COMMAND_KEYGUARD_GOING_AWAY on a platform that does not send
                     // it, at the cost of a morph that starts a beat into the unlock
