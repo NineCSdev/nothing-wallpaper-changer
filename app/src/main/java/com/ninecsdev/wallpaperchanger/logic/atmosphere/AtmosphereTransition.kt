@@ -85,11 +85,11 @@ class AtmosphereTransition @Inject constructor(
      * caller to hand off to the system live-wallpaper picker. Writes no preference.
      */
     suspend fun enterAtmosphere(): AtmosphereEntry {
-        val lockWallpaperRemoved = releaseLockScreen()
-        return AtmosphereEntry(
-            sourceReady = provisionAndRecord(),
-            lockWallpaperRemoved = lockWallpaperRemoved
-        )
+        // Order matters: the lock screen is taken only once there is something to show. Clearing
+        // first would destroy the user's lock wallpaper even on the path that then fails to
+        // provision and never reaches the picker, leaving them with neither.
+        if (!provisionAndRecord()) return AtmosphereEntry(sourceReady = false, lockWallpaperRemoved = false)
+        return AtmosphereEntry(sourceReady = true, lockWallpaperRemoved = releaseLockScreen())
     }
 
     /**

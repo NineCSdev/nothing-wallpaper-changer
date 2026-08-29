@@ -109,6 +109,9 @@ class WallpaperApplier @Inject constructor(
                 destination.toFlags()
             )
 
+            // The default wallpaper is no membership of ours, so nothing of the rotation is on screen
+            appDataStore.setAppliedWallpaperId(null)
+
             Log.i(TAG, "Successfully applied default wallpaper to $destination.")
             true
         } catch (e: Exception) {
@@ -161,6 +164,9 @@ class WallpaperApplier @Inject constructor(
                     destination.toFlags()
                 )
             }
+
+            // Records what the user is now looking at
+            appDataStore.setAppliedWallpaperId(appDataStore.getBufferedWallpaperId())
 
             Log.i(TAG, "Wallpaper applied successfully from the prepared image to $destination.")
             WallpaperApplyOutcome.SHOWN

@@ -14,8 +14,8 @@ import javax.inject.Singleton
 /**
  * Renders the image the atmosphere engine should be showing, and delivers it.
  *
- * Picks the active collection's first available image, falling back to the user's default
- * wallpaper.
+ * Prefers the wallpaper already on screen, falls back to the active collection's
+ * first available image, then to the user's default wallpaper.
  */
 @Singleton
 class AtmosphereSourceProvisioner @Inject constructor(
@@ -54,14 +54,11 @@ class AtmosphereSourceProvisioner @Inject constructor(
      */
     suspend fun reprovisionLive(): Boolean {
         val liveId = appDataStore.getAtmosphereLiveWallpaperId() ?: return provision()
-        val wallpaper = repository.getWallpaperById(liveId)
-        if (wallpaper == null || !wallpaper.isAvailable) {
+        val live = wallpaperById(liveId) ?: run {
             Log.i(TAG, "Live image $liveId is gone or unavailable; picking a source instead.")
             return provision()
         }
-        val cropRule = repository.getCollectionById(wallpaper.collectionId)?.defaultCropRule
-            ?: WallpaperCollection.DEFAULT_CROP_RULE
-        return deliver(wallpaper, cropRule)
+        return deliver(live.first, live.second)
     }
 
     private suspend fun deliver(wallpaper: WallpaperImage, cropRule: CropRule): Boolean {
@@ -76,10 +73,21 @@ class AtmosphereSourceProvisioner @Inject constructor(
     }
 
     /**
-     * Picks the image + crop rule to feed the atmosphere renderer. Reuses
-     * [WallpaperRepository.activeCollectionImagesFlow] for the active-collection case.
+     * Picks the image + crop rule to feed the atmosphere renderer, in the order of how close each
+     * candidate is to what the user is looking at.
+     *
+     * 1. **The wallpaper on screen** ([AppDataStore.getAppliedWallpaperId]). Not restricted to the
+     *    active collection: if the user switched collections the image on screen still belongs to the
+     *    old one. Rendered with *its own* membership's crop rule and edits (how it was framed).
+     * 2. **The active collection's first available image**, on fresh install, a service that has never run,
+     *    or a revert to the default wallpaper.
+     * 3. **The user's default wallpaper.**
+     *
+     * Reuses [WallpaperRepository.activeCollectionImagesFlow] for case 2.
      */
     private suspend fun resolveSource(): Pair<WallpaperImage, CropRule>? {
+        onScreenWallpaper()?.let { return it }
+
         val activeSnapshot = repository.activeCollectionImagesFlow().first()
         val firstAvailable = activeSnapshot?.second?.firstOrNull()
         if (activeSnapshot != null && firstAvailable != null) {
@@ -88,5 +96,19 @@ class AtmosphereSourceProvisioner @Inject constructor(
         val defaultUri = appDataStore.getDefaultWallpaperUri() ?: return null
 
         return WallpaperImage.forDefaultWallpaper(defaultUri) to WallpaperImage.DEFAULT_WALLPAPER_CROP_RULE
+    }
+
+    /** The membership currently applied as the static wallpaper, if it is still usable. */
+    private suspend fun onScreenWallpaper(): Pair<WallpaperImage, CropRule>? {
+        val appliedId = appDataStore.getAppliedWallpaperId() ?: return null
+        return wallpaperById(appliedId)
+    }
+
+    /** Looks up a membership and the crop rule of the collection it belongs to. */
+    private suspend fun wallpaperById(wallpaperId: Long): Pair<WallpaperImage, CropRule>? {
+        val wallpaper = repository.getWallpaperById(wallpaperId) ?: return null
+        if (!wallpaper.isAvailable) return null
+        val cropRule = repository.getCollectionById(wallpaper.collectionId)?.defaultCropRule ?: WallpaperCollection.DEFAULT_CROP_RULE
+        return wallpaper to cropRule
     }
 }

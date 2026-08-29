@@ -52,6 +52,7 @@ private val KEY_KEEP_LOCAL_COPIES = booleanPreferencesKey("keep_local_copies")
 private val KEY_BUFFERED_WALLPAPER_ID = longPreferencesKey("buffered_wallpaper_id")
 private val KEY_ATMOSPHERE_LIVE_WALLPAPER_ID = longPreferencesKey("atmosphere_live_wallpaper_id")
 private val KEY_ATMOSPHERE_RENDER_KEY = stringPreferencesKey("atmosphere_render_key")
+private val KEY_APPLIED_WALLPAPER_ID = longPreferencesKey("applied_wallpaper_id")
 
 /**
  * Manages simple key-value pairs for global application settings using
@@ -217,6 +218,8 @@ class AppDataStore @Inject constructor(
     suspend fun getAtmosphereRenderKey(): String? =
         mappedSettingFlow(KEY_ATMOSPHERE_RENDER_KEY, null) { it }.first()
 
+    suspend fun getAppliedWallpaperId(): Long? =
+        mappedSettingFlow(KEY_APPLIED_WALLPAPER_ID, null) { it }.first()
 
     // Writes (suspend)
 
@@ -274,4 +277,11 @@ class AppDataStore @Inject constructor(
      */
     suspend fun setAtmosphereRenderKey(renderKey: String?) =
         setOrClear(KEY_ATMOSPHERE_RENDER_KEY, renderKey)
+
+    /**
+     * The membership whose image is on screen as the static wallpaper twin of [setAtmosphereLiveWallpaperId]
+     * Null records "nothing of ours", covering a revert to the default wallpaper and a fresh install.
+     */
+    suspend fun setAppliedWallpaperId(wallpaperId: Long?) =
+        setOrClear(KEY_APPLIED_WALLPAPER_ID, wallpaperId)
 }
