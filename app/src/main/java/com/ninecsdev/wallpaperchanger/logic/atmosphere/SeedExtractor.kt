@@ -53,27 +53,28 @@ class SeedExtractor @Inject constructor() {
         const val SCAN_DOWNSCALE = 4
 
         /**
-         * Half the presentation zoom Nothing OS applies to a wallpaper, the same figure
-         * `BufferManager.ZOOM_INSET_FRACTION` pads against, restated here because stage 1 has no
-         * business reaching into the buffer's internals to read it.
-         */
-        const val SCAN_ZOOM_INSET_FRACTION = 0.045f
-
-        /**
          * One step of the analysis crop. [ANALYSIS_STEPS] of these is the framing the palette is
          * quantized at, whatever framing the delivery itself carries.
+         *
+         * **This is not the presentation zoom, and it must not be re-derived from it.** It looks
+         * like it: the presentation zoom was long believed to be 1.09, and this constant was once
+         * written as `1 + 2 * 0.045` to say so. The presentation zoom was measured on device and is
+         * **1.10**, so the resemblance is a coincidence. What justifies the value here is only that
+         * [ANALYSIS_STEPS] of it was pinned against a reference render; see [ANALYSIS_STEPS].
          */
-        const val SCAN_ZOOM_STEP = 1f + 2f * SCAN_ZOOM_INSET_FRACTION
+        const val SCAN_ZOOM_STEP = 1.09f
 
         /**
          * How far in the palette is measured, in [SCAN_ZOOM_STEP]s: the center ~84% of the photo.
          *
          * **Pinned by measurement, not derived.**
          *
-         * **No mechanism is claimed.** One step would be the presentation zoom; nothing yet
-         * explains the second, and inventing a story for it would be worse than admitting the gap.
-         * Treat the number as load-bearing and unexplained: verify against a reference render
-         * before changing it, and do not "simplify" it back to one step.
+         * **No mechanism is claimed, and there is now less to claim than there once was.** The
+         * old note here said one step would be the presentation zoom and only the second was
+         * unexplained. Measurement put the presentation zoom at 1.10, so **neither** step is it and
+         * the whole 1.1881 is unexplained. Treat it as load-bearing and empirical: verify against a
+         * reference render before changing it, do not "simplify" it back to one step, and do not
+         * rebuild it out of the platform zoom.
          *
          * Why so little slack: Palette is a six-box median cut and a swatch is its box's
          * population-weighted mean, so on a photo built from a few near-equal masses the split

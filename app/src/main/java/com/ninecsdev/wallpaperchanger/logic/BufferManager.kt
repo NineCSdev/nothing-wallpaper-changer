@@ -73,7 +73,6 @@ class BufferManager @Inject constructor(
         const val BUFFER_FILENAME = "buffer_next.webp"
         const val TEMP_FILENAME = "buffer_temp.webp"
         const val COMPRESSION_QUALITY = 95 // Quality left high as only 1 image will exist at any time
-        const val ZOOM_INSET_FRACTION = 0.045f // Zoom that I observed in a 20:9 screen
         const val BLUR_DOWNSCALE_FACTOR = 24
         const val EDIT_DECODE_SCALE = 2
     }
@@ -291,15 +290,15 @@ class BufferManager @Inject constructor(
      * the image the engine actually draws. [Framing.CROP_IN] moves every point of the photo, so the
      * positions follow it even though the colors do not.
      *
-     * The scan reads a narrower window than [Framing.CROP_IN] keeps, so a mapped anchor always lands
-     * inside the delivered image; the clamp in [mapAnchor] is a guard, not a working part.
+     * The scan reads a narrower window than [Framing.CROP_IN] keeps, so a mapped anchor always
+     * lands inside the delivered image.
      */
     private fun anchorsWithin(seeds: List<VertexInfo>, framing: Framing): List<VertexInfo> = when (framing) {
         Framing.NONE -> seeds
         Framing.CROP_IN -> seeds.map { seed ->
             seed.copy(
-                x = mapAnchor(seed.x, seed.bitmapWidth),
-                y = mapAnchor(seed.y, seed.bitmapHeight)
+                x = ParallaxZoom.photoToDelivered(seed.x, seed.bitmapWidth),
+                y = ParallaxZoom.photoToDelivered(seed.y, seed.bitmapHeight)
             )
         }
         // Not reachable for an atmosphere render
@@ -405,8 +404,8 @@ class BufferManager @Inject constructor(
     private fun cropToZoomInset(source: Bitmap): Bitmap {
         val width = source.width
         val height = source.height
-        val insetX = calculateZoomInset(width)
-        val insetY = calculateZoomInset(height)
+        val insetX = ParallaxZoom.cropInset(width)
+        val insetY = ParallaxZoom.cropInset(height)
         if (insetX <= 0 && insetY <= 0) return source
 
         val cropped = createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -525,8 +524,8 @@ class BufferManager @Inject constructor(
 
         // Nothing OS sometimes zooms the wallpaper presentation after it is set.
         // Keep the wallpaper at full resolution and add tunable padding around it for zoom to consume.
-        val insetX = calculateZoomInset(targetW)
-        val insetY = calculateZoomInset(targetH)
+        val insetX = ParallaxZoom.padInset(targetW)
+        val insetY = ParallaxZoom.padInset(targetH)
         val paddedW = targetW + insetX * 2
         val paddedH = targetH + insetY * 2
 
@@ -545,12 +544,6 @@ class BufferManager @Inject constructor(
         } finally {
             if (!success) padded.recycle()
         }
-    }
-
-    private fun calculateZoomInset(size: Int, extraPx: Int = 0): Int {
-        return ((size * ZOOM_INSET_FRACTION).roundToInt() + extraPx)
-            .coerceAtLeast(0)
-            .coerceAtMost((size - 1) / 2)
     }
 
     private fun drawPaddingBackground(
