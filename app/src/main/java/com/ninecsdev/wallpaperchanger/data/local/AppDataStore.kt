@@ -51,6 +51,7 @@ private val KEY_WALLPAPER_MODE = stringPreferencesKey("wallpaper_mode")
 private val KEY_KEEP_LOCAL_COPIES = booleanPreferencesKey("keep_local_copies")
 private val KEY_BUFFERED_WALLPAPER_ID = longPreferencesKey("buffered_wallpaper_id")
 private val KEY_ATMOSPHERE_LIVE_WALLPAPER_ID = longPreferencesKey("atmosphere_live_wallpaper_id")
+private val KEY_ATMOSPHERE_RENDER_KEY = stringPreferencesKey("atmosphere_render_key")
 
 /**
  * Manages simple key-value pairs for global application settings using
@@ -213,6 +214,10 @@ class AppDataStore @Inject constructor(
     suspend fun getAtmosphereLiveWallpaperId(): Long? =
         mappedSettingFlow(KEY_ATMOSPHERE_LIVE_WALLPAPER_ID, null) { it }.first()
 
+    suspend fun getAtmosphereRenderKey(): String? =
+        mappedSettingFlow(KEY_ATMOSPHERE_RENDER_KEY, null) { it }.first()
+
+
     // Writes (suspend)
 
     suspend fun saveDefaultWallpaperUri(uri: Uri) =
@@ -261,4 +266,12 @@ class AppDataStore @Inject constructor(
     /** Null records "the live image belongs to no collection". */
     suspend fun setAtmosphereLiveWallpaperId(wallpaperId: Long?) =
         setOrClear(KEY_ATMOSPHERE_LIVE_WALLPAPER_ID, wallpaperId)
+
+    /**
+     * Records the render inputs the delivered atmosphere source was produced from, so a later
+     * reconcile can tell "still correct" from "needs re-rendering" without decoding.
+     * Null clears it, which reads as "nothing delivered".
+     */
+    suspend fun setAtmosphereRenderKey(renderKey: String?) =
+        setOrClear(KEY_ATMOSPHERE_RENDER_KEY, renderKey)
 }

@@ -352,4 +352,5 @@
     <string name="settings_atmosphere_no_source_hint">Add images to a collection or set a default wallpaper first.</string>
     <string name="settings_atmosphere_exit_failed_snackbar">Couldn\'t leave: no wallpaper to replace it</string>
     <string name="settings_atmosphere_exit_cleared_snackbar">Left atmosphere. Your wallpaper was reset as you don\'t have one to replace it.</string>
+    <string name="settings_atmosphere_lock_removed_snackbar">Your separate lock screen wallpaper was removed so Atmosphere can use both screens.</string>
 </resources>

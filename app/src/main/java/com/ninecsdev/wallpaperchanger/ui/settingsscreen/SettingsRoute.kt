@@ -86,10 +86,10 @@ fun SettingsRoute(onBack: () -> Unit) {
             else mediaAccessLauncher.launch(mediaAccessPermissions())
         },
         onSetAtmosphere = {
-            // Render the source image first (atomically written to disk), then hand off to the
-            // system live-wallpaper confirmation screen. onResume re-checks the engine state after.
+            // Stage the source and take both screens first, then hand off to the system
+            // live-wallpaper confirmation screen. onResume re-checks the engine state after.
             scope.launch {
-                if (viewModel.prepareAtmosphereSource()) {
+                if (viewModel.enterAtmosphere()) {
                     val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).putExtra(
                         WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
                         ComponentName(context, AtmosphereWallpaperService::class.java)

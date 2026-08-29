@@ -24,5 +24,5 @@ interface SettingsActions {
     fun setAppLanguage(tag: String)
     fun refreshMediaAccess()
     fun refreshAtmosphereEngineActive()
-    fun clearAtmosphereExitNotice()
+    fun clearAtmosphereNotice()
 }

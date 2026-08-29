@@ -2,7 +2,6 @@ package com.ninecsdev.wallpaperchanger.logic.atmosphere
 
 import android.app.WallpaperManager
 import android.content.Context
-import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService
@@ -23,25 +22,23 @@ import javax.inject.Singleton
  *
  * The desired setting is **never silently flipped** to reconcile a mismatch; the UI surfaces the
  * mismatch instead (a "not set yet" prompt in Settings) so the user's intent is preserved.
+ *
+ * Read-only by design.
  */
 @Singleton
 class WallpaperModeResolver @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
     private val appDataStore: AppDataStore
 ) {
-    private companion object {
-        const val TAG = "WallpaperModeResolver"
-    }
-
     /**
      * True when NWC's [AtmosphereWallpaperService] is the currently-set system live wallpaper.
      * A live wallpaper reports its component via [WallpaperManager.getWallpaperInfo]; a static
      * wallpaper (or another app's live wallpaper) yields null / a different component.
      *
      * Blocking: [WallpaperManager.getWallpaperInfo] is a synchronous binder call into system_server.
-     * Deliberately left non-suspend because the Settings resume hook needs a snapshot it can take
-     * inline; call it off the main thread wherever a suspend context is available ([effectiveMode]
-     * already does).
+     * Deliberately left non-suspend because [AtmosphereTransition] seeds its liveness snapshot with
+     * it inline; call it off the main thread wherever a suspend context is available
+     * ([effectiveMode] already does).
      */
     fun isAtmosphereEngineActive(): Boolean {
         val info = WallpaperManager.getInstance(appContext).wallpaperInfo ?: return false
@@ -67,23 +64,5 @@ class WallpaperModeResolver @Inject constructor(
         } else {
             WallpaperMode.STATIC
         }
-    }
-
-    /**
-     * Removes any separate lock-screen wallpaper so the engine receives both screens.
-     * Safe to call repeatedly; it does nothing when no lock wallpaper is set.
-     *
-     * Runs on [Dispatchers.IO]: unlike the cheap [isAtmosphereEngineActive] snapshot, clearing makes
-     * system_server delete the lock wallpaper, reset its bitmap and notify listeners.
-     */
-    suspend fun ensureEngineOwnsLockScreen() = withContext(Dispatchers.IO) {
-        runCatching {
-            val manager = WallpaperManager.getInstance(appContext)
-            if (manager.getWallpaperId(WallpaperManager.FLAG_LOCK) > 0) {
-                manager.clear(WallpaperManager.FLAG_LOCK)
-                Log.i(TAG, "Cleared the separate lock wallpaper; the engine now owns both screens")
-            }
-        }.onFailure { Log.w(TAG, "Could not clear the lock wallpaper", it) }
-        Unit
     }
 }

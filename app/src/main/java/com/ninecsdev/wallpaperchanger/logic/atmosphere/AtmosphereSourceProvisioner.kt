@@ -4,6 +4,7 @@ import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.BufferManager
+import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import kotlinx.coroutines.flow.first
@@ -43,8 +44,27 @@ class AtmosphereSourceProvisioner @Inject constructor(
             Log.i(TAG, "No collection image and no default wallpaper; nothing to provision")
             return false
         }
+        return deliver(resolved.first, resolved.second)
+    }
 
-        val (wallpaper, cropRule) = resolved
+    /**
+     * Re-renders the image the engine is **already showing**, rather than picking one.
+     *
+     * Falls back to [provision] when nothing is live, or when the live image has gone away.
+     */
+    suspend fun reprovisionLive(): Boolean {
+        val liveId = appDataStore.getAtmosphereLiveWallpaperId() ?: return provision()
+        val wallpaper = repository.getWallpaperById(liveId)
+        if (wallpaper == null || !wallpaper.isAvailable) {
+            Log.i(TAG, "Live image $liveId is gone or unavailable; picking a source instead.")
+            return provision()
+        }
+        val cropRule = repository.getCollectionById(wallpaper.collectionId)?.defaultCropRule
+            ?: WallpaperCollection.DEFAULT_CROP_RULE
+        return deliver(wallpaper, cropRule)
+    }
+
+    private suspend fun deliver(wallpaper: WallpaperImage, cropRule: CropRule): Boolean {
         val render = bufferManager.renderForAtmosphere(wallpaper, cropRule) ?: return false
         return try {
             // deliverRender writes the container and broadcasts the reload itself. The id lets

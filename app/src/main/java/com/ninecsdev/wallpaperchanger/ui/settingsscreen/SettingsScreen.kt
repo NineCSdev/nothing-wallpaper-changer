@@ -30,7 +30,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.logic.StorageUsage
-import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereExitOutcome
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
@@ -64,18 +63,21 @@ fun SettingsScreen(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Leaving atmosphere has two outcomes to report: cleared their wallpaper or failed leaving
+    // A mode change can owe the user a word: it cleared their wallpaper, it could not leave, or
+    // entering cost them their separate lock-screen wallpaper.
     val exitClearedMessage = stringResource(R.string.settings_atmosphere_exit_cleared_snackbar)
     val exitFailedMessage = stringResource(R.string.settings_atmosphere_exit_failed_snackbar)
-    LaunchedEffect(uiState.atmosphereExitOutcome) {
-        val message = when (uiState.atmosphereExitOutcome) {
-            AtmosphereExitOutcome.CLEARED -> exitClearedMessage
-            AtmosphereExitOutcome.FAILED -> exitFailedMessage
-            AtmosphereExitOutcome.REPLACED, null -> null
+    val lockRemovedMessage = stringResource(R.string.settings_atmosphere_lock_removed_snackbar)
+    LaunchedEffect(uiState.atmosphereNotice) {
+        val message = when (uiState.atmosphereNotice) {
+            AtmosphereNotice.EXIT_CLEARED -> exitClearedMessage
+            AtmosphereNotice.EXIT_FAILED -> exitFailedMessage
+            AtmosphereNotice.LOCK_WALLPAPER_REMOVED -> lockRemovedMessage
+            null -> null
         }
         if (message != null) {
             snackbarHostState.showSnackbar(message)
-            actions.clearAtmosphereExitNotice()
+            actions.clearAtmosphereNotice()
         }
     }
 
@@ -356,5 +358,5 @@ private object PreviewSettingsActions : SettingsActions {
     override fun setAppLanguage(tag: String) {}
     override fun refreshMediaAccess() {}
     override fun refreshAtmosphereEngineActive() {}
-    override fun clearAtmosphereExitNotice() {}
+    override fun clearAtmosphereNotice() {}
 }
