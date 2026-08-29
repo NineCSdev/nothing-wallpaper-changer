@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
+import android.os.SystemClock
 import android.util.Log
 import android.view.Surface
 import com.ninecsdev.wallpaperchanger.BuildConfig
@@ -54,10 +55,14 @@ class AtmosphereWallpaperService : GLWallpaperService() {
          */
         private const val LOCK_DELAY_MS = 300L
 
-        /**
-         * Refresh rate the morph votes its own surface to, for the morph's duration; 0 disables it
-         */
+        /** Refresh rate the morph votes its own surface to, for the morph's duration; 0 disables it */
         private const val PIN_MORPH_FRAME_RATE_HZ = 120f
+
+        /**
+         * How long after the keyguard starts to disappear a newly visible engine still counts as
+         * *that* unlocks reveal.
+         */
+        private const val UNLOCK_REVEAL_WINDOW_MS = 500L
 
     }
 
@@ -98,9 +103,19 @@ class AtmosphereWallpaperService : GLWallpaperService() {
         private var destroyed = false
 
         /**
-         * Leaves the lock visual, morphing only if there is somebody to watch it.
+         * When the keyguard last began to disappear with nobody watching, or 0 for none held.
+         * Weighed against [UNLOCK_REVEAL_WINDOW_MS] the moment the engine becomes visible.
          */
-        private fun unlock() = renderer.setLocked(false, animate = isVisible)
+        private var unlockAwaitingViewer = 0L
+
+        /**
+         * Leaves the lock visual.[onVisibilityChanged] picks it up,
+         * and [UNLOCK_REVEAL_WINDOW_MS] decides whether it is still worth playing by then.
+         */
+        private fun unlock() {
+            if (isVisible) renderer.setLocked(false, animate = true)
+            else unlockAwaitingViewer = SystemClock.uptimeMillis()
+        }
 
         /**
          * True when a swap cannot be seen: the engine is not being shown *and* the device is not
@@ -115,6 +130,8 @@ class AtmosphereWallpaperService : GLWallpaperService() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 when (intent?.action) {
                     Intent.ACTION_SCREEN_OFF -> {
+                        // A held unlock cannot belong to a panel that has gone dark again since.
+                        unlockAwaitingViewer = 0L
                         handler.removeCallbacks(lockRunnable)
                         handler.postDelayed(lockRunnable, LOCK_DELAY_MS)
                     }
@@ -124,7 +141,7 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                     Intent.ACTION_SCREEN_ON -> handler.removeCallbacks(lockRunnable)
 
                     // Backstop for COMMAND_KEYGUARD_GOING_AWAY on a platform that does not send
-                    // it, at the cost of a morph that starts a beat into the unlock.
+                    // it, at the cost of a morph that starts a beat into the unlock
                     Intent.ACTION_USER_PRESENT -> unlock()
 
                     AtmosphereProtocol.ACTION_RELOAD ->
@@ -218,14 +235,24 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                 return
             }
 
-            if (keyguardManager.isKeyguardLocked) {
-                // A wake onto the lock screen: show the photo the keyguard will be dismissed from.
-                renderer.setLocked(true, animate = false)
-            } else {
-                // Either a wake into an unlocked world, or a return to a home screen that never
-                // locked. Which one it is decides itself: only the first has a lock visual to
-                // leave, and only a transition can morph.
-                unlock()
+            // Always consumed: a held unlock is only offered to the first engine that becomes visible after it
+            val heldUnlock = unlockAwaitingViewer
+            unlockAwaitingViewer = 0L
+
+            when {
+                // The reveal this engine is being made visible *for*. It outranks the keyguard
+                // because the keyguard still reports itself locked all the way through its dismissal
+                heldUnlock != 0L && SystemClock.uptimeMillis() - heldUnlock <= UNLOCK_REVEAL_WINDOW_MS ->
+                    renderer.setLocked(false, animate = true)
+
+                // Nothing held, or held too long ago: a wake onto the lock screen shows the photo it will be dismissed from
+                keyguardManager.isKeyguardLocked -> renderer.setLocked(true, animate = false)
+
+                // A held unlock that missed its window, doesn't morph
+                heldUnlock != 0L -> renderer.setLocked(false, animate = false)
+
+                // Either a wake with no keyguard to dismiss, or a return to a home screen that never locked
+                else -> unlock()
             }
         }
 
