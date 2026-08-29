@@ -15,22 +15,28 @@ import kotlin.math.roundToInt
  * **Padding and cropping are inverse operations and do not share a fraction.** Reaching for one number
  * to do both is the mistake this module exists to make impossible.
  */
-// TODO Tests specced in the vault: `tests/ParallaxZoom.md`.
+// TODO Tests specced in the vault: `tests/ParallaxZoom Tests.md`.
 object ParallaxZoom {
 
+    /** The factor the platform enlarges a static wallpaper surface by before drawing its center. */
+    // Pinned on device on a 20:9 panel (1080x2400)
+    const val ZOOM = 1.10f
+
     /**
-     * Half of what the platform adds, expressed as a fraction of the image's own size.
+     * Pixels to add to each edge of a static bitmap so the platform's crop consumes them exactly.
      *
-     * Observed on a 20:9 panel. Currently used for both the pad and the crop, which cannot both
-     * be right — see the class note.
+     * Grows the image to [ZOOM] times its size, so that dividing by [ZOOM] returns the original.
      */
-    private const val INSET_FRACTION = 0.045f
+    fun padInset(size: Int): Int = insetPx(size, (ZOOM - 1f) / 2f)
 
-    /** Pixels to add to each edge of a static bitmap so the platform's crop consumes them. */
-    fun padInset(size: Int): Int = insetPx(size)
-
-    /** Pixels to remove from each edge of a live-wallpaper bitmap to imitate the platform's crop. */
-    fun cropInset(size: Int): Int = insetPx(size)
+    /**
+     * Pixels to remove from each edge of a live-wallpaper bitmap to imitate the platform's crop.
+     *
+     * Shrinks the image to 1/[ZOOM] of its size, which is what the platform leaves visible. **This
+     * is not [padInset], and the difference is not rounding**: growing by a factor and shrinking by
+     * the same factor are different amounts of pixels.
+     */
+    fun cropInset(size: Int): Int = insetPx(size, (1f - 1f / ZOOM) / 2f)
 
     /**
      * Re-expresses [value], a coordinate along an axis of [extent] pixels in the photo, into the
@@ -38,22 +44,24 @@ object ParallaxZoom {
      *
      * A seed is two things with different owners: a **color**, which belongs to the photo and must
      * not move when a presentation setting changes, and a **position**, which is a coordinate into
-     * the image that is actually drawn. Cropping moves every point of the photo, so positions
-     * follow it even though colors do not.
+     * the image that is actually drawn. Cropping changes *position* not *color*.
      *
      * The clamp is a guard rather than a working part: callers crop a wider window than they read
      * anchors from, so a mapped anchor already lands inside.
      */
     fun photoToDelivered(value: Int, extent: Int): Int {
         if (extent <= 1) return 0
-        val kept = 1f - 2f * INSET_FRACTION
-        val withinDelivered = (value.toFloat() / extent - INSET_FRACTION) / kept
-        return (withinDelivered * extent).roundToInt().coerceIn(0, extent - 1)
+        // Derived from cropInset so the mapping follows the crop that was actually performed.
+        // The two disagreed below a pixel while one worked in whole pixels and the other in fractions.
+        val inset = cropInset(extent)
+        val kept = extent - 2 * inset
+        if (kept <= 0) return 0
+        return ((value - inset).toFloat() * extent / kept).roundToInt().coerceIn(0, extent - 1)
     }
 
     /** Clamped so an inset can never consume the whole axis, however small the image. */
-    private fun insetPx(size: Int): Int =
-        (size * INSET_FRACTION).roundToInt()
+    private fun insetPx(size: Int, fraction: Float): Int =
+        (size * fraction).roundToInt()
             .coerceAtLeast(0)
             .coerceAtMost((size - 1) / 2)
 }

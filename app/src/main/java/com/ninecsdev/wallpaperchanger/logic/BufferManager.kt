@@ -13,7 +13,6 @@ import android.net.Uri
 import android.util.Log
 import androidx.core.graphics.createBitmap
 import kotlinx.coroutines.CancellationException
-import kotlin.math.roundToInt
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereRender
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.SeedExtractor
@@ -81,8 +80,9 @@ class BufferManager @Inject constructor(
      * What to do about the platform's parallax zoom, which is **not** the same question in the two
      * delivery modes.
      *
-     * - static, zoom fix off: the platform crops ~4.5%, and we do nothing.
-     * - static, blurred/edge: we pad ~4.5% and the platform's crop eats exactly the padding.
+     * - static, zoom fix off: the platform keeps the middle 1/[ParallaxZoom.ZOOM], and we do nothing.
+     * - static, blurred/edge: we pad by [ParallaxZoom.padInset] and the platform's crop eats exactly
+     *   the padding.
      * - **atmosphere, zoom fix off**: nothing will crop for us, so we [CROP_IN] ourselves to land on
      *   the same framing the static path gets for free.
      * - **atmosphere, blurred/edge**: the user's whole image already survives, and padding it would
@@ -305,13 +305,6 @@ class BufferManager @Inject constructor(
         Framing.PAD_BLURRED, Framing.PAD_EDGE -> seeds
     }
 
-    private fun mapAnchor(value: Int, extent: Int): Int {
-        if (extent <= 1) return 0
-        val kept = 1f - 2f * ZOOM_INSET_FRACTION
-        val withinDelivered = (value.toFloat() / extent - ZOOM_INSET_FRACTION) / kept
-        return (withinDelivered * extent).roundToInt().coerceIn(0, extent - 1)
-    }
-
     /**
      * The single decode → transform pipeline behind every render. Decodes [wallpaper] at the
      * screen's target size (oversampling when it carries edit params) and applies the edit transform
@@ -522,8 +515,8 @@ class BufferManager @Inject constructor(
         val targetW = screenBitmap.width
         val targetH = screenBitmap.height
 
-        // Nothing OS sometimes zooms the wallpaper presentation after it is set.
-        // Keep the wallpaper at full resolution and add tunable padding around it for zoom to consume.
+        // Keep the wallpaper at full resolution and add padding around it for the platform's
+        // presentation zoom to consume; see [ParallaxZoom].
         val insetX = ParallaxZoom.padInset(targetW)
         val insetY = ParallaxZoom.padInset(targetH)
         val paddedW = targetW + insetX * 2
