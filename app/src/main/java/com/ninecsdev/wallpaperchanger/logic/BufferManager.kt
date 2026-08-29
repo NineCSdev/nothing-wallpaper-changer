@@ -15,7 +15,11 @@ import androidx.core.graphics.createBitmap
 import kotlinx.coroutines.CancellationException
 import kotlin.math.roundToInt
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereRender
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.SeedExtractor
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereSource
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.VertexInfo
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
@@ -23,8 +27,10 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileNotFoundException
+import java.io.InputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,17 +47,26 @@ sealed class BufferPreparationResult {
 }
 
 /**
- * In charge of preparing the next wallpaper that will be set.
- * Handles downsampling, aspect-ratio cropping, and WebP compression.
+ * The render pipeline, and the owner of whatever it has prepared for the next rotation.
+ * Handles downsampling, aspect-ratio cropping, framing, and WebP compression.
  *
  * When a wallpaper has edit params (zoom/offsetX/offsetY), the collection's [CropRule] is
  * bypassed entirely.
+ *
+ * **Rendering is asked for by delivery mode** The two modes need opposite framing (see [Framing])
+ * and the palette an atmosphere delivery carries is only derivable here, so callers name the destination
+ * and get back something already correct for it.
+ *
+ * **What is prepared is mode-shaped, and only one shape exists at a time.** A static refill leaves a
+ * WebP buffer; an atmosphere refill leaves a staged container holding the same pixels plus their
+ * seeds. Which file exists *is* the record of which mode prepared it.
  */
 @Singleton
 class BufferManager @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
     private val appDataStore: AppDataStore,
-    private val modeResolver: WallpaperModeResolver
+    private val modeResolver: WallpaperModeResolver,
+    private val seedExtractor: SeedExtractor
 ) {
     private companion object {
         const val TAG = "BufferManager"
@@ -86,22 +101,33 @@ class BufferManager @Inject constructor(
         val yOffset: Float
     )
 
-    fun getBufferFile(): File = File(appContext.cacheDir, BUFFER_FILENAME)
+    private fun getBufferFile(): File = File(appContext.cacheDir, BUFFER_FILENAME)
 
     /**
-     * Applies the wallpaper zoom-fix padding to the given [bitmap] if the
-     * user has the setting enabled. Returns the original bitmap unchanged
-     * when the zoom-fix is [WallpaperZoomFix.OFF].
+     * Opens the prepared image for a static apply, or null when nothing is prepared. Caller
+     * owns the stream.
+     *
+     * Normally that is the WebP buffer. It falls back to the staged atmosphere delivery so if the engine
+     * stopped being the system wallpaper the mode resolves static and the only prepared pixels engine's.
+     * They carry engine's framing but the rotation happens, and the next refill prepares the right shape.
      */
-    suspend fun applyZoomFixIfNeeded(bitmap: Bitmap): Bitmap {
-        // Used in WallpaperApplier for default wallpaper
-        // Don't recycle the input; the caller owns it. applyFraming returns it unchanged when
-        // there is nothing to do.
-        return applyFraming(bitmap, framing(modeResolver.effectiveMode()))
+    suspend fun openPrepared(): InputStream? = withContext(Dispatchers.IO) {
+        val buffer = getBufferFile()
+        if (buffer.exists()) return@withContext buffer.inputStream()
+
+        val staged = AtmosphereSource.readPending(appContext.filesDir)
+        if (staged == null) {
+            Log.w(TAG, "Nothing prepared to apply. Is the service initialized?")
+            return@withContext null
+        }
+
+        Log.w(TAG, "No static buffer; applying the staged atmosphere delivery, framed for the engine.")
+        ByteArrayInputStream(staged.imageBytes)
     }
 
     /**
-     * Prepares the next wallpaper file on disk.
+     * Prepares the next wallpaper for whichever mode is currently effective, leaving one
+     * prepared artifact behind.
      *
      * If the wallpaper has edit params, the edit transform (fit + zoom + offset) is applied
      * and the [cropRule] is **bypassed**.
@@ -110,15 +136,10 @@ class BufferManager @Inject constructor(
     // TODO tests: see vault note tests/Atmosphere Delivery Tests.md (zoom-fix gating by effective mode)
     suspend fun prepareNextWallpaper(wallpaper: WallpaperImage, cropRule: CropRule): BufferPreparationResult {
         return try {
-            val rendered = renderWallpaper(wallpaper, cropRule, framing(modeResolver.effectiveMode()))
-                ?: return BufferPreparationResult.Failure(definitive = false)
-            try {
-                writeBuffer(rendered, cropRule)
-                appDataStore.setBufferedWallpaperId(wallpaper.id)
-            } finally {
-                rendered.recycle()
+            when (modeResolver.effectiveMode()) {
+                WallpaperMode.ATMOSPHERE -> stageAtmosphereDelivery(wallpaper, cropRule)
+                WallpaperMode.STATIC -> writeStaticBuffer(wallpaper, cropRule)
             }
-            BufferPreparationResult.Success
         } catch (e: CancellationException) {
             // Not a preparation failure: the caller is being torn down
             throw e
@@ -129,8 +150,55 @@ class BufferManager @Inject constructor(
             Log.w(TAG, "Permission revoked for source: ${wallpaper.uri}", e)
             BufferPreparationResult.Failure(definitive = true)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to prepare buffer", e)
+            Log.e(TAG, "Failed to prepare the next wallpaper", e)
             BufferPreparationResult.Failure(definitive = false)
+        }
+    }
+
+    /**
+     * Stages the whole delivery (pixels and palette in one container) so publishing later
+     * is a copy and a broadcast.
+     */
+    private suspend fun stageAtmosphereDelivery(
+        wallpaper: WallpaperImage,
+        cropRule: CropRule
+    ): BufferPreparationResult {
+        val render = renderAtmosphere(wallpaper, cropRule) ?: return BufferPreparationResult.Failure(definitive = false)
+        try {
+            val imageBytes = ImageProcessingUtils.compressToBytes(render.bitmap, quality = COMPRESSION_QUALITY)
+            // Cleared before the new one is written, never after. A crash between the two must leave
+            // nothing prepared (recoverable, and handled) rather than the previous mode's image
+            discardStaticBuffer()
+            if (!AtmosphereSource.writePending(appContext.filesDir, render.seeds, imageBytes)) {
+                return BufferPreparationResult.Failure(definitive = false)
+            }
+            appDataStore.setBufferedWallpaperId(wallpaper.id)
+            Log.d(TAG, "Staged atmosphere delivery: ${imageBytes.size / 1024} KB | Rule: $cropRule")
+        } finally {
+            render.bitmap.recycle()
+        }
+        return BufferPreparationResult.Success
+    }
+
+    private suspend fun writeStaticBuffer(
+        wallpaper: WallpaperImage,
+        cropRule: CropRule
+    ): BufferPreparationResult {
+        val rendered = renderStatic(wallpaper, cropRule) ?: return BufferPreparationResult.Failure(definitive = false)
+        try {
+            AtmosphereSource.clearPending(appContext.filesDir)
+            writeBuffer(rendered, cropRule)
+            appDataStore.setBufferedWallpaperId(wallpaper.id)
+        } finally {
+            rendered.recycle()
+        }
+        return BufferPreparationResult.Success
+    }
+
+    private fun discardStaticBuffer() {
+        val buffer = getBufferFile()
+        if (buffer.exists() && !buffer.delete()) {
+            Log.w(TAG, "Could not delete the static buffer")
         }
     }
 
@@ -154,59 +222,143 @@ class BufferManager @Inject constructor(
     }
 
     /**
-     * Renders [wallpaper] framed for an **explicitly named** [mode] and hands the bitmap back; the
-     * **caller owns it and must recycle it**.
+     * Renders [wallpaper] framed for static delivery and hands the bitmap back; the **caller owns it
+     * and must recycle it**.
      *
-     * It returns a bitmap rather than writing a file because callers need the pixels: seed
-     * extraction on the way in, `setBitmap` on the way out. The bytes already published to the
-     * engine are never reusable for a static apply — they carry atmosphere framing, which the
-     * platform's parallax crop would then eat a second time.
+     * It returns a bitmap rather than writing a file because callers need the pixels for
+     * `setBitmap`. The bytes staged for the engine are never reusable here.
      */
-    suspend fun renderFramed(
-        wallpaper: WallpaperImage,
-        cropRule: CropRule,
-        mode: WallpaperMode
-    ): Bitmap? {
+    suspend fun renderForStatic(wallpaper: WallpaperImage, cropRule: CropRule): Bitmap? {
         return try {
-            renderWallpaper(wallpaper, cropRule, framing(mode))
+            renderStatic(wallpaper, cropRule)
         } catch (e: CancellationException) {
             // Rethrown rather than reported as a failed render. A canceled render must abort, not fall through.
             throw e
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to render $wallpaper framed for $mode", e)
+            Log.e(TAG, "Failed to render $wallpaper for static delivery", e)
             null
         }
     }
 
     /**
-     * The single decode → transform pipeline behind both [prepareNextWallpaper] and
-     * [renderFramed]. Decodes [wallpaper] at the screen's target size (oversampling when it
-     * carries edit params), applies the edit transform or [cropRule] plus [framing], and returns the
-     * result. The intermediate source bitmap is always recycled; **the returned bitmap is the
-     * caller's.**
+     * Renders [wallpaper] framed for the atmosphere engine, together with the palette the engine
+     * needs. The **caller owns the bitmap and must recycle it**.
+     *
+     * The palette cannot be derived from the returned pixels (see [AtmosphereRender]).
+     */
+    suspend fun renderForAtmosphere(wallpaper: WallpaperImage, cropRule: CropRule): AtmosphereRender? {
+        return try {
+            renderAtmosphere(wallpaper, cropRule)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to render $wallpaper for atmosphere delivery", e)
+            null
+        }
+    }
+
+    /** [renderScreenFitted] plus static framing. Failures propagate so callers can classify them. */
+    private suspend fun renderStatic(wallpaper: WallpaperImage, cropRule: CropRule): Bitmap? {
+        val screenBitmap = renderScreenFitted(wallpaper, cropRule) ?: return null
+        return frameAndRecycle(screenBitmap, framing(WallpaperMode.STATIC))
+    }
+
+    /**
+     * [renderScreenFitted], then the palette, then framing.
+     *
+     * The palette is quantized from the screen-fitted photo, before framing, so the same photo
+     * yields the same colors independently of the zoom fix. Framing runs afterward and only the
+     * anchors follow it (see [anchorsWithin]).
+     */
+    private suspend fun renderAtmosphere(
+        wallpaper: WallpaperImage,
+        cropRule: CropRule
+    ): AtmosphereRender? {
+        val screenBitmap = renderScreenFitted(wallpaper, cropRule) ?: return null
+        val framing = framing(WallpaperMode.ATMOSPHERE)
+        val seeds = seedExtractor.extract(screenBitmap)
+        return AtmosphereRender(
+            bitmap = frameAndRecycle(screenBitmap, framing),
+            seeds = anchorsWithin(seeds, framing)
+        )
+    }
+
+    /**
+     * Re-expresses seed anchors from the photo's frame into the delivered bitmap's.
+     *
+     * A seed is two things with different owners: a **color**, which belongs to the photo and must
+     * not move when a presentation setting changes, and a **position**, which is a coordinate into
+     * the image the engine actually draws. [Framing.CROP_IN] moves every point of the photo, so the
+     * positions follow it even though the colors do not.
+     *
+     * The scan reads a narrower window than [Framing.CROP_IN] keeps, so a mapped anchor always lands
+     * inside the delivered image; the clamp in [mapAnchor] is a guard, not a working part.
+     */
+    private fun anchorsWithin(seeds: List<VertexInfo>, framing: Framing): List<VertexInfo> = when (framing) {
+        Framing.NONE -> seeds
+        Framing.CROP_IN -> seeds.map { seed ->
+            seed.copy(
+                x = mapAnchor(seed.x, seed.bitmapWidth),
+                y = mapAnchor(seed.y, seed.bitmapHeight)
+            )
+        }
+        // Not reachable for an atmosphere render
+        Framing.PAD_BLURRED, Framing.PAD_EDGE -> seeds
+    }
+
+    private fun mapAnchor(value: Int, extent: Int): Int {
+        if (extent <= 1) return 0
+        val kept = 1f - 2f * ZOOM_INSET_FRACTION
+        val withinDelivered = (value.toFloat() / extent - ZOOM_INSET_FRACTION) / kept
+        return (withinDelivered * extent).roundToInt().coerceIn(0, extent - 1)
+    }
+
+    /**
+     * The single decode → transform pipeline behind every render. Decodes [wallpaper] at the
+     * screen's target size (oversampling when it carries edit params) and applies the edit transform
+     * or [cropRule], stopping **before** framing. The intermediate source bitmap is always recycled;
+     * **the returned bitmap is the caller's.**
+     *
+     * Framing is deliberately not part of this as the palette is defined over the photo at this stage.
      *
      * Returns null only when the source could not be decoded; every other failure propagates as an
      * exception so callers can classify it (definitive vs. transient).
      */
-    private suspend fun renderWallpaper(
+    private suspend fun renderScreenFitted(
         wallpaper: WallpaperImage,
-        cropRule: CropRule,
-        framing: Framing
+        cropRule: CropRule
     ): Bitmap? = withContext(Dispatchers.IO) {
         val targetSize = getTargetSize()
-        val hasEdit = wallpaper.editParams != null
+        val editParams = wallpaper.editParams
 
         val sourceBitmap = decodeSourceBitmap(
             wallpaper.uri,
             targetSize,
-            oversample = if (hasEdit) EDIT_DECODE_SCALE else 1
+            oversample = if (editParams != null) EDIT_DECODE_SCALE else 1
         ) ?: return@withContext null
 
         try {
-            prepareFinalBitmap(wallpaper, sourceBitmap, targetSize, cropRule, framing)
+            if (editParams != null) {
+                applyEditTransform(
+                    source = sourceBitmap,
+                    targetSize = targetSize,
+                    zoom = editParams.zoom,
+                    normalizedOffsetX = editParams.offsetX,
+                    normalizedOffsetY = editParams.offsetY
+                )
+            } else {
+                renderScreenBitmap(sourceBitmap, targetSize, cropRule)
+            }
         } finally {
             sourceBitmap.recycle()
         }
+    }
+
+    /** [applyFraming], recycling the input when framing produced a new bitmap. */
+    private fun frameAndRecycle(screenBitmap: Bitmap, framing: Framing): Bitmap {
+        val framed = applyFraming(screenBitmap, framing)
+        if (framed !== screenBitmap) screenBitmap.recycle()
+        return framed
     }
 
     private fun getTargetSize(): TargetSize {
@@ -229,31 +381,6 @@ class BufferManager @Inject constructor(
                 reqH
             )
         }
-    }
-
-    private fun prepareFinalBitmap(
-        wallpaper: WallpaperImage,
-        sourceBitmap: Bitmap,
-        targetSize: TargetSize,
-        cropRule: CropRule,
-        framing: Framing
-    ): Bitmap {
-        val editParams = wallpaper.editParams
-        val screenBitmap = if (editParams != null) {
-            applyEditTransform(
-                source = sourceBitmap,
-                targetSize = targetSize,
-                zoom = editParams.zoom,
-                normalizedOffsetX = editParams.offsetX,
-                normalizedOffsetY = editParams.offsetY
-            )
-        } else {
-            renderScreenBitmap(sourceBitmap, targetSize, cropRule)
-        }
-
-        val framed = applyFraming(screenBitmap, framing)
-        if (framed !== screenBitmap) screenBitmap.recycle()
-        return framed
     }
 
     /**

@@ -7,6 +7,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.SourceType
 
 /**
@@ -71,13 +72,15 @@ data class WallpaperImage(
     val addedAt: Long = System.currentTimeMillis()
 ) {
     companion object {
+        /** How the default wallpaper is framed. */
+        val DEFAULT_WALLPAPER_CROP_RULE = CropRule.CENTER
+
         /**
          * The user's default wallpaper as a [WallpaperImage] so it can go through the same render
          * pipeline as collection images. It belongs to no collection (hence [collectionId] 0, an id
-         * no row ever has) and carries no edits — the caller supplies the crop rule instead.
+         * no row ever has) and carries no edits; [DEFAULT_WALLPAPER_CROP_RULE] frames it.
          */
-        fun forDefaultWallpaper(uri: Uri): WallpaperImage =
-            WallpaperImage(collectionId = 0L, uri = uri, editParams = null)
+        fun forDefaultWallpaper(uri: Uri): WallpaperImage = WallpaperImage(collectionId = 0L, uri = uri, editParams = null)
     }
 }
 

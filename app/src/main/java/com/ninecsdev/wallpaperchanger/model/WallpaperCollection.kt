@@ -31,14 +31,19 @@ data class WallpaperCollection(
     val type: CollectionType,
     val isActive: Boolean = false,
     val rootUri: Uri? = null,
-    val defaultCropRule: CropRule = CropRule.CENTER,
+    val defaultCropRule: CropRule = DEFAULT_CROP_RULE,
     val rotationFrequency: RotationFrequency = RotationFrequency.PER_LOCK,
     val lastWallpaperChangeAt: Long = 0L,
     val createdAt: Long = System.currentTimeMillis(),
     val lastUsedAt: Long = System.currentTimeMillis(),
     val isFavorites: Boolean = false,
     val isPinned: Boolean = false
-)
+) {
+    companion object {
+        /** How a collection frames its unedited images unless the user says otherwise. */
+        val DEFAULT_CROP_RULE = CropRule.CENTER
+    }
+}
 
 /**
  * The central "pinned collections sort first" rule, applied on top of an already-sorted list.

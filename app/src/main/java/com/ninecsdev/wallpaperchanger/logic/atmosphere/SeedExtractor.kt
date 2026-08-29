@@ -82,6 +82,9 @@ class SeedExtractor @Inject constructor() {
          * box changes a color, its population rank, and therefore which blob is drawn over which.
          */
         const val ANALYSIS_STEPS = 2
+
+        val SCAN_ZOOM = SCAN_ZOOM_STEP.pow(ANALYSIS_STEPS)
+
         // D65 white point and the pivot thresholds, matching androidx.core's ColorUtils exactly.
         const val WHITE_X = 95.047
         const val WHITE_Y = 100.0
@@ -97,17 +100,13 @@ class SeedExtractor @Inject constructor() {
     }
 
     /**
-     * @param bitmap the fitted, edit-applied image that will be delivered to the engine, exactly
-     * as the engine will receive it.
-     * @param deliveredCropSteps how many [SCAN_ZOOM_STEP]s the framing already took out of
-     * [bitmap] before it got here. The scan makes up the difference so that every framing is
-     * quantized at the same [ANALYSIS_STEPS] (the palette must not shift because the user changed
-     * a presentation setting).
+     * @param bitmap the fitted, edit-applied photo **before** framing. Framing is a presentation
+     * choice shouldn't change the palette we create.
      */
-    suspend fun extract(bitmap: Bitmap, deliveredCropSteps: Int): List<VertexInfo> = withContext(Dispatchers.Default) {
+    suspend fun extract(bitmap: Bitmap): List<VertexInfo> = withContext(Dispatchers.Default) {
         val started = System.currentTimeMillis()
 
-        val scan = prepareScan(bitmap, scanZoom(deliveredCropSteps))
+        val scan = prepareScan(bitmap, SCAN_ZOOM)
         try {
             // Palette quantizes on its own 112x112 downscale regardless, so feeding it the same
             // reduced bitmap keeps the swatches and the pixels they are matched against consistent.
@@ -139,13 +138,14 @@ class SeedExtractor @Inject constructor() {
     }
 
     /**
-     * The bitmap stage 1 actually reads, plus the mapping back to the one that gets drawn.
+     * The bitmap stage 1 actually reads, plus the mapping back to the photo it came from.
      *
-     * [bitmap] is the centre `1 / scanZoom` of the delivered image, reduced by [SCAN_DOWNSCALE].
-     * [referenceWidth] and [referenceHeight] are the *whole* delivered image at that same reduced
-     * scale, and [offsetX] / [offsetY] locate the crop inside it -- so adding the offset to a
-     * pixel's position in [bitmap] gives its position in the image the composite draws, which is
-     * what [VertexInfo] has to carry.
+     * [bitmap] is the centre `1 / scanZoom` of the photo, reduced by [SCAN_DOWNSCALE].
+     * [referenceWidth] and [referenceHeight] are the *whole* photo at that same reduced scale, and
+     * [offsetX] / [offsetY] locate the crop inside it so adding the offset to a pixel's position
+     * in [bitmap] gives its position in the photo, which is the frame [VertexInfo] leaves here in.
+     *
+     * Note that is the *photo's* frame, not the delivered image's..
      */
     private data class Scan(
         val bitmap: Bitmap,
@@ -162,20 +162,11 @@ class SeedExtractor @Inject constructor() {
     }
 
     /**
-     * The crop this scan still owes: [ANALYSIS_STEPS] less whatever the framing already spent.
-     * Clamped at zero so a delivery cropped further than the analysis target is read whole.
-     */
-    private fun scanZoom(deliveredCropSteps: Int): Float {
-        val remaining = (ANALYSIS_STEPS - deliveredCropSteps).coerceAtLeast(0)
-        return SCAN_ZOOM_STEP.pow(remaining)
-    }
-
-    /**
      * Crops to the analysis framing and reduces, in one allocation.
      *
      * **Only the analysis is cropped.** Anchors come back in the full bitmap's coordinates (see
-     * [Scan]), because the composite draws the whole delivered bitmap and a blob has to start where
-     * its color actually appears on the panel.
+     * [Scan]), because the composite draws the whole image and a blob has to start where its color
+     * actually appears in it.
      */
     private fun prepareScan(bitmap: Bitmap, scanZoom: Float): Scan {
         val cropWidth = (bitmap.width / scanZoom).roundToInt().coerceIn(1, bitmap.width)

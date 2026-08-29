@@ -39,7 +39,7 @@ class RotationEngine @Inject constructor(
     private val mutex = Mutex()
     private val imageMagazine = mutableListOf<WallpaperImage>()
     private var currentPointer = -1
-    private var activeCropRule: CropRule = CropRule.FIT
+    private var activeCropRule: CropRule = WallpaperCollection.DEFAULT_CROP_RULE
 
     private var collectorJob: Job? = null
 

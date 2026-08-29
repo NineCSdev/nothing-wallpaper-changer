@@ -6,7 +6,6 @@ import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.BufferManager
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
-import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -46,14 +45,13 @@ class AtmosphereSourceProvisioner @Inject constructor(
         }
 
         val (wallpaper, cropRule) = resolved
-        val rendered = bufferManager.renderFramed(wallpaper, cropRule, WallpaperMode.ATMOSPHERE)
-            ?: return false
+        val render = bufferManager.renderForAtmosphere(wallpaper, cropRule) ?: return false
         return try {
-            // deliverBitmap writes the container and broadcasts the reload itself. The id lets
+            // deliverRender writes the container and broadcasts the reload itself. The id lets
             // a later exit give this exact photo back; the default wallpaper carries none (id 0).
-            atmosphereDelivery.deliverBitmap(rendered, wallpaper.id.takeIf { it != 0L })
+            atmosphereDelivery.deliverRender(render, wallpaper.id.takeIf { it != 0L })
         } finally {
-            rendered.recycle()
+            render.bitmap.recycle()
         }
     }
 
@@ -69,6 +67,6 @@ class AtmosphereSourceProvisioner @Inject constructor(
         }
         val defaultUri = appDataStore.getDefaultWallpaperUri() ?: return null
 
-        return WallpaperImage.forDefaultWallpaper(defaultUri) to CropRule.FIT
+        return WallpaperImage.forDefaultWallpaper(defaultUri) to WallpaperImage.DEFAULT_WALLPAPER_CROP_RULE
     }
 }

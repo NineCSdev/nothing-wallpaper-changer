@@ -16,6 +16,11 @@ import java.io.File
  * The image and its six seeds live in **one container**, written to a temp file and moved into
  * place with a single rename.
  *
+ * The same container is written twice over its life. A **staged** one is produced by the render
+ * pipeline, and *promoting* it (copying it over the live source and telling the engine).
+ * Staging it at render time keeps the palette scan off the screen-off path, and be quantized from
+ * the unframed photo.
+ *
  * This object owns the file names and the format; nothing else should know either.
  */
 object AtmosphereSource {
@@ -24,6 +29,10 @@ object AtmosphereSource {
 
     private const val FILE_NAME = "atmosphere_source.bin"
     private const val TEMP_FILE_NAME = "atmosphere_source.tmp"
+
+    /** The delivery the next rotation will publish, written by the render pipeline. */
+    // Kept in `filesDir` rather than the cache so platform cannot delete it under storage pressure.
+    private const val PENDING_FILE_NAME = "atmosphere_pending.bin"
 
     /** 'ATMO'. Guards against decoding an unrelated file left at the same path. */
     private const val MAGIC = 0x41544D4F
@@ -35,23 +44,77 @@ object AtmosphereSource {
     /** A read whose image bytes have been decoded. The caller owns [bitmap]. */
     class Decoded(val seeds: List<VertexInfo>, val bitmap: Bitmap)
 
-    /** @param dir the app's `filesDir`. */
+    /**
+     * The live source: what the engine reads.
+     * @param dir the app's `filesDir`.
+     */
     fun file(dir: File): File = File(dir, FILE_NAME)
+
+    /**
+     * The staged delivery: what [promotePending] will make live.
+     * @param dir the app's `filesDir`.
+     */
+    fun pendingFile(dir: File): File = File(dir, PENDING_FILE_NAME)
 
     /**
      * Replaces the current source. Returns false and leaves the existing file untouched on any
      * failure, which is what lets the engine keep rendering its last good source.
-     *
-     * @param imageBytes the encoded (WebP) fitted image, exactly as it should be uploaded.
      */
     // TODO tests: see vault note tests/Atmosphere Delivery Tests.md (container round-trip)
-    fun write(dir: File, seeds: List<VertexInfo>, imageBytes: ByteArray): Boolean {
+    fun write(dir: File, seeds: List<VertexInfo>, imageBytes: ByteArray): Boolean =
+        writeContainer(dir, file(dir), seeds, imageBytes)
+
+    /** Stages the delivery the next rotation will publish, replacing any previously staged one. */
+    fun writePending(dir: File, seeds: List<VertexInfo>, imageBytes: ByteArray): Boolean =
+        writeContainer(dir, pendingFile(dir), seeds, imageBytes)
+
+    /**
+     * Makes the staged delivery the live one.
+     *
+     * Returns false when nothing is staged, how a rotation prepared for the other delivery mode
+     * reports itself rather than publishing something framed for the wrong surface.
+     */
+    fun promotePending(dir: File): Boolean {
+        val pending = pendingFile(dir)
+        if (!pending.exists()) {
+            Log.w(TAG, "No staged delivery to promote")
+            return false
+        }
+
+        return try {
+            // A copy, not a move. The engine confirms display asynchronously and may never confirm at
+            // all. Consuming the staged file here would leave an unconfirmed delivery with nothing staged
+            // and nothing to re-stage it, and every later rotation would fail the same way.
+            writeAtomically(File(dir, TEMP_FILE_NAME), file(dir)) { temp ->
+                pending.copyTo(temp, overwrite = true)
+            }
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to promote the staged delivery", e)
+            false
+        }
+    }
+
+    /** Discards the staged delivery, if any. */
+    fun clearPending(dir: File) {
+        val pending = pendingFile(dir)
+        if (pending.exists() && !pending.delete()) {
+            Log.w(TAG, "Could not delete the staged atmosphere delivery")
+        }
+    }
+
+    private fun writeContainer(
+        dir: File,
+        destination: File,
+        seeds: List<VertexInfo>,
+        imageBytes: ByteArray
+    ): Boolean {
         require(seeds.size == VertexInfo.SEED_COUNT) {
             "expected ${VertexInfo.SEED_COUNT} seeds, got ${seeds.size}"
         }
 
         return try {
-            writeAtomically(File(dir, TEMP_FILE_NAME), file(dir)) { temp ->
+            writeAtomically(File(dir, TEMP_FILE_NAME), destination) { temp ->
                 DataOutputStream(temp.outputStream().buffered()).use { out ->
                     out.writeInt(MAGIC)
                     out.writeInt(VERSION)
@@ -70,7 +133,7 @@ object AtmosphereSource {
             }
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to write atmosphere source", e)
+            Log.e(TAG, "Failed to write ${destination.name}", e)
             false
         }
     }
@@ -95,8 +158,12 @@ object AtmosphereSource {
     }
 
     /** Reads the current source, or null if it is absent, truncated or of an unknown version. */
-    fun read(dir: File): Payload? {
-        val source = file(dir)
+    fun read(dir: File): Payload? = readContainer(file(dir))
+
+    /** Reads the staged delivery, on the same terms as [read]. */
+    fun readPending(dir: File): Payload? = readContainer(pendingFile(dir))
+
+    private fun readContainer(source: File): Payload? {
         if (!source.exists()) return null
 
         return try {
@@ -140,7 +207,7 @@ object AtmosphereSource {
                 Payload(seeds, imageBytes)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to read atmosphere source", e)
+            Log.e(TAG, "Failed to read ${source.name}", e)
             null
         }
     }

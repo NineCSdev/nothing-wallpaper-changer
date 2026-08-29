@@ -7,9 +7,9 @@ import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.BufferManager
+import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
-import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -80,7 +80,7 @@ class AtmosphereExit @Inject constructor(
             return false
         }
         val cropRule = repository.getCollectionById(wallpaper.collectionId)?.defaultCropRule
-            ?: CropRule.FIT
+            ?: WallpaperCollection.DEFAULT_CROP_RULE
 
         return applyRendered(wallpaper, cropRule, "the live atmosphere image")
     }
@@ -89,7 +89,7 @@ class AtmosphereExit @Inject constructor(
         val uri = appDataStore.getDefaultWallpaperUri() ?: return false
         return applyRendered(
             WallpaperImage.forDefaultWallpaper(uri),
-            CropRule.FIT,
+            WallpaperImage.DEFAULT_WALLPAPER_CROP_RULE,
             "the default wallpaper"
         )
     }
@@ -99,8 +99,7 @@ class AtmosphereExit @Inject constructor(
         cropRule: CropRule,
         description: String
     ): Boolean {
-        val rendered = bufferManager.renderFramed(wallpaper, cropRule, WallpaperMode.STATIC)
-            ?: return false
+        val rendered = bufferManager.renderForStatic(wallpaper, cropRule) ?: return false
         return try {
             setToBothScreens(rendered).also { applied ->
                 if (applied) Log.i(TAG, "Left atmosphere by applying $description.")

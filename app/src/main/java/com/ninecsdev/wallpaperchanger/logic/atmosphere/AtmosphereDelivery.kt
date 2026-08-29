@@ -2,18 +2,15 @@ package com.ninecsdev.wallpaperchanger.logic.atmosphere
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereSource
-import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.VertexInfo
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,11 +18,9 @@ import javax.inject.Singleton
 /**
  * Atmosphere *delivery*, the final hop of the rotation pipeline when atmosphere mode is effective.
  *
- * **No rendering happens here.** The image arrives already screen-fitted and delivery's job is
- * to publish it into the engine's on-disk source and say so.
- *
- * What it does add is **seed extraction**. The palette scan and its per-swatch nearest-pixel search
- * cost ~60ms.
+ * **Nothing is rendered or measured here.** The image arrives already screen-fitted and already
+ * carrying its palette, and delivery's job is to publish it into the engine's on-disk source and say
+ * so. A rotation delivery is a copy and a broadcast.
  *
  * Seeds and pixels travel in **one container**, swapped in with a single rename. Two files could not
  * be swapped atomically, and a reader that got fresh pixels with stale seeds would paint one photo's
@@ -34,7 +29,6 @@ import javax.inject.Singleton
 @Singleton
 class AtmosphereDelivery @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
-    private val seedExtractor: SeedExtractor,
     private val appDataStore: AppDataStore
 ) {
     private companion object {
@@ -64,75 +58,58 @@ class AtmosphereDelivery @Inject constructor(
     }
 
     /**
-     * Publishes [bufferFile] to the atmosphere source and broadcasts a rotation reload.
-     * Returns false (and logs) if the buffer is missing, unreadable, or fails to decode.
+     * Publishes the delivery staged by the last refill and broadcasts a rotation reload.
      *
-     * The buffer is **read, never moved**: the running engine may cold-start and re-read its source
-     * at any time, while the buffer file itself keeps getting overwritten by subsequent refills.
+     * Returns false (and logs) when nothing is staged (what a refill ran on static mode leaves).
+     * Failing is the point: the buffer it left carries static framing and no palette. The rotation
+     * waits for the next refill.
      */
     // TODO tests: see vault note tests/Atmosphere Delivery Tests.md
-    suspend fun deliverBuffer(bufferFile: File, collectionId: Long?): Boolean = withContext(Dispatchers.IO) {
-        if (!bufferFile.exists()) {
-            Log.w(TAG, "Buffer file missing; nothing to deliver to atmosphere engine.")
-            return@withContext false
-        }
-
-        val bytes = try {
-            bufferFile.readBytes()
-        } catch (e: Exception) {
-            Log.e(TAG, "Could not read the buffer", e)
-            return@withContext false
-        }
-
-        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-        if (bitmap == null) {
-            Log.w(TAG, "Buffer did not decode; nothing delivered")
-            return@withContext false
-        }
-
+    suspend fun deliverPrepared(collectionId: Long?): Boolean = withContext(Dispatchers.IO) {
         // Tagged as a rotation delivery: its display, and only its display, advances the magazine
         // and names the live image. Set before publishing so the confirmation can never arrive ahead of it.
         val latched = InFlightDelivery(collectionId, appDataStore.getBufferedWallpaperId())
         try {
             inFlight.set(latched)
-            publish(bytes, bitmap, fromRotation = true).also { published ->
-                if (!published) inFlight.compareAndSet(latched, null)
+            if (!AtmosphereSource.promotePending(appContext.filesDir)) {
+                inFlight.compareAndSet(latched, null)
+                return@withContext false
             }
+            sendReload(fromRotation = true)
+            Log.i(TAG, "Delivered the staged atmosphere source (fromRotation=true).")
+            true
         } catch (e: Exception) {
-            // Seed extraction and the source writer's own contract checks can throw, and an escape
-            // here would leave the latch set: the next display confirmation would then credit a
-            // rotation whose image never reached the engine.
-            Log.e(TAG, "Failed to publish the buffer to the atmosphere source", e)
+            // An escape here would leave the latch set: the next display confirmation would then
+            // credit a rotation whose image never reached the engine.
+            Log.e(TAG, "Failed to publish the staged delivery to the atmosphere source", e)
             inFlight.compareAndSet(latched, null)
             false
-        } finally {
-            bitmap.recycle()
         }
     }
 
     /**
-     * Publishes an already-rendered [bitmap] and broadcasts a non-rotation reload.
+     * Publishes an already-rendered image and broadcasts a non-rotation reload.
      *
      * The entry point for images that never go through the rotation buffer: the default wallpaper,
      * the revert-to-default path that runs when a collection empties, and the pre-render that
      * happens before the system picker is launched. None of those is a rotation, so none of them
      * may advance the magazine.
      *
-     * The caller keeps ownership of [bitmap] and is responsible for recycling it.
+     * The caller keeps ownership of `render.bitmap` and is responsible for recycling it.
      *
-     * [wallpaperId] is the membership [bitmap] was rendered from. Null for images that belong to
+     * [wallpaperId] is the membership the image was rendered from. Null for images that belong to
      * no collection (the default wallpaper).
      */
-    suspend fun deliverBitmap(bitmap: Bitmap, wallpaperId: Long? = null): Boolean = withContext(Dispatchers.IO) {
+    suspend fun deliverRender(render: AtmosphereRender, wallpaperId: Long? = null): Boolean = withContext(Dispatchers.IO) {
         try {
             // Not a rotation, so it must not leave a delivery to be credited later.
             inFlight.set(null)
-            publish(ImageProcessingUtils.compressToBytes(bitmap), bitmap, fromRotation = false)
+            publish(render.seeds, ImageProcessingUtils.compressToBytes(render.bitmap), fromRotation = false)
                 .also { published ->
                     if (published) appDataStore.setAtmosphereLiveWallpaperId(wallpaperId)
                 }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to deliver a rendered bitmap", e)
+            Log.e(TAG, "Failed to deliver a rendered image", e)
             false
         }
     }
@@ -150,6 +127,8 @@ class AtmosphereDelivery @Inject constructor(
         if (source.exists() && !source.delete()) {
             Log.w(TAG, "Could not delete the atmosphere source file.")
         }
+        // The staged delivery is the same screen-sized image one step earlier in its life.
+        AtmosphereSource.clearPending(appContext.filesDir)
         // Nothing is published anymore, so nothing is live and nothing is in flight
         inFlight.set(null)
         appDataStore.setAtmosphereLiveWallpaperId(null)
@@ -171,27 +150,15 @@ class AtmosphereDelivery @Inject constructor(
         )
     }
 
-    private suspend fun publish(
+    private fun publish(
+        seeds: List<VertexInfo>,
         imageBytes: ByteArray,
-        bitmap: Bitmap,
         fromRotation: Boolean
     ): Boolean {
-        val seeds = seedExtractor.extract(bitmap, deliveredCropSteps())
-
         if (!AtmosphereSource.write(appContext.filesDir, seeds, imageBytes)) return false
 
         sendReload(fromRotation)
         Log.i(TAG, "Delivered atmosphere source (fromRotation=$fromRotation).")
         return true
     }
-
-    /**
-     * How many crop steps the framing already took out of the image being published, which is what
-     * [SeedExtractor] subtracts from its own fixed analysis crop.
-     */
-    //TODO: the framing that produced the bitmap should travel with it instead of being
-    // re-derived here as a setting changed between the render and this call gives the wrong answer.
-    // See the framing-as-a-parameter work; this is the same ambient read one stage further on.
-    private suspend fun deliveredCropSteps(): Int =
-        if (appDataStore.getWallpaperZoomFix() == WallpaperZoomFix.OFF) 1 else 0
 }

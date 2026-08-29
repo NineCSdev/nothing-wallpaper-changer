@@ -7,7 +7,6 @@ import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
-import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -80,51 +79,43 @@ class WallpaperApplier @Inject constructor(
     suspend fun applyDefaultWallpaper(): Boolean = withContext(Dispatchers.IO) {
         val uri = appDataStore.getDefaultWallpaperUri() ?: return@withContext false
 
+        val defaultWallpaper = WallpaperImage.forDefaultWallpaper(uri)
+        val cropRule = WallpaperImage.DEFAULT_WALLPAPER_CROP_RULE
+
         if (wallpaperModeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE) {
             // Revert-to-default flows through the atmosphere path: render the default and hand it
             // to the engine instead of setBitmap, which would evict the engine and end the mode.
-            val rendered = bufferManager.renderFramed(
-                WallpaperImage.forDefaultWallpaper(uri),
-                CropRule.FIT,
-                WallpaperMode.ATMOSPHERE
-            ) ?: return@withContext false
+            val render = bufferManager.renderForAtmosphere(defaultWallpaper, cropRule) ?: return@withContext false
 
             return@withContext try {
-                atmosphereDelivery.deliverBitmap(rendered).also { delivered ->
+                atmosphereDelivery.deliverRender(render).also { delivered ->
                     if (delivered) Log.i(TAG, "Applied default wallpaper through atmosphere source.")
                 }
             } finally {
-                rendered.recycle()
+                render.bitmap.recycle()
             }
         }
 
         warnIfDesiringAtmosphere("applyDefaultWallpaper")
         val destination = appDataStore.getWallpaperDestination()
 
-        try {
-            val (screenW, screenH) = ImageProcessingUtils.getScreenDimensions(appContext)
-            val bitmap = ImageProcessingUtils.decodeSampledBitmap(appContext, uri, screenW * 2, screenH * 2)
-                ?: return@withContext false
-            var processed = bitmap
+        val rendered = bufferManager.renderForStatic(defaultWallpaper, cropRule) ?: return@withContext false
 
-            try {
-                processed = bufferManager.applyZoomFixIfNeeded(bitmap)
-                WallpaperManager.getInstance(appContext).setBitmap(
-                    processed,
-                    null,
-                    true,
-                    destination.toFlags()
-                )
+        return@withContext try {
+            WallpaperManager.getInstance(appContext).setBitmap(
+                rendered,
+                null,
+                true,
+                destination.toFlags()
+            )
 
-                Log.i(TAG, "Successfully applied default wallpaper to $destination.")
-                true
-            } finally {
-                if (processed !== bitmap) processed.recycle()
-                bitmap.recycle()
-            }
+            Log.i(TAG, "Successfully applied default wallpaper to $destination.")
+            true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to apply default wallpaper to $destination", e)
             false
+        } finally {
+            rendered.recycle()
         }
     }
 
@@ -149,10 +140,7 @@ class WallpaperApplier @Inject constructor(
             // plus a reload broadcast — no setStream, which would replace the live wallpaper. The
             // image is shown later (or held), so the caller defers the rotation advance until the
             // engine confirms display; hence DEFERRED rather than SHOWN.
-            val delivered = atmosphereDelivery.deliverBuffer(
-                bufferManager.getBufferFile(),
-                rotatingCollectionId
-            )
+            val delivered = atmosphereDelivery.deliverPrepared(rotatingCollectionId)
             return@withContext if (delivered) {
                 WallpaperApplyOutcome.DEFERRED
             } else {
@@ -163,14 +151,9 @@ class WallpaperApplier @Inject constructor(
         warnIfDesiringAtmosphere("applyBufferWallpaper")
         val destination = appDataStore.getWallpaperDestination()
         try {
-            val bufferFile = bufferManager.getBufferFile()
+            val prepared = bufferManager.openPrepared() ?: return@withContext WallpaperApplyOutcome.FAILED
 
-            if (!bufferFile.exists()) {
-                Log.w(TAG, "Buffer file missing. Is the service initialized?")
-                return@withContext WallpaperApplyOutcome.FAILED
-            }
-
-            bufferFile.inputStream().use { stream ->
+            prepared.use { stream ->
                 WallpaperManager.getInstance(appContext).setStream(
                     stream,
                     null,
@@ -179,10 +162,10 @@ class WallpaperApplier @Inject constructor(
                 )
             }
 
-            Log.i(TAG, "Wallpaper applied successfully from disk buffer to $destination.")
+            Log.i(TAG, "Wallpaper applied successfully from the prepared image to $destination.")
             WallpaperApplyOutcome.SHOWN
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to stream buffer to $destination", e)
+            Log.e(TAG, "Failed to stream the prepared image to $destination", e)
             WallpaperApplyOutcome.FAILED
         }
     }
