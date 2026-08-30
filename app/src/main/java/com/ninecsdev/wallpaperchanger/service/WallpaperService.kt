@@ -15,8 +15,8 @@ import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
+import com.ninecsdev.wallpaperchanger.logic.RotationCoordinator
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
-import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.ServiceState
@@ -49,7 +49,7 @@ class WallpaperService : Service() {
     @Inject lateinit var lifecycleTracker: ServiceLifecycleTracker
     @Inject lateinit var serviceStateManager: ServiceStateManager
     @Inject lateinit var appDataStore: AppDataStore
-    @Inject lateinit var atmosphereDelivery: AtmosphereDelivery
+    @Inject lateinit var rotationCoordinator: RotationCoordinator
 
     private var screenOffReceiver: BroadcastReceiver? = null
     private var systemEventReceiver: BroadcastReceiver? = null
@@ -259,34 +259,17 @@ class WallpaperService : Service() {
     }
 
     /**
-     * Listens for the atmosphere engine's "I actually showed the delivered image" signal and
-     * advances the rotation in response — the deferred second half of a rotation whose first half
-     * (delivery) happened in [ScreenOffReceiver]. In atmosphere mode display is asynchronous and may
-     * never happen (a fast toggle holds the image), so advancement can't ride along with delivery;
-     * it waits for this confirmation instead.
-     *
-     * Which collection gets advanced comes from the delivery, not from whatever is active.
+     * Listens for the atmosphere engine's "I actually showed the delivered image" signal and hands
+     * it to [RotationCoordinator], which owns the deferred second half of that rotation. In
+     * atmosphere mode display is asynchronous and may never happen (a fast toggle holds the image),
+     * so advancement can't ride along with delivery; it waits for this confirmation instead.
      */
-    // TODO tests: see vault note tests/Collection Switch Rotation Gate Tests.md
     private fun registerAtmosphereDisplayedReceiver() {
         if (atmosphereDisplayedReceiver != null) return
 
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
-                serviceScope.launch {
-                    // The moment the delivered image becomes the live one
-                    val deliveredId = atmosphereDelivery.confirmDisplayed()
-
-                    if (deliveredId == null) {
-                        Log.w(tag, "Atmosphere display with no delivery on record; not advancing.")
-                        return@launch
-                    }
-
-                    repository.markWallpaperChanged(deliveredId)
-
-                    val active = repository.getActiveCollectionOnce()
-                    if (active?.id == deliveredId) rotationEngine.refillDiskBuffer()
-                }
+                serviceScope.launch { rotationCoordinator.confirmDeferredDisplay() }
             }
         }
         registerReceiver(
