@@ -30,6 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.logic.StorageUsage
+import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
@@ -39,6 +40,7 @@ import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.AtmosphereModeSection
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.LanguageSelector
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.QualitySlider
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.RotationPolicySection
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.ScreenOffDelayField
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.SettingsSegmentedSelector
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.StorageUsageRow
@@ -123,6 +125,13 @@ fun SettingsScreen(
                 SectionLabel(stringResource(R.string.settings_section_service))
 
                 Spacer(modifier = Modifier.height(16.dp))
+
+                RotationPolicySection(
+                    policy = uiState.rotationPolicy,
+                    onPolicyChange = actions::setRotationPolicy
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
 
                 ScreenOffDelayField(
                     currentDelayMs = uiState.screenOffDelayMs,
@@ -322,6 +331,7 @@ fun SettingsScreenPreview() {
         SettingsScreen(
             uiState = SettingsUiState(
                 screenOffDelayMs = 250,
+                rotationPolicy = RotationPolicy.PerLock,
                 startOnBoot = true,
                 batterySaverPolicy = BatterySaverPolicy.PAUSE,
                 wallpaperZoomFix = WallpaperZoomFix.BLURRED,
@@ -347,6 +357,7 @@ fun SettingsScreenPreview() {
 /** No-op actions for previews. */
 private object PreviewSettingsActions : SettingsActions {
     override fun setScreenOffDelay(delayMs: Long) {}
+    override fun setRotationPolicy(policy: RotationPolicy) {}
     override fun setStartOnBoot(enabled: Boolean) {}
     override fun setBatterySaverPolicy(policy: BatterySaverPolicy) {}
     override fun setWallpaperDestination(destination: WallpaperDestination) {}

@@ -1,5 +1,6 @@
 package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
+import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
@@ -14,6 +15,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 interface SettingsActions {
     fun setScreenOffDelay(delayMs: Long)
     fun setStartOnBoot(enabled: Boolean)
+    fun setRotationPolicy(policy: RotationPolicy)
     fun setBatterySaverPolicy(policy: BatterySaverPolicy)
     fun setWallpaperDestination(destination: WallpaperDestination)
     fun setWallpaperMode(mode: WallpaperMode)

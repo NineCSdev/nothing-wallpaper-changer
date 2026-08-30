@@ -1,5 +1,6 @@
 package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
+import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
@@ -25,6 +26,8 @@ data class LanguageOption(
 data class SettingsUiState(
     val screenOffDelayMs: Long = 250L,
     val startOnBoot: Boolean = true,
+    /** The app-wide cadence; collections without an override follow it. */
+    val rotationPolicy: RotationPolicy = RotationPolicy.PerLock,
     val batterySaverPolicy: BatterySaverPolicy = BatterySaverPolicy.PAUSE,
     val wallpaperDestination: WallpaperDestination = WallpaperDestination.LOCK,
     val wallpaperMode: WallpaperMode = WallpaperMode.STATIC,

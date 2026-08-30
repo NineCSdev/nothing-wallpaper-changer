@@ -138,6 +138,23 @@
         Si está desactivado, tendrás que abrir la app e iniciarlo manualmente tras cada reinicio.
     </string>
 
+    <!-- Rotación del fondo -->
+    <string name="settings_rotation_policy_title">ROTACIÓN DEL FONDO</string>
+    <string name="settings_rotation_policy_subtitle">Cada cuánto cambia el fondo</string>
+    <string name="settings_rotation_policy_dialog_title">Rotación del fondo</string>
+    <string name="settings_rotation_policy_dialog_body">
+        Define la cadencia que usan todas las colecciones que no tengan la suya propia.
+        \n\nPor bloqueo cambia el fondo cada vez que bloqueas el teléfono. Un intervalo lo cambia
+        cuando ha pasado ese tiempo, contado desde el último cambio, así que el tiempo con la pantalla
+        apagada también cuenta. Diario lo cambia una vez al día, en la primera rotación pasada la
+        medianoche.
+        \n\nUn intervalo también puede cambiar el fondo mientras usas el teléfono, pero solo si el
+        fondo se aplica a la pantalla de inicio. Si solo se aplica al bloqueo, el cambio siempre
+        espera al siguiente bloqueo.
+        \n\nLas colecciones a las que ya habías puesto una frecuencia propia la conservan. Abre una
+        colección y cámbiala a GLOBAL para que siga este ajuste.
+    </string>
+
     <!-- Screen off delay -->
     <string name="settings_screen_off_delay_title">RETARDO MIENTRAS SE APAGA PANTALLA</string>
     <string name="settings_screen_off_delay_subtitle">Por animación de apagado de pantalla</string>

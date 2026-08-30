@@ -7,6 +7,7 @@ import android.os.PowerManager
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.RotationCoordinator
+import com.ninecsdev.wallpaperchanger.logic.RotationScheduler
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,8 +16,18 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
+/**
+ * Both screen transitions, in one receiver.
+ *
+ * Screen-off is itself a rotation trigger: it waits out the lock animation, gives up if the user
+ * woke the device during that wait, and asks [RotationCoordinator] for one rotation. Screen-on only
+ * feeds [RotationScheduler], which arms its timer while the screen is on.
+ *
+ * One receiver rather than two so both signals share a single registration — the alternative is an
+ * invariant kept by four call sites in [WallpaperService] remembering to move them together.
+ */
 @AndroidEntryPoint
-class ScreenOffReceiver(
+class ScreenStateReceiver(
     /**
      * Structured scope provided by the owning [WallpaperService].
      * Using the service's scope ensures coroutines are canceled when the
@@ -25,10 +36,11 @@ class ScreenOffReceiver(
     private val serviceScope: CoroutineScope
 ) : BroadcastReceiver() {
 
-    private val tag = "ScreenOffReceiver"
+    private val tag = "ScreenStateReceiver"
 
     @Inject lateinit var appDataStore: AppDataStore
     @Inject lateinit var rotationCoordinator: RotationCoordinator
+    @Inject lateinit var rotationScheduler: RotationScheduler
 
     companion object {
         /**
@@ -39,8 +51,18 @@ class ScreenOffReceiver(
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
-        if (context == null || intent?.action != Intent.ACTION_SCREEN_OFF) return
+        if (context == null) return
 
+        when (intent?.action) {
+            Intent.ACTION_SCREEN_ON -> rotationScheduler.setScreenOn(true)
+            Intent.ACTION_SCREEN_OFF -> {
+                rotationScheduler.setScreenOn(false)
+                rotateOnScreenOff(context)
+            }
+        }
+    }
+
+    private fun rotateOnScreenOff(context: Context) {
         if (!isSwapPending.compareAndSet(false, true)) {
             Log.d(tag, "A swap is already pending. Skipping.")
             return

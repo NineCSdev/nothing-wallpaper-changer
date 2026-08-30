@@ -17,6 +17,7 @@ import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
 import com.ninecsdev.wallpaperchanger.logic.RotationCoordinator
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
+import com.ninecsdev.wallpaperchanger.logic.RotationScheduler
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.ServiceState
@@ -35,7 +36,7 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
- * Foreground Service responsible for keeping the [ScreenOffReceiver] alive,
+ * Foreground Service responsible for keeping the [ScreenStateReceiver] alive,
  * coordinating the whole app and creating and managing the notification.
  */
 @AndroidEntryPoint
@@ -50,8 +51,9 @@ class WallpaperService : Service() {
     @Inject lateinit var serviceStateManager: ServiceStateManager
     @Inject lateinit var appDataStore: AppDataStore
     @Inject lateinit var rotationCoordinator: RotationCoordinator
+    @Inject lateinit var rotationScheduler: RotationScheduler
 
-    private var screenOffReceiver: BroadcastReceiver? = null
+    private var screenStateReceiver: BroadcastReceiver? = null
     private var systemEventReceiver: BroadcastReceiver? = null
     private var atmosphereDisplayedReceiver: BroadcastReceiver? = null
     private var notificationJob: Job? = null
@@ -68,7 +70,7 @@ class WallpaperService : Service() {
         Log.d(tag, "Service Created")
         notificationHelper.createChannel()
 
-        registerScreenOffReceiver()
+        startRotationTriggers()
 
         systemEventReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -203,7 +205,7 @@ class WallpaperService : Service() {
     }
 
     /**
-     * Pauses the wallpaper changing by unregistering the ScreenOffReceiver.
+     * Pauses the wallpaper changing by stopping both rotation triggers.
      * The foreground service stays alive so it can auto-resume.
      */
     private fun pauseEngine() {
@@ -211,7 +213,7 @@ class WallpaperService : Service() {
         Log.i(tag, "Pausing engine (Power Save ON)")
         serviceStateManager.markServicePaused()
 
-        unregisterScreenOffReceiver()
+        stopRotationTriggers()
 
         serviceScope.launch {
             withContext(NonCancellable) {
@@ -223,14 +225,14 @@ class WallpaperService : Service() {
     }
 
     /**
-     * Resumes the wallpaper changing by re-registering the ScreenOffReceiver.
+     * Resumes the wallpaper changing by restarting both rotation triggers.
      */
     private fun resumeEngine() {
         if (serviceStateManager.rawServiceState.value !is ServiceState.Paused) return
         Log.i(tag, "Resuming engine (Power Save OFF)")
         serviceStateManager.markServiceRunning()
 
-        registerScreenOffReceiver()
+        startRotationTriggers()
     }
 
     override fun onDestroy() {
@@ -238,7 +240,7 @@ class WallpaperService : Service() {
         lifecycleTracker.markDead()
         Log.i(tag, "Service Destroyed. Cleaning up.")
 
-        unregisterScreenOffReceiver()
+        stopRotationTriggers()
         systemEventReceiver?.let { unregisterReceiver(it) }
         atmosphereDisplayedReceiver?.let { unregisterReceiver(it) }
 
@@ -250,12 +252,26 @@ class WallpaperService : Service() {
         serviceStateManager.markServiceStopped()
     }
 
-    private fun registerScreenOffReceiver() {
-        if (screenOffReceiver != null) return
+    /**
+     * Starts both rotation triggers: the screen-state receiver and the interval scheduler.
+     *
+     * They start and stop together on purpose — a scheduler still ticking behind an unregistered
+     * receiver would rotate while the engine is meant to be paused, and keeping the two in step is
+     * not something four call sites should have to remember.
+     */
+    private fun startRotationTriggers() {
+        if (screenStateReceiver != null) return
 
-        val receiver = ScreenOffReceiver(serviceScope)
-        registerReceiver(receiver, IntentFilter(Intent.ACTION_SCREEN_OFF), RECEIVER_NOT_EXPORTED)
-        screenOffReceiver = receiver
+        val receiver = ScreenStateReceiver(serviceScope)
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
+        registerReceiver(receiver, filter, RECEIVER_NOT_EXPORTED)
+        screenStateReceiver = receiver
+
+        rotationScheduler.setScreenOn((getSystemService(POWER_SERVICE) as PowerManager).isInteractive)
+        rotationScheduler.start(serviceScope)
     }
 
     /**
@@ -280,10 +296,12 @@ class WallpaperService : Service() {
         atmosphereDisplayedReceiver = receiver
     }
 
-    private fun unregisterScreenOffReceiver() {
-        val receiver = screenOffReceiver ?: return
+    private fun stopRotationTriggers() {
+        rotationScheduler.stop()
+
+        val receiver = screenStateReceiver ?: return
         unregisterReceiver(receiver)
-        screenOffReceiver = null
+        screenStateReceiver = null
     }
 
     override fun onBind(intent: Intent): IBinder? = null

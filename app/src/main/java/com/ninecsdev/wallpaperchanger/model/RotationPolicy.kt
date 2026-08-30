@@ -26,6 +26,7 @@ enum class RotationPolicyKind { PER_LOCK, INTERVAL, PER_DAY }
  * modelled as a subtype so the UI can keep the user's chosen interval visible while they toggle
  * between kinds.
  */
+// TODO tests: see vault note tests/Global Rotation Policy Tests.md
 data class RotationPolicy(
     val kind: RotationPolicyKind,
     val intervalMinutes: Int = DEFAULT_INTERVAL_MINUTES

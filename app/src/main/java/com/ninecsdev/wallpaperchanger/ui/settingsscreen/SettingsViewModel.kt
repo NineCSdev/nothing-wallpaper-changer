@@ -12,6 +12,7 @@ import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereExitOutcome
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereTransition
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.logic.StorageUsage
+import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
@@ -66,7 +67,9 @@ class SettingsViewModel @Inject constructor(
     private data class LockscreenSettings(
         val batterySaverPolicy: BatterySaverPolicy,
         val wallpaperZoomFix: WallpaperZoomFix,
-        val wallpaperDestination: WallpaperDestination
+        val wallpaperDestination: WallpaperDestination,
+        // Rides along here rather than in the outer combine, which is at its five-flow limit.
+        val rotationPolicy: RotationPolicy
     )
 
     private data class AtmosphereSettings(
@@ -89,6 +92,7 @@ class SettingsViewModel @Inject constructor(
         appDataStore.batterySaverPolicyFlow(),
         appDataStore.wallpaperZoomFixFlow(),
         appDataStore.wallpaperDestinationFlow(),
+        appDataStore.rotationPolicyFlow(),
         ::LockscreenSettings
     )
 
@@ -147,6 +151,7 @@ class SettingsViewModel @Inject constructor(
             batterySaverPolicy = bundle.lockscreen.batterySaverPolicy,
             wallpaperZoomFix = bundle.lockscreen.wallpaperZoomFix,
             wallpaperDestination = bundle.lockscreen.wallpaperDestination,
+            rotationPolicy = bundle.lockscreen.rotationPolicy,
             wallpaperMode = bundle.atmosphere.mode,
             atmosphereEngineActive = bundle.atmosphere.engineActive,
             hasAtmosphereSource = bundle.atmosphere.hasSource,
@@ -180,6 +185,10 @@ class SettingsViewModel @Inject constructor(
 
     override fun setScreenOffDelay(delayMs: Long) {
         viewModelScope.launch { appDataStore.setScreenOffDelay(delayMs) }
+    }
+
+    override fun setRotationPolicy(policy: RotationPolicy) {
+        viewModelScope.launch { appDataStore.setRotationPolicy(policy) }
     }
 
     override fun setStartOnBoot(enabled: Boolean) {
