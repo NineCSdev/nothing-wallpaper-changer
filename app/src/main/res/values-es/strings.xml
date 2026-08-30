@@ -201,10 +201,21 @@
         \n• Ajustar muestra la imagen completa sin recortar, añadiendo bandas negras si hace falta.
         \n\nCada fondo se puede ajustar individualmente en su editor ignorando el ajuste general de la colección.
     </string>
-    <string name="edit_collection_rotation_title">FRECUENCIA DE ROTACIÓN</string>
-    <string name="edit_collection_rotation_per_lock">POR BLOQUEO</string>
-    <string name="edit_collection_rotation_hourly">CADA 1H</string>
-    <string name="edit_collection_rotation_daily">DIARIO</string>
+    <string name="edit_collection_rotation_title">ROTACIÓN</string>
+    <string name="edit_collection_rotation_global">GLOBAL</string>
+    <string name="edit_collection_rotation_custom">PROPIA</string>
+    <string name="rotation_kind_per_lock">POR BLOQUEO</string>
+    <string name="rotation_kind_interval">CADA</string>
+    <string name="rotation_kind_daily">DIARIO</string>
+    <string name="rotation_preset_15m">15 MIN</string>
+    <string name="rotation_preset_30m">30 MIN</string>
+    <string name="rotation_preset_1h">1 H</string>
+    <string name="rotation_preset_6h">6 H</string>
+    <string name="rotation_preset_12h">12 H</string>
+    <string name="rotation_preset_custom">PROPIA</string>
+    <string name="rotation_unit_minutes">MIN</string>
+    <string name="rotation_unit_hours">HORAS</string>
+    <string name="rotation_unit_days">DÍAS</string>
     <string name="edit_collection_action_sync">SINCRONIZAR CARPETA</string>
     <string name="edit_collection_action_restore_removed">RESTAURAR ELIMINADAS (%1$d)</string>
     <string name="edit_collection_folder_actions_header">ACCIONES DE CARPETA</string>

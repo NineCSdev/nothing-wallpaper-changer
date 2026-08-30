@@ -2,7 +2,7 @@ package com.ninecsdev.wallpaperchanger.ui.collectionscreen
 
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
-import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
+import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
 
 /**
  * ViewModel-owned intents of the Collection List screen, implemented by
@@ -19,7 +19,7 @@ interface CollectionListActions {
     // Edit-card instant-apply intents
     fun renameEditingCollection(newName: String)
     fun setEditingCropRule(rule: CropRule)
-    fun setEditingRotationFrequency(frequency: RotationFrequency)
+    fun setEditingRotationPolicy(setting: CollectionRotationSetting)
     fun syncEditingCollection()
     fun restoreRemovedImages()
 

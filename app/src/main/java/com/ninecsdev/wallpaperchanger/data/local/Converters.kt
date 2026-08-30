@@ -5,7 +5,7 @@ import android.util.Log
 import androidx.room.TypeConverter
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
-import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
+import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
 import com.ninecsdev.wallpaperchanger.model.enums.SourceType
 
 /**
@@ -46,18 +46,14 @@ class Converters {
             CropRule.CENTER
         }
 
-    // RotationFrequency Converters
+    // CollectionRotationSetting Converters
+    // Decoding is total and logs its own fallthrough, so no try/catch here.
     @TypeConverter
-    fun fromRotationFrequency(frequency: RotationFrequency): String = frequency.name
+    fun fromRotationSetting(setting: CollectionRotationSetting): String = setting.encode()
 
     @TypeConverter
-    fun toRotationFrequency(value: String): RotationFrequency =
-        try {
-            RotationFrequency.valueOf(value)
-        } catch (e: IllegalArgumentException) {
-            Log.e("Converters", "Invalid RotationFrequency: $value", e)
-            RotationFrequency.PER_LOCK
-        }
+    fun toRotationSetting(value: String): CollectionRotationSetting =
+        CollectionRotationSetting.decode(value)
 
     // SourceType Converters
     @TypeConverter

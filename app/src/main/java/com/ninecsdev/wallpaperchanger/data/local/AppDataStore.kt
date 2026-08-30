@@ -14,6 +14,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
@@ -53,6 +54,7 @@ private val KEY_BUFFERED_WALLPAPER_ID = longPreferencesKey("buffered_wallpaper_i
 private val KEY_ATMOSPHERE_LIVE_WALLPAPER_ID = longPreferencesKey("atmosphere_live_wallpaper_id")
 private val KEY_ATMOSPHERE_RENDER_KEY = stringPreferencesKey("atmosphere_render_key")
 private val KEY_APPLIED_WALLPAPER_ID = longPreferencesKey("applied_wallpaper_id")
+private val KEY_ROTATION_POLICY = stringPreferencesKey("rotation_policy")
 
 /**
  * Manages simple key-value pairs for global application settings using
@@ -171,6 +173,13 @@ class AppDataStore @Inject constructor(
     fun keepLocalCopiesFlow(): Flow<Boolean> =
         settingFlow(KEY_KEEP_LOCAL_COPIES, false)
 
+    /**
+     * The app-wide rotation cadence, followed by every collection without an override. Defaults to
+     * per-lock, which is what the app did before the setting existed.
+     */
+    fun rotationPolicyFlow(): Flow<RotationPolicy> =
+        mappedSettingFlow(KEY_ROTATION_POLICY, RotationPolicy.PerLock) { RotationPolicy.decode(it) }
+
     // Suspend reads (suspend, one-shot)
 
     suspend fun getDefaultWallpaperUri(): Uri? =
@@ -208,6 +217,9 @@ class AppDataStore @Inject constructor(
 
     suspend fun getKeepLocalCopies(): Boolean =
         keepLocalCopiesFlow().first()
+
+    suspend fun getRotationPolicy(): RotationPolicy =
+        rotationPolicyFlow().first()
 
     suspend fun getBufferedWallpaperId(): Long? =
         mappedSettingFlow(KEY_BUFFERED_WALLPAPER_ID, null) { it }.first()
@@ -261,6 +273,9 @@ class AppDataStore @Inject constructor(
 
     suspend fun setKeepLocalCopies(enabled: Boolean) =
         set(KEY_KEEP_LOCAL_COPIES, enabled)
+
+    suspend fun setRotationPolicy(policy: RotationPolicy) =
+        set(KEY_ROTATION_POLICY, policy.encode())
 
     /** Null records "nothing identifiable in the buffer". */
     suspend fun setBufferedWallpaperId(wallpaperId: Long?) =

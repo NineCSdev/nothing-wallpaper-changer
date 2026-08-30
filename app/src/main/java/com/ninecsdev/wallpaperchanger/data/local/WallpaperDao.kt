@@ -8,7 +8,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
-import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
+import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
 import com.ninecsdev.wallpaperchanger.model.enums.SourceType
 import com.ninecsdev.wallpaperchanger.model.FolderExclusion
 import com.ninecsdev.wallpaperchanger.model.Wallpaper
@@ -68,13 +68,13 @@ interface WallpaperDao {
     @Query("SELECT * FROM collections WHERE isFavorites = 1 LIMIT 1")
     suspend fun getFavoritesCollection(): WallpaperCollection?
 
-    /** Updates the name and default crop rule of a collection. */
-    @Query("UPDATE collections SET name = :newName, defaultCropRule = :newRule, rotationFrequency = :newFrequency WHERE id = :collectionId")
+    /** Updates the name, default crop rule and rotation setting of a collection. */
+    @Query("UPDATE collections SET name = :newName, defaultCropRule = :newRule, rotationPolicy = :newPolicy WHERE id = :collectionId")
     suspend fun updateCollection(
         collectionId: Long,
         newName: String,
         newRule: CropRule,
-        newFrequency: RotationFrequency
+        newPolicy: CollectionRotationSetting
     )
 
     /** Toggles the active collection atomically and zeroes last rotation time*/

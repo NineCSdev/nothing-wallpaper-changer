@@ -9,7 +9,9 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
-import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
+import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
+import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.pinnedFirst
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
@@ -37,6 +39,7 @@ import javax.inject.Inject
 @HiltViewModel
 class CollectionViewModel @Inject constructor(
     private val repository: WallpaperRepository,
+    appDataStore: AppDataStore,
     serviceStateManager: ServiceStateManager
 ) : ViewModel(), CollectionListActions {
 
@@ -59,20 +62,29 @@ class CollectionViewModel @Inject constructor(
     private val previewsFlow: Flow<Map<Long, CollectionPreviewState>> =
         repository.collectionPreviewsFlow()
 
+    /** Everything the edit modal needs beyond the collection row itself. */
+    private data class ModalInputs(
+        val modal: ScreenModalState,
+        val exclusionCount: Int,
+        val globalRotationPolicy: RotationPolicy
+    )
+
     /**
-     * Exclusion-tombstone count of the folder collection open in the edit modal (0 otherwise).
-     * Observed reactively so the "Restore removed images (N)" row hides itself.
-     * Paired with the modal state here because [combine] below is already at its five-flow limit.
+     * Modal state plus its two reactive companions: the exclusion-tombstone count of the folder
+     * collection open in the edit modal (0 otherwise), which lets the "Restore removed images (N)"
+     * row hide itself, and the global rotation policy the card seeds a fresh override from.
+     * Bundled here because [combine] below is already at its five-flow limit.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val modalWithExclusionCount: Flow<Pair<ScreenModalState, Int>> = combine(
+    private val modalInputs: Flow<ModalInputs> = combine(
         _screenState,
         // Observed by id regardless of type as a manual collection's count is a constant 0.
         _screenState
             .map { it.editingCollectionId }
             .distinctUntilChanged()
-            .flatMapLatest { id -> if (id == null) flowOf(0) else repository.observeExclusionCount(id) }
-    ) { modal, count -> modal to count }
+            .flatMapLatest { id -> if (id == null) flowOf(0) else repository.observeExclusionCount(id) },
+        appDataStore.rotationPolicyFlow()
+    ) { modal, count, globalPolicy -> ModalInputs(modal, count, globalPolicy) }
 
     /**
      * Combined public state built reactively.
@@ -83,10 +95,10 @@ class CollectionViewModel @Inject constructor(
     val uiState: StateFlow<CollectionUiState?> = combine(
         repository.getAllCollections(),
         previewsFlow,
-        modalWithExclusionCount,
+        modalInputs,
         _sortOrder,
         serviceStateManager.serviceState
-    ) { collections, previews, (modal, exclusionCount), sort, serviceState ->
+    ) { collections, previews, modalInput, sort, serviceState ->
         val sorted = when (sort) {
             CollectionSortOrder.NAME -> collections.sortedBy { it.name.lowercase() }
             CollectionSortOrder.LAST_USED -> collections.sortedByDescending { it.lastUsedAt }
@@ -98,14 +110,15 @@ class CollectionViewModel @Inject constructor(
             previewStates = previews,
             serviceState = serviceState,
             sortOrder = sort,
-            isShowingCreateModal = modal.isShowingCreateModal,
-            hasPendingFolder = modal.hasPendingFolder,
-            hasPendingPhotos = modal.hasPendingPhotos,
-            editingCollection = modal.editingCollectionId?.let { id -> collections.find { it.id == id } },
-            editingExclusionCount = exclusionCount,
-            isProcessing = modal.isProcessing,
-            importSummary = modal.importSummary,
-            createError = modal.createError
+            isShowingCreateModal = modalInput.modal.isShowingCreateModal,
+            hasPendingFolder = modalInput.modal.hasPendingFolder,
+            hasPendingPhotos = modalInput.modal.hasPendingPhotos,
+            editingCollection = modalInput.modal.editingCollectionId?.let { id -> collections.find { it.id == id } },
+            editingExclusionCount = modalInput.exclusionCount,
+            globalRotationPolicy = modalInput.globalRotationPolicy,
+            isProcessing = modalInput.modal.isProcessing,
+            importSummary = modalInput.modal.importSummary,
+            createError = modalInput.modal.createError
         )
     }.stateIn(
         scope = viewModelScope,
@@ -203,7 +216,7 @@ class CollectionViewModel @Inject constructor(
     override fun renameEditingCollection(newName: String) {
         val collection = editingCollection() ?: return
         viewModelScope.launch {
-            repository.updateCollection(collection.id, newName, collection.defaultCropRule, collection.rotationFrequency)
+            repository.updateCollection(collection.id, newName, collection.defaultCropRule, collection.rotationPolicy)
         }
     }
 
@@ -211,15 +224,15 @@ class CollectionViewModel @Inject constructor(
     override fun setEditingCropRule(rule: CropRule) {
         val collection = editingCollection() ?: return
         viewModelScope.launch {
-            repository.updateCollection(collection.id, collection.name, rule, collection.rotationFrequency)
+            repository.updateCollection(collection.id, collection.name, rule, collection.rotationPolicy)
         }
     }
 
-    /** Sets the rotation frequency of the collection currently open in the edit modal. */
-    override fun setEditingRotationFrequency(frequency: RotationFrequency) {
+    /** Sets the rotation setting of the collection currently open in the edit modal. */
+    override fun setEditingRotationPolicy(setting: CollectionRotationSetting) {
         val collection = editingCollection() ?: return
         viewModelScope.launch {
-            repository.updateCollection(collection.id, collection.name, collection.defaultCropRule, frequency)
+            repository.updateCollection(collection.id, collection.name, collection.defaultCropRule, setting)
         }
     }
 

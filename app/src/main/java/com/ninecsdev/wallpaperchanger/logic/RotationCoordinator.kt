@@ -3,7 +3,6 @@ package com.ninecsdev.wallpaperchanger.logic
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
-import com.ninecsdev.wallpaperchanger.model.shouldRotateAt
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import java.util.concurrent.atomic.AtomicBoolean
@@ -36,6 +35,7 @@ class RotationCoordinator @Inject constructor(
     private val repository: WallpaperRepository,
     private val rotationEngine: RotationEngine,
     private val wallpaperApplier: WallpaperApplier,
+    private val rotationPolicyResolver: RotationPolicyResolver,
     private val atmosphereDelivery: AtmosphereDelivery
 ) {
     companion object {
@@ -90,8 +90,9 @@ class RotationCoordinator @Inject constructor(
             return RotationOutcome.NOT_DONE
         }
 
-        if (!activeCollection.shouldRotateAt()) {
-            Log.d(TAG, "$logTag: not due yet under ${activeCollection.rotationFrequency}.")
+        val policy = rotationPolicyResolver.effectivePolicyFor(activeCollection)
+        if (!policy.shouldRotateAt(activeCollection.lastWallpaperChangeAt)) {
+            Log.d(TAG, "$logTag: not due yet under $policy.")
             return RotationOutcome.NOT_DONE
         }
 

@@ -12,7 +12,7 @@ import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.data.source.computeFolderSyncDiff
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
-import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
+import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
 import com.ninecsdev.wallpaperchanger.model.enums.SourceType
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.FolderExclusion
@@ -128,16 +128,16 @@ class WallpaperRepository @Inject constructor(
         id: Long,
         newName: String,
         newRule: CropRule,
-        newFrequency: RotationFrequency
+        newPolicy: CollectionRotationSetting
     ) {
         withContext(Dispatchers.IO) {
             // Rename is blocked for the system (Favourites) collection — its display name is a
             // localized resource. Keep the stored fallback name regardless of what the edit card
-            // submits; crop rule and rotation frequency stay editable. The edit card also hides the
+            // submits; crop rule and rotation setting stay editable. The edit card also hides the
             // name field for system rows, this guard is the authoritative backstop.
             val existing = dao.getCollectionById(id)
             val safeName = if (existing?.isFavorites == true) existing.name else newName
-            dao.updateCollection(id, safeName, newRule, newFrequency)
+            dao.updateCollection(id, safeName, newRule, newPolicy)
         }
     }
 

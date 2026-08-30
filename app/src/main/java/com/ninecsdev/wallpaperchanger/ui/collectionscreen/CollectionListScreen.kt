@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
-import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
+import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.resolveDisplayName
@@ -201,7 +201,8 @@ fun CollectionListScreen(
                 onDismiss = actions::closeEditModal,
                 onRename = actions::renameEditingCollection,
                 onCropRuleSelected = actions::setEditingCropRule,
-                onRotationFrequencySelected = actions::setEditingRotationFrequency,
+                onRotationPolicySelected = actions::setEditingRotationPolicy,
+                globalRotationPolicy = uiState.globalRotationPolicy,
                 onDelete = onDeleteCollection,
                 onSyncClick = actions::syncEditingCollection,
                 onRestoreRemoved = actions::restoreRemovedImages
@@ -287,7 +288,7 @@ private object PreviewCollectionListActions : CollectionListActions {
     override fun closeEditModal() {}
     override fun renameEditingCollection(newName: String) {}
     override fun setEditingCropRule(rule: CropRule) {}
-    override fun setEditingRotationFrequency(frequency: RotationFrequency) {}
+    override fun setEditingRotationPolicy(setting: CollectionRotationSetting) {}
     override fun syncEditingCollection() {}
     override fun restoreRemovedImages() {}
     override fun clearImportSummary() {}

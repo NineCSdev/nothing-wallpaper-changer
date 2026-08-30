@@ -7,9 +7,6 @@ import androidx.room.PrimaryKey
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
-import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
-import java.time.Instant
-import java.time.ZoneId
 
 /**
  * Represents a logical list of wallpapers created by the user.
@@ -32,7 +29,7 @@ data class WallpaperCollection(
     val isActive: Boolean = false,
     val rootUri: Uri? = null,
     val defaultCropRule: CropRule = DEFAULT_CROP_RULE,
-    val rotationFrequency: RotationFrequency = RotationFrequency.PER_LOCK,
+    val rotationPolicy: CollectionRotationSetting = CollectionRotationSetting.FollowGlobal,
     val lastWallpaperChangeAt: Long = 0L,
     val createdAt: Long = System.currentTimeMillis(),
     val lastUsedAt: Long = System.currentTimeMillis(),
@@ -62,23 +59,3 @@ fun WallpaperCollection.resolveDisplayName(context: Context): String =
 
 fun resolveCollectionDisplayName(context: Context, name: String, isFavorites: Boolean): String =
     if (isFavorites) context.getString(R.string.favorites_collection_name) else name
-
-fun WallpaperCollection.shouldRotateAt(
-    nowMillis: Long = System.currentTimeMillis(),
-    zoneId: ZoneId = ZoneId.systemDefault()
-): Boolean {
-    return when (rotationFrequency) {
-        RotationFrequency.PER_LOCK -> true
-        RotationFrequency.HOURLY -> {
-            if (lastWallpaperChangeAt <= 0L) return true
-            nowMillis - lastWallpaperChangeAt >= 60L * 60L * 1000L
-        }
-        RotationFrequency.PER_DAY -> {
-            if (lastWallpaperChangeAt <= 0L) return true
-
-            val lastChangeDate = Instant.ofEpochMilli(lastWallpaperChangeAt).atZone(zoneId).toLocalDate()
-            val nowDate = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()
-            nowDate.isAfter(lastChangeDate)
-        }
-    }
-}

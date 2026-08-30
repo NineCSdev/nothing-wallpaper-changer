@@ -27,6 +27,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,7 +54,10 @@ import androidx.compose.ui.window.DialogProperties
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
-import com.ninecsdev.wallpaperchanger.model.enums.RotationFrequency
+import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
+import com.ninecsdev.wallpaperchanger.model.RotationPolicy
+import com.ninecsdev.wallpaperchanger.model.policyOr
+import com.ninecsdev.wallpaperchanger.ui.components.RotationPolicyEditor
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.resolveDisplayName
 import com.ninecsdev.wallpaperchanger.ui.components.InfoDialogIcon
@@ -83,7 +87,8 @@ internal fun EditCollectionCard(
     onDismiss: () -> Unit,
     onRename: (String) -> Unit,
     onCropRuleSelected: (CropRule) -> Unit,
-    onRotationFrequencySelected: (RotationFrequency) -> Unit,
+    onRotationPolicySelected: (CollectionRotationSetting) -> Unit,
+    globalRotationPolicy: RotationPolicy,
     onDelete: () -> Unit,
     onSyncClick: () -> Unit,
     onRestoreRemoved: () -> Unit = {}
@@ -112,7 +117,8 @@ internal fun EditCollectionCard(
             onNameChange = { nameText = it },
             onNameCommit = commitName,
             onCropRuleSelected = onCropRuleSelected,
-            onRotationFrequencySelected = onRotationFrequencySelected,
+            onRotationPolicySelected = onRotationPolicySelected,
+            globalRotationPolicy = globalRotationPolicy,
             showDeleteConfirmation = showDeleteConfirmation,
             onDeleteRequest = { showDeleteConfirmation = true },
             onDeleteConfirm = {
@@ -137,7 +143,8 @@ private fun EditCollectionCardContent(
     onNameChange: (String) -> Unit,
     onNameCommit: () -> Unit,
     onCropRuleSelected: (CropRule) -> Unit,
-    onRotationFrequencySelected: (RotationFrequency) -> Unit,
+    onRotationPolicySelected: (CollectionRotationSetting) -> Unit,
+    globalRotationPolicy: RotationPolicy,
     showDeleteConfirmation: Boolean,
     onDeleteRequest: () -> Unit,
     onDeleteConfirm: () -> Unit,
@@ -192,10 +199,15 @@ private fun EditCollectionCardContent(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        RotationFrequencySelector(
-            selectedFrequency = collection.rotationFrequency,
-            onFrequencySelected = onRotationFrequencySelected
-        )
+        // Keyed like nameText above: the editor inside owns seeded state that must not carry
+        // across a switch to a different collection.
+        key(collection.id) {
+            RotationSettingSelector(
+                setting = collection.rotationPolicy,
+                globalPolicy = globalRotationPolicy,
+                onSettingSelected = onRotationPolicySelected
+            )
+        }
 
         if (collection.type == CollectionType.FOLDER) {
             Spacer(modifier = Modifier.height(24.dp))
@@ -381,27 +393,46 @@ private fun SectionLabel(
 }
 
 @Composable
-private fun RotationFrequencySelector(
-    selectedFrequency: RotationFrequency,
-    onFrequencySelected: (RotationFrequency) -> Unit
+private fun RotationSettingSelector(
+    setting: CollectionRotationSetting,
+    globalPolicy: RotationPolicy,
+    onSettingSelected: (CollectionRotationSetting) -> Unit
 ) {
-    NothingSegmentedRow(
-        options = RotationFrequency.entries,
-        selected = selectedFrequency,
-        onSelect = onFrequencySelected
-    ) { frequency, isSelected ->
-        val label = when (frequency) {
-            RotationFrequency.PER_LOCK -> stringResource(R.string.edit_collection_rotation_per_lock)
-            RotationFrequency.HOURLY -> stringResource(R.string.edit_collection_rotation_hourly)
-            RotationFrequency.PER_DAY -> stringResource(R.string.edit_collection_rotation_daily)
+    val isGlobal = setting == CollectionRotationSetting.FollowGlobal
+
+    Column {
+        NothingSegmentedRow(
+            options = listOf(true, false),
+            selected = isGlobal,
+            // Switching to CUSTOM seeds the override from what this collection was already
+            // getting, so the user starts by editing the cadence they actually had.
+            onSelect = { global ->
+                onSettingSelected(
+                    if (global) CollectionRotationSetting.FollowGlobal
+                    else CollectionRotationSetting.Override(setting.policyOr(globalPolicy))
+                )
+            }
+        ) { global, isSelected ->
+            Text(
+                text = stringResource(
+                    if (global) R.string.edit_collection_rotation_global
+                    else R.string.edit_collection_rotation_custom
+                ),
+                style = NothingType.labelStrong,
+                color = if (isSelected) NothingBlack else NothingWhite.copy(alpha = 0.9f),
+                maxLines = 1,
+                textAlign = TextAlign.Center
+            )
         }
-        Text(
-            text = label,
-            style = NothingType.labelStrong,
-            color = if (isSelected) NothingBlack else NothingWhite.copy(alpha = 0.9f),
-            maxLines = 1,
-            textAlign = TextAlign.Center
-        )
+
+        if (!isGlobal) {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            RotationPolicyEditor(
+                policy = setting.policyOr(globalPolicy),
+                onPolicyChange = { onSettingSelected(CollectionRotationSetting.Override(it)) }
+            )
+        }
     }
 }
 
@@ -505,7 +536,8 @@ private fun PreviewEditCollectionCardFolder() {
                 onNameChange = {},
                 onNameCommit = {},
                 onCropRuleSelected = {},
-                onRotationFrequencySelected = {},
+                onRotationPolicySelected = {},
+                globalRotationPolicy = RotationPolicy.PerLock,
                 showDeleteConfirmation = false,
                 onDeleteRequest = {},
                 onDeleteConfirm = {},
@@ -537,7 +569,8 @@ private fun PreviewEditCollectionCardFolderWithRestore() {
                 onNameChange = {},
                 onNameCommit = {},
                 onCropRuleSelected = {},
-                onRotationFrequencySelected = {},
+                onRotationPolicySelected = {},
+                globalRotationPolicy = RotationPolicy.PerLock,
                 showDeleteConfirmation = false,
                 onDeleteRequest = {},
                 onDeleteConfirm = {},
@@ -569,7 +602,8 @@ private fun PreviewEditCollectionCardManual() {
                 onNameChange = {},
                 onNameCommit = {},
                 onCropRuleSelected = {},
-                onRotationFrequencySelected = {},
+                onRotationPolicySelected = {},
+                globalRotationPolicy = RotationPolicy.PerLock,
                 showDeleteConfirmation = false,
                 onDeleteRequest = {},
                 onDeleteConfirm = {},
@@ -601,7 +635,8 @@ private fun PreviewEditCollectionCardActive() {
                 onNameChange = {},
                 onNameCommit = {},
                 onCropRuleSelected = {},
-                onRotationFrequencySelected = {},
+                onRotationPolicySelected = {},
+                globalRotationPolicy = RotationPolicy.PerLock,
                 showDeleteConfirmation = false,
                 onDeleteRequest = {},
                 onDeleteConfirm = {},
@@ -633,7 +668,8 @@ private fun PreviewEditCollectionCardProcessing() {
                 onNameChange = {},
                 onNameCommit = {},
                 onCropRuleSelected = {},
-                onRotationFrequencySelected = {},
+                onRotationPolicySelected = {},
+                globalRotationPolicy = RotationPolicy.PerLock,
                 showDeleteConfirmation = false,
                 onDeleteRequest = {},
                 onDeleteConfirm = {},
