@@ -55,7 +55,7 @@ class RotationCoordinator @Inject constructor(
 
     /**
      * Runs at most one rotation. [onApplied] fires as soon as the image has been applied or
-     * delivered, before the buffer refill ([ScreenStateReceiver] uses it to release its
+     * delivered, before the buffer refill ([ScreenStateReceiver][com.ninecsdev.wallpaperchanger.service.ScreenStateReceiver] uses it to release its
      * broadcast early).
      */
     // TODO tests: see vault note tests/Global Rotation Policy Tests.md

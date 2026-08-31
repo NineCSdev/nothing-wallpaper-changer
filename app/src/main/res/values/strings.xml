@@ -144,12 +144,11 @@
 
     <!-- Wallpaper rotation -->
     <string name="settings_rotation_policy_title">WALLPAPER ROTATION</string>
-    <string name="settings_rotation_policy_subtitle">How often the wallpaper changes</string>
     <string name="settings_rotation_policy_dialog_title">Wallpaper rotation</string>
     <string name="settings_rotation_policy_dialog_body">
-        Sets the cadence used by every collection that doesn\'t carry its own.
-        \n\nPer lock changes the wallpaper each time you lock the phone. A time interval changes it
-        once that much time has passed. Daily changes it once per day, on the first rotation after midnight.
+        Sets the rotation frequency used by every collection that doesn\'t carry its own.
+        \n\nEvery unlock changes the wallpaper each time you lock the phone. A time interval changes it
+        once that much time has passed. Once a day changes it on the first rotation after midnight.
         \n\nYou can override this setting for a specific collection through the "Edit collection" card.
     </string>
 
@@ -218,20 +217,55 @@
         \n\nEach wallpaper can be adjusted individually in its editor ignoring the general crop rule.
     </string>
     <string name="edit_collection_rotation_title">ROTATION</string>
-    <string name="edit_collection_rotation_global">GLOBAL</string>
-    <string name="edit_collection_rotation_custom">CUSTOM</string>
-    <string name="rotation_kind_per_lock">PER LOCK</string>
-    <string name="rotation_kind_interval">EVERY</string>
-    <string name="rotation_kind_daily">DAILY</string>
-    <string name="rotation_preset_15m">15 MIN</string>
-    <string name="rotation_preset_30m">30 MIN</string>
-    <string name="rotation_preset_1h">1 H</string>
-    <string name="rotation_preset_6h">6 H</string>
-    <string name="rotation_preset_12h">12 H</string>
-    <string name="rotation_preset_custom">CUSTOM</string>
-    <string name="rotation_unit_minutes">MIN</string>
+    <string name="edit_collection_rotation_following_global">Following global · %1$s</string>
+    <string name="edit_collection_rotation_override">%1$s · this collection only</string>
+
+    <!-- Rotation cadence picker -->
+    <string name="rotation_cadence_per_lock">EVERY UNLOCK</string>
+    <string name="rotation_cadence_15m">EVERY 15 MINUTES</string>
+    <string name="rotation_cadence_30m">EVERY 30 MINUTES</string>
+    <string name="rotation_cadence_1h">EVERY HOUR</string>
+    <string name="rotation_cadence_6h">EVERY 6 HOURS</string>
+    <string name="rotation_cadence_12h">EVERY 12 HOURS</string>
+    <string name="rotation_cadence_per_day">ONCE A DAY</string>
+    <string name="rotation_cadence_per_day_caption">Resets at midnight</string>
+    <string name="rotation_cadence_custom">CUSTOM…</string>
+    <string name="rotation_cadence_custom_value">CUSTOM… · %1$s</string>
+    <string name="rotation_custom_title">CUSTOM INTERVAL</string>
+    <string name="rotation_action_set">SET</string>
+    <string name="rotation_unit_minutes">MINUTES</string>
     <string name="rotation_unit_hours">HOURS</string>
     <string name="rotation_unit_days">DAYS</string>
+    <string name="rotation_summary_per_lock">Every unlock</string>
+    <string name="rotation_summary_per_day">Once a day</string>
+    <plurals name="rotation_summary_minutes">
+        <item quantity="one">Every minute</item>
+        <item quantity="other">Every %1$d minutes</item>
+    </plurals>
+    <plurals name="rotation_summary_hours">
+        <item quantity="one">Every hour</item>
+        <item quantity="other">Every %1$d hours</item>
+    </plurals>
+    <plurals name="rotation_summary_days">
+        <item quantity="one">Every day</item>
+        <item quantity="other">Every %1$d days</item>
+    </plurals>
+    <plurals name="rotation_amount_minutes">
+        <item quantity="one">%1$d MINUTE</item>
+        <item quantity="other">%1$d MINUTES</item>
+    </plurals>
+    <plurals name="rotation_amount_hours">
+        <item quantity="one">%1$d HOUR</item>
+        <item quantity="other">%1$d HOURS</item>
+    </plurals>
+    <plurals name="rotation_amount_days">
+        <item quantity="one">%1$d DAY</item>
+        <item quantity="other">%1$d DAYS</item>
+    </plurals>
+    <string name="crop_rule_center">Center</string>
+    <string name="crop_rule_left">Left</string>
+    <string name="crop_rule_right">Right</string>
+    <string name="crop_rule_fit">Fit</string>
     <string name="edit_collection_action_sync">SYNC FOLDER</string>
     <string name="edit_collection_action_restore_removed">RESTORE REMOVED IMAGES (%1$d)</string>
     <string name="edit_collection_folder_actions_header">FOLDER ACTIONS</string>

@@ -139,13 +139,12 @@
     </string>
 
     <!-- Rotación del fondo -->
-    <string name="settings_rotation_policy_title">ROTACIÓN DEL FONDO</string>
-    <string name="settings_rotation_policy_subtitle">Cada cuánto cambia el fondo</string>
-    <string name="settings_rotation_policy_dialog_title">Rotación del fondo</string>
+    <string name="settings_rotation_policy_title">ROTACIÓN DEL FONDO DE PANTALLA</string>
+    <string name="settings_rotation_policy_dialog_title">Rotación del fondo de pantalla</string>
     <string name="settings_rotation_policy_dialog_body">
-        Define la cadencia que usan todas las colecciones que no tengan la suya propia.
-        \n\nPor bloqueo cambia el fondo cada vez que bloqueas el teléfono. Un intervalo lo cambia
-        cuando ha pasado ese tiempo. Diario lo cambia una vez al día, en la primera rotación después de medianoche.
+        Define la frecuencia de rotación que usan todas las colecciones que no tengan la suya propia.
+        \n\nCada desbloqueo cambia el fondo cada vez que bloqueas el teléfono. Un intervalo lo cambia
+        cuando ha pasado ese tiempo. Una vez al día lo cambia en la primera rotación después de medianoche.
         \n\nPuedes modificar esta configuración para una colección específica mediante la tarjeta “Editar colección”.
     </string>
 
@@ -213,20 +212,61 @@
         \n\nCada fondo se puede ajustar individualmente en su editor ignorando el ajuste general de la colección.
     </string>
     <string name="edit_collection_rotation_title">ROTACIÓN</string>
-    <string name="edit_collection_rotation_global">GLOBAL</string>
-    <string name="edit_collection_rotation_custom">PROPIA</string>
-    <string name="rotation_kind_per_lock">POR BLOQUEO</string>
-    <string name="rotation_kind_interval">CADA</string>
-    <string name="rotation_kind_daily">DIARIO</string>
-    <string name="rotation_preset_15m">15 MIN</string>
-    <string name="rotation_preset_30m">30 MIN</string>
-    <string name="rotation_preset_1h">1 H</string>
-    <string name="rotation_preset_6h">6 H</string>
-    <string name="rotation_preset_12h">12 H</string>
-    <string name="rotation_preset_custom">PROPIA</string>
-    <string name="rotation_unit_minutes">MIN</string>
+    <string name="edit_collection_rotation_following_global">Sigue la global · %1$s</string>
+    <string name="edit_collection_rotation_override">%1$s · solo esta colección</string>
+
+    <!-- Selector de cadencia de rotación -->
+    <string name="rotation_cadence_per_lock">CADA DESBLOQUEO</string>
+    <string name="rotation_cadence_15m">CADA 15 MINUTOS</string>
+    <string name="rotation_cadence_30m">CADA 30 MINUTOS</string>
+    <string name="rotation_cadence_1h">CADA HORA</string>
+    <string name="rotation_cadence_6h">CADA 6 HORAS</string>
+    <string name="rotation_cadence_12h">CADA 12 HORAS</string>
+    <string name="rotation_cadence_per_day">UNA VEZ AL DÍA</string>
+    <string name="rotation_cadence_per_day_caption">Se reinicia a medianoche</string>
+    <string name="rotation_cadence_custom">PERSONALIZADO…</string>
+    <string name="rotation_cadence_custom_value">PERSONALIZADO… · %1$s</string>
+    <string name="rotation_custom_title">INTERVALO PROPIO</string>
+    <string name="rotation_action_set">APLICAR</string>
+    <string name="rotation_unit_minutes">MINUTOS</string>
     <string name="rotation_unit_hours">HORAS</string>
     <string name="rotation_unit_days">DÍAS</string>
+    <string name="rotation_summary_per_lock">Cada desbloqueo</string>
+    <string name="rotation_summary_per_day">Una vez al día</string>
+    <plurals name="rotation_summary_minutes">
+        <item quantity="one">Cada minuto</item>
+        <item quantity="other">Cada %1$d minutos</item>
+        <item quantity="many">Cada %1$d minutos</item>
+    </plurals>
+    <plurals name="rotation_summary_hours">
+        <item quantity="one">Cada hora</item>
+        <item quantity="other">Cada %1$d horas</item>
+        <item quantity="many">Cada %1$d horas</item>
+    </plurals>
+    <plurals name="rotation_summary_days">
+        <item quantity="one">Cada día</item>
+        <item quantity="other">Cada %1$d días</item>
+        <item quantity="many">Cada %1$d días</item>
+    </plurals>
+    <plurals name="rotation_amount_minutes">
+        <item quantity="one">%1$d MINUTO</item>
+        <item quantity="other">%1$d MINUTOS</item>
+        <item quantity="many">%1$d MINUTOS</item>
+    </plurals>
+    <plurals name="rotation_amount_hours">
+        <item quantity="one">%1$d HORA</item>
+        <item quantity="other">%1$d HORAS</item>
+        <item quantity="many">%1$d HORAS</item>
+    </plurals>
+    <plurals name="rotation_amount_days">
+        <item quantity="one">%1$d DÍA</item>
+        <item quantity="other">%1$d DÍAS</item>
+        <item quantity="many">%1$d DÍAS</item>
+    </plurals>
+    <string name="crop_rule_center">Centro</string>
+    <string name="crop_rule_left">Izquierda</string>
+    <string name="crop_rule_right">Derecha</string>
+    <string name="crop_rule_fit">Ajustar</string>
     <string name="edit_collection_action_sync">SINCRONIZAR CARPETA</string>
     <string name="edit_collection_action_restore_removed">RESTAURAR ELIMINADAS (%1$d)</string>
     <string name="edit_collection_folder_actions_header">ACCIONES DE CARPETA</string>

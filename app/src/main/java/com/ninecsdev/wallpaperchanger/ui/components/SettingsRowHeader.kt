@@ -23,12 +23,12 @@ import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
  *
  * When [infoDialogTitle] and [infoDialogBody] are provided, a small [InfoDialogIcon] renders
  * inline after the title and opens a Nothing-styled explanation dialog; callers only supply
- * the two strings.
+ * the two strings. A null [subtitle] renders the title alone.
  */
 @Composable
 internal fun SettingsRowHeader(
     title: String,
-    subtitle: String,
+    subtitle: String?,
     modifier: Modifier = Modifier,
     infoDialogTitle: String? = null,
     infoDialogBody: String? = null
@@ -50,11 +50,13 @@ internal fun SettingsRowHeader(
                 )
             }
         }
-        Text(
-            text = subtitle,
-            style = NothingType.caption,
-            color = NothingWhite.copy(alpha = 0.4f)
-        )
+        if (subtitle != null) {
+            Text(
+                text = subtitle,
+                style = NothingType.caption,
+                color = NothingWhite.copy(alpha = 0.4f)
+            )
+        }
     }
 }
 

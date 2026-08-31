@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,15 +20,18 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -46,7 +51,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -57,13 +61,14 @@ import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
 import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.policyOr
-import com.ninecsdev.wallpaperchanger.ui.components.RotationPolicyEditor
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.resolveDisplayName
-import com.ninecsdev.wallpaperchanger.ui.components.InfoDialogIcon
+import com.ninecsdev.wallpaperchanger.ui.components.NothingBottomSheet
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButton
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButtonVariant
-import com.ninecsdev.wallpaperchanger.ui.components.NothingSegmentedRow
+import com.ninecsdev.wallpaperchanger.ui.components.RotationPickerContent
+import com.ninecsdev.wallpaperchanger.ui.components.SettingsRowHeader
+import com.ninecsdev.wallpaperchanger.ui.components.rotationSummary
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGreen
@@ -133,6 +138,7 @@ internal fun EditCollectionCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditCollectionCardContent(
     collection: WallpaperCollection,
@@ -153,6 +159,9 @@ private fun EditCollectionCardContent(
     onSyncClick: () -> Unit,
     onRestoreRemoved: () -> Unit
 ) {
+    var showRotationPicker by remember(collection.id) { mutableStateOf(false) }
+    val effectivePolicy = collection.rotationPolicy.policyOr(globalRotationPolicy)
+
     NothingDialogCard(
         isProcessing = isProcessing,
         processingMessage = stringResource(R.string.edit_collection_processing),
@@ -165,6 +174,19 @@ private fun EditCollectionCardContent(
                     onConfirm = onDeleteConfirm,
                     onCancel = onDeleteCancel
                 )
+            }
+            if (showRotationPicker) {
+                NothingBottomSheet(onDismiss = { showRotationPicker = false }) { hideThen ->
+                    RotationPickerContent(
+                        title = stringResource(R.string.edit_collection_rotation_title),
+                        policy = effectivePolicy,
+                        // Picking a cadence here is the override
+                        onPolicyChange = { onRotationPolicySelected(CollectionRotationSetting.Override(it)) },
+                        onDone = { hideThen { showRotationPicker = false } },
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
             }
         }
     ) {
@@ -179,12 +201,12 @@ private fun EditCollectionCardContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        SectionLabel(text = stringResource(R.string.edit_collection_crop_title)) {
-            InfoDialogIcon(
-                dialogTitle = stringResource(R.string.edit_collection_crop_info_title),
-                dialogBody = stringResource(R.string.edit_collection_crop_info_body)
-            )
-        }
+        SettingsRowHeader(
+            title = stringResource(R.string.edit_collection_crop_title),
+            subtitle = stringResource(cropRuleLabelRes(collection.defaultCropRule)),
+            infoDialogTitle = stringResource(R.string.edit_collection_crop_info_title),
+            infoDialogBody = stringResource(R.string.edit_collection_crop_info_body)
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -195,19 +217,17 @@ private fun EditCollectionCardContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        SectionLabel(text = stringResource(R.string.edit_collection_rotation_title))
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Keyed like nameText above: the editor inside owns seeded state that must not carry
-        // across a switch to a different collection.
-        key(collection.id) {
-            RotationSettingSelector(
-                setting = collection.rotationPolicy,
-                globalPolicy = globalRotationPolicy,
-                onSettingSelected = onRotationPolicySelected
-            )
-        }
+        RotationSettingRow(
+            setting = collection.rotationPolicy,
+            effectivePolicy = effectivePolicy,
+            onOpenPicker = { showRotationPicker = true },
+            onOverrideChange = { override ->
+                onRotationPolicySelected(
+                    if (override) CollectionRotationSetting.Override(effectivePolicy)
+                    else CollectionRotationSetting.FollowGlobal
+                )
+            }
+        )
 
         if (collection.type == CollectionType.FOLDER) {
             Spacer(modifier = Modifier.height(24.dp))
@@ -373,66 +393,74 @@ private fun CollectionMetadataLine(
     }
 }
 
-/** Small caps section label with an optional trailing slot (e.g. the crop-rule info icon). */
-@Composable
-private fun SectionLabel(
-    text: String,
-    trailing: @Composable () -> Unit = {}
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Text(
-            text = text,
-            style = NothingType.rowLabel,
-            color = NothingWhite.copy(alpha = 0.7f)
-        )
-        trailing()
-    }
+private fun cropRuleLabelRes(rule: CropRule): Int = when (rule) {
+    CropRule.CENTER -> R.string.crop_rule_center
+    CropRule.LEFT -> R.string.crop_rule_left
+    CropRule.RIGHT -> R.string.crop_rule_right
+    CropRule.FIT -> R.string.crop_rule_fit
 }
 
 @Composable
-private fun RotationSettingSelector(
+private fun RotationSettingRow(
     setting: CollectionRotationSetting,
-    globalPolicy: RotationPolicy,
-    onSettingSelected: (CollectionRotationSetting) -> Unit
+    effectivePolicy: RotationPolicy,
+    onOpenPicker: () -> Unit,
+    onOverrideChange: (Boolean) -> Unit
 ) {
-    val isGlobal = setting == CollectionRotationSetting.FollowGlobal
+    val isOverride = setting is CollectionRotationSetting.Override
+    val cadence = rotationSummary(effectivePolicy)
 
-    Column {
-        NothingSegmentedRow(
-            options = listOf(true, false),
-            selected = isGlobal,
-            // Switching to CUSTOM seeds the override from what this collection was already
-            // getting, so the user starts by editing the cadence they actually had.
-            onSelect = { global ->
-                onSettingSelected(
-                    if (global) CollectionRotationSetting.FollowGlobal
-                    else CollectionRotationSetting.Override(setting.policyOr(globalPolicy))
-                )
-            }
-        ) { global, isSelected ->
-            Text(
-                text = stringResource(
-                    if (global) R.string.edit_collection_rotation_global
-                    else R.string.edit_collection_rotation_custom
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .clickable(onClick = onOpenPicker),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SettingsRowHeader(
+                title = stringResource(R.string.edit_collection_rotation_title),
+                subtitle = stringResource(
+                    if (isOverride) R.string.edit_collection_rotation_override
+                    else R.string.edit_collection_rotation_following_global,
+                    cadence
                 ),
-                style = NothingType.labelStrong,
-                color = if (isSelected) NothingBlack else NothingWhite.copy(alpha = 0.9f),
-                maxLines = 1,
-                textAlign = TextAlign.Center
+                modifier = Modifier.weight(1f)
+            )
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = NothingWhite.copy(alpha = 0.4f),
+                modifier = Modifier.size(20.dp)
             )
         }
 
-        if (!isGlobal) {
-            Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.width(12.dp))
 
-            RotationPolicyEditor(
-                policy = setting.policyOr(globalPolicy),
-                onPolicyChange = { onSettingSelected(CollectionRotationSetting.Override(it)) }
+        Box(
+            modifier = Modifier
+                .height(28.dp)
+                .width(1.dp)
+                .background(NothingWhite.copy(alpha = 0.15f))
+        )
+
+        Spacer(modifier = Modifier.width(4.dp))
+
+        Switch(
+            checked = isOverride,
+            onCheckedChange = onOverrideChange,
+            modifier = Modifier.scale(0.8f),
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = NothingBlack,
+                checkedTrackColor = NothingWhite,
+                uncheckedThumbColor = NothingWhite,
+                uncheckedTrackColor = NothingBlack,
+                uncheckedBorderColor = NothingWhite.copy(alpha = 0.5f)
             )
-        }
+        )
     }
 }
 
@@ -447,7 +475,10 @@ private fun FolderMaintenanceSection(
     onRestoreRemoved: () -> Unit
 ) {
     Column {
-        SectionLabel(text = stringResource(R.string.edit_collection_folder_actions_header))
+        SettingsRowHeader(
+            title = stringResource(R.string.edit_collection_folder_actions_header),
+            subtitle = null
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
 
