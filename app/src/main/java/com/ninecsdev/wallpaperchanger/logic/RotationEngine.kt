@@ -103,9 +103,27 @@ class RotationEngine @Inject constructor(
      */
     suspend fun refillDiskBuffer(): Boolean = mutex.withLock { refillDiskBufferLocked() }
 
+    /**
+     * Runs [block] against a buffer that can be proved to belong to [collectionId], or returns null when
+     * what is prepared belongs to someone else.
+     *
+     * Takes the same lock the reactive reload holds, so an in-flight rebuild is waited out and no
+     * rebuild can start while [block] runs. **[block] must not re-enter the engine**
+     */
+    // TODO tests: see vault note tests/Collection Switch Rotation Gate Tests.md
+    suspend fun <T> withBufferFor(collectionId: Long, block: suspend () -> T): T? = mutex.withLock {
+        val prepared = bufferManager.preparedCollectionId()
+
+        if (prepared != collectionId) {
+            Log.w(TAG, "Prepared buffer belongs to collection $prepared, not $collectionId.")
+            return@withLock null
+        }
+        block()
+    }
+
     private suspend fun refillDiskBufferLocked(): Boolean {
         val maxAttempts = imageMagazine.size
-        if (maxAttempts == 0) return false
+        if (maxAttempts == 0) return forgetPreparedAndFail()
 
         for (attempt in 0 until maxAttempts) {
             if (imageMagazine.isEmpty()) break
@@ -136,6 +154,12 @@ class RotationEngine @Inject constructor(
             }
         }
 
+        return forgetPreparedAndFail()
+    }
+
+    /** Nothing renderable was left, so the stamp on whatever is still on disk is withdrawn */
+    private suspend fun forgetPreparedAndFail(): Boolean {
+        bufferManager.forgetPrepared()
         return false
     }
 

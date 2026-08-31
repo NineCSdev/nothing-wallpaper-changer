@@ -11,6 +11,7 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -109,8 +110,10 @@ class AtmosphereTransition @Inject constructor(
             return outcome
         }
 
-        // Effective mode is STATIC from here on. No-op with the service stopped and magazine empty
-        rotationEngine.refillDiskBuffer()
+        // Effective mode is STATIC from here on. No-op with the service stopped and magazine empty.
+        // Non-cancellable because it is the second half of the mode write above abandoning this
+        // leaves the next rotation applying a wallpaper framed for atmo in static
+        withContext(NonCancellable) { rotationEngine.refillDiskBuffer() }
 
         _liveness.value = modeResolver.isAtmosphereEngineActive()
         // Reclaim the source file once the engine is confirmed gone

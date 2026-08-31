@@ -59,6 +59,9 @@ sealed class BufferPreparationResult {
  * **What is prepared is mode-shaped, and only one shape exists at a time.** A static refill leaves a
  * WebP buffer; an atmosphere refill leaves a staged container holding the same pixels plus their
  * seeds. Which file exists *is* the record of which mode prepared it.
+ *
+ * **What is prepared is also stamped with where it came from** ([AppDataStore.setBufferedWallpaper]),
+ * so a caller can tell whether what is prepared is the one it is asking for.
  */
 @Singleton
 class BufferManager @Inject constructor(
@@ -101,6 +104,12 @@ class BufferManager @Inject constructor(
     )
 
     private fun getBufferFile(): File = File(appContext.cacheDir, BUFFER_FILENAME)
+
+    /** The collection the prepared artifact was drawn from, or null when nothing usable is prepared. */
+    suspend fun preparedCollectionId(): Long? = appDataStore.getBufferedCollectionId()
+
+    /** Records that nothing prepared is usable. The artifact may still be on disk but belongs to no rotation*/
+    suspend fun forgetPrepared() = appDataStore.setBufferedWallpaper(null, null)
 
     /**
      * Opens the prepared image for a static apply, or null when nothing is prepared. Caller
@@ -171,7 +180,7 @@ class BufferManager @Inject constructor(
             if (!AtmosphereSource.writePending(appContext.filesDir, render.seeds, imageBytes)) {
                 return BufferPreparationResult.Failure(definitive = false)
             }
-            appDataStore.setBufferedWallpaperId(wallpaper.id)
+            appDataStore.setBufferedWallpaper(wallpaper.id, wallpaper.collectionId)
             Log.d(TAG, "Staged atmosphere delivery: ${imageBytes.size / 1024} KB | Rule: $cropRule")
         } finally {
             render.bitmap.recycle()
@@ -187,7 +196,7 @@ class BufferManager @Inject constructor(
         try {
             AtmosphereSource.clearPending(appContext.filesDir)
             writeBuffer(rendered, cropRule)
-            appDataStore.setBufferedWallpaperId(wallpaper.id)
+            appDataStore.setBufferedWallpaper(wallpaper.id, wallpaper.collectionId)
         } finally {
             rendered.recycle()
         }

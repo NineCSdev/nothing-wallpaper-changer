@@ -51,6 +51,7 @@ private val KEY_WALLPAPER_DESTINATION = stringPreferencesKey("wallpaper_destinat
 private val KEY_WALLPAPER_MODE = stringPreferencesKey("wallpaper_mode")
 private val KEY_KEEP_LOCAL_COPIES = booleanPreferencesKey("keep_local_copies")
 private val KEY_BUFFERED_WALLPAPER_ID = longPreferencesKey("buffered_wallpaper_id")
+private val KEY_BUFFERED_COLLECTION_ID = longPreferencesKey("buffered_collection_id")
 private val KEY_ATMOSPHERE_LIVE_WALLPAPER_ID = longPreferencesKey("atmosphere_live_wallpaper_id")
 private val KEY_ATMOSPHERE_RENDER_KEY = stringPreferencesKey("atmosphere_render_key")
 private val KEY_APPLIED_WALLPAPER_ID = longPreferencesKey("applied_wallpaper_id")
@@ -220,6 +221,9 @@ class AppDataStore @Inject constructor(
     suspend fun getBufferedWallpaperId(): Long? =
         mappedSettingFlow(KEY_BUFFERED_WALLPAPER_ID, null) { it }.first()
 
+    suspend fun getBufferedCollectionId(): Long? =
+        mappedSettingFlow(KEY_BUFFERED_COLLECTION_ID, null) { it }.first()
+
     suspend fun getAtmosphereLiveWallpaperId(): Long? =
         mappedSettingFlow(KEY_ATMOSPHERE_LIVE_WALLPAPER_ID, null) { it }.first()
 
@@ -273,9 +277,19 @@ class AppDataStore @Inject constructor(
     suspend fun setRotationPolicy(policy: RotationPolicy) =
         set(KEY_ROTATION_POLICY, policy.encode())
 
-    /** Null records "nothing identifiable in the buffer". */
-    suspend fun setBufferedWallpaperId(wallpaperId: Long?) =
-        setOrClear(KEY_BUFFERED_WALLPAPER_ID, wallpaperId)
+    /**
+     * What the prepared buffer holds (wallpaper and collection id) Together so they can't diverge.
+     * Nulls record "nothing identifiable in the buffer".
+     */
+    suspend fun setBufferedWallpaper(wallpaperId: Long?, collectionId: Long?) {
+        dataStore.edit { prefs ->
+            if (wallpaperId == null) prefs.remove(KEY_BUFFERED_WALLPAPER_ID)
+            else prefs[KEY_BUFFERED_WALLPAPER_ID] = wallpaperId
+
+            if (collectionId == null) prefs.remove(KEY_BUFFERED_COLLECTION_ID)
+            else prefs[KEY_BUFFERED_COLLECTION_ID] = collectionId
+        }
+    }
 
     /** Null records "the live image belongs to no collection". */
     suspend fun setAtmosphereLiveWallpaperId(wallpaperId: Long?) =

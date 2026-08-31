@@ -3,6 +3,7 @@ package com.ninecsdev.wallpaperchanger.logic
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import java.util.concurrent.atomic.AtomicBoolean
@@ -54,7 +55,7 @@ class RotationCoordinator @Inject constructor(
 
     /**
      * Runs at most one rotation. [onApplied] fires as soon as the image has been applied or
-     * delivered, before the buffer refill ([ScreenOffReceiver] uses it to release its
+     * delivered, before the buffer refill ([ScreenStateReceiver] uses it to release its
      * broadcast early).
      */
     // TODO tests: see vault note tests/Global Rotation Policy Tests.md
@@ -72,6 +73,9 @@ class RotationCoordinator @Inject constructor(
         } catch (_: TimeoutCancellationException) {
             Log.w(TAG, "$logTag: rotation timed out after ${WORK_TIMEOUT_MS}ms. Cancelled.")
             RotationOutcome.NOT_DONE
+        } catch (e: CancellationException) {
+            // Not a failed rotation: the scope owning this call is in teardown
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "$logTag: error during rotation", e)
             RotationOutcome.NOT_DONE
@@ -80,6 +84,7 @@ class RotationCoordinator @Inject constructor(
         }
     }
 
+    // TODO tests: see vault note tests/Collection Switch Rotation Gate Tests.md
     private suspend fun rotateGuarded(
         logTag: String,
         onApplied: () -> Unit
@@ -96,7 +101,16 @@ class RotationCoordinator @Inject constructor(
             return RotationOutcome.NOT_DONE
         }
 
-        return when (wallpaperApplier.applyBufferWallpaper(activeCollection.id)) {
+        // Pinned to the active collection as a switch re-anchors the gate to "due now"
+        val applied = rotationEngine.withBufferFor(activeCollection.id) {
+            wallpaperApplier.applyBufferWallpaper(activeCollection.id)
+        }
+        if (applied == null) {
+            Log.w(TAG, "$logTag: nothing prepared for collection ${activeCollection.id} yet. Skipping.")
+            return RotationOutcome.NOT_DONE
+        }
+
+        return when (applied) {
             WallpaperApplyOutcome.SHOWN -> {
                 // On screen as of now, so advance the rotation now.
                 repository.markWallpaperChanged(activeCollection.id)

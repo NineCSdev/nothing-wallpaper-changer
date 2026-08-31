@@ -12,10 +12,12 @@ import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -69,23 +71,24 @@ class RotationScheduler @Inject constructor(
         job?.cancel()
         job = scope.launch(Dispatchers.IO) {
             combine(
-                repository.activeCollectionFlow(),
+                // Only these three columns change what to wait for
+                repository.activeCollectionFlow().distinctUntilChangedBy { Triple(it?.id, it?.rotationPolicy, it?.lastWallpaperChangeAt) },
                 appDataStore.rotationPolicyFlow(),
                 appDataStore.wallpaperDestinationFlow(),
                 appDataStore.wallpaperModeFlow(),
                 screenOn,
                 ::Arm
-            ).collectLatest { arm -> awaitAndRotate(arm) }
+            ).collectLatest { arm -> awaitAndRotate(arm, scope) }
         }
     }
 
-    /** Safe to call when not started. */
+    /** Stops arming. Safe to call when not started, and deliberately does **not** abort a running rotation */
     fun stop() {
         job?.cancel()
         job = null
     }
 
-    private suspend fun awaitAndRotate(arm: Arm) {
+    private suspend fun awaitAndRotate(arm: Arm, scope: CoroutineScope) {
         val collection = arm.collection ?: return
         if (!arm.screenOn) return
 
@@ -107,7 +110,10 @@ class RotationScheduler @Inject constructor(
                 if (remaining > MAX_SLEEP_MS) continue
             }
 
-            when (val outcome = rotationCoordinator.rotateOnce(TAG)) {
+            // Launched into the owning scope as the rotation writes the very timestamp this collector watches.
+            // Awaiting keeps the retry below; cancelling the await abandons the result, never the rotation.
+            // Only WallpaperService.onDestroy can cancel that.
+            when (val outcome = scope.async { rotationCoordinator.rotateOnce(TAG) }.await()) {
                 // The timestamp write re-emits the active collection, cancelling this and re-arming with the new anchor
                 RotationOutcome.ROTATED, RotationOutcome.HANDED_OFF -> return
 

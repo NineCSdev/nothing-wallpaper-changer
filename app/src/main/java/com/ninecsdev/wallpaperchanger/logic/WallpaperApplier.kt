@@ -11,6 +11,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -156,17 +157,20 @@ class WallpaperApplier @Inject constructor(
         try {
             val prepared = bufferManager.openPrepared() ?: return@withContext WallpaperApplyOutcome.FAILED
 
-            prepared.use { stream ->
-                WallpaperManager.getInstance(appContext).setStream(
-                    stream,
-                    null,
-                    true,
-                    destination.toFlags()
-                )
-            }
+            // The platform write and our record of it are one step
+            withContext(NonCancellable) {
+                prepared.use { stream ->
+                    WallpaperManager.getInstance(appContext).setStream(
+                        stream,
+                        null,
+                        true,
+                        destination.toFlags()
+                    )
+                }
 
-            // Records what the user is now looking at
-            appDataStore.setAppliedWallpaperId(appDataStore.getBufferedWallpaperId())
+                // Records what the user is now looking at
+                appDataStore.setAppliedWallpaperId(appDataStore.getBufferedWallpaperId())
+            }
 
             Log.i(TAG, "Wallpaper applied successfully from the prepared image to $destination.")
             WallpaperApplyOutcome.SHOWN
