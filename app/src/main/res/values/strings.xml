@@ -149,13 +149,8 @@
     <string name="settings_rotation_policy_dialog_body">
         Sets the cadence used by every collection that doesn\'t carry its own.
         \n\nPer lock changes the wallpaper each time you lock the phone. A time interval changes it
-        once that much time has passed, counted from the last change, so time with the screen off
-        counts too. Daily changes it once per day, on the first rotation after midnight.
-        \n\nAn interval can also change the wallpaper while you are using the phone, but only when the
-        wallpaper is set to the home screen. With lock-screen-only wallpapers the change always waits
-        for the next lock.
-        \n\nCollections you had already given a frequency of their own keep it. Open a collection and
-        switch it to GLOBAL for it to follow this setting.
+        once that much time has passed. Daily changes it once per day, on the first rotation after midnight.
+        \n\nYou can override this setting for a specific collection through the "Edit collection" card.
     </string>
 
     <!-- Screen off delay -->

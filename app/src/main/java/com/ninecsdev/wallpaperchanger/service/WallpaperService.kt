@@ -224,9 +224,7 @@ class WallpaperService : Service() {
         }
     }
 
-    /**
-     * Resumes the wallpaper changing by restarting both rotation triggers.
-     */
+    /** Resumes the wallpaper changing by restarting both rotation triggers. */
     private fun resumeEngine() {
         if (serviceStateManager.rawServiceState.value !is ServiceState.Paused) return
         Log.i(tag, "Resuming engine (Power Save OFF)")
@@ -252,13 +250,7 @@ class WallpaperService : Service() {
         serviceStateManager.markServiceStopped()
     }
 
-    /**
-     * Starts both rotation triggers: the screen-state receiver and the interval scheduler.
-     *
-     * They start and stop together on purpose — a scheduler still ticking behind an unregistered
-     * receiver would rotate while the engine is meant to be paused, and keeping the two in step is
-     * not something four call sites should have to remember.
-     */
+    /** Starts both rotation triggers: the screen-state receiver and the interval scheduler. */
     private fun startRotationTriggers() {
         if (screenStateReceiver != null) return
 

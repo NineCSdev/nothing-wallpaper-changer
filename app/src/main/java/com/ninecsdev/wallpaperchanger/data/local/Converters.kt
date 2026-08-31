@@ -47,12 +47,12 @@ class Converters {
         }
 
     // CollectionRotationSetting Converters
-    // Decoding is total and logs its own fallthrough, so no try/catch here.
     @TypeConverter
     fun fromRotationSetting(setting: CollectionRotationSetting): String = setting.encode()
 
     @TypeConverter
     fun toRotationSetting(value: String): CollectionRotationSetting =
+        // Decoding is total and logs its own fallthrough, no need for try/catch
         CollectionRotationSetting.decode(value)
 
     // SourceType Converters

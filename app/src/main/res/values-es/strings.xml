@@ -145,14 +145,8 @@
     <string name="settings_rotation_policy_dialog_body">
         Define la cadencia que usan todas las colecciones que no tengan la suya propia.
         \n\nPor bloqueo cambia el fondo cada vez que bloqueas el teléfono. Un intervalo lo cambia
-        cuando ha pasado ese tiempo, contado desde el último cambio, así que el tiempo con la pantalla
-        apagada también cuenta. Diario lo cambia una vez al día, en la primera rotación pasada la
-        medianoche.
-        \n\nUn intervalo también puede cambiar el fondo mientras usas el teléfono, pero solo si el
-        fondo se aplica a la pantalla de inicio. Si solo se aplica al bloqueo, el cambio siempre
-        espera al siguiente bloqueo.
-        \n\nLas colecciones a las que ya habías puesto una frecuencia propia la conservan. Abre una
-        colección y cámbiala a GLOBAL para que siga este ajuste.
+        cuando ha pasado ese tiempo. Diario lo cambia una vez al día, en la primera rotación después de medianoche.
+        \n\nPuedes modificar esta configuración para una colección específica mediante la tarjeta “Editar colección”.
     </string>
 
     <!-- Screen off delay -->

@@ -131,11 +131,8 @@ class WallpaperRepository @Inject constructor(
         newPolicy: CollectionRotationSetting
     ) {
         withContext(Dispatchers.IO) {
-            // Rename is blocked for the system (Favourites) collection — its display name is a
-            // localized resource. Keep the stored fallback name regardless of what the edit card
-            // submits; crop rule and rotation setting stay editable. The edit card also hides the
-            // name field for system rows, this guard is the authoritative backstop.
             val existing = dao.getCollectionById(id)
+            // Rename is blocked for the system (Favourites) collection as it is a localized resource
             val safeName = if (existing?.isFavorites == true) existing.name else newName
             dao.updateCollection(id, safeName, newRule, newPolicy)
         }

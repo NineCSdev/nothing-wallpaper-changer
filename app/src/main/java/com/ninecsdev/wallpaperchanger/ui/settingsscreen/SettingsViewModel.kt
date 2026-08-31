@@ -68,7 +68,6 @@ class SettingsViewModel @Inject constructor(
         val batterySaverPolicy: BatterySaverPolicy,
         val wallpaperZoomFix: WallpaperZoomFix,
         val wallpaperDestination: WallpaperDestination,
-        // Rides along here rather than in the outer combine, which is at its five-flow limit.
         val rotationPolicy: RotationPolicy
     )
 

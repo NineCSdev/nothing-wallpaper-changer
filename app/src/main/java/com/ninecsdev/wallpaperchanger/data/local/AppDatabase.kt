@@ -182,16 +182,6 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        /**
-         * v5 → v6: rename `rotationFrequency` to `rotationPolicy`.
-         *
-         * Cosmetic. The column already holds a string nothing queries, filters or sorts on, and it
-         * now stores a value that can say "follow the global policy" — which is not a frequency.
-         *
-         * Stored values are left as they are: the legacy strings are part of the decoder's accepted
-         * input, so no data rewrite is needed. `RENAME COLUMN` wants SQLite 3.25+, guaranteed from
-         * API 30, and minSdk is 33.
-         */
         val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE collections RENAME COLUMN rotationFrequency TO rotationPolicy")

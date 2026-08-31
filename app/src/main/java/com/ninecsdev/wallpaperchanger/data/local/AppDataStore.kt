@@ -173,10 +173,6 @@ class AppDataStore @Inject constructor(
     fun keepLocalCopiesFlow(): Flow<Boolean> =
         settingFlow(KEY_KEEP_LOCAL_COPIES, false)
 
-    /**
-     * The app-wide rotation cadence, followed by every collection without an override. Defaults to
-     * per-lock, which is what the app did before the setting existed.
-     */
     fun rotationPolicyFlow(): Flow<RotationPolicy> =
         mappedSettingFlow(KEY_ROTATION_POLICY, RotationPolicy.PerLock) { RotationPolicy.decode(it) }
 

@@ -49,11 +49,8 @@ private enum class IntervalUnit(val minutes: Int) {
  * two cannot offer different choices.
  *
  * Its inner state (custom-vs-preset, unit, typed amount) is **seeded once from [policy] and then
- * owned locally**, never re-derived. Deriving would flip things under the user's finger: typing "12"
- * into a minutes field passes through "1", which is also a valid number of days, and typing "60"
- * into the custom field would snap onto the 1-hour preset and collapse the field being used.
- *
- * Callers editing more than one subject should wrap this in `key(...)` so switching subject re-seeds.
+ * owned locally**, never re-derived. Callers editing more than one subject should wrap this in `key(...)`
+ * so switching subject re-seeds.
  */
 @Composable
 internal fun RotationPolicyEditor(
