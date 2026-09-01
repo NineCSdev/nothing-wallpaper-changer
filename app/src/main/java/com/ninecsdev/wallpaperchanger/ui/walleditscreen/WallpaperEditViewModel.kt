@@ -1,11 +1,13 @@
 package com.ninecsdev.wallpaperchanger.ui.walleditscreen
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.matchesEditParams
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,6 +29,10 @@ class WallpaperEditViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: WallpaperRepository,
 ) : ViewModel() {
+
+    private companion object {
+        const val TAG = "WallpaperEditViewModel"
+    }
 
     private val wallpaperId: Long = checkNotNull(savedStateHandle["wallpaperId"])
 
@@ -52,6 +58,7 @@ class WallpaperEditViewModel @Inject constructor(
      * @param offsetX Normalized X offset (-1..1).
      * @param offsetY Normalized Y offset (-1..1).
      */
+    // TODO tests: see vault note tests/Busy-Flag Guard Tests
     fun save(zoom: Float, offsetX: Float, offsetY: Float) {
         val wp = _uiState.value.wallpaper ?: return
 
@@ -60,11 +67,22 @@ class WallpaperEditViewModel @Inject constructor(
             return
         }
 
+        // Clearing saveError here dismisses the banner: a retry is the only gesture the screen offers for it
         _uiState.update { it.copy(isSaving = true, saveError = false) }
 
         viewModelScope.launch {
-            repository.saveWallpaperEdit(wp, zoom, offsetX, offsetY)
-            _uiState.update { it.copy(isSaving = false, shouldExit = true) }
+            try {
+                repository.saveWallpaperEdit(wp, zoom, offsetX, offsetY)
+                _uiState.update { it.copy(shouldExit = true) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The edit is unsaved but the screen's gesture state survives, so the user can retry
+                Log.e(TAG, "Save wallpaper edit failed", e)
+                _uiState.update { it.copy(saveError = true) }
+            } finally {
+                _uiState.update { it.copy(isSaving = false) }
+            }
         }
     }
 
@@ -88,13 +106,15 @@ class WallpaperEditViewModel @Inject constructor(
     fun resetAndExit() {
         val wp = _uiState.value.wallpaper ?: return
         viewModelScope.launch {
-            repository.resetWallpaperEdit(wp)
-            _uiState.update { it.copy(shouldExit = true) }
+            try {
+                repository.resetWallpaperEdit(wp)
+                _uiState.update { it.copy(shouldExit = true) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Reset wallpaper edit failed", e)
+                _uiState.update { it.copy(saveError = true) }
+            }
         }
-    }
-
-    /** Clears the save error flag after the user dismisses it. */
-    fun clearError() {
-        _uiState.update { it.copy(saveError = false) }
     }
 }

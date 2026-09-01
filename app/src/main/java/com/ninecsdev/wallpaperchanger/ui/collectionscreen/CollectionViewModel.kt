@@ -17,6 +17,7 @@ import com.ninecsdev.wallpaperchanger.model.pinnedFirst
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 import com.ninecsdev.wallpaperchanger.ui.components.asPreviewStates
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -156,36 +157,26 @@ class CollectionViewModel @Inject constructor(
 
     private fun finalizeFolderCollection(name: String, rule: CropRule, onComplete: (shouldStartService: Boolean) -> Unit) {
         val uri = pendingFolderUri ?: return
-        viewModelScope.launch {
-            setProcessing(true)
-            try {
-                val shouldStartService = repository.createFolderCollection(name, uri, rule)
-                pendingFolderUri = null
-                onComplete(shouldStartService)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to create folder collection: ${e.message}")
-                _screenState.update { it.copy(createError = true) }
-            } finally {
-                setProcessing(false)
-            }
+        launchProcessing(
+            operation = "Create folder collection",
+            onFailure = { _screenState.update { it.copy(createError = true) } }
+        ) {
+            val shouldStartService = repository.createFolderCollection(name, uri, rule)
+            pendingFolderUri = null
+            onComplete(shouldStartService)
         }
     }
 
     private fun finalizeManualCollection(name: String, rule: CropRule, onComplete: (shouldStartService: Boolean) -> Unit) {
         if (pendingPhotosUris.isEmpty()) return
-        viewModelScope.launch {
-            setProcessing(true)
-            try {
-                val (shouldStartService, importResult) = repository.createManualCollection(name, pendingPhotosUris, rule)
-                pendingPhotosUris = emptyList()
-                _screenState.update { it.copy(importSummary = importResult) }
-                onComplete(shouldStartService)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to create manual collection: ${e.message}")
-                _screenState.update { it.copy(createError = true) }
-            } finally {
-                setProcessing(false)
-            }
+        launchProcessing(
+            operation = "Create manual collection",
+            onFailure = { _screenState.update { it.copy(createError = true) } }
+        ) {
+            val (shouldStartService, importResult) = repository.createManualCollection(name, pendingPhotosUris, rule)
+            pendingPhotosUris = emptyList()
+            _screenState.update { it.copy(importSummary = importResult) }
+            onComplete(shouldStartService)
         }
     }
 
@@ -239,10 +230,8 @@ class CollectionViewModel @Inject constructor(
     /** Manually re-syncs the **folder** collection currently open in the edit modal. */
     override fun syncEditingCollection() {
         val collection = editingCollection() ?: return
-        viewModelScope.launch {
-            setProcessing(true)
+        launchProcessing(operation = "Sync collection") {
             repository.syncCollection(collection.id)
-            setProcessing(false)
         }
     }
 
@@ -253,10 +242,8 @@ class CollectionViewModel @Inject constructor(
      */
     override fun restoreRemovedImages() {
         val collection = editingCollection() ?: return
-        viewModelScope.launch {
-            setProcessing(true)
+        launchProcessing(operation = "Restore removed images") {
             repository.restoreExcludedImages(collection.id)
-            setProcessing(false)
         }
     }
 
@@ -270,7 +257,7 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    /** Makes the given collection the active one (menu sibling of [setActiveEditingCollection]). */
+    /** Makes the given collection the active one */
     override fun setActiveCollection(collectionId: Long) {
         viewModelScope.launch {
             repository.setActiveCollection(collectionId)
@@ -307,6 +294,32 @@ class CollectionViewModel @Inject constructor(
 
     private fun setProcessing(loading: Boolean) {
         _screenState.update { it.copy(isProcessing = loading) }
+    }
+
+    /**
+     * Runs [block] behind the screen's processing overlay, clearing it however [block] ends.
+     * Failures are logged against [operation] and surfaced through [onFailure]; cancellation
+     * propagates
+     */
+    // TODO tests: see vault note tests/Busy-Flag Guard Tests
+    private fun launchProcessing(
+        operation: String,
+        onFailure: () -> Unit = {},
+        block: suspend () -> Unit
+    ) {
+        viewModelScope.launch {
+            setProcessing(true)
+            try {
+                block()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "$operation failed", e)
+                onFailure()
+            } finally {
+                setProcessing(false)
+            }
+        }
     }
 }
 
