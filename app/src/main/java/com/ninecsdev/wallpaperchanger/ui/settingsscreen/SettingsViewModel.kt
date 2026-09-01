@@ -19,6 +19,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -137,7 +138,7 @@ class SettingsViewModel @Inject constructor(
     // Null until every settings flow has emitted; the UI renders nothing until then so no
     // fabricated default can flash or animate to the real persisted value.
     // TODO tests: see vault note tests/ui-state-loading.md
-    val uiState: StateFlow<SettingsUiState?> = combine(
+    private val settingsState: Flow<SettingsUiState> = combine(
         appDataStore.screenOffDelayFlow(),
         appDataStore.startOnBootFlow(),
         appDataStore.compressionQualityHighFlow(),
@@ -164,21 +165,24 @@ class SettingsViewModel @Inject constructor(
             selectedLanguageTag = bundle.languageTag,
             appVersion = appVersion
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = null
-    )
+    }
 
-    // Kept out of [uiState] on purpose: it's a filesystem-derived display value, not a setting,
-    // and folding it into the combine would gate the whole screen's render on a directory walk.
-    val storageUsage: StateFlow<StorageUsage?> = flow {
+    // Merged into the state after it has its own initial value, never folded into the combine above
+    private val storageUsage: StateFlow<StorageUsage?> = flow {
         emit(imageInternalizer.getStorageUsage(context))
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
         initialValue = null
     )
+
+    val uiState: StateFlow<SettingsUiState?> =
+        combine(settingsState, storageUsage) { state, usage -> state.copy(storageUsage = usage) }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = null
+            )
 
     // Actions
 

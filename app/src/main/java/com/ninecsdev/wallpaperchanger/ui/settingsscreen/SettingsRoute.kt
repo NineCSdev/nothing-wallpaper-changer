@@ -36,7 +36,6 @@ fun SettingsRoute(onBack: () -> Unit) {
     val viewModel: SettingsViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val storageUsage by viewModel.storageUsage.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
     // Media-access and atmosphere-engine states have no system callback; re-check on every resume
@@ -76,7 +75,6 @@ fun SettingsRoute(onBack: () -> Unit) {
 
     SettingsScreen(
         uiState = loadedUiState,
-        storageUsage = storageUsage,
         actions = viewModel,
         onBackClick = onBack,
         onRequestMediaAccess = {

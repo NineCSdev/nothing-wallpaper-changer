@@ -57,7 +57,6 @@ import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 @Composable
 fun SettingsScreen(
     uiState: SettingsUiState,
-    storageUsage: StorageUsage?,
     actions: SettingsActions,
     onBackClick: () -> Unit,
     onRequestMediaAccess: () -> Unit,
@@ -262,7 +261,7 @@ fun SettingsScreen(
                     infoDialogBody = stringResource(R.string.settings_keep_local_copies_dialog_body)
                 )
 
-                StorageUsageRow(usage = storageUsage)
+                StorageUsageRow(usage = uiState.storageUsage)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -343,9 +342,9 @@ fun SettingsScreenPreview() {
                     LanguageOption("es", "Español", "Spanish")
                 ),
                 selectedLanguageTag = "",
-                appVersion = "0.3.3-beta"
+                appVersion = "0.3.3-beta",
+                storageUsage = StorageUsage(totalBytes = 148_897_792, fileCount = 87)
             ),
-            storageUsage = StorageUsage(totalBytes = 148_897_792, fileCount = 87),
             actions = PreviewSettingsActions,
             onBackClick = {},
             onRequestMediaAccess = {},
