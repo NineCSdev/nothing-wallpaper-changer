@@ -29,28 +29,38 @@ private const val SELECT_WALLPAPER_IMAGES = """
 """
 
 /**
+ * How many values one `IN (...)` statement is given. SQLite caps the bind variables a single
+ * statement may carry, so a query over a caller-sized list is split into runs of this length. Each
+ * method that needs the split owns it and runs its statements in one transaction, so the length of
+ * a caller's list is never that caller's problem.
+ *
+ * Deliberately well under the cap (32766) so this could be raised.
+ */
+private const val BIND_CHUNK_SIZE = 900
+
+/**
  * Data Access Object for Wallpaper and Collection operations.
  */
 @Dao
-interface WallpaperDao {
+abstract class WallpaperDao {
 
     // Collection CRUD and operations
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertCollection(collection: WallpaperCollection): Long
+    abstract suspend fun insertCollection(collection: WallpaperCollection): Long
 
     @Query("SELECT * FROM collections ORDER BY lastUsedAt DESC")
-    fun observeAllCollections(): Flow<List<WallpaperCollection>>
+    abstract fun observeAllCollections(): Flow<List<WallpaperCollection>>
 
     @Query("SELECT * FROM collections WHERE id = :collectionId LIMIT 1")
-    suspend fun getCollectionById(collectionId: Long): WallpaperCollection?
+    abstract suspend fun getCollectionById(collectionId: Long): WallpaperCollection?
 
     @Query("SELECT * FROM collections WHERE isActive = 1 LIMIT 1")
-    suspend fun getActiveCollection(): WallpaperCollection?
+    abstract suspend fun getActiveCollection(): WallpaperCollection?
 
     /** Flow sibling of [getActiveCollection]; re-emits whenever the active collection changes. */
     @Query("SELECT * FROM collections WHERE isActive = 1 LIMIT 1")
-    fun observeActiveCollection(): Flow<WallpaperCollection?>
+    abstract fun observeActiveCollection(): Flow<WallpaperCollection?>
 
     /**
      * How many collections are backed by the folder [rootUri]. Guards the persisted-grant release:
@@ -58,19 +68,19 @@ interface WallpaperDao {
      * this reaches zero.
      */
     @Query("SELECT COUNT(*) FROM collections WHERE rootUri = :rootUri")
-    suspend fun countCollectionsWithRootUri(rootUri: Uri): Int
+    abstract suspend fun countCollectionsWithRootUri(rootUri: Uri): Int
 
     /** All folder root uris across collections (manual collections' null roots excluded). */
     @Query("SELECT rootUri FROM collections WHERE rootUri IS NOT NULL")
-    suspend fun getAllRootUris(): List<Uri>
+    abstract suspend fun getAllRootUris(): List<Uri>
 
     /** The app-owned Favourites collection, or null if it hasn't been created yet. */
     @Query("SELECT * FROM collections WHERE isFavorites = 1 LIMIT 1")
-    suspend fun getFavoritesCollection(): WallpaperCollection?
+    abstract suspend fun getFavoritesCollection(): WallpaperCollection?
 
     /** Updates the name, default crop rule and rotation setting of a collection. */
     @Query("UPDATE collections SET name = :newName, defaultCropRule = :newRule, rotationPolicy = :newPolicy WHERE id = :collectionId")
-    suspend fun updateCollection(
+    abstract suspend fun updateCollection(
         collectionId: Long,
         newName: String,
         newRule: CropRule,
@@ -80,7 +90,7 @@ interface WallpaperDao {
     /** Toggles the active collection atomically and zeroes last rotation time*/
     // TODO tests: see vault note tests/Collection Switch Rotation Gate Tests.md
     @Transaction
-    suspend fun setActiveCollection(collectionId: Long) {
+    open suspend fun setActiveCollection(collectionId: Long) {
         resetActiveCollection()
         markCollectionActive(collectionId)
         updateLastUsed(collectionId)
@@ -89,32 +99,32 @@ interface WallpaperDao {
 
     /** Sets the user-controlled pin flag (pinned collections sort first in every collection grid). */
     @Query("UPDATE collections SET isPinned = :pinned WHERE id = :collectionId")
-    suspend fun setCollectionPinned(collectionId: Long, pinned: Boolean)
+    abstract suspend fun setCollectionPinned(collectionId: Long, pinned: Boolean)
 
     @Query("UPDATE collections SET lastWallpaperChangeAt = :timestamp WHERE id = :collectionId")
-    suspend fun updateLastWallpaperChangeAt(collectionId: Long, timestamp: Long = System.currentTimeMillis())
+    abstract suspend fun updateLastWallpaperChangeAt(collectionId: Long, timestamp: Long = System.currentTimeMillis())
 
     @Delete
-    suspend fun deleteCollection(collection: WallpaperCollection)
+    abstract suspend fun deleteCollection(collection: WallpaperCollection)
 
     // Helper functions for setActiveCollection()
     @Query("UPDATE collections SET isActive = 0")
-    suspend fun resetActiveCollection()
+    abstract suspend fun resetActiveCollection()
 
     @Query("UPDATE collections SET isActive = 1 WHERE id = :collectionId")
-    suspend fun markCollectionActive(collectionId: Long)
+    abstract suspend fun markCollectionActive(collectionId: Long)
 
     @Query("UPDATE collections SET lastUsedAt = :timestamp WHERE id = :collectionId")
-    suspend fun updateLastUsed(collectionId: Long, timestamp: Long = System.currentTimeMillis())
+    abstract suspend fun updateLastUsed(collectionId: Long, timestamp: Long = System.currentTimeMillis())
 
     // File registry (wallpaper_files) CRUD
 
     /** Inserts a file row. `uri` is unique; on conflict returns -1 (use [getOrCreateFile]). */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertFile(file: WallpaperFile): Long
+    abstract suspend fun insertFile(file: WallpaperFile): Long
 
     @Query("SELECT * FROM wallpaper_files WHERE uri = :uri LIMIT 1")
-    suspend fun getFileByUri(uri: Uri): WallpaperFile?
+    abstract suspend fun getFileByUri(uri: Uri): WallpaperFile?
 
     /**
      * Returns the id of the file row for [uri], creating it if absent. Dedups shared images so the
@@ -125,7 +135,7 @@ interface WallpaperDao {
      * must not keep excluding it from rotation.
      */
     @Transaction
-    suspend fun getOrCreateFile(uri: Uri, sourceType: SourceType, addedAt: Long): Long {
+    open suspend fun getOrCreateFile(uri: Uri, sourceType: SourceType, addedAt: Long): Long {
         val inserted = insertFile(WallpaperFile(uri = uri, sourceType = sourceType, addedAt = addedAt))
         if (inserted != -1L) return inserted
         val existing = getFileByUri(uri)!!
@@ -135,27 +145,32 @@ interface WallpaperDao {
 
     /** File rows referenced by no join row. */
     @Query("SELECT * FROM wallpaper_files WHERE id NOT IN (SELECT DISTINCT fileId FROM wallpapers)")
-    suspend fun getOrphanFiles(): List<WallpaperFile>
+    abstract suspend fun getOrphanFiles(): List<WallpaperFile>
 
     /** All uris of the given source type. */
     @Query("SELECT uri FROM wallpaper_files WHERE sourceType = :type")
-    suspend fun getFileUrisBySourceType(type: SourceType): List<Uri>
+    abstract suspend fun getFileUrisBySourceType(type: SourceType): List<Uri>
 
     /** All file rows of the given source type. */
     @Query("SELECT * FROM wallpaper_files WHERE sourceType = :type")
-    suspend fun getFilesBySourceType(type: SourceType): List<WallpaperFile>
+    abstract suspend fun getFilesBySourceType(type: SourceType): List<WallpaperFile>
 
     /** Reactive count of files of the given source type. Drives the main screen's "photo access revoked" banner. */
     @Query("SELECT COUNT(*) FROM wallpaper_files WHERE sourceType = :type")
-    fun observeFileCountBySourceType(type: SourceType): Flow<Int>
+    abstract fun observeFileCountBySourceType(type: SourceType): Flow<Int>
 
     /** Toggles a file's availability. */
     @Query("UPDATE wallpaper_files SET isAvailable = :available WHERE id = :fileId")
-    suspend fun setFileAvailability(fileId: Long, available: Boolean)
+    abstract suspend fun setFileAvailability(fileId: Long, available: Boolean)
 
-    /** Bulk sibling of [setFileAvailability]; callers chunk [fileIds] to respect SQLite bind limits. */
+    /** Bulk sibling of [setFileAvailability]. [fileIds] may be of any length. */
+    @Transaction
+    open suspend fun setFilesAvailability(fileIds: List<Long>, available: Boolean) {
+        fileIds.chunked(BIND_CHUNK_SIZE).forEach { setFilesAvailabilityChunk(it, available) }
+    }
+
     @Query("UPDATE wallpaper_files SET isAvailable = :available WHERE id IN (:fileIds)")
-    suspend fun setFilesAvailability(fileIds: List<Long>, available: Boolean)
+    protected abstract suspend fun setFilesAvailabilityChunk(fileIds: List<Long>, available: Boolean)
 
     /**
      * Repoints a file row to a freshly picked source and restores it to available. Used to re-link
@@ -164,7 +179,7 @@ interface WallpaperDao {
      * Note: Caller must guarantee [uri] isn't already held by a different file row (uri is unique).
      */
     @Query("UPDATE wallpaper_files SET uri = :uri, sourceType = :sourceType, isAvailable = 1 WHERE id = :fileId")
-    suspend fun rebindFile(fileId: Long, uri: Uri, sourceType: SourceType)
+    abstract suspend fun rebindFile(fileId: Long, uri: Uri, sourceType: SourceType)
 
     /**
      * Merge step for re-link when the picked uri already exists as a different file row: drops the
@@ -173,36 +188,43 @@ interface WallpaperDao {
      * membership wins; the unavailable duplicate is discarded.
      */
     @Query("DELETE FROM wallpapers WHERE fileId = :oldFileId AND collectionId IN (SELECT collectionId FROM wallpapers WHERE fileId = :newFileId)")
-    suspend fun deleteJoinRowsDuplicatedByMerge(oldFileId: Long, newFileId: Long)
+    abstract suspend fun deleteJoinRowsDuplicatedByMerge(oldFileId: Long, newFileId: Long)
 
     /** Merge step for re-link: moves the old file's remaining join rows onto the existing file row. */
     @Query("UPDATE wallpapers SET fileId = :newFileId WHERE fileId = :oldFileId")
-    suspend fun repointJoinRows(oldFileId: Long, newFileId: Long)
+    abstract suspend fun repointJoinRows(oldFileId: Long, newFileId: Long)
+
+    /** Deletes the given file rows. [ids] may be of any length. */
+    @Transaction
+    open suspend fun deleteFilesByIds(ids: List<Long>) {
+        ids.chunked(BIND_CHUNK_SIZE).forEach { deleteFilesByIdsChunk(it) }
+    }
 
     @Query("DELETE FROM wallpaper_files WHERE id IN (:ids)")
-    suspend fun deleteFilesByIds(ids: List<Long>)
+    protected abstract suspend fun deleteFilesByIdsChunk(ids: List<Long>)
 
     // Wallpaper (join) CRUD and operations
 
     /** Inserts join rows; duplicates are ignored via the unique index. */
+    // An insert binds one row at a time, so the per-statement cap behind BIND_CHUNK_SIZE does not reach this path.
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertWallpapers(wallpapers: List<Wallpaper>)
+    abstract suspend fun insertWallpapers(wallpapers: List<Wallpaper>)
 
     /** Flow of images for a collection, sorted newest-first (used in UI). */
     @Query("$SELECT_WALLPAPER_IMAGES WHERE w.collectionId = :collectionId ORDER BY w.addedAt DESC")
-    fun observeImagesForCollection(collectionId: Long): Flow<List<WallpaperImage>>
+    abstract fun observeImagesForCollection(collectionId: Long): Flow<List<WallpaperImage>>
 
     /** Direct snapshot of images of a collection for background processing (used in Service/Repository). */
     @Query("$SELECT_WALLPAPER_IMAGES WHERE w.collectionId = :collectionId")
-    suspend fun getImagesForCollectionOnce(collectionId: Long): List<WallpaperImage>
+    abstract suspend fun getImagesForCollectionOnce(collectionId: Long): List<WallpaperImage>
 
     /** Flow of the newest few images for a collection, used to build the grid preview reactively. */
     @Query("$SELECT_WALLPAPER_IMAGES WHERE w.collectionId = :collectionId ORDER BY w.addedAt DESC LIMIT :limit")
-    fun observePreviewImages(collectionId: Long, limit: Int): Flow<List<WallpaperImage>>
+    abstract fun observePreviewImages(collectionId: Long, limit: Int): Flow<List<WallpaperImage>>
 
     /** Flow of the image count for a collection. */
     @Query("SELECT COUNT(*) FROM wallpapers WHERE collectionId = :collectionId")
-    fun observeImageCount(collectionId: Long): Flow<Int>
+    abstract fun observeImageCount(collectionId: Long): Flow<Int>
 
     /**
      * Reactive sibling of [observeImagesForCollection] that excludes files marked unavailable.
@@ -210,21 +232,21 @@ interface WallpaperDao {
      * magazine so self-heal never selects a source that's already known to be unreadable.
      */
     @Query("$SELECT_WALLPAPER_IMAGES WHERE w.collectionId = :collectionId AND f.isAvailable = 1")
-    fun observeAvailableImagesForCollection(collectionId: Long): Flow<List<WallpaperImage>>
+    abstract fun observeAvailableImagesForCollection(collectionId: Long): Flow<List<WallpaperImage>>
 
     /**
      * Wallpapers in [collectionId] whose backing file is marked unavailable — candidates for a
      * re-probe (collection screen open, folder sync) that may clear the flag if readable again.
      */
     @Query("$SELECT_WALLPAPER_IMAGES WHERE w.collectionId = :collectionId AND f.isAvailable = 0")
-    suspend fun getUnavailableImagesForCollection(collectionId: Long): List<WallpaperImage>
+    abstract suspend fun getUnavailableImagesForCollection(collectionId: Long): List<WallpaperImage>
 
     /**
      * Returns only the folder-sourced images for a collection ([SourceType.FOLDER_DOC]).
      * Used during folder sync to compute diffs without touching manually added/re-linked images
      */
     @Query("$SELECT_WALLPAPER_IMAGES WHERE w.collectionId = :collectionId AND w.isManuallyAdded = 0 AND f.sourceType = :sourceType")
-    suspend fun getFolderImagesForCollection(
+    abstract suspend fun getFolderImagesForCollection(
         collectionId: Long,
         sourceType: SourceType = SourceType.FOLDER_DOC
     ): List<WallpaperImage>
@@ -232,13 +254,24 @@ interface WallpaperDao {
     /**
      * Join rows in [collectionId] whose file is one of [fileIds]. Used by cross-collection
      * transfers to detect duplicates (the target already has the file) before inserting.
+     * [fileIds] may be of any length.
      */
+    @Transaction
+    open suspend fun getWallpapersInCollectionForFiles(
+        collectionId: Long,
+        fileIds: List<Long>
+    ): List<Wallpaper> =
+        fileIds.chunked(BIND_CHUNK_SIZE).flatMap { getWallpapersInCollectionForFilesChunk(collectionId, it) }
+
     @Query("SELECT * FROM wallpapers WHERE collectionId = :collectionId AND fileId IN (:fileIds)")
-    suspend fun getWallpapersInCollectionForFiles(collectionId: Long, fileIds: List<Long>): List<Wallpaper>
+    protected abstract suspend fun getWallpapersInCollectionForFilesChunk(
+        collectionId: Long,
+        fileIds: List<Long>
+    ): List<Wallpaper>
 
     /** Fetches a single wallpaper by ID. */
     @Query("$SELECT_WALLPAPER_IMAGES WHERE w.id = :wallpaperId LIMIT 1")
-    suspend fun getWallpaperById(wallpaperId: Long): WallpaperImage?
+    abstract suspend fun getWallpaperById(wallpaperId: Long): WallpaperImage?
 
     /** Persists the edit parameters for a wallpaper. */
     @Query("""
@@ -246,7 +279,7 @@ interface WallpaperDao {
         SET editZoom = :zoom, editOffsetX = :offsetX, editOffsetY = :offsetY
         WHERE id = :wallpaperId
     """)
-    suspend fun updateWallpaperEdit(
+    abstract suspend fun updateWallpaperEdit(
         wallpaperId: Long,
         zoom: Float?,
         offsetX: Float?,
@@ -254,20 +287,31 @@ interface WallpaperDao {
     )
 
     @Query("DELETE FROM wallpapers WHERE id = :wallpaperId")
-    suspend fun deleteImageById(wallpaperId: Long)
+    abstract suspend fun deleteImageById(wallpaperId: Long)
+
+    /** Deletes the given join rows. [ids] may be of any length. */
+    @Transaction
+    open suspend fun deleteImagesByIds(ids: List<Long>) {
+        ids.chunked(BIND_CHUNK_SIZE).forEach { deleteImagesByIdsChunk(it) }
+    }
 
     @Query("DELETE FROM wallpapers WHERE id IN (:ids)")
-    suspend fun deleteImagesByIds(ids: List<Long>)
+    protected abstract suspend fun deleteImagesByIdsChunk(ids: List<Long>)
 
     // Favourites (memberships of the system collection, keyed by fileId)
 
     /** Reactive set of file ids that have a membership in the Favourites collection. */
     @Query("SELECT DISTINCT w.fileId FROM wallpapers w JOIN collections c ON w.collectionId = c.id WHERE c.isFavorites = 1")
-    fun observeFavoriteFileIds(): Flow<List<Long>>
+    abstract fun observeFavoriteFileIds(): Flow<List<Long>>
 
-    /** Removes the Favourites membership (unfavourite) for the given files. */
+    /** Removes the Favourites membership (unfavourite) for the given files. [fileIds] may be of any length. */
+    @Transaction
+    open suspend fun deleteJoinRowsForFiles(collectionId: Long, fileIds: List<Long>) {
+        fileIds.chunked(BIND_CHUNK_SIZE).forEach { deleteJoinRowsForFilesChunk(collectionId, it) }
+    }
+
     @Query("DELETE FROM wallpapers WHERE collectionId = :collectionId AND fileId IN (:fileIds)")
-    suspend fun deleteJoinRowsForFiles(collectionId: Long, fileIds: List<Long>)
+    protected abstract suspend fun deleteJoinRowsForFilesChunk(collectionId: Long, fileIds: List<Long>)
 
     // Folder exclusions
 
@@ -276,25 +320,30 @@ interface WallpaperDao {
      * an already-excluded uri can't be a member (invariant).
      */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertExclusions(exclusions: List<FolderExclusion>)
+    abstract suspend fun insertExclusions(exclusions: List<FolderExclusion>)
 
     /** All exclusion tombstones of a collection (sync reads these to filter re-adds). */
     @Query("SELECT * FROM folder_exclusions WHERE collectionId = :collectionId")
-    suspend fun getExclusionsForCollection(collectionId: Long): List<FolderExclusion>
+    abstract suspend fun getExclusionsForCollection(collectionId: Long): List<FolderExclusion>
 
     /** Reactive exclusion count; drives the "Restore removed images (N)" row in the edit card. */
     @Query("SELECT COUNT(*) FROM folder_exclusions WHERE collectionId = :collectionId")
-    fun observeExclusionCount(collectionId: Long): Flow<Int>
+    abstract fun observeExclusionCount(collectionId: Long): Flow<Int>
 
     /** Wipes every exclusion of a collection (the "Restore removed images" bulk action). */
     @Query("DELETE FROM folder_exclusions WHERE collectionId = :collectionId")
-    suspend fun deleteExclusionsForCollection(collectionId: Long)
+    abstract suspend fun deleteExclusionsForCollection(collectionId: Long)
 
     /**
      * Clears exclusions matching the given uris, the add-path half of the invariant that a uri is
-     * never both excluded from and a member of the same collection. Callers chunk [uris].
+     * never both excluded from and a member of the same collection. [uris] may be of any length.
      */
+    @Transaction
+    open suspend fun deleteExclusionsForUris(collectionId: Long, uris: List<Uri>) {
+        uris.chunked(BIND_CHUNK_SIZE).forEach { deleteExclusionsForUrisChunk(collectionId, it) }
+    }
+
     @Query("DELETE FROM folder_exclusions WHERE collectionId = :collectionId AND uri IN (:uris)")
-    suspend fun deleteExclusionsForUris(collectionId: Long, uris: List<Uri>)
+    protected abstract suspend fun deleteExclusionsForUrisChunk(collectionId: Long, uris: List<Uri>)
 
 }

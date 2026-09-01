@@ -70,9 +70,6 @@ class WallpaperRepository @Inject constructor(
 ) {
     private companion object {
         const val TAG = "WallpaperRepository"
-
-        /** Kept well under SQLite's per-statement bind-variable limit for chunked IN(...) ops. */
-        const val SYNC_CHUNK_SIZE = 900
     }
 
     // UI Data Access (Flows)
@@ -240,9 +237,7 @@ class WallpaperRepository @Inject constructor(
         database.withTransaction {
             // Invariant: a uri is never both excluded from and a member of the same collection
             // adding one back, drops its tombstone.
-            files.map { it.first }.distinct().chunked(SYNC_CHUNK_SIZE).forEach {
-                dao.deleteExclusionsForUris(collectionId, it)
-            }
+            dao.deleteExclusionsForUris(collectionId, files.map { it.first }.distinct())
             val rows = files.map { (uri, sourceType) ->
                 val fileId = dao.getOrCreateFile(uri, sourceType, now)
                 Wallpaper(
@@ -252,7 +247,7 @@ class WallpaperRepository @Inject constructor(
                     addedAt = now
                 )
             }
-            rows.chunked(SYNC_CHUNK_SIZE).forEach { dao.insertWallpapers(it) }
+            dao.insertWallpapers(rows)
         }
     }
 
@@ -289,10 +284,8 @@ class WallpaperRepository @Inject constructor(
             val markManuallyAdded = target.type == CollectionType.FOLDER
 
             database.withTransaction {
-                val existingByFileId = images.map { it.fileId }
-                    .distinct()
-                    .chunked(SYNC_CHUNK_SIZE)
-                    .flatMap { dao.getWallpapersInCollectionForFiles(targetCollectionId, it) }
+                val existingByFileId =
+                    dao.getWallpapersInCollectionForFiles(targetCollectionId, images.map { it.fileId }.distinct())
                     .associateBy { it.fileId }
 
                 val now = System.currentTimeMillis()
@@ -324,15 +317,13 @@ class WallpaperRepository @Inject constructor(
                     }
                 }
 
-                newRows.chunked(SYNC_CHUNK_SIZE).forEach { dao.insertWallpapers(it) }
+                dao.insertWallpapers(newRows)
                 if (markManuallyAdded) {
-                    images.map { it.uri }.distinct().chunked(SYNC_CHUNK_SIZE).forEach {
-                        dao.deleteExclusionsForUris(targetCollectionId, it)
-                    }
+                    dao.deleteExclusionsForUris(targetCollectionId, images.map { it.uri }.distinct())
                 }
                 if (removeFromSource) {
                     excludeRemovedFolderImages(images)
-                    images.map { it.id }.chunked(SYNC_CHUNK_SIZE).forEach { dao.deleteImagesByIds(it) }
+                    dao.deleteImagesByIds(images.map { it.id })
                 }
                 TransferResult(transferred, alreadyPresent)
             }
@@ -362,7 +353,7 @@ class WallpaperRepository @Inject constructor(
                         addedAt = now
                     )
                 }
-                rows.chunked(SYNC_CHUNK_SIZE).forEach { dao.insertWallpapers(it) }
+                dao.insertWallpapers(rows)
             }
         }
     }
@@ -398,9 +389,7 @@ class WallpaperRepository @Inject constructor(
 
         withContext(Dispatchers.IO) {
             val favoritesId = dao.getFavoritesCollection()?.id ?: return@withContext
-            database.withTransaction {
-                fileIds.chunked(SYNC_CHUNK_SIZE).forEach { dao.deleteJoinRowsForFiles(favoritesId, it) }
-            }
+            dao.deleteJoinRowsForFiles(favoritesId, fileIds)
             gcOrphanFiles()
         }
     }
@@ -579,8 +568,7 @@ class WallpaperRepository @Inject constructor(
 
             val existing = dao.getFolderImagesForCollection(collectionId)
             val (staleIds, newUris) = computeFolderSyncDiff(existing, freshUris, excludedUris)
-            // Chunked to stay under SQLite's per-statement bind-variable limit on large folders.
-            staleIds.chunked(SYNC_CHUNK_SIZE).forEach { dao.deleteImagesByIds(it) }
+            dao.deleteImagesByIds(staleIds)
 
             val now = System.currentTimeMillis()
             val rows = newUris.map { uri ->
@@ -593,8 +581,7 @@ class WallpaperRepository @Inject constructor(
                     addedAt = now
                 )
             }
-            // Chunked to stay under SQLite's per-statement bind-variable limit on large folders.
-            rows.chunked(SYNC_CHUNK_SIZE).forEach { dao.insertWallpapers(it) }
+            dao.insertWallpapers(rows)
             newUris.size
         }
         // Removing stale join rows may orphan file rows, so orphan cleanup runs once the diff commits.
@@ -643,7 +630,7 @@ class WallpaperRepository @Inject constructor(
         withContext(Dispatchers.IO) {
             database.withTransaction {
                 excludeRemovedFolderImages(images)
-                images.map { it.id }.chunked(SYNC_CHUNK_SIZE).forEach { dao.deleteImagesByIds(it) }
+                dao.deleteImagesByIds(images.map { it.id })
             }
             gcOrphanFiles()
         }
@@ -666,10 +653,9 @@ class WallpaperRepository @Inject constructor(
             .groupBy { it.collectionId }
             .forEach { (collectionId, members) ->
                 if (dao.getCollectionById(collectionId)?.type != CollectionType.FOLDER) return@forEach
-                members
-                    .map { FolderExclusion(collectionId = collectionId, uri = it.uri, editParams = it.editParams, excludedAt = now) }
-                    .chunked(SYNC_CHUNK_SIZE)
-                    .forEach { dao.insertExclusions(it) }
+                dao.insertExclusions(
+                    members.map { FolderExclusion(collectionId = collectionId, uri = it.uri, editParams = it.editParams, excludedAt = now) }
+                )
             }
     }
 
@@ -706,7 +692,7 @@ class WallpaperRepository @Inject constructor(
     private suspend fun gcOrphanFiles() {
         val orphans = database.withTransaction {
             val found = dao.getOrphanFiles()
-            found.map { it.id }.chunked(SYNC_CHUNK_SIZE).forEach { dao.deleteFilesByIds(it) }
+            dao.deleteFilesByIds(found.map { it.id })
             found
         }
         orphans.forEach { file ->
@@ -763,10 +749,7 @@ class WallpaperRepository @Inject constructor(
             if (references.isEmpty()) return@withContext
 
             if (!wallpaperSources.hasMediaAccess()) {
-                references.filter { it.isAvailable }
-                    .map { it.id }
-                    .chunked(SYNC_CHUNK_SIZE)
-                    .forEach { dao.setFilesAvailability(it, false) }
+                dao.setFilesAvailability(references.filter { it.isAvailable }.map { it.id }, false)
                 Log.w(TAG, "READ_MEDIA_IMAGES missing; ${references.size} MediaStore reference(s) marked unavailable")
                 return@withContext
             }
@@ -781,8 +764,8 @@ class WallpaperRepository @Inject constructor(
             val lost = idsByFile.filter { (file, id) -> file.isAvailable && id !in existing }.map { it.first.id }
             val recovered = idsByFile.filter { (file, id) -> !file.isAvailable && id in existing }.map { it.first.id }
 
-            lost.chunked(SYNC_CHUNK_SIZE).forEach { dao.setFilesAvailability(it, false) }
-            recovered.chunked(SYNC_CHUNK_SIZE).forEach { dao.setFilesAvailability(it, true) }
+            dao.setFilesAvailability(lost, false)
+            dao.setFilesAvailability(recovered, true)
             if (lost.isNotEmpty() || recovered.isNotEmpty()) {
                 Log.d(TAG, "MediaStore sweep: ${lost.size} lost, ${recovered.size} recovered")
             }
