@@ -4,6 +4,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.room.withTransaction
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.data.local.CollectionPreview
 import com.ninecsdev.wallpaperchanger.data.local.AppDatabase
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperDao
 import com.ninecsdev.wallpaperchanger.data.source.FolderScanner
@@ -23,6 +24,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -90,6 +92,9 @@ class WallpaperRepository @Inject constructor(
 ) {
     private companion object {
         const val TAG = "WallpaperRepository"
+
+        /** Thumbnails a collection grid item draws (one 2x2 tile). */
+        const val GRID_PREVIEW_LIMIT = 4
     }
 
     // UI Data Access (Flows)
@@ -119,13 +124,23 @@ class WallpaperRepository @Inject constructor(
     /** The active collection itself, re-emitting on every change to its row — identity *and* name. */
     fun activeCollectionFlow(): Flow<WallpaperCollection?> = dao.observeActiveCollection()
 
-    /** Preview thumbnails (newest first) for a collection's grid item, observed reactively. */
-    fun observePreviewImages(collectionId: Long, limit: Int = 4): Flow<List<WallpaperImage>> =
-        dao.observePreviewImages(collectionId, limit)
-
-    /** Total image count for a collection's grid item, observed reactively. */
-    fun observeImageCount(collectionId: Long): Flow<Int> =
-        dao.observeImageCount(collectionId)
+    /**
+     * Every collection's grid preview ([GRID_PREVIEW_LIMIT] thumbnails and its image count) as one reactive map.
+     *
+     * Two aggregate queries, not two per collection so cost doesn't scale with number of collections.
+     *
+     * **A collection with no images is absent from the map**.
+     */
+    // TODO tests: see vault note tests/Collection Picker Tests.md
+    fun observeCollectionPreviews(): Flow<Map<Long, CollectionPreview>> =
+        combine(
+            dao.observePreviewUrisByCollection(GRID_PREVIEW_LIMIT),
+            dao.observeImageCountsByCollection()
+        ) { urisByCollection, countsByCollection ->
+            countsByCollection.mapValues { (collectionId, count) ->
+                CollectionPreview(urisByCollection[collectionId].orEmpty(), count)
+            }
+        }
 
     /**
      * Reactive set of file ids that are favourited (have a membership in the system Favourites

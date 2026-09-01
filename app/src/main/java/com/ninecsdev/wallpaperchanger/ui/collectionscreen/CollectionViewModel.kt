@@ -15,7 +15,7 @@ import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.pinnedFirst
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
-import com.ninecsdev.wallpaperchanger.ui.components.collectionPreviewsFlow
+import com.ninecsdev.wallpaperchanger.ui.components.asPreviewStates
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -58,9 +58,9 @@ class CollectionViewModel @Inject constructor(
     /** Modal/processing state managed by this screen. */
     private val _screenState = MutableStateFlow(ScreenModalState())
 
-    /** Grid previews, derived reactively from the DB (see [collectionPreviewsFlow]). */
+    /** Grid previews, derived reactively from the DB (see [WallpaperRepository.observeCollectionPreviews]). */
     private val previewsFlow: Flow<Map<Long, CollectionPreviewState>> =
-        repository.collectionPreviewsFlow()
+        repository.observeCollectionPreviews().map { it.asPreviewStates() }
 
     /** Everything the edit modal needs beyond the collection row itself. */
     private data class ModalInputs(

@@ -13,7 +13,7 @@ import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.pinnedFirst
-import com.ninecsdev.wallpaperchanger.ui.components.collectionPreviewsFlow
+import com.ninecsdev.wallpaperchanger.ui.components.asPreviewStates
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -98,9 +98,9 @@ class MainViewModel @Inject constructor(
                 combine(
                     repository.getAllCollections()
                         .map { it.sortedByDescending { coll -> coll.lastUsedAt }.pinnedFirst() },
-                    repository.collectionPreviewsFlow()
+                    repository.observeCollectionPreviews()
                 ) { collections, previews ->
-                    CollectionPickerSheetState(isOpen = true, collections = collections, previewStates = previews)
+                    CollectionPickerSheetState(isOpen = true, collections = collections, previewStates = previews.asPreviewStates())
                 }
             }
         }

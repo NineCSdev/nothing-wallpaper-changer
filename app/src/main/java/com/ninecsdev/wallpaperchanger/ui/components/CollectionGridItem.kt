@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.data.local.CollectionPreview
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
@@ -48,6 +49,15 @@ data class CollectionPreviewState(
     val previewUris: List<Uri> = emptyList(),
     val totalCount: Int = 0
 )
+
+/**
+ * The data layer's preview projection as grid-item state.
+ *
+ * A collection the data layer had no row for (it holds no images) keeps no entry here either
+ * every call site already reads a missing key as [CollectionPreviewState]'s default.
+ */
+fun Map<Long, CollectionPreview>.asPreviewStates(): Map<Long, CollectionPreviewState> =
+    mapValues { (_, preview) -> CollectionPreviewState(preview.previewUris, preview.imageCount) }
 
 /**
  * A square grid item representing a wallpaper collection.

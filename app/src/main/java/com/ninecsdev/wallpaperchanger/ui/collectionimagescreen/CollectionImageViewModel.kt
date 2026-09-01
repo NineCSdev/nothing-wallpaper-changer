@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.RelinkResult
+import com.ninecsdev.wallpaperchanger.data.local.CollectionPreview
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.pinnedFirst
@@ -188,24 +189,26 @@ class CollectionImageViewModel @Inject constructor(
     /**
      * Opens the transfer target picker for the current selection. Destinations are a one-shot
      * snapshot of every other collection with a few preview thumbnails (the dialog is static;
-     * no need to keep observing while it's open).
+     * no need to keep observing while it is open), taken off the same preview flow the grids
+     * observe.
      */
     override fun requestTransfer(mode: TransferMode) {
         if (_uiState.value.selectedIds.isEmpty()) return
         viewModelScope.launch {
+            val previews = repository.observeCollectionPreviews().first()
             val targets = repository.getAllCollections().first()
                 // Favourites collection is excluded as a transfer target
                 .filter { it.id != collectionId && !it.isFavorites }
                 .sortedByDescending { it.lastUsedAt }
                 .pinnedFirst()
                 .map { collection ->
+                    // An empty collection has no preview row; it is still a valid target.
+                    val preview = previews[collection.id] ?: CollectionPreview()
                     TransferTarget(
                         collectionId = collection.id,
                         name = collection.name,
-                        previewUris = repository.observePreviewImages(collection.id, limit = 4)
-                            .first()
-                            .map { it.uri },
-                        imageCount = repository.observeImageCount(collection.id).first(),
+                        previewUris = preview.previewUris,
+                        imageCount = preview.imageCount,
                         isPinned = collection.isPinned
                     )
                 }
