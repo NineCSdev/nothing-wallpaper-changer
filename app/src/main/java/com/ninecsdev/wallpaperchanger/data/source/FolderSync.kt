@@ -14,8 +14,8 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
  * scan never reaches here (see [FolderScanner.scan]). A genuinely empty folder still returns
  * everything as stale.
  *
- * @return A Pair where the first element is a list of join-row IDs to delete (stale), and the
- * second element is a list of new URIs to register and link.
+ * @return A Pair where the first element is the stale images, whose memberships are to be removed,
+ * and the second element is a list of new URIs to register and link.
  */
 // TODO: add tests, check "WallpaperSources Tests" and "tests/Folder Exclusions Tests" vault notes
 //  (blocked on JVM: WallpaperImage.uri is android.net.Uri)
@@ -23,11 +23,11 @@ fun computeFolderSyncDiff(
     existing: List<WallpaperImage>,
     fresh: List<Uri>,
     excluded: Set<Uri> = emptySet()
-): Pair<List<Long>, List<Uri>> {
+): Pair<List<WallpaperImage>, List<Uri>> {
     val freshUris = fresh.toSet()
     val existingUris = existing.map { it.uri }.toSet()
     return Pair(
-        existing.filter { it.uri !in freshUris }.map { it.id },
+        existing.filter { it.uri !in freshUris },
         fresh.filter { it !in existingUris && it !in excluded }
     )
 }

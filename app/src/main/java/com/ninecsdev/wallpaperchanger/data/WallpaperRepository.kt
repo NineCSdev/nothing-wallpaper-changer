@@ -19,6 +19,7 @@ import com.ninecsdev.wallpaperchanger.model.FolderExclusion
 import com.ninecsdev.wallpaperchanger.model.Wallpaper
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -47,6 +48,25 @@ enum class RelinkResult { RELINKED, MERGED, FAILED }
  * target (for a move, their source rows are still removed).
  */
 data class TransferResult(val transferred: Int = 0, val alreadyPresent: Int = 0)
+
+/**
+ * One membership about to be created, as [WallpaperRepository.linkMemberships] wants it.
+ *
+ * [uri] is always present. [fileId] is null only when the file may not be registered yet and has to be
+ * resolved from [uri] and [sourceType]. A caller that already holds a registered file passes it.
+ */
+private data class MembershipDraft(
+    val uri: Uri,
+    val sourceType: SourceType,
+    val fileId: Long? = null,
+    val editParams: EditParams? = null
+)
+
+/** Draft linking this image's file, and its edit, into another collection. */
+private fun WallpaperImage.asDraft() = MembershipDraft(uri, sourceType, fileId, editParams)
+
+/** Drafts for freshly acquired sources, whose files may not be registered yet. */
+private fun List<Pair<Uri, SourceType>>.asDrafts() = map { (uri, sourceType) -> MembershipDraft(uri, sourceType) }
 
 /**
  * Coordinates the data layer.
@@ -166,7 +186,11 @@ class WallpaperRepository @Inject constructor(
                         )
                     )
 
-                    addFilesToCollection(collectionId, scannedUris.map { it to SourceType.FOLDER_DOC }, isManuallyAdded = false)
+                    linkMemberships(
+                        collectionId,
+                        scannedUris.map { MembershipDraft(it, SourceType.FOLDER_DOC) },
+                        isManuallyAdded = false
+                    )
                     Log.d(TAG, "Imported ${scannedUris.size} images to collection: $name")
                     isFirst
                 }
@@ -200,7 +224,7 @@ class WallpaperRepository @Inject constructor(
                 )
             )
 
-            addFilesToCollection(collectionId, imported.files, isManuallyAdded = false)
+            linkMemberships(collectionId, imported.files.asDrafts(), isManuallyAdded = false)
             isFirst to imported.result
         }
     }
@@ -217,37 +241,79 @@ class WallpaperRepository @Inject constructor(
             val imported = wallpaperSources.acquirePicked(uris)
 
             val isFolder = collection.type == CollectionType.FOLDER
-            addFilesToCollection(collectionId, imported.files, isManuallyAdded = isFolder)
+            linkMemberships(collectionId, imported.files.asDrafts(), isManuallyAdded = isFolder)
             imported.result
         }
     }
 
+    // Membership primitives
+
     /**
-     * Registers [files] (uri + source type pairs) in the file registry (deduped by uri) and links
-     * them to [collectionId] via join rows, all in one transaction. Re-adding a file already in the
-     * collection is a no-op.
+     * Links [drafts] into [collectionId] as memberships, registering any file not in the registry
+     * yet. Re-linking a file the collection already holds is a no-op.
+     *
+     * Clears the exclusions of the linked uris unconditionally, which is the add half of the
+     * invariant that a uri is never both excluded from and a member of the same collection.
      */
-    private suspend fun addFilesToCollection(
+    private suspend fun linkMemberships(
         collectionId: Long,
-        files: List<Pair<Uri, SourceType>>,
+        drafts: List<MembershipDraft>,
         isManuallyAdded: Boolean
     ) {
-        if (files.isEmpty()) return
+        if (drafts.isEmpty()) return
         val now = System.currentTimeMillis()
         database.withTransaction {
-            // Invariant: a uri is never both excluded from and a member of the same collection
-            // adding one back, drops its tombstone.
-            dao.deleteExclusionsForUris(collectionId, files.map { it.first }.distinct())
-            val rows = files.map { (uri, sourceType) ->
-                val fileId = dao.getOrCreateFile(uri, sourceType, now)
-                Wallpaper(
-                    collectionId = collectionId,
-                    fileId = fileId,
-                    isManuallyAdded = isManuallyAdded,
-                    addedAt = now
-                )
+            dao.deleteExclusionsForUris(collectionId, drafts.map { it.uri }.distinct())
+            dao.insertWallpapers(
+                drafts.map { draft ->
+                    Wallpaper(
+                        collectionId = collectionId,
+                        // One round trip per unregistered file. Batching it is a change to this line
+                        fileId = draft.fileId ?: dao.getOrCreateFile(draft.uri, draft.sourceType, now),
+                        editParams = draft.editParams,
+                        isManuallyAdded = isManuallyAdded,
+                        addedAt = now
+                    )
+                }
+            )
+        }
+    }
+
+    /**
+     * Removes [images]' memberships. The only path that removes a membership *as a membership*;
+     * un-favouriting removes by file instead, since the heart is a property of the file.
+     *
+     * With [exclude] set, the folder-sourced members ([SourceType.FOLDER_DOC]) whose
+     * collection is a folder collection first leave an exclusion carrying their edit. Manually-added
+     * members, and members of manual collections leave none.
+     *
+     * **Leaves the orphan GC to the caller**, because [gcOrphanFiles] reclaims physical files and
+     * must run after the transaction commits, not inside it.
+     */
+    // TODO tests: check "tests/Folder Exclusions Tests" note
+    private suspend fun unlinkMemberships(images: List<WallpaperImage>, exclude: Boolean) {
+        if (images.isEmpty()) return
+        val now = System.currentTimeMillis()
+        database.withTransaction {
+            if (exclude) {
+                images
+                    .filter { !it.isManuallyAdded && it.sourceType == SourceType.FOLDER_DOC }
+                    .groupBy { it.collectionId }
+                    .forEach { (collectionId, members) ->
+                        if (dao.getCollectionById(collectionId)?.type != CollectionType.FOLDER) return@forEach
+                        dao.insertExclusions(
+                            members.map {
+                                FolderExclusion(
+                                    collectionId = collectionId,
+                                    uri = it.uri,
+                                    editParams = it.editParams,
+                                    excludedAt = now
+                                )
+                            }
+                        )
+                    }
             }
-            dao.insertWallpapers(rows)
+            dao.deleteImagesByIds(images.map { it.id })
         }
     }
 
@@ -288,8 +354,7 @@ class WallpaperRepository @Inject constructor(
                     dao.getWallpapersInCollectionForFiles(targetCollectionId, images.map { it.fileId }.distinct())
                     .associateBy { it.fileId }
 
-                val now = System.currentTimeMillis()
-                val newRows = mutableListOf<Wallpaper>()
+                val drafts = mutableListOf<MembershipDraft>()
                 var transferred = 0
                 var alreadyPresent = 0
 
@@ -297,13 +362,7 @@ class WallpaperRepository @Inject constructor(
                     val existing = existingByFileId[image.fileId]
                     when {
                         existing == null -> {
-                            newRows += Wallpaper(
-                                collectionId = targetCollectionId,
-                                fileId = image.fileId,
-                                editParams = image.editParams,
-                                isManuallyAdded = markManuallyAdded,
-                                addedAt = now
-                            )
+                            drafts += image.asDraft()
                             transferred++
                         }
                         // Duplicate whose target membership is unedited: adopt the source's edit
@@ -317,14 +376,9 @@ class WallpaperRepository @Inject constructor(
                     }
                 }
 
-                dao.insertWallpapers(newRows)
-                if (markManuallyAdded) {
-                    dao.deleteExclusionsForUris(targetCollectionId, images.map { it.uri }.distinct())
-                }
-                if (removeFromSource) {
-                    excludeRemovedFolderImages(images)
-                    dao.deleteImagesByIds(images.map { it.id })
-                }
+                linkMemberships(targetCollectionId, drafts, isManuallyAdded = markManuallyAdded)
+                // No orphan GC: every source membership removed here has been replaced by one in the target
+                if (removeFromSource) unlinkMemberships(images, exclude = true)
                 TransferResult(transferred, alreadyPresent)
             }
         }
@@ -341,19 +395,9 @@ class WallpaperRepository @Inject constructor(
     suspend fun addFavorites(images: List<WallpaperImage>) {
         if (images.isEmpty()) return
         withContext(Dispatchers.IO) {
-            val now = System.currentTimeMillis()
             database.withTransaction {
                 val favoritesId = getOrCreateFavoritesCollection()
-                val rows = images.map { image ->
-                    Wallpaper(
-                        collectionId = favoritesId,
-                        fileId = image.fileId,
-                        editParams = image.editParams,
-                        isManuallyAdded = false,
-                        addedAt = now
-                    )
-                }
-                dao.insertWallpapers(rows)
+                linkMemberships(favoritesId, images.map { it.asDraft() }, isManuallyAdded = false)
             }
         }
     }
@@ -525,8 +569,11 @@ class WallpaperRepository @Inject constructor(
 
                     val added = syncFolderImages(collectionId, freshUris)
                     Log.d(TAG, "Sync complete: ${freshUris.size} on disk, $added new images added.")
+                } catch (e: CancellationException) {
+                    // The caller's scope died. Not a sync failure
+                    throw e
                 } catch (e: Exception) {
-                    Log.e(TAG, "Sync failed for collection ${collection.id}: ${e.message}")
+                    Log.e(TAG, "Sync failed for collection ${collection.id}", e)
                 }
             }
 
@@ -567,21 +614,15 @@ class WallpaperRepository @Inject constructor(
             }
 
             val existing = dao.getFolderImagesForCollection(collectionId)
-            val (staleIds, newUris) = computeFolderSyncDiff(existing, freshUris, excludedUris)
-            dao.deleteImagesByIds(staleIds)
+            val (stale, newUris) = computeFolderSyncDiff(existing, freshUris, excludedUris)
+            // No exclusion: a stale image is one the folder no longer holds
+            unlinkMemberships(stale, exclude = false)
 
-            val now = System.currentTimeMillis()
-            val rows = newUris.map { uri ->
-                val fileId = dao.getOrCreateFile(uri, SourceType.FOLDER_DOC, now)
-                Wallpaper(
-                    collectionId = collectionId,
-                    fileId = fileId,
-                    editParams = restoredEdits[uri],
-                    isManuallyAdded = false,
-                    addedAt = now
-                )
-            }
-            dao.insertWallpapers(rows)
+            linkMemberships(
+                collectionId,
+                newUris.map { MembershipDraft(it, SourceType.FOLDER_DOC, editParams = restoredEdits[it]) },
+                isManuallyAdded = false
+            )
             newUris.size
         }
         // Removing stale join rows may orphan file rows, so orphan cleanup runs once the diff commits.
@@ -604,8 +645,10 @@ class WallpaperRepository @Inject constructor(
                 val freshUris = folderScanner.scan(collection.rootUri)
                 val added = syncFolderImages(collectionId, freshUris, restoreExclusions = true)
                 Log.d(TAG, "Restore complete for collection $collectionId: $added image(s) back")
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                Log.e(TAG, "Restore failed for collection $collectionId: ${e.message}")
+                Log.e(TAG, "Restore failed for collection $collectionId", e)
             }
         }
     }
@@ -619,44 +662,16 @@ class WallpaperRepository @Inject constructor(
      * unreferenced (deleting the app-private copy or releasing the picker grant as appropriate).
      * A file shared with another collection is kept.
      *
-     * Deleting a folder-sourced member of a FOLDER collection also records an exclusion tombstone
-     * in the same transaction, so the deletion survives every future sync.
-     *
-     * Note: This is the single per-image deletion path.
+     * Deleting a folder-sourced member of a FOLDER collection also records an exclusion in the same
+     * transaction, so the deletion survives every future sync (see [unlinkMemberships]).
      */
     suspend fun deleteImagesFromCollection(images: List<WallpaperImage>) {
         if (images.isEmpty()) return
 
         withContext(Dispatchers.IO) {
-            database.withTransaction {
-                excludeRemovedFolderImages(images)
-                dao.deleteImagesByIds(images.map { it.id })
-            }
+            unlinkMemberships(images, exclude = true)
             gcOrphanFiles()
         }
-    }
-
-    /**
-     * Writes exclusion tombstones for the folder-sourced members of [images] (non-manual,
-     * [SourceType.FOLDER_DOC]) whose collection is FOLDER type, saving each membership's edit
-     * params for later restore. Manually-added members, non-folder sources, and members of manual
-     * collections (which may hold FOLDER_DOC references via copy) leave no tombstone.
-     *
-     * **MUST** run in the same transaction as the membership removal so a crash can't remove the
-     * wallpaper without protecting the removal from sync.
-     */
-    // TODO tests: check "tests/Folder Exclusions Tests" note
-    private suspend fun excludeRemovedFolderImages(images: List<WallpaperImage>) {
-        val now = System.currentTimeMillis()
-        images
-            .filter { !it.isManuallyAdded && it.sourceType == SourceType.FOLDER_DOC }
-            .groupBy { it.collectionId }
-            .forEach { (collectionId, members) ->
-                if (dao.getCollectionById(collectionId)?.type != CollectionType.FOLDER) return@forEach
-                dao.insertExclusions(
-                    members.map { FolderExclusion(collectionId = collectionId, uri = it.uri, editParams = it.editParams, excludedAt = now) }
-                )
-            }
     }
 
     /**
