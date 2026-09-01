@@ -65,11 +65,12 @@
 
     <!-- Settings screen -->
     <string name="settings_title">AJUSTES</string>
-    <string name="settings_section_general">OTROS</string>
+    <string name="settings_section_app">APLICACIÓN</string>
     <string name="settings_language_title">IDIOMA DE LA APP</string>
     <string name="settings_language_subtitle">Elige tu idioma preferido</string>
     <string name="settings_language_system">Sistema</string>
     <string name="settings_section_service">SERVICIO</string>
+    <string name="settings_section_appearance">APARIENCIA</string>
     <string name="settings_section_quality">CALIDAD DE IMAGEN EN ALMACENAMIENTO</string>
     <string name="settings_battery_saver_title">POLÍTICA DE AHORRO DE BATERÍA</string>
     <string name="settings_battery_saver_subtitle">Qué hacer cuando se activa el ahorro de batería</string>
@@ -149,7 +150,7 @@
     </string>
 
     <!-- Screen off delay -->
-    <string name="settings_screen_off_delay_title">RETARDO MIENTRAS SE APAGA PANTALLA</string>
+    <string name="settings_screen_off_delay_title">RETARDO MIENTRAS SE APAGA LA PANTALLA</string>
     <string name="settings_screen_off_delay_subtitle">Por animación de apagado de pantalla</string>
     <string name="settings_screen_off_delay_dialog_title">Retardo al apagar la pantalla</string>
     <string name="settings_screen_off_delay_dialog_body">

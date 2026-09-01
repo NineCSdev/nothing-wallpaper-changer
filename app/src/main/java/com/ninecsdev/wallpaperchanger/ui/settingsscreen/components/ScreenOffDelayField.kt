@@ -2,9 +2,9 @@ package com.ninecsdev.wallpaperchanger.ui.settingsscreen.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
@@ -14,9 +14,11 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -29,17 +31,25 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
+/** Wide enough for four digits and the unit suffix, narrow enough to leave the title room. */
+private val FieldWidth = 120.dp
+
 @Composable
 internal fun ScreenOffDelayField(
     currentDelayMs: Long,
-    onDelayChange: (Long) -> Unit
+    onDelayChange: (Long) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var text by remember(currentDelayMs) { mutableStateOf(currentDelayMs.toString()) }
 
-    Column {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         SettingsRowHeader(
             title = stringResource(R.string.settings_screen_off_delay_title),
             subtitle = stringResource(R.string.settings_screen_off_delay_subtitle),
+            modifier = Modifier.weight(1f),
             infoDialogTitle = stringResource(R.string.settings_screen_off_delay_dialog_title),
             infoDialogBody = stringResource(
                 R.string.settings_screen_off_delay_dialog_body,
@@ -47,7 +57,7 @@ internal fun ScreenOffDelayField(
             )
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.width(16.dp))
 
         OutlinedTextField(
             value = text,
@@ -75,7 +85,7 @@ internal fun ScreenOffDelayField(
                 focusedContainerColor = NothingGray,
                 unfocusedContainerColor = NothingGray
             ),
-            modifier = Modifier.width(160.dp)
+            modifier = Modifier.width(FieldWidth)
         )
     }
 }
@@ -83,7 +93,7 @@ internal fun ScreenOffDelayField(
 @Preview
 @Composable
 fun ScreenOffDelayFieldPreview() {
-    var delay by remember { mutableStateOf(250L) }
+    var delay by remember { mutableLongStateOf(250L) }
     Box(
         modifier = Modifier
             .background(NothingBlack)

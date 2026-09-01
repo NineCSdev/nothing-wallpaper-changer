@@ -12,7 +12,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -39,11 +38,13 @@ import com.ninecsdev.wallpaperchanger.ui.components.SettingsToggleRow
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.AtmosphereModeSection
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.LanguageSelector
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.LocalCopiesRow
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.QualitySlider
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.RotationPolicySection
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.ScreenOffDelayField
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.SettingsSection
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.SettingsSegmentedSelector
-import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.StorageUsageRow
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.SettingsSubsection
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.WallpaperZoomFixSelector
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
@@ -121,176 +122,124 @@ fun SettingsScreen(
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
 
-                SectionLabel(stringResource(R.string.settings_section_service))
+                SettingsSection(
+                    label = stringResource(R.string.settings_section_service),
+                    showDivider = false
+                ) {
+                    RotationPolicySection(
+                        policy = uiState.rotationPolicy,
+                        onPolicyChange = actions::setRotationPolicy
+                    )
+
+                    ScreenOffDelayField(
+                        currentDelayMs = uiState.screenOffDelayMs,
+                        onDelayChange = actions::setScreenOffDelay
+                    )
+
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_autostart_title),
+                        subtitle = stringResource(R.string.settings_autostart_subtitle),
+                        checked = uiState.startOnBoot,
+                        onCheckedChange = actions::setStartOnBoot,
+                        infoDialogTitle = stringResource(R.string.settings_autostart_dialog_title),
+                        infoDialogBody = stringResource(R.string.settings_autostart_dialog_body)
+                    )
+
+                    SettingsSegmentedSelector(
+                        title = stringResource(R.string.settings_battery_saver_title),
+                        subtitle = stringResource(R.string.settings_battery_saver_subtitle),
+                        options = BatterySaverPolicy.entries,
+                        selected = uiState.batterySaverPolicy,
+                        onOptionChange = actions::setBatterySaverPolicy,
+                        optionLabel = { policy ->
+                            when (policy) {
+                                BatterySaverPolicy.STOP -> stringResource(R.string.settings_battery_stop)
+                                BatterySaverPolicy.PAUSE -> stringResource(R.string.settings_battery_pause)
+                                BatterySaverPolicy.IGNORE -> stringResource(R.string.settings_battery_ignore)
+                            }
+                        },
+                        infoDialogTitle = stringResource(R.string.settings_battery_saver_dialog_title),
+                        infoDialogBody = stringResource(R.string.settings_battery_saver_dialog_body)
+                    )
+                }
+
+                SettingsSection(label = stringResource(R.string.settings_section_appearance)) {
+                    AtmosphereModeSection(
+                        selectedMode = uiState.wallpaperMode,
+                        engineActive = uiState.atmosphereEngineActive,
+                        hasSource = uiState.hasAtmosphereSource,
+                        onModeChange = actions::setWallpaperMode,
+                        onSetAtmosphere = onSetAtmosphere
+                    )
+
+                    SettingsSegmentedSelector(
+                        title = stringResource(R.string.settings_destination_title),
+                        subtitle = stringResource(
+                            if (uiState.isDestinationEnabled) R.string.settings_destination_subtitle
+                            else R.string.settings_destination_subtitle_atmosphere
+                        ),
+                        options = WallpaperDestination.entries,
+                        selected = uiState.wallpaperDestination,
+                        onOptionChange = actions::setWallpaperDestination,
+                        optionLabel = { destination ->
+                            when (destination) {
+                                WallpaperDestination.LOCK -> stringResource(R.string.settings_destination_lock)
+                                WallpaperDestination.HOME -> stringResource(R.string.settings_destination_home)
+                                WallpaperDestination.BOTH -> stringResource(R.string.settings_destination_both)
+                            }
+                        },
+                        infoDialogTitle = stringResource(R.string.settings_destination_dialog_title),
+                        infoDialogBody = stringResource(R.string.settings_destination_dialog_body),
+                        // Destination only governs static delivery; greyed while atmosphere is desired.
+                        enabled = uiState.isDestinationEnabled
+                    )
+
+                    WallpaperZoomFixSelector(
+                        selected = uiState.wallpaperZoomFix,
+                        onZoomFixChange = actions::setWallpaperZoomFix
+                    )
+                }
+
+                SettingsSection(label = stringResource(R.string.settings_section_storage)) {
+                    LocalCopiesRow(
+                        checked = uiState.effectiveKeepLocalCopies,
+                        hasMediaAccess = uiState.hasMediaAccess,
+                        hasPartialMediaAccess = uiState.hasPartialMediaAccess,
+                        usage = uiState.storageUsage,
+                        onCheckedChange = actions::setKeepLocalCopies,
+                        onRequestMediaAccess = onRequestMediaAccess
+                    )
+
+                    SettingsSubsection(label = stringResource(R.string.settings_section_quality)) {
+                        QualitySlider(
+                            label = stringResource(R.string.settings_quality_high_label),
+                            subtitle = stringResource(R.string.settings_quality_high_subtitle),
+                            value = uiState.compressionQualityHigh,
+                            onValueChange = actions::setCompressionQualityHigh,
+                            infoDialogTitle = stringResource(R.string.settings_quality_high_dialog_title),
+                            infoDialogBody = stringResource(R.string.settings_quality_high_dialog_body)
+                        )
+
+                        QualitySlider(
+                            label = stringResource(R.string.settings_quality_low_label),
+                            subtitle = stringResource(R.string.settings_quality_low_subtitle),
+                            value = uiState.compressionQualityLow,
+                            onValueChange = actions::setCompressionQualityLow,
+                            infoDialogTitle = stringResource(R.string.settings_quality_low_dialog_title),
+                            infoDialogBody = stringResource(R.string.settings_quality_low_dialog_body)
+                        )
+                    }
+                }
+
+                SettingsSection(label = stringResource(R.string.settings_section_app)) {
+                    LanguageSelector(
+                        languages = uiState.availableLanguages,
+                        selectedTag = uiState.selectedLanguageTag,
+                        onLanguageSelected = actions::setAppLanguage
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
-
-                RotationPolicySection(
-                    policy = uiState.rotationPolicy,
-                    onPolicyChange = actions::setRotationPolicy
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                ScreenOffDelayField(
-                    currentDelayMs = uiState.screenOffDelayMs,
-                    onDelayChange = actions::setScreenOffDelay
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                SettingsToggleRow(
-                    title = stringResource(R.string.settings_autostart_title),
-                    subtitle = stringResource(R.string.settings_autostart_subtitle),
-                    checked = uiState.startOnBoot,
-                    onCheckedChange = actions::setStartOnBoot,
-                    infoDialogTitle = stringResource(R.string.settings_autostart_dialog_title),
-                    infoDialogBody = stringResource(R.string.settings_autostart_dialog_body)
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                SettingsSegmentedSelector(
-                    title = stringResource(R.string.settings_battery_saver_title),
-                    subtitle = stringResource(R.string.settings_battery_saver_subtitle),
-                    options = BatterySaverPolicy.entries,
-                    selected = uiState.batterySaverPolicy,
-                    onOptionChange = actions::setBatterySaverPolicy,
-                    optionLabel = { policy ->
-                        when (policy) {
-                            BatterySaverPolicy.STOP -> stringResource(R.string.settings_battery_stop)
-                            BatterySaverPolicy.PAUSE -> stringResource(R.string.settings_battery_pause)
-                            BatterySaverPolicy.IGNORE -> stringResource(R.string.settings_battery_ignore)
-                        }
-                    },
-                    infoDialogTitle = stringResource(R.string.settings_battery_saver_dialog_title),
-                    infoDialogBody = stringResource(R.string.settings_battery_saver_dialog_body)
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                AtmosphereModeSection(
-                    selectedMode = uiState.wallpaperMode,
-                    engineActive = uiState.atmosphereEngineActive,
-                    hasSource = uiState.hasAtmosphereSource,
-                    onModeChange = actions::setWallpaperMode,
-                    onSetAtmosphere = onSetAtmosphere
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                SettingsSegmentedSelector(
-                    title = stringResource(R.string.settings_destination_title),
-                    subtitle = stringResource(
-                        if (uiState.isDestinationEnabled) R.string.settings_destination_subtitle
-                        else R.string.settings_destination_subtitle_atmosphere
-                    ),
-                    options = WallpaperDestination.entries,
-                    selected = uiState.wallpaperDestination,
-                    onOptionChange = actions::setWallpaperDestination,
-                    optionLabel = { destination ->
-                        when (destination) {
-                            WallpaperDestination.LOCK -> stringResource(R.string.settings_destination_lock)
-                            WallpaperDestination.HOME -> stringResource(R.string.settings_destination_home)
-                            WallpaperDestination.BOTH -> stringResource(R.string.settings_destination_both)
-                        }
-                    },
-                    infoDialogTitle = stringResource(R.string.settings_destination_dialog_title),
-                    infoDialogBody = stringResource(R.string.settings_destination_dialog_body),
-                    // Destination only governs static delivery; greyed while atmosphere is desired.
-                    enabled = uiState.isDestinationEnabled
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                WallpaperZoomFixSelector(
-                    selected = uiState.wallpaperZoomFix,
-                    onZoomFixChange = actions::setWallpaperZoomFix
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                HorizontalDivider(
-                    color = NothingWhite.copy(alpha = 0.10f),
-                    thickness = 1.dp
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                SectionLabel(stringResource(R.string.settings_section_general))
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                LanguageSelector(
-                    languages = uiState.availableLanguages,
-                    selectedTag = uiState.selectedLanguageTag,
-                    onLanguageSelected = actions::setAppLanguage
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                HorizontalDivider(
-                    color = NothingWhite.copy(alpha = 0.10f),
-                    thickness = 1.dp
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                SectionLabel(stringResource(R.string.settings_section_storage))
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Without READ_MEDIA_IMAGES every pick is internalized, so the toggle shows the
-                // effective (forced-on) value; the stored preference is untouched, and tapping
-                // the toggle requests the permission instead of changing the setting. From the
-                // partial "selected photos" state that request re-shows the system dialog
-                // (select more / allow all), so this row doubles as the in-app upgrade path.
-                SettingsToggleRow(
-                    title = stringResource(R.string.settings_keep_local_copies_title),
-                    subtitle = when {
-                        uiState.hasMediaAccess -> stringResource(R.string.settings_keep_local_copies_subtitle)
-                        uiState.hasPartialMediaAccess -> stringResource(R.string.settings_keep_local_copies_partial_subtitle)
-                        else -> stringResource(R.string.settings_keep_local_copies_locked_subtitle)
-                    },
-                    checked = uiState.effectiveKeepLocalCopies,
-                    onCheckedChange = { enabled ->
-                        if (uiState.hasMediaAccess) actions.setKeepLocalCopies(enabled)
-                        else onRequestMediaAccess()
-                    },
-                    infoDialogTitle = stringResource(R.string.settings_keep_local_copies_dialog_title),
-                    infoDialogBody = stringResource(R.string.settings_keep_local_copies_dialog_body)
-                )
-
-                StorageUsageRow(usage = uiState.storageUsage)
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                SectionLabel(stringResource(R.string.settings_section_quality))
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                QualitySlider(
-                    label = stringResource(R.string.settings_quality_high_label),
-                    subtitle = stringResource(R.string.settings_quality_high_subtitle),
-                    value = uiState.compressionQualityHigh,
-                    onValueChange = actions::setCompressionQualityHigh,
-                    infoDialogTitle = stringResource(R.string.settings_quality_high_dialog_title),
-                    infoDialogBody = stringResource(R.string.settings_quality_high_dialog_body)
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                QualitySlider(
-                    label = stringResource(R.string.settings_quality_low_label),
-                    subtitle = stringResource(R.string.settings_quality_low_subtitle),
-                    value = uiState.compressionQualityLow,
-                    onValueChange = actions::setCompressionQualityLow,
-                    infoDialogTitle = stringResource(R.string.settings_quality_low_dialog_title),
-                    infoDialogBody = stringResource(R.string.settings_quality_low_dialog_body)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
             }
 
             // App version footer
@@ -308,17 +257,6 @@ fun SettingsScreen(
             }
         }
     }
-}
-
-// Private components
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = NothingType.overline,
-        color = NothingWhite.copy(alpha = 0.4f)
-    )
 }
 
 // Previews
