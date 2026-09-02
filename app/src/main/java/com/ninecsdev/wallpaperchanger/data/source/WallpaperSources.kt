@@ -45,6 +45,8 @@ data class PickImportOutcome(
  * The counterpart split with [WallpaperRepository][com.ninecsdev.wallpaperchanger.data.WallpaperRepository]:
  * DB rows and transactions are the repository's; backing resources (grants, internal copies) are this
  * module's.
+ *
+ * Every member here is safe to call from any dispatcher. Callers never wrap a call to this class.
  */
 // TODO: add tests, check "WallpaperSources Tests" vault note
 @Singleton
@@ -83,7 +85,8 @@ class WallpaperSources @Inject constructor(
             )
         }
 
-        val referenced = uris.mapNotNull { tryConvertToMediaStore(it) }
+        // Two file-descriptor opens per uri, so it runs in IO
+        val referenced = withContext(Dispatchers.IO) { uris.mapNotNull { tryConvertToMediaStore(it) } }
         val toInternalize = uris - referenced.map { it.first }.toSet()
 
         val internalizedUris = if (toInternalize.isNotEmpty()) {
@@ -122,19 +125,22 @@ class WallpaperSources @Inject constructor(
             PackageManager.PERMISSION_GRANTED
 
     /** True if [uri] can currently be opened for reading. */
-    fun isReadable(uri: Uri): Boolean = try {
-        appContext.contentResolver.openAssetFileDescriptor(uri, "r")?.use { true } ?: false
-    } catch (_: Exception) {
-        false
+    suspend fun isReadable(uri: Uri): Boolean = withContext(Dispatchers.IO) {
+        try {
+            appContext.contentResolver.openAssetFileDescriptor(uri, "r")?.use { true } ?: false
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /**
      * Reclaims a source's backing resource per [sourceType]: app-private copies are deleted;
      * MediaStore references and folder documents are left alone.
      */
-    fun reclaim(uri: Uri, sourceType: SourceType) {
+    suspend fun reclaim(uri: Uri, sourceType: SourceType) {
         when (sourceType) {
-            SourceType.INTERNALIZED -> imageInternalizer.deleteInternalFile(uri.path)
+            // Only this branch touches disk so run that part in IO
+            SourceType.INTERNALIZED -> withContext(Dispatchers.IO) { imageInternalizer.deleteInternalFile(uri.path) }
             SourceType.MEDIA_STORE -> Unit
             SourceType.FOLDER_DOC -> Unit
         }
@@ -144,10 +150,12 @@ class WallpaperSources @Inject constructor(
      * Takes a persistable READ grant for [uri] (a folder tree from the system folder picker) so it
      * survives across reboots. Counterpart of [releasePersistedGrant]
      */
-    fun takePersistedGrant(uri: Uri) {
-        appContext.contentResolver.takePersistableUriPermission(
-            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
-        )
+    suspend fun takePersistedGrant(uri: Uri) {
+        withContext(Dispatchers.IO) {
+            appContext.contentResolver.takePersistableUriPermission(
+                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        }
     }
 
     /**
@@ -155,20 +163,24 @@ class WallpaperSources @Inject constructor(
      * must take this snapshot *before* computing their keep set so a grant acquired concurrently
      * can never look orphaned.
      */
-    fun persistedGrantUris(): List<Uri> =
-        appContext.contentResolver.persistedUriPermissions.map { it.uri }
+    suspend fun persistedGrantUris(): List<Uri> =
+        withContext(Dispatchers.IO) {
+            appContext.contentResolver.persistedUriPermissions.map { it.uri }
+        }
 
     /**
      * Releases a persisted READ URI permission previously taken via `takePersistableUriPermission`
      * (a folder tree grant). Safe to call even if already released.
      */
-    fun releasePersistedGrant(uri: Uri) {
-        try {
-            appContext.contentResolver.releasePersistableUriPermission(
-                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-        } catch (e: SecurityException) {
-            Log.w(TAG, "Permission already released for: $uri", e)
+    suspend fun releasePersistedGrant(uri: Uri) {
+        withContext(Dispatchers.IO) {
+            try {
+                appContext.contentResolver.releasePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (e: SecurityException) {
+                Log.w(TAG, "Permission already released for: $uri", e)
+            }
         }
     }
 

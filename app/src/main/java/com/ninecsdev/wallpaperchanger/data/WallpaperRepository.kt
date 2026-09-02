@@ -21,7 +21,6 @@ import com.ninecsdev.wallpaperchanger.model.Wallpaper
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -29,7 +28,6 @@ import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -80,6 +78,8 @@ private fun List<Pair<Uri, SourceType>>.asDrafts() = map { (uri, sourceType) -> 
  * Service state is managed by [ServiceStateManager] and settings by [AppDataStore] mostly
  * injected directly by consumers that need them, though this class also reads [AppDataStore] for
  * the default-wallpaper uri when computing the internal-files keep set.
+ *
+ * This class confines nothing to a dispatcher.
  */
 @Singleton
 class WallpaperRepository @Inject constructor(
@@ -162,61 +162,55 @@ class WallpaperRepository @Inject constructor(
         newRule: CropRule,
         newPolicy: CollectionRotationSetting
     ) {
-        withContext(Dispatchers.IO) {
-            val existing = dao.getCollectionById(id)
-            // Rename is blocked for the system (Favourites) collection as it is a localized resource
-            val safeName = if (existing?.isFavorites == true) existing.name else newName
-            dao.updateCollection(id, safeName, newRule, newPolicy)
-        }
+        val existing = dao.getCollectionById(id)
+        // Rename is blocked for the system (Favourites) collection as it is a localized resource
+        val safeName = if (existing?.isFavorites == true) existing.name else newName
+        dao.updateCollection(id, safeName, newRule, newPolicy)
     }
 
     /** Pins or unpins a collection. Purely positional. */
     // TODO tests: see vault note tests/Pinned Collections Tests
     suspend fun setCollectionPinned(collectionId: Long, pinned: Boolean) {
-        withContext(Dispatchers.IO) {
-            dao.setCollectionPinned(collectionId, pinned)
-        }
+        dao.setCollectionPinned(collectionId, pinned)
     }
 
     /**
      * Creates a folder collection. Returns `true` if it became the active collection.
      */
     suspend fun createFolderCollection(name: String, treeUri: Uri, rule: CropRule): Boolean {
-        return withContext(Dispatchers.IO) {
-            wallpaperSources.takePersistedGrant(treeUri)
-            try {
-                // Scan first to avoid creating an orphan empty collection (or one with a partial/empty image set) on a transient scan failure.
-                val scannedUris = folderScanner.scan(treeUri)
+        wallpaperSources.takePersistedGrant(treeUri)
+        try {
+            // Scan first to avoid creating an orphan empty collection (or one with a partial/empty image set) on a transient scan failure.
+            val scannedUris = folderScanner.scan(treeUri)
 
-                // Collection row and its images commit together so a failure can't leave a partial collection behind.
-                database.withTransaction {
-                    val isFirst = dao.getActiveCollection() == null
-                    val collectionId = dao.insertCollection(
-                        WallpaperCollection(
-                            name = name,
-                            type = CollectionType.FOLDER,
-                            rootUri = treeUri,
-                            isActive = isFirst,
-                            defaultCropRule = rule
-                        )
+            // Collection row and its images commit together so a failure can't leave a partial collection behind.
+            return database.withTransaction {
+                val isFirst = dao.getActiveCollection() == null
+                val collectionId = dao.insertCollection(
+                    WallpaperCollection(
+                        name = name,
+                        type = CollectionType.FOLDER,
+                        rootUri = treeUri,
+                        isActive = isFirst,
+                        defaultCropRule = rule
                     )
+                )
 
-                    linkMemberships(
-                        collectionId,
-                        scannedUris.map { MembershipDraft(it, SourceType.FOLDER_DOC) },
-                        isManuallyAdded = false
-                    )
-                    Log.d(TAG, "Imported ${scannedUris.size} images to collection: $name")
-                    isFirst
-                }
-            } catch (e: Exception) {
-                // Another collection built from the same folder shares this grant,
-                // only release it when nothing references the folder.
-                if (dao.countCollectionsWithRootUri(treeUri) == 0) {
-                    wallpaperSources.releasePersistedGrant(treeUri)
-                }
-                throw e
+                linkMemberships(
+                    collectionId,
+                    scannedUris.map { MembershipDraft(it, SourceType.FOLDER_DOC) },
+                    isManuallyAdded = false
+                )
+                Log.d(TAG, "Imported ${scannedUris.size} images to collection: $name")
+                isFirst
             }
+        } catch (e: Exception) {
+            // Another collection built from the same folder shares this grant,
+            // only release it when nothing references the folder.
+            if (dao.countCollectionsWithRootUri(treeUri) == 0) {
+                wallpaperSources.releasePersistedGrant(treeUri)
+            }
+            throw e
         }
     }
 
@@ -225,23 +219,21 @@ class WallpaperRepository @Inject constructor(
      * of how the picked images were imported (see [WallpaperSources.acquirePicked]).
      */
     suspend fun createManualCollection(name: String, uris: List<Uri>, rule: CropRule): Pair<Boolean, PickImportResult> {
-        return withContext(Dispatchers.IO) {
-            val isFirst = dao.getActiveCollection() == null
-            val imported = wallpaperSources.acquirePicked(uris)
+        val isFirst = dao.getActiveCollection() == null
+        val imported = wallpaperSources.acquirePicked(uris)
 
-            val collectionId = dao.insertCollection(
-                WallpaperCollection(
-                    name = name,
-                    type = CollectionType.MANUAL,
-                    rootUri = null,
-                    isActive = isFirst,
-                    defaultCropRule = rule
-                )
+        val collectionId = dao.insertCollection(
+            WallpaperCollection(
+                name = name,
+                type = CollectionType.MANUAL,
+                rootUri = null,
+                isActive = isFirst,
+                defaultCropRule = rule
             )
+        )
 
-            linkMemberships(collectionId, imported.files.asDrafts(), isManuallyAdded = false)
-            isFirst to imported.result
-        }
+        linkMemberships(collectionId, imported.files.asDrafts(), isManuallyAdded = false)
+        return isFirst to imported.result
     }
 
     /**
@@ -251,14 +243,12 @@ class WallpaperRepository @Inject constructor(
      * so they survive folder-sync diffs.
      */
     suspend fun addImagesToCollection(collectionId: Long, uris: List<Uri>): PickImportResult {
-        return withContext(Dispatchers.IO) {
-            val collection = dao.getCollectionById(collectionId) ?: return@withContext PickImportResult()
-            val imported = wallpaperSources.acquirePicked(uris)
+        val collection = dao.getCollectionById(collectionId) ?: return PickImportResult()
+        val imported = wallpaperSources.acquirePicked(uris)
 
-            val isFolder = collection.type == CollectionType.FOLDER
-            linkMemberships(collectionId, imported.files.asDrafts(), isManuallyAdded = isFolder)
-            imported.result
-        }
+        val isFolder = collection.type == CollectionType.FOLDER
+        linkMemberships(collectionId, imported.files.asDrafts(), isManuallyAdded = isFolder)
+        return imported.result
     }
 
     // Membership primitives
@@ -359,43 +349,41 @@ class WallpaperRepository @Inject constructor(
     ): TransferResult {
         if (images.isEmpty()) return TransferResult()
 
-        return withContext(Dispatchers.IO) {
-            val target = dao.getCollectionById(targetCollectionId) ?: return@withContext TransferResult()
-            // Rows added to a folder collection must survive its sync diff, same as picker-adds.
-            val markManuallyAdded = target.type == CollectionType.FOLDER
+        val target = dao.getCollectionById(targetCollectionId) ?: return TransferResult()
+        // Rows added to a folder collection must survive its sync diff, same as picker-adds.
+        val markManuallyAdded = target.type == CollectionType.FOLDER
 
-            database.withTransaction {
-                val existingByFileId =
-                    dao.getWallpapersInCollectionForFiles(targetCollectionId, images.map { it.fileId }.distinct())
-                    .associateBy { it.fileId }
+        return database.withTransaction {
+            val existingByFileId =
+                dao.getWallpapersInCollectionForFiles(targetCollectionId, images.map { it.fileId }.distinct())
+                .associateBy { it.fileId }
 
-                val drafts = mutableListOf<MembershipDraft>()
-                var transferred = 0
-                var alreadyPresent = 0
+            val drafts = mutableListOf<MembershipDraft>()
+            var transferred = 0
+            var alreadyPresent = 0
 
-                for (image in images) {
-                    val existing = existingByFileId[image.fileId]
-                    when {
-                        existing == null -> {
-                            drafts += image.asDraft()
-                            transferred++
-                        }
-                        // Duplicate whose target membership is unedited: adopt the source's edit
-                        // (the more personalized state). An existing target edit is never overwritten.
-                        existing.editParams == null && image.editParams != null -> {
-                            val edit = image.editParams
-                            dao.updateWallpaperEdit(existing.id, edit.zoom, edit.offsetX, edit.offsetY)
-                            transferred++
-                        }
-                        else -> alreadyPresent++
+            for (image in images) {
+                val existing = existingByFileId[image.fileId]
+                when {
+                    existing == null -> {
+                        drafts += image.asDraft()
+                        transferred++
                     }
+                    // Duplicate whose target membership is unedited: adopt the source's edit
+                    // (the more personalized state). An existing target edit is never overwritten.
+                    existing.editParams == null && image.editParams != null -> {
+                        val edit = image.editParams
+                        dao.updateWallpaperEdit(existing.id, edit.zoom, edit.offsetX, edit.offsetY)
+                        transferred++
+                    }
+                    else -> alreadyPresent++
                 }
-
-                linkMemberships(targetCollectionId, drafts, isManuallyAdded = markManuallyAdded)
-                // No orphan GC: every source membership removed here has been replaced by one in the target
-                if (removeFromSource) unlinkMemberships(images, exclude = true)
-                TransferResult(transferred, alreadyPresent)
             }
+
+            linkMemberships(targetCollectionId, drafts, isManuallyAdded = markManuallyAdded)
+            // No orphan GC: every source membership removed here has been replaced by one in the target
+            if (removeFromSource) unlinkMemberships(images, exclude = true)
+            TransferResult(transferred, alreadyPresent)
         }
     }
 
@@ -409,11 +397,9 @@ class WallpaperRepository @Inject constructor(
      */
     suspend fun addFavorites(images: List<WallpaperImage>) {
         if (images.isEmpty()) return
-        withContext(Dispatchers.IO) {
-            database.withTransaction {
-                val favoritesId = getOrCreateFavoritesCollection()
-                linkMemberships(favoritesId, images.map { it.asDraft() }, isManuallyAdded = false)
-            }
+        database.withTransaction {
+            val favoritesId = getOrCreateFavoritesCollection()
+            linkMemberships(favoritesId, images.map { it.asDraft() }, isManuallyAdded = false)
         }
     }
 
@@ -446,16 +432,14 @@ class WallpaperRepository @Inject constructor(
     suspend fun removeFavorites(fileIds: List<Long>) {
         if (fileIds.isEmpty()) return
 
-        withContext(Dispatchers.IO) {
-            val favoritesId = dao.getFavoritesCollection()?.id ?: return@withContext
-            dao.deleteJoinRowsForFiles(favoritesId, fileIds)
-            gcOrphanFiles()
-        }
+        val favoritesId = dao.getFavoritesCollection()?.id ?: return
+        dao.deleteJoinRowsForFiles(favoritesId, fileIds)
+        gcOrphanFiles()
     }
 
     /** Marks a file unavailable (rotation self-heal after a definitive read failure). */
     suspend fun markFileUnavailable(fileId: Long) {
-        withContext(Dispatchers.IO) { dao.setFileAvailability(fileId, false) }
+        dao.setFileAvailability(fileId, false)
     }
 
     /**
@@ -465,15 +449,13 @@ class WallpaperRepository @Inject constructor(
      * nothing is unavailable. Triggered on collection-image screen open and during folder sync.
      */
     suspend fun reprobeUnavailableFiles(collectionId: Long) {
-        withContext(Dispatchers.IO) {
-            dao.getUnavailableImagesForCollection(collectionId)
-                .distinctBy { it.fileId }
-                .forEach { image ->
-                    if (wallpaperSources.isReadable(image.uri)) {
-                        dao.setFileAvailability(image.fileId, true)
-                    }
+        dao.getUnavailableImagesForCollection(collectionId)
+            .distinctBy { it.fileId }
+            .forEach { image ->
+                if (wallpaperSources.isReadable(image.uri)) {
+                    dao.setFileAvailability(image.fileId, true)
                 }
-        }
+            }
     }
 
     /**
@@ -493,44 +475,42 @@ class WallpaperRepository @Inject constructor(
      * Returns [RelinkResult.FAILED] (leaving the image unavailable) if the pick can't be imported.
      */
     suspend fun relinkUnavailableFile(image: WallpaperImage, pickedUri: Uri): RelinkResult {
-        return withContext(Dispatchers.IO) {
-            val imported = wallpaperSources.acquirePicked(listOf(pickedUri))
-            val (finalUri, newSourceType) = imported.files.firstOrNull() ?: return@withContext RelinkResult.FAILED
+        val imported = wallpaperSources.acquirePicked(listOf(pickedUri))
+        val (finalUri, newSourceType) = imported.files.firstOrNull() ?: return RelinkResult.FAILED
 
-            val oldFileId = image.fileId
-            val oldUri = image.uri
-            val oldSourceType = image.sourceType
+        val oldFileId = image.fileId
+        val oldUri = image.uri
+        val oldSourceType = image.sourceType
 
-            val result = database.withTransaction {
-                val existing = dao.getFileByUri(finalUri)
-                when {
-                    // Picker returned the same source that was probed just now: nothing to rebind.
-                    existing?.id == oldFileId -> {
-                        dao.setFileAvailability(oldFileId, true)
-                        RelinkResult.RELINKED
-                    }
-                    // Picked uri is already a different registered file: fold memberships into it.
-                    existing != null -> {
-                        dao.deleteJoinRowsDuplicatedByMerge(oldFileId, existing.id)
-                        dao.repointJoinRows(oldFileId, existing.id)
-                        dao.deleteFilesByIds(listOf(oldFileId))
-                        dao.setFileAvailability(existing.id, true)
-                        RelinkResult.MERGED
-                    }
-                    // Brand-new source: rebind the existing row in place, keeping join rows intact.
-                    else -> {
-                        dao.rebindFile(oldFileId, finalUri, newSourceType)
-                        RelinkResult.RELINKED
-                    }
+        val result = database.withTransaction {
+            val existing = dao.getFileByUri(finalUri)
+            when {
+                // Picker returned the same source that was probed just now: nothing to rebind.
+                existing?.id == oldFileId -> {
+                    dao.setFileAvailability(oldFileId, true)
+                    RelinkResult.RELINKED
+                }
+                // Picked uri is already a different registered file: fold memberships into it.
+                existing != null -> {
+                    dao.deleteJoinRowsDuplicatedByMerge(oldFileId, existing.id)
+                    dao.repointJoinRows(oldFileId, existing.id)
+                    dao.deleteFilesByIds(listOf(oldFileId))
+                    dao.setFileAvailability(existing.id, true)
+                    RelinkResult.MERGED
+                }
+                // Brand-new source: rebind the existing row in place, keeping join rows intact.
+                else -> {
+                    dao.rebindFile(oldFileId, finalUri, newSourceType)
+                    RelinkResult.RELINKED
                 }
             }
-
-            // Reclaim the old backing resource only when the source really changed.
-            if (finalUri != oldUri) {
-                wallpaperSources.reclaim(oldUri, oldSourceType)
-            }
-            result
         }
+
+        // Reclaim the old backing resource only when the source really changed.
+        if (finalUri != oldUri) {
+            wallpaperSources.reclaim(oldUri, oldSourceType)
+        }
+        return result
     }
 
     suspend fun getCollectionById(collectionId: Long): WallpaperCollection? =
@@ -548,22 +528,18 @@ class WallpaperRepository @Inject constructor(
      */
     // TODO tests: see vault note tests/Collection Switch Rotation Gate Tests.md
     suspend fun setActiveCollection(collectionId: Long) {
-        withContext(Dispatchers.IO) {
-            if (dao.getCollectionById(collectionId)?.isActive == true) return@withContext
+        if (dao.getCollectionById(collectionId)?.isActive == true) return
 
-            dao.setActiveCollection(collectionId)
-            val collection = dao.getCollectionById(collectionId)
-            if (collection?.type == CollectionType.FOLDER) {
-                Log.d(TAG, "Auto-syncing folder collection: ${collection.name}")
-                syncCollection(collectionId)
-            }
+        dao.setActiveCollection(collectionId)
+        val collection = dao.getCollectionById(collectionId)
+        if (collection?.type == CollectionType.FOLDER) {
+            Log.d(TAG, "Auto-syncing folder collection: ${collection.name}")
+            syncCollection(collectionId)
         }
     }
 
     suspend fun markWallpaperChanged(collectionId: Long) {
-        withContext(Dispatchers.IO) {
-            dao.updateLastWallpaperChangeAt(collectionId)
-        }
+        dao.updateLastWallpaperChangeAt(collectionId)
     }
 
     /**
@@ -573,27 +549,25 @@ class WallpaperRepository @Inject constructor(
      * marked unavailable, regardless of collection type.
      */
     suspend fun syncCollection(collectionId: Long) {
-        withContext(Dispatchers.IO) {
-            val collection = dao.getCollectionById(collectionId) ?: return@withContext
+        val collection = dao.getCollectionById(collectionId) ?: return
 
-            if (collection.type == CollectionType.FOLDER && collection.rootUri != null) {
-                try {
-                    Log.d(TAG, "Syncing physical folder for collection: ${collection.name}")
+        if (collection.type == CollectionType.FOLDER && collection.rootUri != null) {
+            try {
+                Log.d(TAG, "Syncing physical folder for collection: ${collection.name}")
 
-                    val freshUris = folderScanner.scan(collection.rootUri)
+                val freshUris = folderScanner.scan(collection.rootUri)
 
-                    val added = syncFolderImages(collectionId, freshUris)
-                    Log.d(TAG, "Sync complete: ${freshUris.size} on disk, $added new images added.")
-                } catch (e: CancellationException) {
-                    // The caller's scope died. Not a sync failure
-                    throw e
-                } catch (e: Exception) {
-                    Log.e(TAG, "Sync failed for collection ${collection.id}", e)
-                }
+                val added = syncFolderImages(collectionId, freshUris)
+                Log.d(TAG, "Sync complete: ${freshUris.size} on disk, $added new images added.")
+            } catch (e: CancellationException) {
+                // The caller's scope died. Not a sync failure
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Sync failed for collection ${collection.id}", e)
             }
-
-            reprobeUnavailableFiles(collectionId)
         }
+
+        reprobeUnavailableFiles(collectionId)
     }
 
     /**
@@ -653,18 +627,16 @@ class WallpaperRepository @Inject constructor(
      */
     // TODO tests: check "tests/Folder Exclusions Tests" note
     suspend fun restoreExcludedImages(collectionId: Long) {
-        withContext(Dispatchers.IO) {
-            val collection = dao.getCollectionById(collectionId) ?: return@withContext
-            if (collection.type != CollectionType.FOLDER || collection.rootUri == null) return@withContext
-            try {
-                val freshUris = folderScanner.scan(collection.rootUri)
-                val added = syncFolderImages(collectionId, freshUris, restoreExclusions = true)
-                Log.d(TAG, "Restore complete for collection $collectionId: $added image(s) back")
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "Restore failed for collection $collectionId", e)
-            }
+        val collection = dao.getCollectionById(collectionId) ?: return
+        if (collection.type != CollectionType.FOLDER || collection.rootUri == null) return
+        try {
+            val freshUris = folderScanner.scan(collection.rootUri)
+            val added = syncFolderImages(collectionId, freshUris, restoreExclusions = true)
+            Log.d(TAG, "Restore complete for collection $collectionId: $added image(s) back")
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "Restore failed for collection $collectionId", e)
         }
     }
 
@@ -683,10 +655,8 @@ class WallpaperRepository @Inject constructor(
     suspend fun deleteImagesFromCollection(images: List<WallpaperImage>) {
         if (images.isEmpty()) return
 
-        withContext(Dispatchers.IO) {
-            unlinkMemberships(images, exclude = true)
-            gcOrphanFiles()
-        }
+        unlinkMemberships(images, exclude = true)
+        gcOrphanFiles()
     }
 
     /**
@@ -694,22 +664,20 @@ class WallpaperRepository @Inject constructor(
      * If the deleted collection was active, marks the service as stopped via [ServiceStateManager]
      */
     suspend fun deleteCollection(collection: WallpaperCollection) {
-        withContext(Dispatchers.IO) {
-            if (collection.isActive) {
-                serviceStateManager.markServiceStopped()
-            }
+        if (collection.isActive) {
+            serviceStateManager.markServiceStopped()
+        }
 
-            // Removing the collection cascades its join rows; then reclaim any now-unreferenced files.
-            dao.deleteCollection(collection)
-            gcOrphanFiles()
+        // Removing the collection cascades its join rows; then reclaim any now-unreferenced files.
+        dao.deleteCollection(collection)
+        gcOrphanFiles()
 
-            // Release the persisted folder permission if this is a folder collection and
-            // no other collection is built from the same folder and still needs the grant.
-            if (collection.type == CollectionType.FOLDER && collection.rootUri != null &&
-                dao.countCollectionsWithRootUri(collection.rootUri) == 0
-            ) {
-                wallpaperSources.releasePersistedGrant(collection.rootUri)
-            }
+        // Release the persisted folder permission if this is a folder collection and
+        // no other collection is built from the same folder and still needs the grant.
+        if (collection.type == CollectionType.FOLDER && collection.rootUri != null &&
+            dao.countCollectionsWithRootUri(collection.rootUri) == 0
+        ) {
+            wallpaperSources.releasePersistedGrant(collection.rootUri)
         }
     }
 
@@ -736,7 +704,7 @@ class WallpaperRepository @Inject constructor(
      * left behind.
      */
     suspend fun cleanupOrphanFileRegistry() {
-        withContext(Dispatchers.IO) { gcOrphanFiles() }
+        gcOrphanFiles()
     }
 
     /**
@@ -747,18 +715,16 @@ class WallpaperRepository @Inject constructor(
      */
     // TODO tests: check "WallpaperSources Tests" note
     suspend fun cleanupOrphanPersistedGrants() {
-        withContext(Dispatchers.IO) {
-            // The grant snapshot is taken *before* the keep set so a grant acquired by a concurrent import
-            // can never look orphaned (its rows are in by the time the keep set is read).
-            val granted = wallpaperSources.persistedGrantUris()
-            if (granted.isEmpty()) return@withContext
+        // The grant snapshot is taken *before* the keep set so a grant acquired by a concurrent import
+        // can never look orphaned (its rows are in by the time the keep set is read).
+        val granted = wallpaperSources.persistedGrantUris()
+        if (granted.isEmpty()) return
 
-            val keep = dao.getAllRootUris().toSet()
-            val leaked = granted.filterNot { it in keep }
+        val keep = dao.getAllRootUris().toSet()
+        val leaked = granted.filterNot { it in keep }
 
-            leaked.forEach { wallpaperSources.releasePersistedGrant(it) }
-            if (leaked.isNotEmpty()) Log.d(TAG, "Released ${leaked.size} orphaned persisted grant(s)")
-        }
+        leaked.forEach { wallpaperSources.releasePersistedGrant(it) }
+        if (leaked.isNotEmpty()) Log.d(TAG, "Released ${leaked.size} orphaned persisted grant(s)")
     }
 
     /**
@@ -774,31 +740,29 @@ class WallpaperRepository @Inject constructor(
      */
     // TODO tests: check "MediaStore Transition Tests" note
     suspend fun reconcileMediaStoreAvailability() {
-        withContext(Dispatchers.IO) {
-            val references = dao.getFilesBySourceType(SourceType.MEDIA_STORE)
-            if (references.isEmpty()) return@withContext
+        val references = dao.getFilesBySourceType(SourceType.MEDIA_STORE)
+        if (references.isEmpty()) return
 
-            if (!wallpaperSources.hasMediaAccess()) {
-                dao.setFilesAvailability(references.filter { it.isAvailable }.map { it.id }, false)
-                Log.w(TAG, "READ_MEDIA_IMAGES missing; ${references.size} MediaStore reference(s) marked unavailable")
-                return@withContext
-            }
+        if (!wallpaperSources.hasMediaAccess()) {
+            dao.setFilesAvailability(references.filter { it.isAvailable }.map { it.id }, false)
+            Log.w(TAG, "READ_MEDIA_IMAGES missing; ${references.size} MediaStore reference(s) marked unavailable")
+            return
+        }
 
-            // A row whose uri has no parseable id can't be checked; leaving it untouched keeps the
-            // sweep non-destructive (rotation's own failure marking still covers it).
-            val idsByFile = references.mapNotNull { file ->
-                file.uri.lastPathSegment?.toLongOrNull()?.let { file to it }
-            }
-            val existing = wallpaperSources.queryExistingMediaStoreIds(idsByFile.map { it.second })
+        // A row whose uri has no parseable id can't be checked; leaving it untouched keeps the
+        // sweep non-destructive (rotation's own failure marking still covers it).
+        val idsByFile = references.mapNotNull { file ->
+            file.uri.lastPathSegment?.toLongOrNull()?.let { file to it }
+        }
+        val existing = wallpaperSources.queryExistingMediaStoreIds(idsByFile.map { it.second })
 
-            val lost = idsByFile.filter { (file, id) -> file.isAvailable && id !in existing }.map { it.first.id }
-            val recovered = idsByFile.filter { (file, id) -> !file.isAvailable && id in existing }.map { it.first.id }
+        val lost = idsByFile.filter { (file, id) -> file.isAvailable && id !in existing }.map { it.first.id }
+        val recovered = idsByFile.filter { (file, id) -> !file.isAvailable && id in existing }.map { it.first.id }
 
-            dao.setFilesAvailability(lost, false)
-            dao.setFilesAvailability(recovered, true)
-            if (lost.isNotEmpty() || recovered.isNotEmpty()) {
-                Log.d(TAG, "MediaStore sweep: ${lost.size} lost, ${recovered.size} recovered")
-            }
+        dao.setFilesAvailability(lost, false)
+        dao.setFilesAvailability(recovered, true)
+        if (lost.isNotEmpty() || recovered.isNotEmpty()) {
+            Log.d(TAG, "MediaStore sweep: ${lost.size} lost, ${recovered.size} recovered")
         }
     }
 
@@ -810,14 +774,12 @@ class WallpaperRepository @Inject constructor(
      * is [WallpaperSources.sweepInternalFiles].
      */
     suspend fun cleanupOrphanInternalFiles() {
-        withContext(Dispatchers.IO) {
-            val keep = dao.getFileUrisBySourceType(SourceType.INTERNALIZED)
-                .mapNotNull { it.lastPathSegment }
-                .toMutableSet()
-            appDataStore.getDefaultWallpaperFileName()?.let { keep.add(it) }
+        val keep = dao.getFileUrisBySourceType(SourceType.INTERNALIZED)
+            .mapNotNull { it.lastPathSegment }
+            .toMutableSet()
+        appDataStore.getDefaultWallpaperFileName()?.let { keep.add(it) }
 
-            wallpaperSources.sweepInternalFiles(keep)
-        }
+        wallpaperSources.sweepInternalFiles(keep)
     }
 
     // Wallpaper operations
@@ -836,17 +798,13 @@ class WallpaperRepository @Inject constructor(
         offsetX: Float,
         offsetY: Float
     ) {
-        withContext(Dispatchers.IO) {
-            dao.updateWallpaperEdit(wallpaper.id, zoom, offsetX, offsetY)
-        }
+        dao.updateWallpaperEdit(wallpaper.id, zoom, offsetX, offsetY)
     }
 
     /**
      * Resets a wallpaper edit: clears all edit parameters.
      */
     suspend fun resetWallpaperEdit(wallpaper: WallpaperImage) {
-        withContext(Dispatchers.IO) {
-            dao.updateWallpaperEdit(wallpaper.id, null, null, null)
-        }
+        dao.updateWallpaperEdit(wallpaper.id, null, null, null)
     }
 }
