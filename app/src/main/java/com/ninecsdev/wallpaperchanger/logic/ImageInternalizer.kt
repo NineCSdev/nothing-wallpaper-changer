@@ -60,7 +60,7 @@ class ImageInternalizer @Inject constructor(
             val internalDir = File(context.filesDir, INTERNAL_FOLDER)
             if (!internalDir.exists()) internalDir.mkdirs()
 
-            val (screenW, screenH) = ImageProcessingUtils.getScreenDimensions(context)
+            val (screenW, screenH) = ImageProcessingUtils.getWallpaperCanvasSize(context)
 
             // Ideally we would check this using the repository but to avoid circular dependency
             // I used the datastore directly

@@ -22,7 +22,10 @@ enum class RotationOutcome {
     HANDED_OFF,
 
     /** Nothing rotated. */
-    NOT_DONE
+    NOT_DONE,
+
+    /** Refused: another rotation held the guard.*/
+    ALREADY_RUNNING
 }
 
 /**
@@ -65,7 +68,7 @@ class RotationCoordinator @Inject constructor(
     ): RotationOutcome {
         if (!isWorkInProgress.compareAndSet(false, true)) {
             Log.d(TAG, "$logTag: a rotation is already in progress. Skipping.")
-            return RotationOutcome.NOT_DONE
+            return RotationOutcome.ALREADY_RUNNING
         }
 
         return try {

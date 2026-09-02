@@ -22,6 +22,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.IOException
@@ -91,8 +92,10 @@ class AppDataStore @Inject constructor(
 
     // Generic helpers, every setting below is one of these
 
+
     private fun <T> settingFlow(key: Preferences.Key<T>, default: T): Flow<T> =
-        safeData.map { prefs -> prefs[key] ?: default }
+        // Ends in distinctUntilChanged() to not re-emit unchanged flows
+        safeData.map { prefs -> prefs[key] ?: default }.distinctUntilChanged()
 
     /** For settings whose stored type differs from the exposed type (enums, Uri). */
     private fun <S, T> mappedSettingFlow(
@@ -100,7 +103,7 @@ class AppDataStore @Inject constructor(
         default: T,
         read: (S) -> T
     ): Flow<T> =
-        safeData.map { prefs -> prefs[key]?.let(read) ?: default }
+        safeData.map { prefs -> prefs[key]?.let(read) ?: default }.distinctUntilChanged()
 
     private suspend fun <T> set(key: Preferences.Key<T>, value: T) {
         dataStore.edit { prefs -> prefs[key] = value }
@@ -138,6 +141,7 @@ class AppDataStore @Inject constructor(
      */
     fun serviceDesiredFlow(): Flow<Boolean> =
         safeData.map { prefs -> prefs[KEY_SERVICE_DESIRED] ?: prefs[KEY_SERVICE_RUNNING] ?: false }
+            .distinctUntilChanged()
 
     fun startOnBootFlow(): Flow<Boolean> =
         settingFlow(KEY_START_ON_BOOT, true)

@@ -8,6 +8,8 @@ import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.net.Uri
+import android.util.Log
+import android.view.WindowManager
 import androidx.core.graphics.createBitmap
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -15,17 +17,23 @@ import java.io.FileOutputStream
 
 /**
  * Shared image processing utilities used by [BufferManager] and [ImageInternalizer].
- * Centralizes bitmap decoding, compression, rendering, and
- * screen-dimension helpers so the logic is not duplicated.
+ * Centralizes bitmap decoding, compression, rendering, and the
+ * wallpaper-canvas lookup so the logic is not duplicated.
  */
 object ImageProcessingUtils {
 
+    private const val TAG = "ImageProcessingUtils"
+
     /**
-     * Returns the device screen dimensions as a `(width, height)` pair.
+     * The wallpaper canvas as a `(width, height)` pair: the pixel size a prepared wallpaper has to be.
+     * Assumes a display whose natural orientation is portrait.
      */
-    fun getScreenDimensions(context: Context): Pair<Int, Int> {
-        val metrics = context.resources.displayMetrics
-        return metrics.widthPixels to metrics.heightPixels
+    fun getWallpaperCanvasSize(context: Context): Pair<Int, Int> {
+        val bounds = context.getSystemService(WindowManager::class.java).maximumWindowMetrics.bounds
+        if (bounds.width() > bounds.height()) {
+            Log.d(TAG, "Display reports ${bounds.width()}x${bounds.height()}; using the portrait canvas.")
+        }
+        return minOf(bounds.width(), bounds.height()) to maxOf(bounds.width(), bounds.height())
     }
 
     /**

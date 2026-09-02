@@ -363,7 +363,7 @@ class BufferManager @Inject constructor(
     }
 
     private fun getTargetSize(): TargetSize {
-        val (width, height) = ImageProcessingUtils.getScreenDimensions(appContext)
+        val (width, height) = ImageProcessingUtils.getWallpaperCanvasSize(appContext)
         return TargetSize(width, height)
     }
 

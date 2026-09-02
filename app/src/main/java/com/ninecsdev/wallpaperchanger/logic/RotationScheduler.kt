@@ -46,6 +46,9 @@ class RotationScheduler @Inject constructor(
 
         /** Backoff after an attempt that did not rotate, so a persistent failure cannot spin. */
         const val RETRY_DELAY_MS = 60 * 1000L
+
+        /** Backoff after being refused by the guard. Short, because the rotation holding it is expected to finish within seconds.*/
+        const val ALREADY_RUNNING_RETRY_DELAY_MS = 5 * 1000L
     }
 
     /** Fed by the owning service's screen-state receiver. */
@@ -121,6 +124,10 @@ class RotationScheduler @Inject constructor(
                     Log.d(TAG, "Timed rotation did not happen ($outcome); retrying in ${RETRY_DELAY_MS}ms.")
                     delay(RETRY_DELAY_MS)
                 }
+
+                // Looping re-reads the anchor: once the rotation holding the guard stamps it, the
+                // next pass simply sleeps until the new due time.
+                RotationOutcome.ALREADY_RUNNING -> delay(ALREADY_RUNNING_RETRY_DELAY_MS)
             }
         }
     }

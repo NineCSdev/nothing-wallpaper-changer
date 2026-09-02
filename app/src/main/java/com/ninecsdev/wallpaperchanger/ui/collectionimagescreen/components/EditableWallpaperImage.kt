@@ -55,7 +55,7 @@ internal fun EditableWallpaperImage(
     val edit = requireNotNull(wallpaper.editParams) { "EditableWallpaperImage requires editParams; non-edited images render with a plain AsyncImage" }
 
     val context = LocalContext.current
-    val (screenW, screenH) = remember { ImageProcessingUtils.getScreenDimensions(context) }
+    val (screenW, screenH) = remember { ImageProcessingUtils.getWallpaperCanvasSize(context) }
     // null until ANY painter reports an intrinsic size. Guessing rendered a visible wrong-crop flash during flights.
     var imageAspectRatio by remember(wallpaper.uri) { mutableStateOf<Float?>(null) }
 

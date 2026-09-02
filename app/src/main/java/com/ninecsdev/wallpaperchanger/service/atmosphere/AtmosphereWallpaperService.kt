@@ -339,8 +339,7 @@ class AtmosphereWallpaperService : GLWallpaperService() {
          */
         private fun loadFallbackSource() {
             val frame = surfaceHolder?.surfaceFrame
-            val (screenWidth, screenHeight) =
-                ImageProcessingUtils.getScreenDimensions(this@AtmosphereWallpaperService)
+            val (screenWidth, screenHeight) = ImageProcessingUtils.getWallpaperCanvasSize(this@AtmosphereWallpaperService)
             val width = frame?.width()?.takeIf { it > 0 } ?: screenWidth
             val height = frame?.height()?.takeIf { it > 0 } ?: screenHeight
 
