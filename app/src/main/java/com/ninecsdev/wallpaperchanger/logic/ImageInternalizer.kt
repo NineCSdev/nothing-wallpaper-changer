@@ -6,6 +6,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.core.graphics.scale
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -30,6 +31,7 @@ data class StorageUsage(
  */
 @Singleton
 class ImageInternalizer @Inject constructor(
+    @param:ApplicationContext private val appContext: Context,
     // Though injecting the datastore here is not the best practice it was done for simplicity
     private val appDataStore: AppDataStore
 ) {
@@ -52,15 +54,12 @@ class ImageInternalizer @Inject constructor(
      * processes all images concurrently.
      * @return List of internal file URIs.
      */
-    suspend fun internalizeImages(
-        context: Context,
-        uris: List<Uri>
-    ): List<Uri> {
+    suspend fun internalizeImages(uris: List<Uri>): List<Uri> {
         return withContext(Dispatchers.IO) {
-            val internalDir = File(context.filesDir, INTERNAL_FOLDER)
+            val internalDir = File(appContext.filesDir, INTERNAL_FOLDER)
             if (!internalDir.exists()) internalDir.mkdirs()
 
-            val (screenW, screenH) = ImageProcessingUtils.getWallpaperCanvasSize(context)
+            val (screenW, screenH) = ImageProcessingUtils.getWallpaperCanvasSize(appContext)
 
             // Ideally we would check this using the repository but to avoid circular dependency
             // I used the datastore directly
@@ -79,9 +78,9 @@ class ImageInternalizer @Inject constructor(
                     async {
                         batchSemaphore.withPermit {
                             try {
-                                val fileSize = context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
+                                val fileSize = appContext.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
                                 val quality = if (fileSize > LARGE_FILE_THRESHOLD) qualityLow else qualityHigh
-                                internalizeImage(context, uri, internalDir, screenW, screenH, quality)
+                                internalizeImage(uri, internalDir, screenW, screenH, quality)
                             } catch (e: Exception) {
                                 Log.e(TAG, "Failed to access image for internalization: $uri", e)
                                 null
@@ -94,7 +93,6 @@ class ImageInternalizer @Inject constructor(
     }
 
     private fun internalizeImage(
-        context: Context,
         uri: Uri,
         internalDir: File,
         screenW: Int,
@@ -106,7 +104,7 @@ class ImageInternalizer @Inject constructor(
             val outputFile = File(internalDir, fileName)
 
             // Decode at reduced resolution via two-pass helper
-            val sampled = ImageProcessingUtils.decodeSampledBitmap(context, uri, screenW, screenH)
+            val sampled = ImageProcessingUtils.decodeSampledBitmap(appContext, uri, screenW, screenH)
                 ?: return null
 
             // Fine-resize to exact screen dimensions
@@ -143,10 +141,9 @@ class ImageInternalizer @Inject constructor(
      */
     // TODO tests: see vault note tests/Storage Usage Tests
     suspend fun getStorageUsage(
-        context: Context,
         excludeFileNames: Set<String> = emptySet()
     ): StorageUsage = withContext(Dispatchers.IO) {
-        val files = File(context.filesDir, INTERNAL_FOLDER)
+        val files = File(appContext.filesDir, INTERNAL_FOLDER)
             .listFiles()
             ?.filter { it.name !in excludeFileNames }
         StorageUsage(
@@ -179,8 +176,8 @@ class ImageInternalizer @Inject constructor(
      * import is never caught mid-write.
      * @return the number of files deleted.
      */
-    fun deleteOrphanInternalFiles(context: Context, keepFileNames: Set<String>): Int {
-        val internalDir = File(context.filesDir, INTERNAL_FOLDER)
+    fun deleteOrphanInternalFiles(keepFileNames: Set<String>): Int {
+        val internalDir = File(appContext.filesDir, INTERNAL_FOLDER)
         val files = internalDir.listFiles() ?: return 0
         val graceCutoff = System.currentTimeMillis() - ORPHAN_GRACE_PERIOD_MS
 

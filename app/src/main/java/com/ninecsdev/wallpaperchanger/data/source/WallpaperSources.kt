@@ -75,7 +75,7 @@ class WallpaperSources @Inject constructor(
         if (uris.isEmpty()) return PickImportOutcome(emptyList(), PickImportResult())
 
         if (appDataStore.getKeepLocalCopies() || !hasMediaAccess()) {
-            val internalizedUris = imageInternalizer.internalizeImages(appContext, uris)
+            val internalizedUris = imageInternalizer.internalizeImages(uris)
             return PickImportOutcome(
                 files = internalizedUris.map { it to SourceType.INTERNALIZED },
                 result = PickImportResult(
@@ -90,7 +90,7 @@ class WallpaperSources @Inject constructor(
         val toInternalize = uris - referenced.map { it.first }.toSet()
 
         val internalizedUris = if (toInternalize.isNotEmpty()) {
-            imageInternalizer.internalizeImages(appContext, toInternalize)
+            imageInternalizer.internalizeImages(toInternalize)
         } else {
             emptyList()
         }
@@ -192,7 +192,7 @@ class WallpaperSources @Inject constructor(
      */
     suspend fun sweepInternalFiles(keepFileNames: Set<String>) {
         withContext(Dispatchers.IO) {
-            imageInternalizer.deleteOrphanInternalFiles(appContext, keepFileNames)
+            imageInternalizer.deleteOrphanInternalFiles(keepFileNames)
         }
     }
 

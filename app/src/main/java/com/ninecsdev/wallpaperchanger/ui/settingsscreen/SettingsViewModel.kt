@@ -171,7 +171,7 @@ class SettingsViewModel @Inject constructor(
     private val storageUsage: StateFlow<StorageUsage?> = flow {
         // The default wallpaper isn't counted as it is always internalized (no matter user setting)
         val excluded = setOfNotNull(appDataStore.getDefaultWallpaperFileName())
-        emit(imageInternalizer.getStorageUsage(context, excluded))
+        emit(imageInternalizer.getStorageUsage(excluded))
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,

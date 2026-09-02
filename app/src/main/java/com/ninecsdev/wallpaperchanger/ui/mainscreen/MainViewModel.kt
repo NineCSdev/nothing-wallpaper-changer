@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.ui.mainscreen
 
-import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -15,7 +14,6 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.pinnedFirst
 import com.ninecsdev.wallpaperchanger.ui.components.asPreviewStates
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,8 +41,7 @@ class MainViewModel @Inject constructor(
     private val appDataStore: AppDataStore,
     private val imageInternalizer: ImageInternalizer,
     private val wallpaperSources: WallpaperSources,
-    startupMaintenance: StartupMaintenance,
-    @param:ApplicationContext private val context: Context
+    startupMaintenance: StartupMaintenance
 ) : ViewModel() {
 
     companion object {
@@ -182,7 +179,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             // Internalize and persist the new default before deleting the old file, so a
             // failed internalization keeps the previous default working.
-            val internalized = imageInternalizer.internalizeImages(context, listOf(uri))
+            val internalized = imageInternalizer.internalizeImages(listOf(uri))
             val newUri = internalized.firstOrNull()
             if (newUri == null) {
                 Log.e(TAG, "Failed to internalize new default wallpaper, keeping previous one")
