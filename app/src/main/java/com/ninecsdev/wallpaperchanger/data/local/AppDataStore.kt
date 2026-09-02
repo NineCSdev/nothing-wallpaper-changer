@@ -182,6 +182,9 @@ class AppDataStore @Inject constructor(
     suspend fun getDefaultWallpaperUri(): Uri? =
         defaultWallpaperUriFlow().first()
 
+    suspend fun getDefaultWallpaperFileName(): String? =
+        getDefaultWallpaperUri()?.lastPathSegment
+
     suspend fun shouldRevertToDefault(): Boolean =
         revertToDefaultFlow().first()
 

@@ -814,7 +814,7 @@ class WallpaperRepository @Inject constructor(
             val keep = dao.getFileUrisBySourceType(SourceType.INTERNALIZED)
                 .mapNotNull { it.lastPathSegment }
                 .toMutableSet()
-            appDataStore.getDefaultWallpaperUri()?.lastPathSegment?.let { keep.add(it) }
+            appDataStore.getDefaultWallpaperFileName()?.let { keep.add(it) }
 
             wallpaperSources.sweepInternalFiles(keep)
         }

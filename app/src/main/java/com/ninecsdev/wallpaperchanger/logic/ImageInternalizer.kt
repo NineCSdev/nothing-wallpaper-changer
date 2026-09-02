@@ -18,7 +18,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Disk footprint of the internalized wallpapers ("local copies" in the UI). */
+/** Disk footprint of the internalized collection images ("local copies" in the UI). */
 data class StorageUsage(
     val totalBytes: Long,
     val fileCount: Int
@@ -138,11 +138,17 @@ class ImageInternalizer @Inject constructor(
     }
 
     /**
-     * Sums the current disk usage of [INTERNAL_FOLDER]. Computed from the filesystem on every call.
+     * Sums the current disk usage of [INTERNAL_FOLDER], skipping files named in [excludeFileNames].
+     * Computed from the filesystem on every call.
      */
     // TODO tests: see vault note tests/Storage Usage Tests
-    suspend fun getStorageUsage(context: Context): StorageUsage = withContext(Dispatchers.IO) {
-        val files = File(context.filesDir, INTERNAL_FOLDER).listFiles()
+    suspend fun getStorageUsage(
+        context: Context,
+        excludeFileNames: Set<String> = emptySet()
+    ): StorageUsage = withContext(Dispatchers.IO) {
+        val files = File(context.filesDir, INTERNAL_FOLDER)
+            .listFiles()
+            ?.filter { it.name !in excludeFileNames }
         StorageUsage(
             totalBytes = files?.sumOf { it.length() } ?: 0L,
             fileCount = files?.size ?: 0

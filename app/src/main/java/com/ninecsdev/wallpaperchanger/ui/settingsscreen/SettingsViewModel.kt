@@ -169,7 +169,9 @@ class SettingsViewModel @Inject constructor(
 
     // Merged into the state after it has its own initial value, never folded into the combine above
     private val storageUsage: StateFlow<StorageUsage?> = flow {
-        emit(imageInternalizer.getStorageUsage(context))
+        // The default wallpaper isn't counted as it is always internalized (no matter user setting)
+        val excluded = setOfNotNull(appDataStore.getDefaultWallpaperFileName())
+        emit(imageInternalizer.getStorageUsage(context, excluded))
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
