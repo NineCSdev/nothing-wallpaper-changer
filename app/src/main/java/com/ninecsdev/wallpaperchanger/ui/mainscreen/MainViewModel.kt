@@ -10,6 +10,7 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
+import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.pinnedFirst
 import com.ninecsdev.wallpaperchanger.ui.components.asPreviewStates
@@ -40,6 +41,7 @@ class MainViewModel @Inject constructor(
     serviceStateManager: ServiceStateManager,
     private val appDataStore: AppDataStore,
     private val imageInternalizer: ImageInternalizer,
+    private val wallpaperApplier: WallpaperApplier,
     private val wallpaperSources: WallpaperSources,
     startupMaintenance: StartupMaintenance
 ) : ViewModel() {
@@ -56,10 +58,10 @@ class MainViewModel @Inject constructor(
     // For performance reasons the state is split into narrower flows that update at different
     // rates and are then combined. Service state comes from the manager's single derived flow.
     private val settingsFlow = combine(
-        appDataStore.defaultWallpaperUriFlow(),
+        repository.defaultWallpaperFlow(),
         appDataStore.revertToDefaultFlow(),
-    ) { defaultUri, revert ->
-        Pair(defaultUri, revert)
+    ) { default, revert ->
+        Pair(default, revert)
     }
 
     // Full active collection (distinct on the whole object) so renames and rule changes on the
@@ -82,6 +84,9 @@ class MainViewModel @Inject constructor(
                 flowOf(emptyList())
             }
         }
+
+    /** True while an explicit "apply the default now" request is in flight; disables the button. */
+    private val isApplyingDefault = MutableStateFlow(false)
 
     // Active-collection picker sheet: collections + previews only flow while the sheet is open
     private val _isPickerSheetOpen = MutableStateFlow(false)
@@ -124,20 +129,21 @@ class MainViewModel @Inject constructor(
             activeCollectionFlow,
             previewsFlow,
             mediaAccessLostFlow
-        ) { (defaultUri, revert), serviceState, active, previews, mediaAccessLost ->
+        ) { (default, revert), serviceState, active, previews, mediaAccessLost ->
             MainUiState(
                 serviceState = serviceState,
                 activeCollection = active,
                 previewImages = previews.take(PREVIEW_IMAGE_COUNT),
                 activeCollectionSize = previews.size,
-                defaultWallpaperUri = defaultUri,
+                defaultWallpaper = default,
                 revertToDefaultOnStop = revert,
                 mediaAccessLostCount = mediaAccessLost
             )
         },
-        pickerSheetFlow
-    ) { base, pickerSheet ->
-        base.copy(pickerSheet = pickerSheet)
+        pickerSheetFlow,
+        isApplyingDefault
+    ) { base, pickerSheet, applying ->
+        base.copy(pickerSheet = pickerSheet, isApplyingDefault = applying)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
@@ -175,19 +181,29 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch { appDataStore.setRevertToDefault(isChecked) }
     }
 
-    fun internalizeAndSaveDefaultWallpaper(uri: Uri) {
+    fun setDefaultWallpaperFromPick(uri: Uri) {
         viewModelScope.launch {
-            // Internalize and persist the new default before deleting the old file, so a
-            // failed internalization keeps the previous default working.
-            val internalized = imageInternalizer.internalizeImages(listOf(uri))
-            val newUri = internalized.firstOrNull()
+            val newUri = imageInternalizer.internalizeImages(listOf(uri)).firstOrNull()
             if (newUri == null) {
                 Log.e(TAG, "Failed to internalize new default wallpaper, keeping previous one")
                 return@launch
             }
-            val previousUri = appDataStore.getDefaultWallpaperUri()
-            appDataStore.saveDefaultWallpaperUri(newUri)
-            if (previousUri != null) imageInternalizer.deleteInternalFile(previousUri.path)
+            repository.setDefaultWallpaper(newUri)
+        }
+    }
+
+    fun applyDefaultWallpaperNow() {
+        if (isApplyingDefault.value) return
+
+        viewModelScope.launch {
+            isApplyingDefault.value = true
+            try {
+                if (!wallpaperApplier.applyDefaultWallpaper()) {
+                    Log.e(TAG, "Applying the default wallpaper on request failed")
+                }
+            } finally {
+                isApplyingDefault.value = false
+            }
         }
     }
 }

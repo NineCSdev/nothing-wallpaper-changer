@@ -80,18 +80,18 @@ import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.EditParams
-import com.ninecsdev.wallpaperchanger.model.resolveCollectionDisplayName
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
-import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.EditableWallpaperImage
-import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.EditedBadge
+import com.ninecsdev.wallpaperchanger.model.resolveCollectionDisplayName
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.FavoriteBadge
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.SelectionActionBar
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.TransferSummarySnackbarEffect
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.UnavailableBadge
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.WallpaperPreviewOverlay
+import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.EditedBadge
+import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
+import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.CollectionPickerItem
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.CollectionPickerSheet
-import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ImportSummarySnackbarEffect
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
@@ -117,7 +117,7 @@ internal fun wallpaperThumbCacheKey(uri: Uri) = "wallpaper-thumb-$uri"
 
 /**
  * Same placeholder trick for *edited* wallpapers, under a separate key: their
- * grid request is sized to the screen-aspect virtual frame (see [EditableWallpaperImage][com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.EditableWallpaperImage])
+ * grid request is sized to the screen-aspect virtual frame (see [EditableWallpaperImage][com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage])
  * so the bitmaps aren't interchangeable with the non-edited thumbnail's.
  */
 internal fun wallpaperEditThumbCacheKey(uri: Uri) = "wallpaper-edit-thumb-$uri"

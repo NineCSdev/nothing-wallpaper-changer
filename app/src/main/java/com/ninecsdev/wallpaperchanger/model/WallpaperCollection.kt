@@ -14,7 +14,8 @@ import com.ninecsdev.wallpaperchanger.model.enums.CropRule
  * [com.ninecsdev.wallpaperchanger.model.enums.CollectionType.FOLDER] types are synced with a physical directory on the device.
  * [com.ninecsdev.wallpaperchanger.model.enums.CollectionType.MANUAL] types have images handpicked by the user and are not synced.
  *
- * [isFavorites] marks the app-owned Favourites collection.
+ * [isFavorites] marks the app-owned Favourites collection
+ * [isDefaults] the app-owned collection holding default wallpapers.
  * [isPinned] is the user-set "sort first"
  */
 //"App-owned vs user-owned" is orthogonal to [type] (how images get in), so Favourites is a plain
@@ -34,7 +35,8 @@ data class WallpaperCollection(
     val createdAt: Long = System.currentTimeMillis(),
     val lastUsedAt: Long = System.currentTimeMillis(),
     val isFavorites: Boolean = false,
-    val isPinned: Boolean = false
+    val isPinned: Boolean = false,
+    val isDefaults: Boolean = false
 ) {
     companion object {
         /** How a collection frames its unedited images unless the user says otherwise. */

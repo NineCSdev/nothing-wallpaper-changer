@@ -26,7 +26,8 @@ fun MainRoute(
     onOpenSettings: () -> Unit,
     onStartService: () -> Unit,
     onStopService: () -> Unit,
-    onLaunchDefaultWallpaperPicker: () -> Unit
+    onLaunchDefaultWallpaperPicker: () -> Unit,
+    onEditWallpaper: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -60,6 +61,8 @@ fun MainRoute(
         onSettingsClick = onOpenSettings,
         onToggleRevert = viewModel::setRevertToDefault,
         onSelectDefaultClick = onLaunchDefaultWallpaperPicker,
+        onEditDefaultClick = { loadedUiState.defaultWallpaper?.let { onEditWallpaper(it.id) } },
+        onApplyDefaultClick = viewModel::applyDefaultWallpaperNow,
         onGrantMediaAccess = {
             // From the partial "selected photos" state a re-request only re-opens the
             // manage-selection sheet; full access (what references need) lives in app settings.

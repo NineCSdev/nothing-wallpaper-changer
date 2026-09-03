@@ -120,9 +120,6 @@ class AppDataStore @Inject constructor(
 
     // Flows (reactive reads)
 
-    fun defaultWallpaperUriFlow(): Flow<Uri?> =
-        mappedSettingFlow(KEY_DEFAULT_WALLPAPER_URI, null) { it.toUri() }
-
     fun revertToDefaultFlow(): Flow<Boolean> =
         settingFlow(KEY_REVERT_TO_DEFAULT, true)
 
@@ -183,11 +180,13 @@ class AppDataStore @Inject constructor(
 
     // Suspend reads (suspend, one-shot)
 
-    suspend fun getDefaultWallpaperUri(): Uri? =
-        defaultWallpaperUriFlow().first()
-
-    suspend fun getDefaultWallpaperFileName(): String? =
-        getDefaultWallpaperUri()?.lastPathSegment
+    /**
+     * The default wallpaper as it was stored before it became a row, read only by the one-shot
+     * backfill in [StartupMaintenance][com.ninecsdev.wallpaperchanger.data.StartupMaintenance].
+     */
+    // TODO: remove with the backfill in v0.4.1, along with KEY_DEFAULT_WALLPAPER_URI
+    suspend fun getLegacyDefaultWallpaperUri(): Uri? =
+        mappedSettingFlow(KEY_DEFAULT_WALLPAPER_URI, null) { it.toUri() }.first()
 
     suspend fun shouldRevertToDefault(): Boolean =
         revertToDefaultFlow().first()
@@ -242,8 +241,9 @@ class AppDataStore @Inject constructor(
 
     // Writes (suspend)
 
-    suspend fun saveDefaultWallpaperUri(uri: Uri) =
-        set(KEY_DEFAULT_WALLPAPER_URI, uri.toString())
+    // TODO: remove with the backfill in v0.4.1, along with KEY_DEFAULT_WALLPAPER_URI
+    suspend fun clearLegacyDefaultWallpaperUri() =
+        setOrClear(KEY_DEFAULT_WALLPAPER_URI, null)
 
     suspend fun setRevertToDefault(revert: Boolean) =
         set(KEY_REVERT_TO_DEFAULT, revert)

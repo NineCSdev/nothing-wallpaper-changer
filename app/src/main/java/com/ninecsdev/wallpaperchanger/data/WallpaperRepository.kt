@@ -85,7 +85,6 @@ private fun List<Pair<Uri, SourceType>>.asDrafts() = map { (uri, sourceType) -> 
 class WallpaperRepository @Inject constructor(
     private val database: AppDatabase,
     private val dao: WallpaperDao,
-    private val appDataStore: AppDataStore,
     private val serviceStateManager: ServiceStateManager,
     private val wallpaperSources: WallpaperSources,
     private val folderScanner: FolderScanner
@@ -437,6 +436,54 @@ class WallpaperRepository @Inject constructor(
         gcOrphanFiles()
     }
 
+    // Default wallpapers
+
+    /**
+     * The user's default wallpaper, or null if none is set. No grid, count or rotation includes it
+     * and lives in the app-owned defaults collection.
+     */
+    fun defaultWallpaperFlow(): Flow<WallpaperImage?> = dao.observeGlobalDefaultWallpaper()
+
+    /** Suspend sibling of [defaultWallpaperFlow]. */
+    suspend fun getDefaultWallpaper(): WallpaperImage? = dao.getDefaultsCollection()?.let { dao.getDefaultWallpaper(it.id) }
+
+    /**
+     * Points the default wallpaper at [internalizedUri], replacing whatever was there.
+     * The caller internalizes first. The replaced file is left to [gcOrphanFiles].
+     */
+    // TODO tests: see vault note tests/Default Wallpaper Membership Tests.md (replacement and GC)
+    suspend fun setDefaultWallpaper(internalizedUri: Uri) {
+        database.withTransaction {
+            val collectionId = getOrCreateDefaultsCollection()
+            val fileId = dao.getOrCreateFile(internalizedUri, SourceType.INTERNALIZED, System.currentTimeMillis())
+
+            val existing = dao.getDefaultWallpaper(collectionId)
+            if (existing == null) {
+                dao.insertWallpapers(
+                    listOf(Wallpaper(collectionId = collectionId, fileId = fileId, isManuallyAdded = true, isDefault = true))
+                )
+            } else {
+                dao.repointDefaultWallpaper(existing.id, fileId)
+            }
+        }
+        gcOrphanFiles()
+    }
+
+    /**
+     * Returns the id of the app-owned defaults collection, creating it lazily on first use.
+     * **MUST** be called inside a Room transaction.
+     */
+    private suspend fun getOrCreateDefaultsCollection(): Long {
+        val existing = dao.getDefaultsCollection()
+        if (existing != null) return existing.id
+        return dao.insertCollection(
+            WallpaperCollection(name = "Defaults", type = CollectionType.MANUAL, isDefaults = true)
+        )
+    }
+
+    /** Uris of files held only by defaults, the storage readout subtracts them. */
+    suspend fun getDefaultOnlyFileUris(): List<Uri> = dao.getDefaultOnlyFileUris()
+
     /** Marks a file unavailable (rotation self-heal after a definitive read failure). */
     suspend fun markFileUnavailable(fileId: Long) {
         dao.setFileAvailability(fileId, false)
@@ -768,16 +815,14 @@ class WallpaperRepository @Inject constructor(
 
     /**
      * Reconciles disk with the DB: deletes any file under `internal_wallpapers/` that isn't
-     * referenced by a [SourceType.INTERNALIZED] file row and isn't the current default wallpaper
-     * (which lives outside the DB, in [AppDataStore]). Safe to call on every app start; a no-op
+     * referenced by a [SourceType.INTERNALIZED] file row. Safe to call on every app start; a no-op
      * when nothing is orphaned. The keep set is computed here (it needs the DAO); the sweep itself
      * is [WallpaperSources.sweepInternalFiles].
      */
     suspend fun cleanupOrphanInternalFiles() {
         val keep = dao.getFileUrisBySourceType(SourceType.INTERNALIZED)
             .mapNotNull { it.lastPathSegment }
-            .toMutableSet()
-        appDataStore.getDefaultWallpaperFileName()?.let { keep.add(it) }
+            .toSet()
 
         wallpaperSources.sweepInternalFiles(keep)
     }

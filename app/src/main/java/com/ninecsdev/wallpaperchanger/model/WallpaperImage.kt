@@ -7,7 +7,6 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.enums.SourceType
 
 /**
@@ -16,6 +15,8 @@ import com.ninecsdev.wallpaperchanger.model.enums.SourceType
  * The same file can be a member of many collections; each membership is one [Wallpaper] and carries
  * its own [editParams] (edits are per-collection, not per-file). `UNIQUE(collectionId, fileId)`
  * makes re-adding the same file to a collection a no-op.
+ *
+ * [isDefault] marks the row as its collection's default wallpaper.
  *
  * Cascades: deleting either the parent collection or the referenced file removes the join row.
  * Consumers read the denormalized [WallpaperImage] (file uri joined in), not this entity directly.
@@ -49,6 +50,7 @@ data class Wallpaper(
     val fileId: Long,
     @Embedded val editParams: EditParams? = null,
     val isManuallyAdded: Boolean = false,
+    val isDefault: Boolean = false,
     val addedAt: Long = System.currentTimeMillis()
 )
 
@@ -69,20 +71,9 @@ data class WallpaperImage(
     val isAvailable: Boolean = true,
     @Embedded val editParams: EditParams? = null,
     val isManuallyAdded: Boolean = false,
-    val addedAt: Long = System.currentTimeMillis()
-) {
-    companion object {
-        /** How the default wallpaper is framed. */
-        val DEFAULT_WALLPAPER_CROP_RULE = CropRule.CENTER
-
-        /**
-         * The user's default wallpaper as a [WallpaperImage] so it can go through the same render
-         * pipeline as collection images. It belongs to no collection (hence [collectionId] 0, an id
-         * no row ever has) and carries no edits; [DEFAULT_WALLPAPER_CROP_RULE] frames it.
-         */
-        fun forDefaultWallpaper(uri: Uri): WallpaperImage = WallpaperImage(collectionId = 0L, uri = uri, editParams = null)
-    }
-}
+    val addedAt: Long = System.currentTimeMillis(),
+    val isDefault: Boolean = false
+)
 
 /**
  * Per-image edit transform (zoom + normalized pan offsets), embedded into [Wallpaper] and applied

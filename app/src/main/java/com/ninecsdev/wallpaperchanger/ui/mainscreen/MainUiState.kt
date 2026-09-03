@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.ui.mainscreen
 
-import android.net.Uri
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
@@ -37,8 +36,9 @@ data class MainUiState(
     val activeCollectionSize: Int = 0,
 
     // Default wallpaper data
-    val defaultWallpaperUri: Uri? = null,
+    val defaultWallpaper: WallpaperImage? = null,
     val revertToDefaultOnStop: Boolean = true,
+    val isApplyingDefault: Boolean = false,
 
     // Lost photos data
     val mediaAccessLostCount: Int = 0,

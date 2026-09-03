@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 6,
-    "identityHash": "a4dde98674761fdb7e355e2a6ee01316",
+    "identityHash": "26cde189a2d525d73dc2f9f156efd22b",
     "entities": [
       {
         "tableName": "collections",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `isActive` INTEGER NOT NULL, `rootUri` TEXT, `defaultCropRule` TEXT NOT NULL, `rotationPolicy` TEXT NOT NULL, `lastWallpaperChangeAt` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `lastUsedAt` INTEGER NOT NULL, `isFavorites` INTEGER NOT NULL, `isPinned` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `isActive` INTEGER NOT NULL, `rootUri` TEXT, `defaultCropRule` TEXT NOT NULL, `rotationPolicy` TEXT NOT NULL, `lastWallpaperChangeAt` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `lastUsedAt` INTEGER NOT NULL, `isFavorites` INTEGER NOT NULL, `isPinned` INTEGER NOT NULL, `isDefaults` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -78,6 +78,12 @@
             "columnName": "isPinned",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "isDefaults",
+            "columnName": "isDefaults",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -142,7 +148,7 @@
       },
       {
         "tableName": "wallpapers",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `collectionId` INTEGER NOT NULL, `fileId` INTEGER NOT NULL, `isManuallyAdded` INTEGER NOT NULL, `addedAt` INTEGER NOT NULL, `editZoom` REAL, `editOffsetX` REAL, `editOffsetY` REAL, FOREIGN KEY(`collectionId`) REFERENCES `collections`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`fileId`) REFERENCES `wallpaper_files`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `collectionId` INTEGER NOT NULL, `fileId` INTEGER NOT NULL, `isManuallyAdded` INTEGER NOT NULL, `addedAt` INTEGER NOT NULL, `isDefault` INTEGER NOT NULL, `editZoom` REAL, `editOffsetX` REAL, `editOffsetY` REAL, FOREIGN KEY(`collectionId`) REFERENCES `collections`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`fileId`) REFERENCES `wallpaper_files`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -171,6 +177,12 @@
           {
             "fieldPath": "addedAt",
             "columnName": "addedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isDefault",
+            "columnName": "isDefault",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -339,7 +351,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a4dde98674761fdb7e355e2a6ee01316')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '26cde189a2d525d73dc2f9f156efd22b')"
     ]
   }
 }

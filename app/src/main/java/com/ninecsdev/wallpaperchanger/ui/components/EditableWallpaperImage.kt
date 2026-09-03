@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components
+    package com.ninecsdev.wallpaperchanger.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize

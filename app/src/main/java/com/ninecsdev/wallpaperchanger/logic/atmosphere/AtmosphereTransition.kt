@@ -7,7 +7,6 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
-import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -76,9 +75,9 @@ class AtmosphereTransition @Inject constructor(
      */
     val canEnter: Flow<Boolean> = combine(
         repository.activeCollectionImagesFlow(),
-        appDataStore.defaultWallpaperUriFlow()
-    ) { activeSnapshot, defaultUri ->
-        (activeSnapshot?.second?.isNotEmpty() == true) || defaultUri != null
+        repository.defaultWallpaperFlow()
+    ) { activeSnapshot, default ->
+        (activeSnapshot?.second?.isNotEmpty() == true) || default?.isAvailable == true
     }
 
     /**
@@ -180,8 +179,7 @@ class AtmosphereTransition @Inject constructor(
      */
     private suspend fun renderKey(): String {
         val zoomFix = appDataStore.getWallpaperZoomFix().name
-        val wallpaperId = appDataStore.getAtmosphereLiveWallpaperId()
-            ?: return "default$KEY_SEPARATOR${WallpaperImage.DEFAULT_WALLPAPER_CROP_RULE}|$zoomFix" + "|${appDataStore.getDefaultWallpaperUri().hashCode()}"
+        val wallpaperId = appDataStore.getAtmosphereLiveWallpaperId() ?: return "none$KEY_SEPARATOR$zoomFix"
 
         val wallpaper = repository.getWallpaperById(wallpaperId) ?: return "missing:$wallpaperId$KEY_SEPARATOR$zoomFix"
         val cropRule = repository.getCollectionById(wallpaper.collectionId)?.defaultCropRule ?: WallpaperCollection.DEFAULT_CROP_RULE

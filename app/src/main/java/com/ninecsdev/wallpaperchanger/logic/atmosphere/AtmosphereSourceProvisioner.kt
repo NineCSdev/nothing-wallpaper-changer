@@ -65,8 +65,8 @@ class AtmosphereSourceProvisioner @Inject constructor(
         val render = bufferManager.renderForAtmosphere(wallpaper, cropRule) ?: return false
         return try {
             // deliverRender writes the container and broadcasts the reload itself. The id lets
-            // a later exit give this exact photo back; the default wallpaper carries none (id 0).
-            atmosphereDelivery.deliverRender(render, wallpaper.id.takeIf { it != 0L })
+            // a later exit give this exact photo back.
+            atmosphereDelivery.deliverRender(render, wallpaper.id)
         } finally {
             render.bitmap.recycle()
         }
@@ -93,9 +93,10 @@ class AtmosphereSourceProvisioner @Inject constructor(
         if (activeSnapshot != null && firstAvailable != null) {
             return firstAvailable to activeSnapshot.first.defaultCropRule
         }
-        val defaultUri = appDataStore.getDefaultWallpaperUri() ?: return null
+        val default = repository.getDefaultWallpaper() ?: return null
+        if (!default.isAvailable) return null
 
-        return WallpaperImage.forDefaultWallpaper(defaultUri) to WallpaperImage.DEFAULT_WALLPAPER_CROP_RULE
+        return default to cropRuleOf(default)
     }
 
     /** The membership currently applied as the static wallpaper, if it is still usable. */
@@ -108,7 +109,9 @@ class AtmosphereSourceProvisioner @Inject constructor(
     private suspend fun wallpaperById(wallpaperId: Long): Pair<WallpaperImage, CropRule>? {
         val wallpaper = repository.getWallpaperById(wallpaperId) ?: return null
         if (!wallpaper.isAvailable) return null
-        val cropRule = repository.getCollectionById(wallpaper.collectionId)?.defaultCropRule ?: WallpaperCollection.DEFAULT_CROP_RULE
-        return wallpaper to cropRule
+        return wallpaper to cropRuleOf(wallpaper)
     }
+
+    private suspend fun cropRuleOf(wallpaper: WallpaperImage): CropRule =
+        repository.getCollectionById(wallpaper.collectionId)?.defaultCropRule ?: WallpaperCollection.DEFAULT_CROP_RULE
 }

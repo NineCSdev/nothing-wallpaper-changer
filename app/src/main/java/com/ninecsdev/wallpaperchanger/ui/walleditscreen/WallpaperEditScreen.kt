@@ -354,6 +354,7 @@ private fun WallpaperEditContent(
         )
 
         EditTopBar(
+            isDefaultWallpaper = wallpaper.isDefault,
             hasSavedEdits = wallpaper.editParams != null,
             hasUnsavedChanges = hasUnsavedChanges,
             showControls = showControls,

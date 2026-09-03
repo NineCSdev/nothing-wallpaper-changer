@@ -79,20 +79,20 @@ class AtmosphereExit @Inject constructor(
             Log.i(TAG, "Live wallpaper $wallpaperId is gone or unavailable; falling back.")
             return false
         }
-        val cropRule = repository.getCollectionById(wallpaper.collectionId)?.defaultCropRule
-            ?: WallpaperCollection.DEFAULT_CROP_RULE
-
-        return applyRendered(wallpaper, cropRule, "the live atmosphere image")
+        return applyRendered(wallpaper, cropRuleOf(wallpaper), "the live atmosphere image")
     }
 
     private suspend fun applyDefault(): Boolean {
-        val uri = appDataStore.getDefaultWallpaperUri() ?: return false
-        return applyRendered(
-            WallpaperImage.forDefaultWallpaper(uri),
-            WallpaperImage.DEFAULT_WALLPAPER_CROP_RULE,
-            "the default wallpaper"
-        )
+        val wallpaper = repository.getDefaultWallpaper() ?: return false
+        if (!wallpaper.isAvailable) {
+            Log.i(TAG, "The default wallpaper is unavailable; falling back.")
+            return false
+        }
+        return applyRendered(wallpaper, cropRuleOf(wallpaper), "the default wallpaper")
     }
+
+    private suspend fun cropRuleOf(wallpaper: WallpaperImage): CropRule =
+        repository.getCollectionById(wallpaper.collectionId)?.defaultCropRule ?: WallpaperCollection.DEFAULT_CROP_RULE
 
     private suspend fun applyRendered(
         wallpaper: WallpaperImage,

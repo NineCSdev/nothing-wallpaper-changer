@@ -51,6 +51,7 @@
     <!-- Wallpaper selection card -->
     <string name="action_change">CAMBIAR</string>
     <string name="action_select">SELECCIONAR</string>
+    <string name="action_apply_default_now">APLICAR AHORA</string>
 
     <!-- Default wallpaper card -->
     <string name="label_default_wallpaper">FONDO PREDETERMINADO</string>

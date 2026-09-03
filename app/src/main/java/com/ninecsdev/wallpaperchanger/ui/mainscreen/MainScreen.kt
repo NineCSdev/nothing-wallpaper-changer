@@ -56,6 +56,8 @@ fun MainScreen(
     onSettingsClick: () -> Unit,
     onToggleRevert: (Boolean) -> Unit,
     onSelectDefaultClick: () -> Unit,
+    onEditDefaultClick: () -> Unit,
+    onApplyDefaultClick: () -> Unit,
     onGrantMediaAccess: () -> Unit
 ) {
     Scaffold(
@@ -122,9 +124,12 @@ fun MainScreen(
 
                 DefaultWallpaperCard(
                     revertToDefault = uiState.revertToDefaultOnStop,
-                    defaultUri = uiState.defaultWallpaperUri,
+                    defaultWallpaper = uiState.defaultWallpaper,
+                    isApplying = uiState.isApplyingDefault,
                     onToggleRevert = onToggleRevert,
-                    onSelectDefaultClick = onSelectDefaultClick
+                    onSelectDefaultClick = onSelectDefaultClick,
+                    onEditDefaultClick = onEditDefaultClick,
+                    onApplyDefaultClick = onApplyDefaultClick
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -188,6 +193,8 @@ fun MainScreenRunningPreview() {
                 onSettingsClick = {},
                 onToggleRevert = {},
                 onSelectDefaultClick = {},
+                onEditDefaultClick = {},
+                onApplyDefaultClick = {},
                 onGrantMediaAccess = {}
             )
         }
@@ -214,6 +221,8 @@ fun MainScreenEmptyPreview() {
                 onSettingsClick = {},
                 onToggleRevert = {},
                 onSelectDefaultClick = {},
+                onEditDefaultClick = {},
+                onApplyDefaultClick = {},
                 onGrantMediaAccess = {}
             )
         }

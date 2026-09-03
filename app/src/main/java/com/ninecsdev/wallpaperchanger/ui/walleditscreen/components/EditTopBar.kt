@@ -36,6 +36,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
  */
 @Composable
 internal fun EditTopBar(
+    isDefaultWallpaper: Boolean,
     hasSavedEdits: Boolean,
     hasUnsavedChanges: Boolean,
     showControls: Boolean,
@@ -75,7 +76,7 @@ internal fun EditTopBar(
             }
 
             Text(
-                text = stringResource(R.string.edit_screen_title),
+                text = stringResource(if (isDefaultWallpaper) R.string.label_default_wallpaper else R.string.edit_screen_title),
                 style = NothingType.titleCaps,
                 color = NothingWhite,
                 modifier = Modifier.weight(1f)
@@ -129,6 +130,7 @@ internal fun EditTopBar(
 private fun EditTopBarDefaultPreview() {
     WallpaperChangerTheme {
         EditTopBar(
+            isDefaultWallpaper = false,
             hasSavedEdits = false,
             hasUnsavedChanges = false,
             showControls = false,
@@ -146,6 +148,7 @@ private fun EditTopBarDefaultPreview() {
 private fun EditTopBarUnsavedPreview() {
     WallpaperChangerTheme {
         EditTopBar(
+            isDefaultWallpaper = false,
             hasSavedEdits = false,
             hasUnsavedChanges = true,
             showControls = false,
@@ -163,6 +166,7 @@ private fun EditTopBarUnsavedPreview() {
 private fun EditTopBarResetPreview() {
     WallpaperChangerTheme {
         EditTopBar(
+            isDefaultWallpaper = false,
             hasSavedEdits = true,
             hasUnsavedChanges = false,
             showControls = false,
@@ -180,6 +184,7 @@ private fun EditTopBarResetPreview() {
 private fun EditTopBarControlsOpenPreview() {
     WallpaperChangerTheme {
         EditTopBar(
+            isDefaultWallpaper = false,
             hasSavedEdits = false,
             hasUnsavedChanges = false,
             showControls = true,

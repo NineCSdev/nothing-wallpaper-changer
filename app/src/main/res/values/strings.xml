@@ -53,6 +53,7 @@
     <!-- Wallpaper selection card -->
     <string name="action_change">CHANGE</string>
     <string name="action_select">SELECT</string>
+    <string name="action_apply_default_now">APPLY NOW</string>
 
     <!-- Default wallpaper card -->
     <string name="label_default_wallpaper">DEFAULT WALLPAPER</string>

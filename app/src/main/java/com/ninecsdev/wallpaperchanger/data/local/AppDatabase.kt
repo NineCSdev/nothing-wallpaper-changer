@@ -185,6 +185,12 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE collections RENAME COLUMN rotationFrequency TO rotationPolicy")
+
+                // `isDefaults` marks the app-owned collection that holds default wallpapers, and
+                // `isDefault` marks a join row as its collection's default rather than one of its
+                // images.
+                db.execSQL("ALTER TABLE collections ADD COLUMN isDefaults INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE wallpapers ADD COLUMN isDefault INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

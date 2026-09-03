@@ -25,7 +25,7 @@ import kotlinx.coroutines.flow.Flow
  */
 private const val SELECT_WALLPAPER_IMAGES = """
     SELECT w.id, w.collectionId, w.fileId, f.uri, f.sourceType, f.isAvailable,
-           w.editZoom, w.editOffsetX, w.editOffsetY, w.isManuallyAdded, w.addedAt
+           w.editZoom, w.editOffsetX, w.editOffsetY, w.isManuallyAdded, w.addedAt, w.isDefault
     FROM wallpapers w JOIN wallpaper_files f ON w.fileId = f.id
 """
 
@@ -51,7 +51,7 @@ abstract class WallpaperDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     abstract suspend fun insertCollection(collection: WallpaperCollection): Long
 
-    @Query("SELECT * FROM collections ORDER BY lastUsedAt DESC")
+    @Query("SELECT * FROM collections WHERE isDefaults = 0 ORDER BY lastUsedAt DESC")
     abstract fun observeAllCollections(): Flow<List<WallpaperCollection>>
 
     @Query("SELECT * FROM collections WHERE id = :collectionId LIMIT 1")
@@ -79,6 +79,10 @@ abstract class WallpaperDao {
     /** The app-owned Favourites collection, or null if it hasn't been created yet. */
     @Query("SELECT * FROM collections WHERE isFavorites = 1 LIMIT 1")
     abstract suspend fun getFavoritesCollection(): WallpaperCollection?
+
+    /** The app-owned collection holding default wallpapers, or null if it hasn't been created yet. */
+    @Query("SELECT * FROM collections WHERE isDefaults = 1 LIMIT 1")
+    abstract suspend fun getDefaultsCollection(): WallpaperCollection?
 
     /** Updates the name, default crop rule and rotation setting of a collection. */
     @Query("UPDATE collections SET name = :newName, defaultCropRule = :newRule, rotationPolicy = :newPolicy WHERE id = :collectionId")
@@ -213,7 +217,7 @@ abstract class WallpaperDao {
     abstract suspend fun insertWallpapers(wallpapers: List<Wallpaper>)
 
     /** Flow of images for a collection, sorted newest-first (used in UI). */
-    @Query("$SELECT_WALLPAPER_IMAGES WHERE w.collectionId = :collectionId ORDER BY w.addedAt DESC")
+    @Query("$SELECT_WALLPAPER_IMAGES WHERE w.collectionId = :collectionId AND w.isDefault = 0 ORDER BY w.addedAt DESC")
     abstract fun observeImagesForCollection(collectionId: Long): Flow<List<WallpaperImage>>
 
     /**
@@ -234,6 +238,7 @@ abstract class WallpaperDao {
                        PARTITION BY w.collectionId ORDER BY w.addedAt DESC, w.id ASC
                    ) AS rn
             FROM wallpapers w JOIN wallpaper_files f ON w.fileId = f.id
+            WHERE w.isDefault = 0
         )
         WHERE rn <= :limit
         ORDER BY collectionId, rn
@@ -242,7 +247,7 @@ abstract class WallpaperDao {
     abstract fun observePreviewUrisByCollection(limit: Int): Flow<Map<@MapColumn("collectionId") Long, List<@MapColumn("uri") Uri>>>
 
     /** Every collection's image count, keyed by collection. Collections with no images are absent from the map as in [observePreviewUrisByCollection] */
-    @Query("SELECT collectionId, COUNT(*) AS imageCount FROM wallpapers GROUP BY collectionId")
+    @Query("SELECT collectionId, COUNT(*) AS imageCount FROM wallpapers WHERE isDefault = 0 GROUP BY collectionId")
     abstract fun observeImageCountsByCollection(): Flow<Map<@MapColumn("collectionId") Long, @MapColumn("imageCount") Int>>
 
     /**
@@ -250,7 +255,7 @@ abstract class WallpaperDao {
      * Used exclusively by [RotationEngine][com.ninecsdev.wallpaperchanger.logic.RotationEngine]'s
      * magazine so self-heal never selects a source that's already known to be unreadable.
      */
-    @Query("$SELECT_WALLPAPER_IMAGES WHERE w.collectionId = :collectionId AND f.isAvailable = 1")
+    @Query("$SELECT_WALLPAPER_IMAGES WHERE w.collectionId = :collectionId AND w.isDefault = 0 AND f.isAvailable = 1")
     abstract fun observeAvailableImagesForCollection(collectionId: Long): Flow<List<WallpaperImage>>
 
     /**
@@ -282,7 +287,7 @@ abstract class WallpaperDao {
     ): List<Wallpaper> =
         fileIds.chunked(BIND_CHUNK_SIZE).flatMap { getWallpapersInCollectionForFilesChunk(collectionId, it) }
 
-    @Query("SELECT * FROM wallpapers WHERE collectionId = :collectionId AND fileId IN (:fileIds)")
+    @Query("SELECT * FROM wallpapers WHERE collectionId = :collectionId AND isDefault = 0 AND fileId IN (:fileIds)")
     protected abstract suspend fun getWallpapersInCollectionForFilesChunk(
         collectionId: Long,
         fileIds: List<Long>
@@ -314,10 +319,37 @@ abstract class WallpaperDao {
     @Query("DELETE FROM wallpapers WHERE id IN (:ids)")
     protected abstract suspend fun deleteImagesByIdsChunk(ids: List<Long>)
 
+    // Default wallpapers (one flagged membership per collection)
+    // TODO tests: see vault note tests/Default Wallpaper Membership Tests.md (exclusion)
+
+    /** The default wallpaper of [collectionId], or null if it has none. */
+    @Query("$SELECT_WALLPAPER_IMAGES WHERE w.collectionId = :collectionId AND w.isDefault = 1 LIMIT 1")
+    abstract suspend fun getDefaultWallpaper(collectionId: Long): WallpaperImage?
+
+    /** The global default wallpaper: the default row of the app-owned defaults collection. */
+    @Query("$SELECT_WALLPAPER_IMAGES JOIN collections c ON w.collectionId = c.id WHERE c.isDefaults = 1 AND w.isDefault = 1 LIMIT 1")
+    abstract fun observeGlobalDefaultWallpaper(): Flow<WallpaperImage?>
+
+    /** Repoints a default row at a freshly picked file, dropping the edit that framed the old one. */
+    @Query("UPDATE wallpapers SET fileId = :fileId, editZoom = NULL, editOffsetX = NULL, editOffsetY = NULL WHERE id = :wallpaperId")
+    abstract suspend fun repointDefaultWallpaper(wallpaperId: Long, fileId: Long)
+
+    /**
+     * Uris of the files referenced *only* by default rows. The storage readout subtracts these:
+     * defaults are internalized whatever the user's "keep local copies" setting says, so their
+     * bytes are not a cost of that setting.
+     */
+    @Query("""
+        SELECT f.uri FROM wallpaper_files f
+        WHERE f.id IN (SELECT fileId FROM wallpapers WHERE isDefault = 1)
+          AND f.id NOT IN (SELECT fileId FROM wallpapers WHERE isDefault = 0)
+    """)
+    abstract suspend fun getDefaultOnlyFileUris(): List<Uri>
+
     // Favourites (memberships of the system collection, keyed by fileId)
 
     /** Reactive set of file ids that have a membership in the Favourites collection. */
-    @Query("SELECT DISTINCT w.fileId FROM wallpapers w JOIN collections c ON w.collectionId = c.id WHERE c.isFavorites = 1")
+    @Query("SELECT DISTINCT w.fileId FROM wallpapers w JOIN collections c ON w.collectionId = c.id WHERE c.isFavorites = 1 AND w.isDefault = 0")
     abstract fun observeFavoriteFileIds(): Flow<List<Long>>
 
     /** Removes the Favourites membership (unfavourite) for the given files. [fileIds] may be of any length. */

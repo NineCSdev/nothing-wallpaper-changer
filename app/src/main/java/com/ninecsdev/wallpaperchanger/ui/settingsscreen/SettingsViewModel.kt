@@ -6,6 +6,7 @@ import android.os.LocaleList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereExitOutcome
@@ -42,6 +43,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val appDataStore: AppDataStore,
+    private val repository: WallpaperRepository,
     private val imageInternalizer: ImageInternalizer,
     private val wallpaperSources: WallpaperSources,
     private val atmosphereTransition: AtmosphereTransition,
@@ -169,8 +171,8 @@ class SettingsViewModel @Inject constructor(
 
     // Merged into the state after it has its own initial value, never folded into the combine above
     private val storageUsage: StateFlow<StorageUsage?> = flow {
-        // The default wallpaper isn't counted as it is always internalized (no matter user setting)
-        val excluded = setOfNotNull(appDataStore.getDefaultWallpaperFileName())
+        // Defaults aren't counted as they are always internalized (no matter user setting)
+        val excluded = repository.getDefaultOnlyFileUris().mapNotNull { it.lastPathSegment }.toSet()
         emit(imageInternalizer.getStorageUsage(excluded))
     }.stateIn(
         scope = viewModelScope,

@@ -84,7 +84,8 @@ fun AppNavigation(
                     onOpenSettings = { navController.navigate(Route.SETTINGS) },
                     onStartService = onStartClick,
                     onStopService = onStopService,
-                    onLaunchDefaultWallpaperPicker = onLaunchDefaultWallpaperPicker
+                    onLaunchDefaultWallpaperPicker = onLaunchDefaultWallpaperPicker,
+                    onEditWallpaper = { id -> navController.navigate(Route.wallpaperEdit(id)) }
                 )
             }
         }

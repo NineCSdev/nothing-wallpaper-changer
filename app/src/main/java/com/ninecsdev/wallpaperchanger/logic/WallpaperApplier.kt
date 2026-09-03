@@ -3,10 +3,11 @@ package com.ninecsdev.wallpaperchanger.logic
 import android.app.WallpaperManager
 import android.content.Context
 import android.util.Log
+import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
-import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -48,6 +49,7 @@ enum class WallpaperApplyOutcome { SHOWN, DEFERRED, ALREADY_LIVE, FAILED }
 class WallpaperApplier @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
     private val appDataStore: AppDataStore,
+    private val repository: WallpaperRepository,
     private val bufferManager: BufferManager,
     private val wallpaperModeResolver: WallpaperModeResolver,
     private val atmosphereDelivery: AtmosphereDelivery
@@ -78,10 +80,10 @@ class WallpaperApplier @Inject constructor(
 
     // TODO tests: see vault note tests/Atmosphere Delivery Tests.md
     suspend fun applyDefaultWallpaper(): Boolean = withContext(Dispatchers.IO) {
-        val uri = appDataStore.getDefaultWallpaperUri() ?: return@withContext false
+        val defaultWallpaper = repository.getDefaultWallpaper() ?: return@withContext false
+        if (!defaultWallpaper.isAvailable) return@withContext false
 
-        val defaultWallpaper = WallpaperImage.forDefaultWallpaper(uri)
-        val cropRule = WallpaperImage.DEFAULT_WALLPAPER_CROP_RULE
+        val cropRule = repository.getCollectionById(defaultWallpaper.collectionId)?.defaultCropRule ?: WallpaperCollection.DEFAULT_CROP_RULE
 
         if (wallpaperModeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE) {
             // Revert-to-default flows through the atmosphere path: render the default and hand it
@@ -89,7 +91,7 @@ class WallpaperApplier @Inject constructor(
             val render = bufferManager.renderForAtmosphere(defaultWallpaper, cropRule) ?: return@withContext false
 
             return@withContext try {
-                atmosphereDelivery.deliverRender(render).also { delivered ->
+                atmosphereDelivery.deliverRender(render, defaultWallpaper.id).also { delivered ->
                     if (delivered) Log.i(TAG, "Applied default wallpaper through atmosphere source.")
                 }
             } finally {
@@ -110,8 +112,7 @@ class WallpaperApplier @Inject constructor(
                 destination.toFlags()
             )
 
-            // The default wallpaper is no membership of ours, so nothing of the rotation is on screen
-            appDataStore.setAppliedWallpaperId(null)
+            appDataStore.setAppliedWallpaperId(defaultWallpaper.id)
 
             Log.i(TAG, "Successfully applied default wallpaper to $destination.")
             true

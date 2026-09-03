@@ -65,13 +65,14 @@ import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.intrinsicAspectRa
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.previewFlightModifier
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.wallpaperEditThumbCacheKey
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.wallpaperThumbCacheKey
+import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
-import kotlinx.coroutines.delay
 import kotlin.math.abs
+import kotlinx.coroutines.delay
 
 /**
  * How long after the open flight starts the chrome (overlay UI) begins fading in.

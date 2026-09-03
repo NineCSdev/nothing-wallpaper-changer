@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
     private val defaultWallpaperLauncher = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        uri?.let { mainViewModel.internalizeAndSaveDefaultWallpaper(it) }
+        uri?.let { mainViewModel.setDefaultWallpaperFromPick(it) }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

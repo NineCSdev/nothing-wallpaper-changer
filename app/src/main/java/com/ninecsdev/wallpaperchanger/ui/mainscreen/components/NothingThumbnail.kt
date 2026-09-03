@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -22,13 +23,16 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  * Bordered preview thumbnail with a placeholder icon, used by the main-screen cards
  * ([WallpaperSelectionCard] previews and [DefaultWallpaperCard]). Collection grids use the
  * plain gray [ThumbnailSlot][com.ninecsdev.wallpaperchanger.ui.components.ThumbnailSlot] instead.
+ *
+ * [content] replaces the plain image for callers that draw the thumbnail themselves
  */
 @Composable
 internal fun NothingThumbnail(
     uri: Uri?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
-    cornerRadius: Int = 4
+    cornerRadius: Int = 4,
+    content: (@Composable BoxScope.() -> Unit)? = null
 ) {
     Box(
         modifier = modifier
@@ -37,7 +41,9 @@ internal fun NothingThumbnail(
             .border(1.dp, NothingWhite.copy(alpha = 0.15f), RoundedCornerShape(cornerRadius.dp)),
         contentAlignment = Alignment.Center
     ) {
-        if (uri != null) {
+        if (content != null) {
+            content()
+        } else if (uri != null) {
             AsyncImage(
                 model = uri,
                 contentDescription = null,

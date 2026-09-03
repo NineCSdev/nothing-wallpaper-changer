@@ -97,10 +97,9 @@ class AtmosphereDelivery @Inject constructor(
      *
      * The caller keeps ownership of `render.bitmap` and is responsible for recycling it.
      *
-     * [wallpaperId] is the membership the image was rendered from. Null for images that belong to
-     * no collection (the default wallpaper).
+     * [wallpaperId] is the membership the image was rendered from.
      */
-    suspend fun deliverRender(render: AtmosphereRender, wallpaperId: Long? = null): Boolean = withContext(Dispatchers.IO) {
+    suspend fun deliverRender(render: AtmosphereRender, wallpaperId: Long): Boolean = withContext(Dispatchers.IO) {
         try {
             // Not a rotation, so it must not leave a delivery to be credited later.
             inFlight.set(null)
