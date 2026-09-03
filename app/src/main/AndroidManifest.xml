@@ -45,9 +45,11 @@
             </intent-filter>
         </receiver>
 
-        <!-- This app is for phones -->
+        <!-- This app is for phones thus portrait-->
         <activity
             android:name=".ui.MainActivity"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize"
             android:exported="true"
             tools:ignore="DiscouragedApi,LockedOrientationActivity">
             <intent-filter>

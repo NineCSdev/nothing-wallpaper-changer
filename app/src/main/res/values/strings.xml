@@ -123,7 +123,7 @@
     <string name="settings_keep_local_copies_dialog_title">Keep local copies</string>
     <string name="settings_keep_local_copies_dialog_body">
         Normally the app uses your picked photos directly from where they live, storing no duplicates, but a wallpaper breaks if its original is moved or deleted.
-        \n\nWith this on, the app saves its own compressed copy of every photo, so wallpapers keep working no matter what happens to the originals, at the cost of storage space.
+        \n\nWith this on, the app saves its own compressed copy of every (non-folder collection) photo, so wallpapers keep working no matter what happens to the originals, at the cost of storage space.
         Without photo access permission, copies are always kept regardless of this setting to have background access to them.
     </string>
     <string name="settings_storage_usage_title">STORAGE USED</string>
@@ -146,8 +146,7 @@
     <!-- Wallpaper rotation -->
     <string name="settings_rotation_policy_title">WALLPAPER ROTATION</string>
     <string name="settings_rotation_policy_dialog_title">Wallpaper rotation</string>
-    <string name="settings_rotation_policy_dialog_body">
-        Sets the rotation frequency used by every collection that doesn\'t carry its own.
+    <string name="settings_rotation_policy_dialog_body">Sets the rotation frequency used by every collection that doesn\'t carry its own.
         \n\nEvery unlock changes the wallpaper each time you lock the phone. A time interval changes it
         once that much time has passed. Once a day changes it on the first rotation after midnight.
         \n\nYou can override this setting for a specific collection through the "Edit collection" card.

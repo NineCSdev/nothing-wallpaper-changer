@@ -104,6 +104,12 @@ import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 private const val GRID_COLUMNS = 3
 
 /**
+ * Room the floating selection pill needs at the bottom of the screen:
+ * its 16dp inset, its 64dp height, and a little breathing room.
+ */
+private val SelectionPillClearance = 88.dp
+
+/**
  * Explicit Coil memory-cache key for a wallpaper's grid thumbnail. Used while the full-res decode
  * Keyed by uri (not id): two wallpapers sharing a backing file share the thumbnail too.
  */
@@ -245,8 +251,18 @@ fun CollectionImageScreen(
             dismissPreview()
         }
 
+        val selectionPillClearance by animateDpAsState(
+            targetValue = if (uiState.isSelectionMode) SelectionPillClearance else 0.dp,
+            label = "selectionPillClearance"
+        )
+
         Scaffold(
-            snackbarHost = { NothingSnackbarHost(snackbarHostState) },
+            snackbarHost = {
+                NothingSnackbarHost(
+                    snackbarHostState,
+                    modifier = Modifier.padding(bottom = selectionPillClearance)
+                )
+            },
             topBar = {
                 TopAppBar(
                     title = {
@@ -313,18 +329,12 @@ fun CollectionImageScreen(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    // Extra bottom clearance while the floating selection pill is up,
-                    // so the last grid row can always scroll clear of it.
-                    val selectionBarClearance by animateDpAsState(
-                        targetValue = if (uiState.isSelectionMode) 88.dp else 0.dp,
-                        label = "selectionBarClearance"
-                    )
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(GRID_COLUMNS),
                         state = gridState,
                         contentPadding = PaddingValues(
                             top = padding.calculateTopPadding() + 8.dp,
-                            bottom = padding.calculateBottomPadding() + 8.dp + selectionBarClearance,
+                            bottom = padding.calculateBottomPadding() + 8.dp + selectionPillClearance,
                         ),
                         modifier = Modifier.fillMaxSize()
                     ) {

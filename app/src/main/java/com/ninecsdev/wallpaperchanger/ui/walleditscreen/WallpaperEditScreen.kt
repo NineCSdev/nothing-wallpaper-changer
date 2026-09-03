@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -62,7 +63,8 @@ import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.matchesEditPa
  * Pinch to zoom (into wherever the fingers are) and drag to move the image;
  * the gesture math lives in [applyEditGesture][com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.applyEditGesture] (EditMath.kt).
  *
- * A collapsible bottom panel provides precision sliders and save/cancel actions.
+ * A collapsible bottom panel provides precision sliders whose value readouts are editable
+ * (type an exact zoom or offset), plus save/cancel actions.
  *
  * Zoom = 1.0 means the image fits the screen completely (letterboxed/pillarboxed if needed).
  * Zoom > 1.0 scales the image up (to cover and beyond).
@@ -192,7 +194,7 @@ private fun WallpaperCanvas(
     offsetY: Float,
     imageAspectRatio: Float,
     onImageAspectRatioChange: (Float) -> Unit,
-    onViewAspectChange: (Float) -> Unit,
+    onCanvasSizeChange: (width: Float, height: Float) -> Unit,
     onGestureTransform: (GestureTransform) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -236,8 +238,8 @@ private fun WallpaperCanvas(
                 }
             }
             .onSizeChanged { size ->
-                if (size.height > 0) {
-                    onViewAspectChange(size.width.toFloat() / size.height)
+                if (size.width > 0 && size.height > 0) {
+                    onCanvasSizeChange(size.width.toFloat(), size.height.toFloat())
                 }
             }
             .graphicsLayer {
@@ -296,9 +298,33 @@ private fun WallpaperEditContent(
     onReset: () -> Unit,
     onBack: () -> Unit,
 ) {
+    val focusManager = LocalFocusManager.current
+
     var imageAspectRatio by remember { mutableFloatStateOf(1f) }
-    var viewAspect by remember { mutableFloatStateOf(1f) }
+    var canvasWidth by remember { mutableFloatStateOf(0f) }
+    var canvasHeight by remember { mutableFloatStateOf(0f) }
+
+    val isCanvasMeasured = canvasWidth > 0f && canvasHeight > 0f && imageAspectRatio > 0f
+    val viewAspect = if (isCanvasMeasured) canvasWidth / canvasHeight else 1f
+
+    // An axis the scaled image doesn't overflow has no pan to give, so its offset control goes inert.
+    // Until the canvas is measured the controls stay live rather than flashing disabled
+    val panRange = if (isCanvasMeasured) {
+        computeEditTransform(
+            contentWidth = imageAspectRatio,
+            contentHeight = 1f,
+            containerWidth = canvasWidth,
+            containerHeight = canvasHeight,
+            zoom = zoom,
+            offsetX = offsetX,
+            offsetY = offsetY
+        )
+    } else {
+        null
+    }
+
     val onFitHeight = {
+        focusManager.clearFocus()
         val targetZoom = calculateFitHeightZoom(
             imageAspectRatio = imageAspectRatio,
             viewAspect = viewAspect
@@ -316,8 +342,14 @@ private fun WallpaperEditContent(
             offsetY = offsetY,
             imageAspectRatio = imageAspectRatio,
             onImageAspectRatioChange = { imageAspectRatio = it },
-            onViewAspectChange = { viewAspect = it },
-            onGestureTransform = onGestureTransform,
+            onCanvasSizeChange = { width, height ->
+                canvasWidth = width
+                canvasHeight = height
+            },
+            onGestureTransform = { gesture ->
+                focusManager.clearFocus()
+                onGestureTransform(gesture)
+            },
             modifier = Modifier.fillMaxSize()
         )
 
@@ -326,7 +358,10 @@ private fun WallpaperEditContent(
             hasUnsavedChanges = hasUnsavedChanges,
             showControls = showControls,
             onBack = onBack,
-            onUndo = onUndo,
+            onUndo = {
+                focusManager.clearFocus()
+                onUndo()
+            },
             onResetSaved = onReset,
             onToggleControls = onToggleControls,
             onFitHeight = onFitHeight,
@@ -338,6 +373,8 @@ private fun WallpaperEditContent(
             zoom = zoom,
             offsetX = offsetX,
             offsetY = offsetY,
+            canPanX = panRange == null || panRange.maxPanX > 0f,
+            canPanY = panRange == null || panRange.maxPanY > 0f,
             onZoomChange = onZoomChange,
             onOffsetXChange = onOffsetXChange,
             onOffsetYChange = onOffsetYChange,
@@ -407,6 +444,8 @@ private fun WallpaperEditControlsPanel(
     zoom: Float,
     offsetX: Float,
     offsetY: Float,
+    canPanX: Boolean,
+    canPanY: Boolean,
     onZoomChange: (Float) -> Unit,
     onOffsetXChange: (Float) -> Unit,
     onOffsetYChange: (Float) -> Unit,
@@ -425,6 +464,8 @@ private fun WallpaperEditControlsPanel(
             zoom = zoom,
             offsetX = offsetX,
             offsetY = offsetY,
+            canPanX = canPanX,
+            canPanY = canPanY,
             onZoomChange = onZoomChange,
             onOffsetXChange = onOffsetXChange,
             onOffsetYChange = onOffsetYChange,

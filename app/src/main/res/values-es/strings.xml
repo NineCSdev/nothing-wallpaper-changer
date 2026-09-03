@@ -119,7 +119,7 @@
     <string name="settings_keep_local_copies_dialog_title">Mantener copias locales</string>
     <string name="settings_keep_local_copies_dialog_body">
         Normalmente la app usa tus fotos directamente desde donde están, sin guardar duplicados, pero un fondo deja de funcionar si su original se mueve o se borra.
-        \n\nCon esta opción, la app guarda su propia copia comprimida de cada foto, de modo que los fondos siguen funcionando pase lo que pase con los originales, a cambio de usar espacio de almacenamiento.
+        \n\nCon esta opción, la app guarda su propia copia comprimida de cada foto (que no sea de una colección de una carpeta), de modo que los fondos siguen funcionando pase lo que pase con los originales, a cambio de usar espacio de almacenamiento.
         Sin el permiso de acceso a fotos, las copias se guardan siempre, independientemente de este ajuste para poder aceder en segundo plano a ellas.
     </string>
     <string name="settings_storage_usage_title">ESPACIO USADO</string>

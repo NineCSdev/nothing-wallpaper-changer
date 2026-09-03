@@ -7,7 +7,7 @@ import kotlin.math.abs
 /*
  * Edit-value policy for the wallpaper editor: comparison tolerance, zoom/offset bounds,
  * the fit-height zoom rule, and the pinch/drag gesture mapping. The transform geometry
- * itself lives in [com.ninecsdev.wallpaperchanger.logic.computeEditTransform].
+ * itself lives in computeEditTransform.
  */
 
 private const val EditValueEpsilon = 0.001f
@@ -27,6 +27,65 @@ internal fun coerceOffset(value: Float): Float = value.coerceIn(MinOffset, MaxOf
  */
 internal fun offsetToPercent(offset: Float): Float = (offset - MinOffset) / (MaxOffset - MinOffset) * 100f
 internal fun percentToOffset(percent: Float): Float = coerceOffset(MinOffset + percent / 100f * (MaxOffset - MinOffset))
+
+// TODO: Add tests for the format/parse round trip (see "EditTransform Tests" in the notes, typed value entry section)
+
+/*
+ * Text form of the edit values, shared by the controls panel's and the field that edits it in place,
+ * Formatting follows the device locale; the parsers accept either decimal separator, so a comma
+ * keyboard round-trips.
+ */
+
+/** Fraction digits the zoom field accepts and displays. */
+internal const val ZoomDecimals = 2
+
+/** Fraction digits the offset-percentage fields accept and display. */
+internal const val OffsetPercentDecimals = 1
+
+/** Integer digits a field accepts. */
+private const val MaxIntegerDigits = 3
+
+internal fun formatZoom(zoom: Float): String = "%.2f".format(zoom)
+
+internal fun formatOffsetPercent(offset: Float): String = "%.1f".format(offsetToPercent(offset))
+
+/**
+ * Trims [text] down to a typeable decimal: digits only, at most one separator, at most [decimals]
+ * fraction digits and [MaxIntegerDigits] integer digits.
+ */
+internal fun sanitizeDecimalInput(text: String, decimals: Int): String {
+    val out = StringBuilder()
+    var separatorSeen = false
+    var integerDigits = 0
+    var fractionDigits = 0
+
+    for (char in text) {
+        when {
+            char.isDigit() && separatorSeen && fractionDigits < decimals -> {
+                out.append(char)
+                fractionDigits++
+            }
+            char.isDigit() && !separatorSeen && integerDigits < MaxIntegerDigits -> {
+                out.append(char)
+                integerDigits++
+            }
+            (char == '.' || char == ',') && !separatorSeen && decimals > 0 -> {
+                out.append(char)
+                separatorSeen = true
+            }
+        }
+    }
+
+    return out.toString()
+}
+
+private fun String.toEditFloatOrNull(): Float? = replace(',', '.').toFloatOrNull()
+
+/** Typed zoom, coerced into the editor's bounds; null while the field holds nothing parseable. */
+internal fun parseZoomInput(text: String): Float? = text.toEditFloatOrNull()?.let(::coerceZoom)
+
+/** Typed offset percentage, converted to the persisted -1..1 offset; null when unparseable. */
+internal fun parseOffsetPercentInput(text: String): Float? = text.toEditFloatOrNull()?.let(::percentToOffset)
 
 internal fun isCloseEnough(left: Float, right: Float): Boolean =
     abs(left - right) <= EditValueEpsilon
@@ -66,8 +125,8 @@ internal data class GestureTransform(
  *
  * All pixel inputs are in the editor container's coordinate space (origin top-left, [centroidX] in
  * `0..containerWidth`). Pan is computed in container pixels via [computeEditTransform],
- * then converted back to the persisted -1..1 offset. When an axis has
- * no room to pan (image not overflowing it) the offset collapses to 0.
+ * then converted back to the persisted -1..1 offset. An axis with no room to pan (image not
+ * overflowing it) keeps the offset it came in with.
  *
  * Falls back to a zoom-only update while the container/image geometry isn't known yet.
  */
@@ -122,8 +181,8 @@ internal fun applyEditGesture(
     val newPanX = focalX * (1f - zoomRatio) + zoomRatio * current.panX + panX
     val newPanY = focalY * (1f - zoomRatio) + zoomRatio * current.panY + panY
 
-    val newOffsetX = if (scaled.maxPanX > 0f) coerceOffset(newPanX / scaled.maxPanX) else 0f
-    val newOffsetY = if (scaled.maxPanY > 0f) coerceOffset(newPanY / scaled.maxPanY) else 0f
+    val newOffsetX = if (scaled.maxPanX > 0f) coerceOffset(newPanX / scaled.maxPanX) else offsetX
+    val newOffsetY = if (scaled.maxPanY > 0f) coerceOffset(newPanY / scaled.maxPanY) else offsetY
 
     return GestureTransform(newZoom, newOffsetX, newOffsetY)
 }
