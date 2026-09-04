@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 6,
-    "identityHash": "8520b8230dcf3470aeaff6ab9cf1ceff",
+    "identityHash": "d1fb798343531d3026a9f0674537fb36",
     "entities": [
       {
         "tableName": "collections",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `isActive` INTEGER NOT NULL, `rootUri` TEXT, `defaultCropRule` TEXT NOT NULL, `rotationPolicy` TEXT NOT NULL, `lastWallpaperChangeAt` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `lastUsedAt` INTEGER NOT NULL, `isFavorites` INTEGER NOT NULL, `isPinned` INTEGER NOT NULL, `isDefaults` INTEGER NOT NULL, `defaultWallpaperId` INTEGER, FOREIGN KEY(`defaultWallpaperId`) REFERENCES `wallpapers`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `isActive` INTEGER NOT NULL, `rootUri` TEXT, `defaultCropRule` TEXT NOT NULL, `rotationPolicy` TEXT NOT NULL, `lastWallpaperChangeAt` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `lastUsedAt` INTEGER NOT NULL, `isPinned` INTEGER NOT NULL, `appRole` TEXT, `defaultWallpaperId` INTEGER, FOREIGN KEY(`defaultWallpaperId`) REFERENCES `wallpapers`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
         "fields": [
           {
             "fieldPath": "id",
@@ -68,22 +68,15 @@
             "notNull": true
           },
           {
-            "fieldPath": "isFavorites",
-            "columnName": "isFavorites",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
             "fieldPath": "isPinned",
             "columnName": "isPinned",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "isDefaults",
-            "columnName": "isDefaults",
-            "affinity": "INTEGER",
-            "notNull": true
+            "fieldPath": "appRole",
+            "columnName": "appRole",
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "defaultWallpaperId",
@@ -380,7 +373,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8520b8230dcf3470aeaff6ab9cf1ceff')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd1fb798343531d3026a9f0674537fb36')"
     ]
   }
 }

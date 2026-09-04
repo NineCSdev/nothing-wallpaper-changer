@@ -11,6 +11,7 @@ import com.ninecsdev.wallpaperchanger.data.source.FolderScanner
 import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.data.source.computeFolderSyncDiff
+import com.ninecsdev.wallpaperchanger.model.enums.AppCollectionRole
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
@@ -405,7 +406,7 @@ class WallpaperRepository @Inject constructor(
     /**
      * Returns the id of the system Favourites collection, creating it lazily on first use.
      * **MUST** be called inside a Room transaction.
-     * The collection is a plain [CollectionType.MANUAL] row flagged [WallpaperCollection.isFavorites];
+     * The collection is a plain [CollectionType.MANUAL] row carrying [AppCollectionRole.FAVORITES];
      * it is never auto-deleted when emptied, but the user may delete it (recreated fresh here later).
      */
     private suspend fun getOrCreateFavoritesCollection(): Long {
@@ -416,7 +417,7 @@ class WallpaperRepository @Inject constructor(
             WallpaperCollection(
                 name = "Favourites",
                 type = CollectionType.MANUAL,
-                isFavorites = true,
+                appRole = AppCollectionRole.FAVORITES,
                 // Pinned by default (like the migration does for existing rows); user may unpin.
                 isPinned = true
             )
@@ -477,7 +478,7 @@ class WallpaperRepository @Inject constructor(
         val existing = dao.getDefaultsCollection()
         if (existing != null) return existing.id
         return dao.insertCollection(
-            WallpaperCollection(name = "Defaults", type = CollectionType.MANUAL, isDefaults = true)
+            WallpaperCollection(name = "Defaults", type = CollectionType.MANUAL, appRole = AppCollectionRole.DEFAULTS)
         )
     }
 

@@ -34,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
+import com.ninecsdev.wallpaperchanger.model.enums.AppCollectionRole
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
@@ -243,7 +244,7 @@ fun CollectionListScreenPopulatedPreview() {
                 allCollections = listOf(
                     WallpaperCollection(id = 1, name = "AMOLED HIGH", type = CollectionType.FOLDER),
                     WallpaperCollection(id = 2, name = "NATURE PACK", type = CollectionType.FOLDER),
-                    WallpaperCollection(id = 3, name = "Favourites", type = CollectionType.MANUAL, isFavorites = true),
+                    WallpaperCollection(id = 3, name = "Favourites", type = CollectionType.MANUAL, appRole = AppCollectionRole.FAVORITES),
                     WallpaperCollection(id = 4, name = "MINIMALISM", type = CollectionType.FOLDER)
                 ),
                 previewStates = mapOf(

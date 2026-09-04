@@ -51,7 +51,9 @@ abstract class WallpaperDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     abstract suspend fun insertCollection(collection: WallpaperCollection): Long
 
-    @Query("SELECT * FROM collections WHERE isDefaults = 0 ORDER BY lastUsedAt DESC")
+    // `IS NOT` rather than `!=`: a user-owned collection's appRole is NULL, and `NULL != 'DEFAULTS'`
+    // is NULL, which would filter out every collection the user made.
+    @Query("SELECT * FROM collections WHERE appRole IS NOT 'DEFAULTS' ORDER BY lastUsedAt DESC")
     abstract fun observeAllCollections(): Flow<List<WallpaperCollection>>
 
     @Query("SELECT * FROM collections WHERE id = :collectionId LIMIT 1")
@@ -77,11 +79,11 @@ abstract class WallpaperDao {
     abstract suspend fun getAllRootUris(): List<Uri>
 
     /** The app-owned Favourites collection, or null if it hasn't been created yet. */
-    @Query("SELECT * FROM collections WHERE isFavorites = 1 LIMIT 1")
+    @Query("SELECT * FROM collections WHERE appRole = 'FAVORITES' LIMIT 1")
     abstract suspend fun getFavoritesCollection(): WallpaperCollection?
 
     /** The app-owned collection holding default wallpapers, or null if it hasn't been created yet. */
-    @Query("SELECT * FROM collections WHERE isDefaults = 1 LIMIT 1")
+    @Query("SELECT * FROM collections WHERE appRole = 'DEFAULTS' LIMIT 1")
     abstract suspend fun getDefaultsCollection(): WallpaperCollection?
 
     /** Updates the name, default crop rule and rotation setting of a collection. */
@@ -327,7 +329,7 @@ abstract class WallpaperDao {
     abstract suspend fun getDefaultWallpaper(collectionId: Long): WallpaperImage?
 
     /** The global default wallpaper: the default row of the app-owned defaults collection. */
-    @Query("$SELECT_WALLPAPER_IMAGES JOIN collections c ON w.collectionId = c.id WHERE c.isDefaults = 1 AND w.isDefault = 1 LIMIT 1")
+    @Query("$SELECT_WALLPAPER_IMAGES JOIN collections c ON w.collectionId = c.id WHERE c.appRole = 'DEFAULTS' AND w.isDefault = 1 LIMIT 1")
     abstract fun observeGlobalDefaultWallpaper(): Flow<WallpaperImage?>
 
     /** Repoints a default row at a freshly picked file, dropping the edit that framed the old one. */
@@ -366,7 +368,7 @@ abstract class WallpaperDao {
     // Favourites (memberships of the system collection, keyed by fileId)
 
     /** Reactive set of file ids that have a membership in the Favourites collection. */
-    @Query("SELECT DISTINCT w.fileId FROM wallpapers w JOIN collections c ON w.collectionId = c.id WHERE c.isFavorites = 1 AND w.isDefault = 0")
+    @Query("SELECT DISTINCT w.fileId FROM wallpapers w JOIN collections c ON w.collectionId = c.id WHERE c.appRole = 'FAVORITES' AND w.isDefault = 0")
     abstract fun observeFavoriteFileIds(): Flow<List<Long>>
 
     /** Removes the Favourites membership (unfavourite) for the given files. [fileIds] may be of any length. */

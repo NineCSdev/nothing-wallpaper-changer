@@ -3,6 +3,7 @@ package com.ninecsdev.wallpaperchanger.data.local
 import android.net.Uri
 import android.util.Log
 import androidx.room.TypeConverter
+import com.ninecsdev.wallpaperchanger.model.enums.AppCollectionRole
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
@@ -54,6 +55,23 @@ class Converters {
     fun toRotationSetting(value: String): CollectionRotationSetting =
         // Decoding is total and logs its own fallthrough, no need for try/catch
         CollectionRotationSetting.decode(value)
+
+    // AppCollectionRole Converters
+    @TypeConverter
+    fun fromAppCollectionRole(role: AppCollectionRole?): String? = role?.name
+
+    // An unknown key would silently demote an app-owned collection to user-owned, which would list
+    // the defaults collection in the UI. Log loudly; null is still the only safe answer.
+    @TypeConverter
+    fun toAppCollectionRole(value: String?): AppCollectionRole? =
+        value?.let {
+            try {
+                AppCollectionRole.valueOf(it)
+            } catch (e: IllegalArgumentException) {
+                Log.e("Converters", "Invalid AppCollectionRole: $it", e)
+                null
+            }
+        }
 
     // SourceType Converters
     @TypeConverter

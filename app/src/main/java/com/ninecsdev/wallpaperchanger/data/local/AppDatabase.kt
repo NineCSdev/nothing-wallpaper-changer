@@ -186,17 +186,53 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE collections RENAME COLUMN rotationFrequency TO rotationPolicy")
 
-                // `isDefaults` marks the app-owned collection that holds the global default
-                // wallpaper, and `isDefault` marks that hidden join row
-                db.execSQL("ALTER TABLE collections ADD COLUMN isDefaults INTEGER NOT NULL DEFAULT 0")
+                // `isDefault` marks the hidden join row that is the global default wallpaper,
+                // rather than one of a collection's images.
                 db.execSQL("ALTER TABLE wallpapers ADD COLUMN isDefault INTEGER NOT NULL DEFAULT 0")
 
-                // A collection's own default-wallpaper override: one of its memberships, or null to
-                // follow the global one.
-                db.execSQL(
-                    "ALTER TABLE collections ADD COLUMN defaultWallpaperId INTEGER " +
-                        "REFERENCES wallpapers(id) ON DELETE SET NULL"
-                )
+                // Rebuild `collections` for two changes at once. Needed because `isFavorites` shipped in v5
+                //
+                //  - `isFavorites` becomes `appRole`, one nullable key naming *which* app-owned
+                //    collection this is.
+                //  - `defaultWallpaperId` arrives: a collection's own default-wallpaper override,
+                //    pointing at one of its memberships, null to follow the global one.
+                //
+                // Foreign keys are off while migrations run (SQLite's default; Room turns them on
+                // when it opens the database, afterward), so dropping a table that `wallpapers`
+                // and `folder_exclusions` reference does not cascade their rows away.
+                db.execSQL("""
+                    CREATE TABLE collections_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        isActive INTEGER NOT NULL,
+                        rootUri TEXT,
+                        defaultCropRule TEXT NOT NULL,
+                        rotationPolicy TEXT NOT NULL,
+                        lastWallpaperChangeAt INTEGER NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        lastUsedAt INTEGER NOT NULL,
+                        isPinned INTEGER NOT NULL,
+                        appRole TEXT,
+                        defaultWallpaperId INTEGER,
+                        FOREIGN KEY(defaultWallpaperId) REFERENCES wallpapers(id) ON DELETE SET NULL
+                    )
+                """.trimIndent())
+
+                db.execSQL("""
+                    INSERT INTO collections_new (
+                        id, name, type, isActive, rootUri, defaultCropRule, rotationPolicy,
+                        lastWallpaperChangeAt, createdAt, lastUsedAt, isPinned, appRole, defaultWallpaperId
+                    )
+                    SELECT id, name, type, isActive, rootUri, defaultCropRule, rotationPolicy,
+                           lastWallpaperChangeAt, createdAt, lastUsedAt, isPinned,
+                           CASE WHEN isFavorites = 1 THEN 'FAVORITES' END,
+                           NULL
+                    FROM collections
+                """.trimIndent())
+
+                db.execSQL("DROP TABLE collections")
+                db.execSQL("ALTER TABLE collections_new RENAME TO collections")
                 db.execSQL("CREATE INDEX index_collections_defaultWallpaperId ON collections(defaultWallpaperId)")
             }
         }

@@ -7,6 +7,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.model.enums.AppCollectionRole
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 
@@ -16,14 +17,10 @@ import com.ninecsdev.wallpaperchanger.model.enums.CropRule
  * [com.ninecsdev.wallpaperchanger.model.enums.CollectionType.FOLDER] types are synced with a physical directory on the device.
  * [com.ninecsdev.wallpaperchanger.model.enums.CollectionType.MANUAL] types have images handpicked by the user and are not synced.
  *
- * [isFavorites] marks the app-owned Favourites collection
- * [isDefaults] the app-owned collection holding default wallpapers.
+ * [appRole] marks an app-owned collection and says which one; null is a collection the user made.
  * [isPinned] is the user-set "sort first"
  * [defaultWallpaperId] is this collection's default-wallpaper override; null follows the global one.
  */
-//"App-owned vs user-owned" is orthogonal to [type] (how images get in), so Favourites is a plain
-// [CollectionType.MANUAL] collection with this flag set. If more app-owned collections ever appear,
-// upgrade this boolean to a string key.
 @Entity(
     tableName = "collections",
     foreignKeys = [
@@ -48,11 +45,13 @@ data class WallpaperCollection(
     val lastWallpaperChangeAt: Long = 0L,
     val createdAt: Long = System.currentTimeMillis(),
     val lastUsedAt: Long = System.currentTimeMillis(),
-    val isFavorites: Boolean = false,
     val isPinned: Boolean = false,
-    val isDefaults: Boolean = false,
+    val appRole: AppCollectionRole? = null,
     val defaultWallpaperId: Long? = null
 ) {
+    val isFavorites: Boolean get() = appRole == AppCollectionRole.FAVORITES
+    val isDefaults: Boolean get() = appRole == AppCollectionRole.DEFAULTS
+
     companion object {
         /** How a collection frames its unedited images unless the user says otherwise. */
         val DEFAULT_CROP_RULE = CropRule.CENTER
