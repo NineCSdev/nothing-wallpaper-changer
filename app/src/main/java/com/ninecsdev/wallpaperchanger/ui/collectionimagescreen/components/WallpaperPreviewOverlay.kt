@@ -82,7 +82,8 @@ private const val CHROME_ENTER_DELAY_MILLIS = 100L
 /**
  * Full-screen wallpaper preview overlay.
  * Tap anywhere to dismiss. Shows edited badge if applicable.
- * Features an edit button to navigate to the wallpaper editor.
+ * Features an edit button to navigate to the wallpaper editor, a heart to favourite it and a star
+ * to make it its collection's default wallpaper.
  * Let's swipe back and forth between wallpapers.
  *
  * Opened/closed with a shared-element zoom. A flight needs both ends registered
@@ -103,7 +104,9 @@ internal fun WallpaperPreviewOverlay(
     sharedWallpaperId: Long?,
     knownAspectRatios: MutableMap<Long, Float> = mutableMapOf(),
     favoriteFileIds: Set<Long> = emptySet(),
+    defaultWallpaperId: Long? = null,
     onToggleFavorite: (WallpaperImage) -> Unit = {},
+    onToggleDefault: (WallpaperImage) -> Unit = {},
     onDismiss: () -> Unit,
     onEdit: (WallpaperImage) -> Unit = {},
     onPageChanged: (WallpaperImage) -> Unit = {}
@@ -331,6 +334,26 @@ internal fun WallpaperPreviewOverlay(
                                 Icon(
                                     painter = painterResource(R.drawable.icon_edit),
                                     contentDescription = stringResource(R.string.cd_edit_wallpaper),
+                                    tint = NothingWhite,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            // Collection default toggle
+                            val isCollectionDefault = currentWallpaper != null && currentWallpaper.id == defaultWallpaperId
+                            IconButton(
+                                onClick = { currentWallpaper?.let(onToggleDefault) },
+                                enabled = currentWallpaper != null,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(NothingBlack.copy(alpha = 0.5f))
+                            ) {
+                                Icon(
+                                    painter = painterResource(
+                                        if (isCollectionDefault) R.drawable.icon_star else R.drawable.icon_star_outline
+                                    ),
+                                    contentDescription = stringResource(R.string.cd_collection_default),
                                     tint = NothingWhite,
                                     modifier = Modifier.size(20.dp)
                                 )

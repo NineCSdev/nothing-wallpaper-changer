@@ -203,6 +203,8 @@ fun CollectionListScreen(
                 onCropRuleSelected = actions::setEditingCropRule,
                 onRotationPolicySelected = actions::setEditingRotationPolicy,
                 globalRotationPolicy = uiState.globalRotationPolicy,
+                defaultWallpaper = uiState.editingDefaultWallpaper,
+                onClearDefault = actions::clearEditingCollectionDefault,
                 onDelete = onDeleteCollection,
                 onSyncClick = actions::syncEditingCollection,
                 onRestoreRemoved = actions::restoreRemovedImages
@@ -289,6 +291,7 @@ private object PreviewCollectionListActions : CollectionListActions {
     override fun renameEditingCollection(newName: String) {}
     override fun setEditingCropRule(rule: CropRule) {}
     override fun setEditingRotationPolicy(setting: CollectionRotationSetting) {}
+    override fun clearEditingCollectionDefault() {}
     override fun syncEditingCollection() {}
     override fun restoreRemovedImages() {}
     override fun clearImportSummary() {}

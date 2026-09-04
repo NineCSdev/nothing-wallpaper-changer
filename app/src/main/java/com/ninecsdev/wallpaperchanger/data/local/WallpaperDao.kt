@@ -319,10 +319,10 @@ abstract class WallpaperDao {
     @Query("DELETE FROM wallpapers WHERE id IN (:ids)")
     protected abstract suspend fun deleteImagesByIdsChunk(ids: List<Long>)
 
-    // Default wallpapers (one flagged membership per collection)
+    // Default wallpapers
     // TODO tests: see vault note tests/Default Wallpaper Membership Tests.md (exclusion)
 
-    /** The default wallpaper of [collectionId], or null if it has none. */
+    /** The hidden flagged row of [collectionId]; only the app-owned defaults collection has one. */
     @Query("$SELECT_WALLPAPER_IMAGES WHERE w.collectionId = :collectionId AND w.isDefault = 1 LIMIT 1")
     abstract suspend fun getDefaultWallpaper(collectionId: Long): WallpaperImage?
 
@@ -333,6 +333,23 @@ abstract class WallpaperDao {
     /** Repoints a default row at a freshly picked file, dropping the edit that framed the old one. */
     @Query("UPDATE wallpapers SET fileId = :fileId, editZoom = NULL, editOffsetX = NULL, editOffsetY = NULL WHERE id = :wallpaperId")
     abstract suspend fun repointDefaultWallpaper(wallpaperId: Long, fileId: Long)
+
+    /** Points [collectionId] at one of its memberships as its default wallpaper, or null to follow the global */
+    // TODO tests: see vault note tests/Default Wallpaper Membership Tests.md (per-collection override)
+    @Query("UPDATE collections SET defaultWallpaperId = :wallpaperId WHERE id = :collectionId")
+    abstract suspend fun setCollectionDefaultWallpaper(collectionId: Long, wallpaperId: Long?)
+
+    /** The override of [collectionId], or null when it follows global default. */
+    @Query("$SELECT_WALLPAPER_IMAGES WHERE w.id = (SELECT defaultWallpaperId FROM collections WHERE id = :collectionId)")
+    abstract suspend fun getCollectionDefaultWallpaper(collectionId: Long): WallpaperImage?
+
+    /** Flow sibling of [getCollectionDefaultWallpaper]; drives the edit card's row. */
+    @Query("$SELECT_WALLPAPER_IMAGES WHERE w.id = (SELECT defaultWallpaperId FROM collections WHERE id = :collectionId)")
+    abstract fun observeCollectionDefaultWallpaper(collectionId: Long): Flow<WallpaperImage?>
+
+    /** The override's membership id alone for the star's state in the pill and the preview. */
+    @Query("SELECT defaultWallpaperId FROM collections WHERE id = :collectionId")
+    abstract fun observeCollectionDefaultWallpaperId(collectionId: Long): Flow<Long?>
 
     /**
      * Uris of the files referenced *only* by default rows. The storage readout subtracts these:

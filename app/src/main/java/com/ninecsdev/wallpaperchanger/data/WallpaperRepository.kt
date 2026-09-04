@@ -436,7 +436,7 @@ class WallpaperRepository @Inject constructor(
         gcOrphanFiles()
     }
 
-    // Default wallpapers
+    // Default wallpaper
 
     /**
      * The user's default wallpaper, or null if none is set. No grid, count or rotation includes it
@@ -481,13 +481,35 @@ class WallpaperRepository @Inject constructor(
         )
     }
 
+    // Per-collection default overrides
+
+    /**
+     * The image a service stop or pause reverts to: **active** collection's override when it has
+     * one, else global default wallpaper. An unavailable override falls through to the global.
+     */
+    // TODO tests: see vault note tests/Default Wallpaper Membership Tests.md (per-collection override)
+    suspend fun getCollectionDefaultOrGlobal(): WallpaperImage? {
+        val override = dao.getActiveCollection()?.let { dao.getCollectionDefaultWallpaper(it.id) }
+        return override?.takeIf { it.isAvailable } ?: getDefaultWallpaper()
+    }
+
+    /** Points [collectionId] at [wallpaperId] as its default, or clears the override when null. */
+    suspend fun setCollectionDefaultWallpaper(collectionId: Long, wallpaperId: Long?) =
+        dao.setCollectionDefaultWallpaper(collectionId, wallpaperId)
+
+    /** The override of [collectionId] as a read model, for the edit card's row. */
+    fun collectionDefaultWallpaperFlow(collectionId: Long): Flow<WallpaperImage?> =
+        dao.observeCollectionDefaultWallpaper(collectionId)
+
+    /** The override's membership id, for the star's state in the pill and the preview. */
+    fun collectionDefaultWallpaperIdFlow(collectionId: Long): Flow<Long?> =
+        dao.observeCollectionDefaultWallpaperId(collectionId)
+
     /** Uris of files held only by defaults, the storage readout subtracts them. */
     suspend fun getDefaultOnlyFileUris(): List<Uri> = dao.getDefaultOnlyFileUris()
 
     /** Marks a file unavailable (rotation self-heal after a definitive read failure). */
-    suspend fun markFileUnavailable(fileId: Long) {
-        dao.setFileAvailability(fileId, false)
-    }
+    suspend fun markFileUnavailable(fileId: Long) = dao.setFileAvailability(fileId, false)
 
     /**
      * Re-checks files marked unavailable in [collectionId] and clears the flag for any that are

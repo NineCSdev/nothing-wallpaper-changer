@@ -261,7 +261,7 @@ fun SettingsScreen(
 
 // Previews
 
-@Preview(showSystemUi = true, name = "Settings", backgroundColor = 0xFF000000, device = "spec:width=411dp,height=1210dp,dpi=420")
+@Preview(showSystemUi = true, name = "Settings", backgroundColor = 0xFF000000, device = "spec:width=411dp,height=1350dp,dpi=420")
 @Composable
 fun SettingsScreenPreview() {
     WallpaperChangerTheme {

@@ -408,12 +408,14 @@ fun CollectionImageScreen(
                 ) {
                     SelectionActionBar(
                         isAllFavorites = uiState.isSelectionAllFavorites,
-                        canEdit = uiState.selectedWallpaper != null,
+                        hasSingleSelection = uiState.selectedWallpaper != null,
+                        isSelectedDefault = uiState.isSelectionTheDefault,
                         onFavoriteClick = actions::toggleFavoriteSelected,
                         onEditClick = { uiState.selectedWallpaper?.let(onEditWallpaper) },
                         onDeleteClick = { showDeleteConfirmation = true },
                         onCopyClick = { actions.requestTransfer(TransferMode.COPY) },
-                        onMoveClick = { actions.requestTransfer(TransferMode.MOVE) }
+                        onMoveClick = { actions.requestTransfer(TransferMode.MOVE) },
+                        onSetDefaultClick = actions::toggleCollectionDefaultSelected
                     )
                 }
             }
@@ -433,7 +435,9 @@ fun CollectionImageScreen(
                 sharedWallpaperId = uiState.previewWallpaper?.id,
                 knownAspectRatios = knownAspectRatios,
                 favoriteFileIds = uiState.favoriteFileIds,
+                defaultWallpaperId = uiState.defaultWallpaperId,
                 onToggleFavorite = actions::toggleFavorite,
+                onToggleDefault = actions::toggleCollectionDefault,
                 onDismiss = dismissPreview,
                 onEdit = onEditWallpaper,
                 onPageChanged = actions::openPreview
@@ -766,6 +770,8 @@ private object PreviewCollectionImageActions : CollectionImageActions {
     override fun clearTransferSummary() {}
     override fun toggleFavoriteSelected() {}
     override fun toggleFavorite(wallpaper: WallpaperImage) {}
+    override fun toggleCollectionDefaultSelected() {}
+    override fun toggleCollectionDefault(wallpaper: WallpaperImage) {}
     override fun requestRelink(wallpaper: WallpaperImage) {}
     override fun cancelRelink() {}
     override fun clearRelinkFailed() {}

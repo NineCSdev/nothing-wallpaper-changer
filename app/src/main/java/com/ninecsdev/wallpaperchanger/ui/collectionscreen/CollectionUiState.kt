@@ -5,6 +5,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
+import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 
 /**
@@ -22,6 +23,8 @@ data class CollectionUiState(
     val editingCollection: WallpaperCollection? = null,
     /** Exclusion-tombstone count of [editingCollection] (folder collections only); drives the "Restore removed images (N)" row. */
     val editingExclusionCount: Int = 0,
+    /** [editingCollection]'s default-wallpaper override, or null when it follows the global default. */
+    val editingDefaultWallpaper: WallpaperImage? = null,
     /** The app-wide cadence, so the edit card can seed a fresh override from what the collection was already getting. */
     val globalRotationPolicy: RotationPolicy = RotationPolicy.PerLock,
     val isProcessing: Boolean = false,

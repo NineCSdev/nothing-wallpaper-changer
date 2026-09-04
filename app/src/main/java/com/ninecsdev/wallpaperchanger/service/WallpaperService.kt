@@ -197,7 +197,7 @@ class WallpaperService : Service() {
         serviceScope.launch {
             withContext(NonCancellable) {
                 if (appDataStore.shouldRevertToDefault()) {
-                    wallpaperApplier.applyDefaultWallpaper()
+                    wallpaperApplier.applyDefaultWallpaper(useCollectionOverride = true)
                 }
             }
             stopSelf()
@@ -218,7 +218,7 @@ class WallpaperService : Service() {
         serviceScope.launch {
             withContext(NonCancellable) {
                 if (appDataStore.shouldRevertToDefault()) {
-                    wallpaperApplier.applyDefaultWallpaper()
+                    wallpaperApplier.applyDefaultWallpaper(useCollectionOverride = true)
                 }
             }
         }

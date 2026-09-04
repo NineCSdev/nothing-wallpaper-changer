@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.ui.mainscreen.components
+package com.ninecsdev.wallpaperchanger.ui.components
 
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -17,12 +17,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /**
- * Bordered preview thumbnail with a placeholder icon, used by the main-screen cards
- * ([WallpaperSelectionCard] previews and [DefaultWallpaperCard]). Collection grids use the
- * plain gray [ThumbnailSlot][com.ninecsdev.wallpaperchanger.ui.components.ThumbnailSlot] instead.
+ * Bordered preview thumbnail with a placeholder icon, used by the main-screen cards and by the
+ * edit-collection card's default-wallpaper row. Collection grids use the plain gray
+ * [ThumbnailSlot] instead.
  *
  * [content] replaces the plain image for callers that draw the thumbnail themselves
  */
@@ -57,5 +58,33 @@ internal fun NothingThumbnail(
                 tint = NothingWhite.copy(alpha = 0.2f)
             )
         }
+    }
+}
+/**
+ * A [NothingThumbnail] that honors the wallpaper's own framing: an edited membership renders
+ * through [EditableWallpaperImage] so the thumbnail shows what will actually be applied, an
+ * unedited one falls back to the plain image, and a null wallpaper to the placeholder.
+ *
+ * [decodeFraction] is the share of the screen width the thumbnail occupies; callers approximate it.
+ */
+@Composable
+internal fun WallpaperThumbnail(
+    wallpaper: WallpaperImage?,
+    modifier: Modifier = Modifier,
+    decodeFraction: Float = 1f
+) {
+    if (wallpaper?.editParams == null) {
+        NothingThumbnail(uri = wallpaper?.uri, modifier = modifier)
+        return
+    }
+
+    // Drawn as the frame's content, so the edited render is clipped to its corners and keeps its border
+    NothingThumbnail(uri = null, modifier = modifier) {
+        EditableWallpaperImage(
+            wallpaper = wallpaper,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            decodeFraction = decodeFraction
+        )
     }
 }

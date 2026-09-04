@@ -30,6 +30,10 @@ interface CollectionImageActions {
     fun toggleFavoriteSelected()
     fun toggleFavorite(wallpaper: WallpaperImage)
 
+    // Collection default wallpaper
+    fun toggleCollectionDefaultSelected()
+    fun toggleCollectionDefault(wallpaper: WallpaperImage)
+
     // Re-link unavailable image
     fun requestRelink(wallpaper: WallpaperImage)
     fun cancelRelink()

@@ -186,11 +186,18 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE collections RENAME COLUMN rotationFrequency TO rotationPolicy")
 
-                // `isDefaults` marks the app-owned collection that holds default wallpapers, and
-                // `isDefault` marks a join row as its collection's default rather than one of its
-                // images.
+                // `isDefaults` marks the app-owned collection that holds the global default
+                // wallpaper, and `isDefault` marks that hidden join row
                 db.execSQL("ALTER TABLE collections ADD COLUMN isDefaults INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE wallpapers ADD COLUMN isDefault INTEGER NOT NULL DEFAULT 0")
+
+                // A collection's own default-wallpaper override: one of its memberships, or null to
+                // follow the global one.
+                db.execSQL(
+                    "ALTER TABLE collections ADD COLUMN defaultWallpaperId INTEGER " +
+                        "REFERENCES wallpapers(id) ON DELETE SET NULL"
+                )
+                db.execSQL("CREATE INDEX index_collections_defaultWallpaperId ON collections(defaultWallpaperId)")
             }
         }
     }

@@ -41,22 +41,25 @@ import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
  * Floating pill of bulk actions shown while selection mode is active
- * (Nothing-gallery style). Direct slots: favourite / edit / delete; copy and
- * move live behind the ⋮ overflow menu, which opens upward above the pill.
+ * (Nothing-gallery style). Direct slots: favourite / edit / delete; copy, move
+ * and the collection-default toggle live behind the ⋮ overflow menu, which
+ * opens upward above the pill.
  *
  * Selection mode guarantees ≥ 1 selection, so every action is always
- * applicable except edit, which needs exactly one ([canEdit] — shown dimmed
- * otherwise).
+ * applicable except edit and the default toggle, which need [hasSingleSelection]
+ * and are shown dimmed otherwise.
  */
 @Composable
 internal fun SelectionActionBar(
     isAllFavorites: Boolean,
-    canEdit: Boolean,
+    hasSingleSelection: Boolean,
+    isSelectedDefault: Boolean,
     onFavoriteClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onCopyClick: () -> Unit,
     onMoveClick: () -> Unit,
+    onSetDefaultClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -79,12 +82,12 @@ internal fun SelectionActionBar(
             )
         }
 
-        IconButton(onClick = onEditClick, enabled = canEdit) {
+        IconButton(onClick = onEditClick, enabled = hasSingleSelection) {
             Icon(
                 painter = painterResource(R.drawable.icon_edit),
                 contentDescription = stringResource(R.string.cd_edit_wallpaper),
-                // Dimmed, not hidden, on multi-select — the old top-bar treatment.
-                tint = NothingWhite.copy(alpha = if (canEdit) 1f else 0.3f),
+                // Dimmed, not hidden, on multi-select
+                tint = NothingWhite.copy(alpha = if (hasSingleSelection) 1f else 0.3f),
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -160,6 +163,32 @@ internal fun SelectionActionBar(
                         onMoveClick()
                     }
                 )
+
+                val defaultAlpha = if (hasSingleSelection) 1f else 0.3f
+                DropdownMenuItem(
+                    enabled = hasSingleSelection,
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(
+                                if (isSelectedDefault) R.drawable.icon_star else R.drawable.icon_star_outline
+                            ),
+                            contentDescription = null,
+                            tint = NothingWhite.copy(alpha = defaultAlpha),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    text = {
+                        Text(
+                            text = stringResource(R.string.selection_menu_collection_default),
+                            style = NothingType.dialogButton,
+                            color = NothingWhite.copy(alpha = defaultAlpha)
+                        )
+                    },
+                    onClick = {
+                        menuExpanded = false
+                        onSetDefaultClick()
+                    }
+                )
             }
         }
     }
@@ -174,12 +203,14 @@ private fun SelectionActionBarPreview() {
         Surface(color = NothingBlack, modifier = Modifier.padding(16.dp)) {
             SelectionActionBar(
                 isAllFavorites = false,
-                canEdit = true,
+                hasSingleSelection = true,
+                isSelectedDefault = true,
                 onFavoriteClick = {},
                 onEditClick = {},
                 onDeleteClick = {},
                 onCopyClick = {},
-                onMoveClick = {}
+                onMoveClick = {},
+                onSetDefaultClick = {}
             )
         }
     }
@@ -192,12 +223,14 @@ private fun SelectionActionBarMultiPreview() {
         Surface(color = NothingBlack, modifier = Modifier.padding(16.dp)) {
             SelectionActionBar(
                 isAllFavorites = true,
-                canEdit = false,
+                hasSingleSelection = false,
+                isSelectedDefault = false,
                 onFavoriteClick = {},
                 onEditClick = {},
                 onDeleteClick = {},
                 onCopyClick = {},
-                onMoveClick = {}
+                onMoveClick = {},
+                onSetDefaultClick = {}
             )
         }
     }

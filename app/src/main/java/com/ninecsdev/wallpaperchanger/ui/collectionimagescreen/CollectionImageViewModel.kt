@@ -37,6 +37,7 @@ class CollectionImageViewModel @Inject constructor(
         loadCollectionMetadata()
         observeImages()
         observeFavorites()
+        observeCollectionDefault()
         // Silent re-probe: files marked unavailable may be readable again (source restored,
         // permission re-granted, connectivity back), clear the flag if so.
         viewModelScope.launch { repository.reprobeUnavailableFiles(collectionId) }
@@ -59,6 +60,14 @@ class CollectionImageViewModel @Inject constructor(
         viewModelScope.launch {
             repository.favoriteFileIdsFlow().collect { ids ->
                 _uiState.update { it.copy(favoriteFileIds = ids) }
+            }
+        }
+    }
+
+    private fun observeCollectionDefault() {
+        viewModelScope.launch {
+            repository.collectionDefaultWallpaperIdFlow(collectionId).collect { id ->
+                _uiState.update { it.copy(defaultWallpaperId = id) }
             }
         }
     }
@@ -289,6 +298,27 @@ class CollectionImageViewModel @Inject constructor(
                 repository.addFavorites(listOf(wallpaper))
             }
         }
+    }
+
+    // Collection default wallpaper
+
+    /** Makes the single selection this collection's default wallpaper, or clears the override when it already is. Exits selection after */
+    override fun toggleCollectionDefaultSelected() {
+        val wallpaper = _uiState.value.selectedWallpaper ?: return
+        viewModelScope.launch {
+            setCollectionDefault(wallpaper)
+            exitSelectionMode()
+        }
+    }
+
+    /** Same toggle from the full-screen preview */
+    override fun toggleCollectionDefault(wallpaper: WallpaperImage) {
+        viewModelScope.launch { setCollectionDefault(wallpaper) }
+    }
+
+    private suspend fun setCollectionDefault(wallpaper: WallpaperImage) {
+        val alreadyDefault = wallpaper.id == _uiState.value.defaultWallpaperId
+        repository.setCollectionDefaultWallpaper(collectionId, wallpaper.id.takeUnless { alreadyDefault })
     }
 
     // Full-screen preview

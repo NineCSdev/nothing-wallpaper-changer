@@ -20,6 +20,8 @@
     <string name="cd_add_collection">Add Collection</string>
     <string name="cd_add_wallpapers">Add wallpapers</string>
     <string name="cd_edit_wallpaper">Edit wallpaper</string>
+    <string name="cd_collection_default">Use as this collection’s default wallpaper</string>
+    <string name="cd_clear_collection_default">Clear this collection’s default wallpaper</string>
     <string name="cd_delete_wallpapers">Delete wallpapers</string>
     <string name="cd_exit_selection">Exit selection</string>
     <string name="cd_selected">Selected</string>
@@ -217,9 +219,12 @@
         \n• Fit shows the whole image without cropping, adding black bars if needed.
         \n\nEach wallpaper can be adjusted individually in its editor ignoring the general crop rule.
     </string>
-    <string name="edit_collection_rotation_title">ROTATION</string>
+    <string name="edit_collection_rotation_title">CUSTOM ROTATION</string>
     <string name="edit_collection_rotation_following_global">Following global · %1$s</string>
     <string name="edit_collection_rotation_override">%1$s · this collection only</string>
+    <string name="edit_collection_default_title">DEFAULT WALLPAPER</string>
+    <string name="edit_collection_default_following_global">Following global</string>
+    <string name="edit_collection_default_override">This collection only</string>
 
     <!-- Rotation cadence picker -->
     <string name="rotation_cadence_per_lock">EVERY UNLOCK</string>
@@ -326,6 +331,7 @@
     <string name="cd_selection_more">More actions</string>
     <string name="selection_menu_copy">COPY</string>
     <string name="selection_menu_move">MOVE</string>
+    <string name="selection_menu_collection_default">SET DEFAULT</string>
     <string name="transfer_dialog_title_copy">COPY TO</string>
     <string name="transfer_dialog_title_move">MOVE TO</string>
     <string name="transfer_dialog_empty">NO OTHER COLLECTIONS</string>

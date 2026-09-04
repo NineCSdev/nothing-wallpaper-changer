@@ -33,8 +33,8 @@ import androidx.core.net.toUri
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
-import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.SettingsToggleRow
+import com.ninecsdev.wallpaperchanger.ui.components.WallpaperThumbnail
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -161,22 +161,11 @@ private fun DefaultCardContent(
 /** The thumbnail, framed the way the wallpaper itself will be. Not interactive. */
 @Composable
 private fun DefaultThumbnail(wallpaper: WallpaperImage?) {
-    val size = Modifier.size(width = THUMBNAIL_WIDTH_DP.dp, height = THUMBNAIL_HEIGHT_DP.dp)
-
-    if (wallpaper?.editParams == null) {
-        NothingThumbnail(uri = wallpaper?.uri, modifier = size)
-        return
-    }
-
-    // Drawn as the frame's content, so the edited render is clipped to its corners and keeps its border
-    NothingThumbnail(uri = null, modifier = size) {
-        EditableWallpaperImage(
-            wallpaper = wallpaper,
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            decodeFraction = THUMBNAIL_DECODE_FRACTION
-        )
-    }
+    WallpaperThumbnail(
+        wallpaper = wallpaper,
+        modifier = Modifier.size(width = THUMBNAIL_WIDTH_DP.dp, height = THUMBNAIL_HEIGHT_DP.dp),
+        decodeFraction = THUMBNAIL_DECODE_FRACTION
+    )
 }
 
 private fun previewWallpaper(editParams: EditParams? = null) = WallpaperImage(

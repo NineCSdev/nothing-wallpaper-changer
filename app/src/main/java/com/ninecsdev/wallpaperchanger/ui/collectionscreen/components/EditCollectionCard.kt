@@ -1,5 +1,6 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionscreen.components
 
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -62,12 +63,14 @@ import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
 import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.policyOr
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
+import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.resolveDisplayName
 import com.ninecsdev.wallpaperchanger.ui.components.NothingBottomSheet
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButton
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButtonVariant
 import com.ninecsdev.wallpaperchanger.ui.components.RotationPickerContent
 import com.ninecsdev.wallpaperchanger.ui.components.SettingsRowHeader
+import com.ninecsdev.wallpaperchanger.ui.components.WallpaperThumbnail
 import com.ninecsdev.wallpaperchanger.ui.components.rotationSummary
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
@@ -77,6 +80,11 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
+private const val DEFAULT_THUMBNAIL_WIDTH_DP = 30
+private const val DEFAULT_THUMBNAIL_HEIGHT_DP = 40
+
+/** Fraction of the screen width the default-wallpaper thumbnail occupies. Approximated. */
+private const val DEFAULT_THUMBNAIL_DECODE_FRACTION = 0.1f
 /**
  * Card pop-up for managing a collection.
  *
@@ -94,6 +102,8 @@ internal fun EditCollectionCard(
     onCropRuleSelected: (CropRule) -> Unit,
     onRotationPolicySelected: (CollectionRotationSetting) -> Unit,
     globalRotationPolicy: RotationPolicy,
+    defaultWallpaper: WallpaperImage?,
+    onClearDefault: () -> Unit,
     onDelete: () -> Unit,
     onSyncClick: () -> Unit,
     onRestoreRemoved: () -> Unit = {}
@@ -124,6 +134,8 @@ internal fun EditCollectionCard(
             onCropRuleSelected = onCropRuleSelected,
             onRotationPolicySelected = onRotationPolicySelected,
             globalRotationPolicy = globalRotationPolicy,
+            defaultWallpaper = defaultWallpaper,
+            onClearDefault = onClearDefault,
             showDeleteConfirmation = showDeleteConfirmation,
             onDeleteRequest = { showDeleteConfirmation = true },
             onDeleteConfirm = {
@@ -151,6 +163,8 @@ private fun EditCollectionCardContent(
     onCropRuleSelected: (CropRule) -> Unit,
     onRotationPolicySelected: (CollectionRotationSetting) -> Unit,
     globalRotationPolicy: RotationPolicy,
+    defaultWallpaper: WallpaperImage?,
+    onClearDefault: () -> Unit,
     showDeleteConfirmation: Boolean,
     onDeleteRequest: () -> Unit,
     onDeleteConfirm: () -> Unit,
@@ -228,6 +242,10 @@ private fun EditCollectionCardContent(
                 )
             }
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        DefaultWallpaperRow(wallpaper = defaultWallpaper, onClear = onClearDefault)
 
         if (collection.type == CollectionType.FOLDER) {
             Spacer(modifier = Modifier.height(24.dp))
@@ -465,6 +483,51 @@ private fun RotationSettingRow(
 }
 
 /**
+ * The collection's default-wallpaper override, read-and-clear-only.
+ *
+ * Setting one happens on the image itself (the selection pill and the full-screen preview), so this
+ * row only reports and clears. With no override it collapses to the title and "Following global".
+ */
+@Composable
+private fun DefaultWallpaperRow(wallpaper: WallpaperImage?, onClear: () -> Unit) {
+    if (wallpaper == null) {
+        SettingsRowHeader(
+            title = stringResource(R.string.edit_collection_default_title),
+            subtitle = stringResource(R.string.edit_collection_default_following_global)
+        )
+        return
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        WallpaperThumbnail(
+            wallpaper = wallpaper,
+            modifier = Modifier.size(width = DEFAULT_THUMBNAIL_WIDTH_DP.dp, height = DEFAULT_THUMBNAIL_HEIGHT_DP.dp),
+            decodeFraction = DEFAULT_THUMBNAIL_DECODE_FRACTION
+        )
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        SettingsRowHeader(
+            title = stringResource(R.string.edit_collection_default_title),
+            subtitle = stringResource(R.string.edit_collection_default_override),
+            modifier = Modifier.weight(1f)
+        )
+
+        IconButton(onClick = onClear) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = stringResource(R.string.cd_clear_collection_default),
+                tint = NothingWhite.copy(alpha = 0.55f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+/**
  * Folder-only maintenance actions: manual re-sync and, when [excludedCount] > 0, the
  * "Restore removed images (N)" recovery row (the row disappears once the count is 0).
  */
@@ -535,6 +598,10 @@ private val previewManualCollection = WallpaperCollection(
     type = CollectionType.MANUAL
 )
 
+/** Stand-in override for the previews; the row's shape is what they exercise, not the image. */
+private val PREVIEW_DEFAULT_WALLPAPER = WallpaperImage(id = 1, collectionId = 1, uri = Uri.EMPTY)
+
+
 /** Simulates the Dialog scrim so previews look identical to the in-app experience. */
 @Composable
 private fun DialogScrim(content: @Composable () -> Unit) {
@@ -569,6 +636,8 @@ private fun PreviewEditCollectionCardFolder() {
                 onCropRuleSelected = {},
                 onRotationPolicySelected = {},
                 globalRotationPolicy = RotationPolicy.PerLock,
+                defaultWallpaper = PREVIEW_DEFAULT_WALLPAPER,
+                onClearDefault = {},
                 showDeleteConfirmation = false,
                 onDeleteRequest = {},
                 onDeleteConfirm = {},
@@ -602,6 +671,8 @@ private fun PreviewEditCollectionCardFolderWithRestore() {
                 onCropRuleSelected = {},
                 onRotationPolicySelected = {},
                 globalRotationPolicy = RotationPolicy.PerLock,
+                defaultWallpaper = null,
+                onClearDefault = {},
                 showDeleteConfirmation = false,
                 onDeleteRequest = {},
                 onDeleteConfirm = {},
@@ -635,6 +706,8 @@ private fun PreviewEditCollectionCardManual() {
                 onCropRuleSelected = {},
                 onRotationPolicySelected = {},
                 globalRotationPolicy = RotationPolicy.PerLock,
+                defaultWallpaper = null,
+                onClearDefault = {},
                 showDeleteConfirmation = false,
                 onDeleteRequest = {},
                 onDeleteConfirm = {},
@@ -668,6 +741,8 @@ private fun PreviewEditCollectionCardActive() {
                 onCropRuleSelected = {},
                 onRotationPolicySelected = {},
                 globalRotationPolicy = RotationPolicy.PerLock,
+                defaultWallpaper = null,
+                onClearDefault = {},
                 showDeleteConfirmation = false,
                 onDeleteRequest = {},
                 onDeleteConfirm = {},
@@ -701,6 +776,8 @@ private fun PreviewEditCollectionCardProcessing() {
                 onCropRuleSelected = {},
                 onRotationPolicySelected = {},
                 globalRotationPolicy = RotationPolicy.PerLock,
+                defaultWallpaper = null,
+                onClearDefault = {},
                 showDeleteConfirmation = false,
                 onDeleteRequest = {},
                 onDeleteConfirm = {},

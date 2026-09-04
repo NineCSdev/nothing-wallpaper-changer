@@ -31,6 +31,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.resolveDisplayName
+import com.ninecsdev.wallpaperchanger.ui.components.NothingThumbnail
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.PREVIEW_IMAGE_COUNT
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite

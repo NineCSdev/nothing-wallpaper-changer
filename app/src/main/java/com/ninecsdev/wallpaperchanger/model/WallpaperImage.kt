@@ -16,7 +16,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.SourceType
  * its own [editParams] (edits are per-collection, not per-file). `UNIQUE(collectionId, fileId)`
  * makes re-adding the same file to a collection a no-op.
  *
- * [isDefault] marks the row as its collection's default wallpaper.
+ * [isDefault] marks the hidden membership that is the app's global default wallpaper
  *
  * Cascades: deleting either the parent collection or the referenced file removes the join row.
  * Consumers read the denormalized [WallpaperImage] (file uri joined in), not this entity directly.

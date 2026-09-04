@@ -3,6 +3,8 @@ package com.ninecsdev.wallpaperchanger.model
 import android.content.Context
 import android.net.Uri
 import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
@@ -17,11 +19,23 @@ import com.ninecsdev.wallpaperchanger.model.enums.CropRule
  * [isFavorites] marks the app-owned Favourites collection
  * [isDefaults] the app-owned collection holding default wallpapers.
  * [isPinned] is the user-set "sort first"
+ * [defaultWallpaperId] is this collection's default-wallpaper override; null follows the global one.
  */
 //"App-owned vs user-owned" is orthogonal to [type] (how images get in), so Favourites is a plain
 // [CollectionType.MANUAL] collection with this flag set. If more app-owned collections ever appear,
 // upgrade this boolean to a string key.
-@Entity(tableName = "collections")
+@Entity(
+    tableName = "collections",
+    foreignKeys = [
+        ForeignKey(
+            entity = Wallpaper::class,
+            parentColumns = ["id"],
+            childColumns = ["defaultWallpaperId"],
+            onDelete = ForeignKey.SET_NULL
+        )
+    ],
+    indices = [Index("defaultWallpaperId")]
+)
 data class WallpaperCollection(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
@@ -36,7 +50,8 @@ data class WallpaperCollection(
     val lastUsedAt: Long = System.currentTimeMillis(),
     val isFavorites: Boolean = false,
     val isPinned: Boolean = false,
-    val isDefaults: Boolean = false
+    val isDefaults: Boolean = false,
+    val defaultWallpaperId: Long? = null
 ) {
     companion object {
         /** How a collection frames its unedited images unless the user says otherwise. */

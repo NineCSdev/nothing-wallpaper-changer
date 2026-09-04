@@ -12,6 +12,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
 import com.ninecsdev.wallpaperchanger.model.RotationPolicy
+import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.pinnedFirst
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
@@ -67,13 +68,15 @@ class CollectionViewModel @Inject constructor(
     private data class ModalInputs(
         val modal: ScreenModalState,
         val exclusionCount: Int,
-        val globalRotationPolicy: RotationPolicy
+        val globalRotationPolicy: RotationPolicy,
+        val defaultWallpaper: WallpaperImage?
     )
 
     /**
-     * Modal state plus its two reactive companions: the exclusion-tombstone count of the folder
+     * Modal state plus its reactive companions: the exclusion-tombstone count of the folder
      * collection open in the edit modal (0 otherwise), which lets the "Restore removed images (N)"
-     * row hide itself, and the global rotation policy the card seeds a fresh override from.
+     * row hide itself; the global rotation policy the card seeds a fresh override from; and the
+     * collection's default-wallpaper override, whose row collapses when there is none.
      * Bundled here because [combine] below is already at its five-flow limit.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -84,8 +87,12 @@ class CollectionViewModel @Inject constructor(
             .map { it.editingCollectionId }
             .distinctUntilChanged()
             .flatMapLatest { id -> if (id == null) flowOf(0) else repository.observeExclusionCount(id) },
-        appDataStore.rotationPolicyFlow()
-    ) { modal, count, globalPolicy -> ModalInputs(modal, count, globalPolicy) }
+        appDataStore.rotationPolicyFlow(),
+        _screenState
+            .map { it.editingCollectionId }
+            .distinctUntilChanged()
+            .flatMapLatest { id -> if (id == null) flowOf(null) else repository.collectionDefaultWallpaperFlow(id) }
+    ) { modal, count, globalPolicy, default -> ModalInputs(modal, count, globalPolicy, default) }
 
     /**
      * Combined public state built reactively.
@@ -116,6 +123,7 @@ class CollectionViewModel @Inject constructor(
             hasPendingPhotos = modalInput.modal.hasPendingPhotos,
             editingCollection = modalInput.modal.editingCollectionId?.let { id -> collections.find { it.id == id } },
             editingExclusionCount = modalInput.exclusionCount,
+            editingDefaultWallpaper = modalInput.defaultWallpaper,
             globalRotationPolicy = modalInput.globalRotationPolicy,
             isProcessing = modalInput.modal.isProcessing,
             importSummary = modalInput.modal.importSummary,
@@ -224,6 +232,14 @@ class CollectionViewModel @Inject constructor(
         val collection = editingCollection() ?: return
         viewModelScope.launch {
             repository.updateCollection(collection.id, collection.name, collection.defaultCropRule, setting)
+        }
+    }
+
+    /** Drops the editing collection's default-wallpaper override, returning it to the global one. */
+    override fun clearEditingCollectionDefault() {
+        val collection = editingCollection() ?: return
+        viewModelScope.launch {
+            repository.setCollectionDefaultWallpaper(collection.id, null)
         }
     }
 

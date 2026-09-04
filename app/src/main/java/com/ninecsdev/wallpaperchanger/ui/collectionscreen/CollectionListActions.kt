@@ -20,6 +20,7 @@ interface CollectionListActions {
     fun renameEditingCollection(newName: String)
     fun setEditingCropRule(rule: CropRule)
     fun setEditingRotationPolicy(setting: CollectionRotationSetting)
+    fun clearEditingCollectionDefault()
     fun syncEditingCollection()
     fun restoreRemovedImages()
 

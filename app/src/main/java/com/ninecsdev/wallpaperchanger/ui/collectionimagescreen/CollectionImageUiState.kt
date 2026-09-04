@@ -40,6 +40,7 @@ data class CollectionImageUiState(
     val isFavoritesCollection: Boolean = false,
     val wallpapers: List<WallpaperImage> = emptyList(),
     val favoriteFileIds: Set<Long> = emptySet(),
+    val defaultWallpaperId: Long? = null,
     val isLoading: Boolean = true,
     val isSelectionMode: Boolean = false,
     val selectedIds: Set<Long> = emptySet(),
@@ -72,4 +73,8 @@ data class CollectionImageUiState(
     val isSelectionAllFavorites: Boolean
         get() = isSelectionMode && selectedIds.isNotEmpty() &&
             wallpapers.filter { it.id in selectedIds }.all { it.fileId in favoriteFileIds }
+
+    /** Whether the single selection is already this collection's default; the action then clears it. */
+    val isSelectionTheDefault: Boolean
+        get() = defaultWallpaperId != null && selectedWallpaper?.id == defaultWallpaperId
 }

@@ -18,6 +18,8 @@
     <string name="cd_add_collection">Añadir colección</string>
     <string name="cd_add_wallpapers">Añadir fondo de pantalla</string>
     <string name="cd_edit_wallpaper">Editar fondo de pantalla</string>
+    <string name="cd_collection_default">Usar como fondo por defecto de esta lista</string>
+    <string name="cd_clear_collection_default">Quitar el fondo por defecto de esta lista</string>
     <string name="cd_delete_wallpapers">Eliminar fondo de pantalla</string>
     <string name="cd_exit_selection">Salir de la selección</string>
     <string name="cd_selected">Seleccionado</string>
@@ -213,9 +215,12 @@
         \n• Ajustar muestra la imagen completa sin recortar, añadiendo bandas negras si hace falta.
         \n\nCada fondo se puede ajustar individualmente en su editor ignorando el ajuste general de la colección.
     </string>
-    <string name="edit_collection_rotation_title">ROTACIÓN</string>
+    <string name="edit_collection_rotation_title">ROTACIÓN PERSONALIZADA</string>
     <string name="edit_collection_rotation_following_global">Sigue la global · %1$s</string>
     <string name="edit_collection_rotation_override">%1$s · solo esta colección</string>
+    <string name="edit_collection_default_title">FONDO POR DEFECTO</string>
+    <string name="edit_collection_default_following_global">Siguiendo el global</string>
+    <string name="edit_collection_default_override">Solo esta colección</string>
 
     <!-- Selector de cadencia de rotación -->
     <string name="rotation_cadence_per_lock">CADA DESBLOQUEO</string>
@@ -328,6 +333,7 @@
     <string name="cd_selection_more">Más acciones</string>
     <string name="selection_menu_copy">COPIAR</string>
     <string name="selection_menu_move">MOVER</string>
+    <string name="selection_menu_collection_default">ELEGIR PREDETERMINADO</string>
     <string name="transfer_dialog_title_copy">COPIAR A</string>
     <string name="transfer_dialog_title_move">MOVER A</string>
     <string name="transfer_dialog_empty">NO HAY OTRAS COLECCIONES</string>

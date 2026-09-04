@@ -78,9 +78,13 @@ class WallpaperApplier @Inject constructor(
         )
     }
 
+    /**
+     * @param useCollectionOverride lets the active collection's default wallpaper win over the
+     * global. For the service stop/pause.
+     */
     // TODO tests: see vault note tests/Atmosphere Delivery Tests.md
-    suspend fun applyDefaultWallpaper(): Boolean = withContext(Dispatchers.IO) {
-        val defaultWallpaper = repository.getDefaultWallpaper() ?: return@withContext false
+    suspend fun applyDefaultWallpaper(useCollectionOverride: Boolean = false): Boolean = withContext(Dispatchers.IO) {
+        val defaultWallpaper = (if (useCollectionOverride) repository.getCollectionDefaultOrGlobal() else repository.getDefaultWallpaper()) ?: return@withContext false
         if (!defaultWallpaper.isAvailable) return@withContext false
 
         val cropRule = repository.getCollectionById(defaultWallpaper.collectionId)?.defaultCropRule ?: WallpaperCollection.DEFAULT_CROP_RULE
