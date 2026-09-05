@@ -98,7 +98,7 @@ internal fun WallpaperSelectionCard(
             // The ViewModel already truncates previewImages to PREVIEW_IMAGE_COUNT.
             previewImages.forEach { image ->
                 NothingThumbnail(
-                    uri = image.uri,
+                    uri = image.uriString,
                     modifier = Modifier
                         .weight(1f)
                         .aspectRatio(0.75f)

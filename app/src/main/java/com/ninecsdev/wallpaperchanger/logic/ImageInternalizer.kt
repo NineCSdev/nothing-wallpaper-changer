@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
+import androidx.core.net.toUri
 import androidx.core.graphics.scale
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -104,8 +105,7 @@ class ImageInternalizer @Inject constructor(
             val outputFile = File(internalDir, fileName)
 
             // Decode at reduced resolution via two-pass helper
-            val sampled = ImageProcessingUtils.decodeSampledBitmap(appContext, uri, screenW, screenH)
-                ?: return null
+            val sampled = ImageProcessingUtils.decodeSampledBitmap(appContext, uri, screenW, screenH) ?: return null
 
             // Fine-resize to exact screen dimensions
             val processedBitmap = resizeToFitScreen(sampled, screenW, screenH)
@@ -136,13 +136,14 @@ class ImageInternalizer @Inject constructor(
     }
 
     /**
-     * Sums the current disk usage of [INTERNAL_FOLDER], skipping files named in [excludeFileNames].
+     * Sums the current disk usage of [INTERNAL_FOLDER], skipping the files [excludeUris] name.
      * Computed from the filesystem on every call.
      */
     // TODO tests: see vault note tests/Storage Usage Tests
     suspend fun getStorageUsage(
-        excludeFileNames: Set<String> = emptySet()
+        excludeUris: List<String> = emptyList()
     ): StorageUsage = withContext(Dispatchers.IO) {
+        val excludeFileNames = excludeUris.mapNotNull { it.toUri().lastPathSegment }.toSet()
         val files = File(appContext.filesDir, INTERNAL_FOLDER)
             .listFiles()
             ?.filter { it.name !in excludeFileNames }
@@ -171,12 +172,19 @@ class ImageInternalizer @Inject constructor(
     }
 
     /**
-     * Deletes any file under [INTERNAL_FOLDER] whose name isn't in [keepFileNames], reclaiming
-     * files orphaned. Files younger than [ORPHAN_GRACE_PERIOD_MS] are skipped so an in-progress
-     * import is never caught mid-write.
-     * @return the number of files deleted.
+     * Deletes any file under [INTERNAL_FOLDER] that none of [keepUris] names, reclaiming orphans.
+     * Files younger than [ORPHAN_GRACE_PERIOD_MS] are skipped so an in-progress import is never
+     * caught mid-write. **A uri that yields no filename aborts the sweep.**
+     *
+     * @return the number of files deleted, or 0 if the sweep was skipped.
      */
-    fun deleteOrphanInternalFiles(keepFileNames: Set<String>): Int {
+    fun deleteOrphanInternalFiles(keepUris: List<String>): Int {
+        val keepFileNames = keepUris.mapNotNull { it.toUri().lastPathSegment }.toSet()
+        if (keepFileNames.size != keepUris.size) {
+            Log.w(TAG, "Skipping the orphan sweep: ${keepUris.size - keepFileNames.size} uri(s) yielded no filename")
+            return 0
+        }
+
         val internalDir = File(appContext.filesDir, INTERNAL_FOLDER)
         val files = internalDir.listFiles() ?: return 0
         val graceCutoff = System.currentTimeMillis() - ORPHAN_GRACE_PERIOD_MS

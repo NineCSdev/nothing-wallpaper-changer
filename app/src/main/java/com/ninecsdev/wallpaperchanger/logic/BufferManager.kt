@@ -12,6 +12,7 @@ import android.graphics.RectF
 import android.net.Uri
 import android.util.Log
 import androidx.core.graphics.createBitmap
+import androidx.core.net.toUri
 import kotlinx.coroutines.CancellationException
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereRender
@@ -152,10 +153,10 @@ class BufferManager @Inject constructor(
             // Not a preparation failure: the caller is being torn down
             throw e
         } catch (e: FileNotFoundException) {
-            Log.w(TAG, "Source unreadable, likely deleted: ${wallpaper.uri}", e)
+            Log.w(TAG, "Source unreadable, likely deleted: ${wallpaper.uriString}", e)
             BufferPreparationResult.Failure(definitive = true)
         } catch (e: SecurityException) {
-            Log.w(TAG, "Permission revoked for source: ${wallpaper.uri}", e)
+            Log.w(TAG, "Permission revoked for source: ${wallpaper.uriString}", e)
             BufferPreparationResult.Failure(definitive = true)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to prepare the next wallpaper", e)
@@ -333,7 +334,7 @@ class BufferManager @Inject constructor(
         val editParams = wallpaper.editParams
 
         val sourceBitmap = decodeSourceBitmap(
-            wallpaper.uri,
+            wallpaper.uriString.toUri(),
             targetSize,
             oversample = if (editParams != null) EDIT_DECODE_SCALE else 1
         ) ?: return@withContext null

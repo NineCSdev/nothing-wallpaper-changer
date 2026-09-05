@@ -1,8 +1,8 @@
 package com.ninecsdev.wallpaperchanger.data.source
 
 import android.content.Context
-import android.net.Uri
 import android.provider.DocumentsContract
+import androidx.core.net.toUri
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -31,12 +31,13 @@ class FolderScanner @Inject constructor(
      * @param rootFolderUri The top-level folder URI granted by the user.
      * @return The document URIs of the images found in the folder.
      */
-    suspend fun scan(rootFolderUri: Uri): List<Uri> {
+    suspend fun scan(rootFolderUri: String): List<String> {
         return withContext(Dispatchers.IO) {
-            val imageList = mutableListOf<Uri>()
+            val rootUri = rootFolderUri.toUri()
+            val imageList = mutableListOf<String>()
             var hiddenSkipped = 0
             val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
-                rootFolderUri, DocumentsContract.getTreeDocumentId(rootFolderUri)
+                rootUri, DocumentsContract.getTreeDocumentId(rootUri)
             )
 
             try {
@@ -70,8 +71,8 @@ class FolderScanner @Inject constructor(
                         }
 
                         val docId = cursor.getString(idCol)
-                        val docUri = DocumentsContract.buildDocumentUriUsingTree(rootFolderUri, docId)
-                        imageList.add(docUri)
+                        val docUri = DocumentsContract.buildDocumentUriUsingTree(rootUri, docId)
+                        imageList.add(docUri.toString())
                     }
                 }
             } catch (e: Exception) {

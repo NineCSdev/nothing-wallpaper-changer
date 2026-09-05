@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components
 
-import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterExitState
@@ -289,7 +288,7 @@ internal fun WallpaperPreviewOverlay(
                         // The shared element is sized to the image's fit rect (not the full screen)
                         // and both flight ends use Crop. The aspect is seeded from the grid thumbnail
                         // so the flight targets the right rect from frame one, falls back to Fit
-                        var imageAspect by remember(wallpaper.uri) {
+                        var imageAspect by remember(wallpaper.uriString) {
                             mutableStateOf(knownAspectRatios[wallpaper.id])
                         }
                         val aspect = imageAspect
@@ -297,9 +296,9 @@ internal fun WallpaperPreviewOverlay(
                         // stands in until the full-res decode lands (without it the flight starts blank)
                         AsyncImage(
                             model = ImageRequest.Builder(context)
-                                .data(wallpaper.uri)
+                                .data(wallpaper.uriString)
                                 .size(decodeWidth, decodeHeight)
-                                .placeholderMemoryCacheKey(wallpaperThumbCacheKey(wallpaper.uri))
+                                .placeholderMemoryCacheKey(wallpaperThumbCacheKey(wallpaper.uriString))
                                 .build(),
                             contentDescription = stringResource(R.string.cd_wallpaper_preview),
                             contentScale = if (aspect == null) ContentScale.Fit else ContentScale.Crop,
@@ -324,7 +323,7 @@ internal fun WallpaperPreviewOverlay(
                         EditableWallpaperImage(
                             wallpaper = wallpaper,
                             contentDescription = stringResource(R.string.cd_wallpaper_preview),
-                            placeholderMemoryCacheKey = wallpaperEditThumbCacheKey(wallpaper.uri),
+                            placeholderMemoryCacheKey = wallpaperEditThumbCacheKey(wallpaper.uriString),
                             modifier = Modifier.fillMaxSize().then(pageContent)
                         )
                     }
@@ -563,7 +562,7 @@ fun WallpaperPreviewOverlayPreview() {
     val sampleWallpaper = WallpaperImage(
         id = 1L,
         collectionId = 101,
-        uri = Uri.EMPTY
+        uriString = ""
     )
 
     WallpaperChangerTheme {
@@ -588,7 +587,7 @@ fun WallpaperPreviewOverlayEditedPreview() {
     val sampleWallpaper = WallpaperImage(
         id = 2L,
         collectionId = 101,
-        uri = Uri.EMPTY,
+        uriString = "",
         editParams = EditParams(zoom = 1.5f, offsetX = 0f, offsetY = 0f)
     )
 

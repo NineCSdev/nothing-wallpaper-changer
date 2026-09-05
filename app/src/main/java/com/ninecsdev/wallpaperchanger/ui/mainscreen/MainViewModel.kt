@@ -188,7 +188,7 @@ class MainViewModel @Inject constructor(
                 Log.e(TAG, "Failed to internalize new default wallpaper, keeping previous one")
                 return@launch
             }
-            repository.setDefaultWallpaper(newUri)
+            repository.setDefaultWallpaper(newUri.toString())
         }
     }
 

@@ -1,7 +1,7 @@
 package com.ninecsdev.wallpaperchanger.model
 
 import android.content.Context
-import android.net.Uri
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -39,7 +39,7 @@ data class WallpaperCollection(
     val name: String,
     val type: CollectionType,
     val isActive: Boolean = false,
-    val rootUri: Uri? = null,
+    @ColumnInfo(name = "rootUri") val rootUriString: String? = null,
     val defaultCropRule: CropRule = DEFAULT_CROP_RULE,
     val rotationPolicy: CollectionRotationSetting = CollectionRotationSetting.FollowGlobal,
     val lastWallpaperChangeAt: Long = 0L,

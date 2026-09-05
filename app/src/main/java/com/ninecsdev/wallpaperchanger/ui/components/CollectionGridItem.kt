@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.ui.components
 
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,7 +45,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
  * Data state for the Grid Item for performance
  **/
 data class CollectionPreviewState(
-    val previewUris: List<Uri> = emptyList(),
+    val previewUris: List<String> = emptyList(),
     val totalCount: Int = 0
 )
 
@@ -157,7 +156,7 @@ fun CollectionGridItem(
  * Internal grid logic to separate layout from data handling.
  */
 @Composable
-private fun GridContent(uris: List<Uri>, totalCount: Int) {
+private fun GridContent(uris: List<String>, totalCount: Int) {
     val cornerRadius = 16.dp
 
     Column(modifier = Modifier.fillMaxSize()) {

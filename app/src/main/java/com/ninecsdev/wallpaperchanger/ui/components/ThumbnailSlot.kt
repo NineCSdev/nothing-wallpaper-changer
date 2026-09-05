@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.ui.components
 
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,7 +24,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
  */
 @Composable
 fun ThumbnailSlot(
-    uri: Uri?,
+    uri: String?,
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(0.dp),
 ) {

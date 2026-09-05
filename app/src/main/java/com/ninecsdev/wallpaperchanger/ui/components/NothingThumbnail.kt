@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.ui.components
 
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -29,7 +28,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
  */
 @Composable
 internal fun NothingThumbnail(
-    uri: Uri?,
+    uri: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
     cornerRadius: Int = 4,
@@ -74,7 +73,7 @@ internal fun WallpaperThumbnail(
     decodeFraction: Float = 1f
 ) {
     if (wallpaper?.editParams == null) {
-        NothingThumbnail(uri = wallpaper?.uri, modifier = modifier)
+        NothingThumbnail(uri = wallpaper?.uriString, modifier = modifier)
         return
     }
 

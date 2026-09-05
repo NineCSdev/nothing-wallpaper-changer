@@ -172,8 +172,7 @@ class SettingsViewModel @Inject constructor(
     // Merged into the state after it has its own initial value, never folded into the combine above
     private val storageUsage: StateFlow<StorageUsage?> = flow {
         // Defaults aren't counted as they are always internalized (no matter user setting)
-        val excluded = repository.getDefaultOnlyFileUris().mapNotNull { it.lastPathSegment }.toSet()
-        emit(imageInternalizer.getStorageUsage(excluded))
+        emit(imageInternalizer.getStorageUsage(repository.getDefaultOnlyFileUris()))
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,

@@ -1,6 +1,6 @@
 package com.ninecsdev.wallpaperchanger.model
 
-import android.net.Uri
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -25,7 +25,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.SourceType
 data class WallpaperFile(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val uri: Uri,
+    @ColumnInfo(name = "uri") val uriString: String,
     val sourceType: SourceType,
     val isAvailable: Boolean = true,
     val addedAt: Long = System.currentTimeMillis()

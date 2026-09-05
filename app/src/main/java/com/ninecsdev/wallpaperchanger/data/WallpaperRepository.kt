@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.data
 
-import android.net.Uri
 import android.util.Log
 import androidx.room.withTransaction
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
@@ -59,17 +58,17 @@ data class TransferResult(val transferred: Int = 0, val alreadyPresent: Int = 0)
  * resolved from [uri] and [sourceType]. A caller that already holds a registered file passes it.
  */
 private data class MembershipDraft(
-    val uri: Uri,
+    val uri: String,
     val sourceType: SourceType,
     val fileId: Long? = null,
     val editParams: EditParams? = null
 )
 
 /** Draft linking this image's file, and its edit, into another collection. */
-private fun WallpaperImage.asDraft() = MembershipDraft(uri, sourceType, fileId, editParams)
+private fun WallpaperImage.asDraft() = MembershipDraft(uriString, sourceType, fileId, editParams)
 
 /** Drafts for freshly acquired sources, whose files may not be registered yet. */
-private fun List<Pair<Uri, SourceType>>.asDrafts() = map { (uri, sourceType) -> MembershipDraft(uri, sourceType) }
+private fun List<Pair<String, SourceType>>.asDrafts() = map { (uri, sourceType) -> MembershipDraft(uri, sourceType) }
 
 /**
  * Coordinates the data layer.
@@ -179,7 +178,7 @@ class WallpaperRepository @Inject constructor(
     /**
      * Creates a folder collection. Returns `true` if it became the active collection.
      */
-    suspend fun createFolderCollection(name: String, treeUri: Uri, rule: CropRule): Boolean {
+    suspend fun createFolderCollection(name: String, treeUri: String, rule: CropRule): Boolean {
         wallpaperSources.takePersistedGrant(treeUri)
         try {
             // Scan first to avoid creating an orphan empty collection (or one with a partial/empty image set) on a transient scan failure.
@@ -192,7 +191,7 @@ class WallpaperRepository @Inject constructor(
                     WallpaperCollection(
                         name = name,
                         type = CollectionType.FOLDER,
-                        rootUri = treeUri,
+                        rootUriString = treeUri,
                         isActive = isFirst,
                         defaultCropRule = rule
                     )
@@ -220,7 +219,7 @@ class WallpaperRepository @Inject constructor(
      * Creates a manual collection. Returns whether it became the active collection, plus a summary
      * of how the picked images were imported (see [WallpaperSources.acquirePicked]).
      */
-    suspend fun createManualCollection(name: String, uris: List<Uri>, rule: CropRule): Pair<Boolean, PickImportResult> {
+    suspend fun createManualCollection(name: String, uris: List<String>, rule: CropRule): Pair<Boolean, PickImportResult> {
         val isFirst = dao.getActiveCollection() == null
         val imported = wallpaperSources.acquirePicked(uris)
 
@@ -228,7 +227,7 @@ class WallpaperRepository @Inject constructor(
             WallpaperCollection(
                 name = name,
                 type = CollectionType.MANUAL,
-                rootUri = null,
+                rootUriString = null,
                 isActive = isFirst,
                 defaultCropRule = rule
             )
@@ -244,7 +243,7 @@ class WallpaperRepository @Inject constructor(
      * For FOLDER collections the new images are marked [Wallpaper.isManuallyAdded]
      * so they survive folder-sync diffs.
      */
-    suspend fun addImagesToCollection(collectionId: Long, uris: List<Uri>): PickImportResult {
+    suspend fun addImagesToCollection(collectionId: Long, uris: List<String>): PickImportResult {
         val collection = dao.getCollectionById(collectionId) ?: return PickImportResult()
         val imported = wallpaperSources.acquirePicked(uris)
 
@@ -312,7 +311,7 @@ class WallpaperRepository @Inject constructor(
                             members.map {
                                 FolderExclusion(
                                     collectionId = collectionId,
-                                    uri = it.uri,
+                                    uriString = it.uriString,
                                     editParams = it.editParams,
                                     excludedAt = now
                                 )
@@ -455,7 +454,7 @@ class WallpaperRepository @Inject constructor(
      * The caller internalizes first. The replaced file is left to [gcOrphanFiles].
      */
     // TODO tests: see vault note tests/Default Wallpaper Membership Tests.md (replacement and GC)
-    suspend fun setDefaultWallpaper(internalizedUri: Uri) {
+    suspend fun setDefaultWallpaper(internalizedUri: String) {
         database.withTransaction {
             val collectionId = getOrCreateDefaultsCollection()
             val fileId = dao.getOrCreateFile(internalizedUri, SourceType.INTERNALIZED, System.currentTimeMillis())
@@ -509,7 +508,7 @@ class WallpaperRepository @Inject constructor(
         dao.observeCollectionDefaultWallpaperId(collectionId)
 
     /** Uris of files held only by defaults, the storage readout subtracts them. */
-    suspend fun getDefaultOnlyFileUris(): List<Uri> = dao.getDefaultOnlyFileUris()
+    suspend fun getDefaultOnlyFileUris(): List<String> = dao.getDefaultOnlyFileUris()
 
     /** Marks a file unavailable (rotation self-heal after a definitive read failure). */
     suspend fun markFileUnavailable(fileId: Long) = dao.setFileAvailability(fileId, false)
@@ -524,7 +523,7 @@ class WallpaperRepository @Inject constructor(
         dao.getUnavailableImagesForCollection(collectionId)
             .distinctBy { it.fileId }
             .forEach { image ->
-                if (wallpaperSources.isReadable(image.uri)) {
+                if (wallpaperSources.isReadable(image.uriString)) {
                     dao.setFileAvailability(image.fileId, true)
                 }
             }
@@ -546,12 +545,12 @@ class WallpaperRepository @Inject constructor(
      *
      * Returns [RelinkResult.FAILED] (leaving the image unavailable) if the pick can't be imported.
      */
-    suspend fun relinkUnavailableFile(image: WallpaperImage, pickedUri: Uri): RelinkResult {
+    suspend fun relinkUnavailableFile(image: WallpaperImage, pickedUri: String): RelinkResult {
         val imported = wallpaperSources.acquirePicked(listOf(pickedUri))
         val (finalUri, newSourceType) = imported.files.firstOrNull() ?: return RelinkResult.FAILED
 
         val oldFileId = image.fileId
-        val oldUri = image.uri
+        val oldUri = image.uriString
         val oldSourceType = image.sourceType
 
         val result = database.withTransaction {
@@ -623,11 +622,11 @@ class WallpaperRepository @Inject constructor(
     suspend fun syncCollection(collectionId: Long) {
         val collection = dao.getCollectionById(collectionId) ?: return
 
-        if (collection.type == CollectionType.FOLDER && collection.rootUri != null) {
+        if (collection.type == CollectionType.FOLDER && collection.rootUriString != null) {
             try {
                 Log.d(TAG, "Syncing physical folder for collection: ${collection.name}")
 
-                val freshUris = folderScanner.scan(collection.rootUri)
+                val freshUris = folderScanner.scan(collection.rootUriString)
 
                 val added = syncFolderImages(collectionId, freshUris)
                 Log.d(TAG, "Sync complete: ${freshUris.size} on disk, $added new images added.")
@@ -655,22 +654,22 @@ class WallpaperRepository @Inject constructor(
      */
     private suspend fun syncFolderImages(
         collectionId: Long,
-        freshUris: List<Uri>,
+        freshUris: List<String>,
         restoreExclusions: Boolean = false
     ): Int {
         val added = database.withTransaction {
             val exclusions = dao.getExclusionsForCollection(collectionId)
-            val excludedUris: Set<Uri>
-            val restoredEdits: Map<Uri, EditParams>
+            val excludedUris: Set<String>
+            val restoredEdits: Map<String, EditParams>
 
             if (restoreExclusions) {
                 dao.deleteExclusionsForCollection(collectionId)
                 excludedUris = emptySet()
                 restoredEdits = exclusions
-                    .mapNotNull { exclusion -> exclusion.editParams?.let { exclusion.uri to it } }
+                    .mapNotNull { exclusion -> exclusion.editParams?.let { exclusion.uriString to it } }
                     .toMap()
             } else {
-                excludedUris = exclusions.map { it.uri }.toSet()
+                excludedUris = exclusions.map { it.uriString }.toSet()
                 restoredEdits = emptyMap()
             }
 
@@ -700,9 +699,9 @@ class WallpaperRepository @Inject constructor(
     // TODO tests: check "tests/Folder Exclusions Tests" note
     suspend fun restoreExcludedImages(collectionId: Long) {
         val collection = dao.getCollectionById(collectionId) ?: return
-        if (collection.type != CollectionType.FOLDER || collection.rootUri == null) return
+        if (collection.type != CollectionType.FOLDER || collection.rootUriString == null) return
         try {
-            val freshUris = folderScanner.scan(collection.rootUri)
+            val freshUris = folderScanner.scan(collection.rootUriString)
             val added = syncFolderImages(collectionId, freshUris, restoreExclusions = true)
             Log.d(TAG, "Restore complete for collection $collectionId: $added image(s) back")
         } catch (e: CancellationException) {
@@ -747,10 +746,10 @@ class WallpaperRepository @Inject constructor(
 
         // Release the persisted folder permission if this is a folder collection and
         // no other collection is built from the same folder and still needs the grant.
-        if (collection.type == CollectionType.FOLDER && collection.rootUri != null &&
-            dao.countCollectionsWithRootUri(collection.rootUri) == 0
+        if (collection.type == CollectionType.FOLDER && collection.rootUriString != null &&
+            dao.countCollectionsWithRootUri(collection.rootUriString) == 0
         ) {
-            wallpaperSources.releasePersistedGrant(collection.rootUri)
+            wallpaperSources.releasePersistedGrant(collection.rootUriString)
         }
     }
 
@@ -767,7 +766,7 @@ class WallpaperRepository @Inject constructor(
             found
         }
         orphans.forEach { file ->
-            wallpaperSources.reclaim(file.uri, file.sourceType)
+            wallpaperSources.reclaim(file.uriString, file.sourceType)
         }
     }
 
@@ -835,15 +834,12 @@ class WallpaperRepository @Inject constructor(
             return
         }
 
-        // A row whose uri has no parseable id can't be checked; leaving it untouched keeps the
-        // sweep non-destructive (rotation's own failure marking still covers it).
-        val idsByFile = references.mapNotNull { file ->
-            file.uri.lastPathSegment?.toLongOrNull()?.let { file to it }
-        }
-        val existing = wallpaperSources.queryExistingMediaStoreIds(idsByFile.map { it.second })
+        // A row whose uri can't be checked comes back as existing, so this sweep never marks it
+        // on evidence it doesn't have (rotation's own failure marking still covers it).
+        val existing = wallpaperSources.queryExistingMediaStoreUris(references.map { it.uriString })
 
-        val lost = idsByFile.filter { (file, id) -> file.isAvailable && id !in existing }.map { it.first.id }
-        val recovered = idsByFile.filter { (file, id) -> !file.isAvailable && id in existing }.map { it.first.id }
+        val lost = references.filter { it.isAvailable && it.uriString !in existing }.map { it.id }
+        val recovered = references.filter { !it.isAvailable && it.uriString in existing }.map { it.id }
 
         dao.setFilesAvailability(lost, false)
         dao.setFilesAvailability(recovered, true)
@@ -855,15 +851,11 @@ class WallpaperRepository @Inject constructor(
     /**
      * Reconciles disk with the DB: deletes any file under `internal_wallpapers/` that isn't
      * referenced by a [SourceType.INTERNALIZED] file row. Safe to call on every app start; a no-op
-     * when nothing is orphaned. The keep set is computed here (it needs the DAO); the sweep itself
-     * is [WallpaperSources.sweepInternalFiles].
+     * when nothing is orphaned. This supplies the keep set (it needs the DAO); resolving those uris
+     * to filenames and doing the sweep is [WallpaperSources.sweepInternalFiles].
      */
     private suspend fun cleanupOrphanInternalFiles() {
-        val keep = dao.getFileUrisBySourceType(SourceType.INTERNALIZED)
-            .mapNotNull { it.lastPathSegment }
-            .toSet()
-
-        wallpaperSources.sweepInternalFiles(keep)
+        wallpaperSources.sweepInternalFiles(dao.getFileUrisBySourceType(SourceType.INTERNALIZED))
     }
 
     // Wallpaper operations

@@ -1,6 +1,6 @@
 package com.ninecsdev.wallpaperchanger.model
 
-import android.net.Uri
+import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -40,7 +40,7 @@ data class FolderExclusion(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val collectionId: Long,
-    val uri: Uri,
+    @ColumnInfo(name = "uri") val uriString: String,
     @Embedded val editParams: EditParams? = null,
     val excludedAt: Long = System.currentTimeMillis()
 )

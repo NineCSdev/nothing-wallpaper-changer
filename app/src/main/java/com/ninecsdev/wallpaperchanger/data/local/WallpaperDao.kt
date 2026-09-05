@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.data.local
 
-import android.net.Uri
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -72,11 +71,11 @@ abstract class WallpaperDao {
      * this reaches zero.
      */
     @Query("SELECT COUNT(*) FROM collections WHERE rootUri = :rootUri")
-    abstract suspend fun countCollectionsWithRootUri(rootUri: Uri): Int
+    abstract suspend fun countCollectionsWithRootUri(rootUri: String): Int
 
     /** All folder root uris across collections (manual collections' null roots excluded). */
     @Query("SELECT rootUri FROM collections WHERE rootUri IS NOT NULL")
-    abstract suspend fun getAllRootUris(): List<Uri>
+    abstract suspend fun getAllRootUris(): List<String>
 
     /** The app-owned Favourites collection, or null if it hasn't been created yet. */
     @Query("SELECT * FROM collections WHERE appRole = 'FAVORITES' LIMIT 1")
@@ -132,7 +131,7 @@ abstract class WallpaperDao {
     abstract suspend fun insertFile(file: WallpaperFile): Long
 
     @Query("SELECT * FROM wallpaper_files WHERE uri = :uri LIMIT 1")
-    abstract suspend fun getFileByUri(uri: Uri): WallpaperFile?
+    abstract suspend fun getFileByUri(uri: String): WallpaperFile?
 
     /**
      * Returns the id of the file row for [uri], creating it if absent. Dedups shared images so the
@@ -143,8 +142,8 @@ abstract class WallpaperDao {
      * must not keep excluding it from rotation.
      */
     @Transaction
-    open suspend fun getOrCreateFile(uri: Uri, sourceType: SourceType, addedAt: Long): Long {
-        val inserted = insertFile(WallpaperFile(uri = uri, sourceType = sourceType, addedAt = addedAt))
+    open suspend fun getOrCreateFile(uri: String, sourceType: SourceType, addedAt: Long): Long {
+        val inserted = insertFile(WallpaperFile(uriString = uri, sourceType = sourceType, addedAt = addedAt))
         if (inserted != -1L) return inserted
         val existing = getFileByUri(uri)!!
         if (!existing.isAvailable) setFileAvailability(existing.id, true)
@@ -157,7 +156,7 @@ abstract class WallpaperDao {
 
     /** All uris of the given source type. */
     @Query("SELECT uri FROM wallpaper_files WHERE sourceType = :type")
-    abstract suspend fun getFileUrisBySourceType(type: SourceType): List<Uri>
+    abstract suspend fun getFileUrisBySourceType(type: SourceType): List<String>
 
     /** All file rows of the given source type. */
     @Query("SELECT * FROM wallpaper_files WHERE sourceType = :type")
@@ -187,7 +186,7 @@ abstract class WallpaperDao {
      * Note: Caller must guarantee [uri] isn't already held by a different file row (uri is unique).
      */
     @Query("UPDATE wallpaper_files SET uri = :uri, sourceType = :sourceType, isAvailable = 1 WHERE id = :fileId")
-    abstract suspend fun rebindFile(fileId: Long, uri: Uri, sourceType: SourceType)
+    abstract suspend fun rebindFile(fileId: Long, uri: String, sourceType: SourceType)
 
     /**
      * Merge step for re-link when the picked uri already exists as a different file row: drops the
@@ -246,7 +245,7 @@ abstract class WallpaperDao {
         ORDER BY collectionId, rn
         """
     )
-    abstract fun observePreviewUrisByCollection(limit: Int): Flow<Map<@MapColumn("collectionId") Long, List<@MapColumn("uri") Uri>>>
+    abstract fun observePreviewUrisByCollection(limit: Int): Flow<Map<@MapColumn("collectionId") Long, List<@MapColumn("uri") String>>>
 
     /** Every collection's image count, keyed by collection. Collections with no images are absent from the map as in [observePreviewUrisByCollection] */
     @Query("SELECT collectionId, COUNT(*) AS imageCount FROM wallpapers WHERE isDefault = 0 GROUP BY collectionId")
@@ -363,7 +362,7 @@ abstract class WallpaperDao {
         WHERE f.id IN (SELECT fileId FROM wallpapers WHERE isDefault = 1)
           AND f.id NOT IN (SELECT fileId FROM wallpapers WHERE isDefault = 0)
     """)
-    abstract suspend fun getDefaultOnlyFileUris(): List<Uri>
+    abstract suspend fun getDefaultOnlyFileUris(): List<String>
 
     // Favourites (memberships of the system collection, keyed by fileId)
 
@@ -406,11 +405,11 @@ abstract class WallpaperDao {
      * never both excluded from and a member of the same collection. [uris] may be of any length.
      */
     @Transaction
-    open suspend fun deleteExclusionsForUris(collectionId: Long, uris: List<Uri>) {
+    open suspend fun deleteExclusionsForUris(collectionId: Long, uris: List<String>) {
         uris.chunked(BIND_CHUNK_SIZE).forEach { deleteExclusionsForUrisChunk(collectionId, it) }
     }
 
     @Query("DELETE FROM folder_exclusions WHERE collectionId = :collectionId AND uri IN (:uris)")
-    protected abstract suspend fun deleteExclusionsForUrisChunk(collectionId: Long, uris: List<Uri>)
+    protected abstract suspend fun deleteExclusionsForUrisChunk(collectionId: Long, uris: List<String>)
 
 }

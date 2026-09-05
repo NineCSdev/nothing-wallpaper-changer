@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.data.source
 
-import android.net.Uri
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 
 /**
@@ -18,16 +17,15 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
  * and the second element is a list of new URIs to register and link.
  */
 // TODO: add tests, check "WallpaperSources Tests" and "tests/Folder Exclusions Tests" vault notes
-//  (blocked on JVM: WallpaperImage.uri is android.net.Uri)
 fun computeFolderSyncDiff(
     existing: List<WallpaperImage>,
-    fresh: List<Uri>,
-    excluded: Set<Uri> = emptySet()
-): Pair<List<WallpaperImage>, List<Uri>> {
+    fresh: List<String>,
+    excluded: Set<String> = emptySet()
+): Pair<List<WallpaperImage>, List<String>> {
     val freshUris = fresh.toSet()
-    val existingUris = existing.map { it.uri }.toSet()
+    val existingUris = existing.map { it.uriString }.toSet()
     return Pair(
-        existing.filter { it.uri !in freshUris },
+        existing.filter { it.uriString !in freshUris },
         fresh.filter { it !in existingUris && it !in excluded }
     )
 }
@@ -37,6 +35,4 @@ fun computeFolderSyncDiff(
  * invisible because its name starts with a dot.
  */
 // TODO tests: check "tests/Folder Scan Visibility Tests" note
-//  (unblocked on JVM, unlike the diff above: this takes a String?, not an android.net.Uri)
-fun isHiddenDocumentName(displayName: String?): Boolean =
-    displayName?.startsWith(".") == true
+fun isHiddenDocumentName(displayName: String?): Boolean = displayName?.startsWith(".") == true

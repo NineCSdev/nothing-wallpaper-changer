@@ -28,7 +28,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
@@ -170,7 +169,7 @@ private fun DefaultThumbnail(wallpaper: WallpaperImage?) {
 private fun previewWallpaper(editParams: EditParams? = null) = WallpaperImage(
     id = 1,
     collectionId = 1,
-    uri = "content://media/external/images/media/1".toUri(),
+    uriString = "content://media/external/images/media/1",
     editParams = editParams,
     isDefault = true
 )

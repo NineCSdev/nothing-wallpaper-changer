@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.ui.walleditscreen
 
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -190,7 +189,7 @@ private fun HandleExit(
 
 @Composable
 private fun WallpaperCanvas(
-    wallpaperUri: Uri,
+    wallpaperUri: String,
     zoom: Float,
     offsetX: Float,
     offsetY: Float,
@@ -343,7 +342,7 @@ private fun WallpaperEditContent(
 
     Box(modifier = Modifier.fillMaxSize().background(NothingBlack).clipToBounds()) {
         WallpaperCanvas(
-            wallpaperUri = wallpaper.uri,
+            wallpaperUri = wallpaper.uriString,
             zoom = zoom,
             offsetX = offsetX,
             offsetY = offsetY,
@@ -492,7 +491,7 @@ private fun WallpaperEditScreenPreview() {
     val sampleWallpaper = WallpaperImage(
         id = 1L,
         collectionId = 1,
-        uri = Uri.EMPTY
+        uriString = ""
     )
 
     WallpaperChangerTheme {
@@ -514,7 +513,7 @@ private fun WallpaperEditScreenResetPreview() {
     val sampleWallpaper = WallpaperImage(
         id = 1L,
         collectionId = 1,
-        uri = Uri.EMPTY,
+        uriString = "",
         editParams = EditParams(zoom = 1.5f, offsetX = 0f, offsetY = 0f)
     )
 
@@ -537,7 +536,7 @@ private fun WallpaperEditScreenSavingPreview() {
     val sampleWallpaper = WallpaperImage(
         id = 1L,
         collectionId = 1,
-        uri = Uri.EMPTY
+        uriString = ""
     )
 
     WallpaperChangerTheme {
@@ -560,7 +559,7 @@ private fun WallpaperEditScreenErrorPreview() {
     val sampleWallpaper = WallpaperImage(
         id = 1L,
         collectionId = 1,
-        uri = Uri.EMPTY
+        uriString = ""
     )
 
     WallpaperChangerTheme {

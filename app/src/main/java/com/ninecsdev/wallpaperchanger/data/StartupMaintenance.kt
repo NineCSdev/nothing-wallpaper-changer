@@ -74,7 +74,7 @@ class StartupMaintenance @Inject constructor(
             return
         }
 
-        repository.setDefaultWallpaper(legacyUri)
+        repository.setDefaultWallpaper(legacyUri.toString())
         appDataStore.clearLegacyDefaultWallpaperUri()
         Log.i(TAG, "Backfilled the default wallpaper into the collection rows")
     }

@@ -140,7 +140,7 @@ class RotationEngine @Inject constructor(
                 is BufferPreparationResult.Success -> return true
                 is BufferPreparationResult.Failure -> {
                     if (result.definitive) {
-                        Log.w(TAG, "Source definitively unavailable, marking unavailable: ${nextImage.uri}")
+                        Log.w(TAG, "Source definitively unavailable, marking unavailable: ${nextImage.uriString}")
                         repository.markFileUnavailable(nextImage.fileId)
 
                         imageMagazine.removeAt(currentPointer)
@@ -148,7 +148,7 @@ class RotationEngine @Inject constructor(
                         // shifted into this slot instead of skipping it. Empties end at -1 naturally.
                         currentPointer--
                     } else {
-                        Log.w(TAG, "Transient failure loading ${nextImage.uri}, will retry on a later rotation.")
+                        Log.w(TAG, "Transient failure loading ${nextImage.uriString}, will retry on a later rotation.")
                     }
                 }
             }

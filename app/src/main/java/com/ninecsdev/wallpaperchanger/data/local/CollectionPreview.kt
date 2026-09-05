@@ -1,7 +1,5 @@
 package com.ninecsdev.wallpaperchanger.data.local
 
-import android.net.Uri
-
 /**
  * What a collection grid item is drawn from: its newest few thumbnail uris and its total image
  * count. A projection, not a domain type why it lives here.
@@ -10,6 +8,6 @@ import android.net.Uri
  * [imageCount] is the whole collection, so it is routinely larger.
  */
 data class CollectionPreview(
-    val previewUris: List<Uri> = emptyList(),
+    val previewUris: List<String> = emptyList(),
     val imageCount: Int = 0
 )

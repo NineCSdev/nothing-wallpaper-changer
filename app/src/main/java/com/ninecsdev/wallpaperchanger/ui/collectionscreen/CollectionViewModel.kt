@@ -169,7 +169,7 @@ class CollectionViewModel @Inject constructor(
             operation = "Create folder collection",
             onFailure = { _screenState.update { it.copy(createError = true) } }
         ) {
-            val shouldStartService = repository.createFolderCollection(name, uri, rule)
+            val shouldStartService = repository.createFolderCollection(name, uri.toString(), rule)
             pendingFolderUri = null
             onComplete(shouldStartService)
         }
@@ -181,7 +181,7 @@ class CollectionViewModel @Inject constructor(
             operation = "Create manual collection",
             onFailure = { _screenState.update { it.copy(createError = true) } }
         ) {
-            val (shouldStartService, importResult) = repository.createManualCollection(name, pendingPhotosUris, rule)
+            val (shouldStartService, importResult) = repository.createManualCollection(name, pendingPhotosUris.map { it.toString() }, rule)
             pendingPhotosUris = emptyList()
             _screenState.update { it.copy(importSummary = importResult) }
             onComplete(shouldStartService)

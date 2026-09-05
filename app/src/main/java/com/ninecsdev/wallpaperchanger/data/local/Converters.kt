@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.data.local
 
-import android.net.Uri
 import android.util.Log
 import androidx.room.TypeConverter
 import com.ninecsdev.wallpaperchanger.model.enums.AppCollectionRole
@@ -14,13 +13,6 @@ import com.ninecsdev.wallpaperchanger.model.enums.SourceType
  * Converts complex objects into primitives that SQLite can store.
  */
 class Converters {
-    // Uri Converters
-    @TypeConverter
-    fun fromUri(uri: Uri?): String? = uri?.toString()
-
-    @TypeConverter
-    fun toUri(uriString: String?): Uri? = uriString?.let { Uri.parse(it) }
-
     // CollectionType Converters
     @TypeConverter
     fun fromCollectionType(type: CollectionType): String = type.name

@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen
 
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -113,14 +112,14 @@ private val SelectionPillClearance = 88.dp
  * Explicit Coil memory-cache key for a wallpaper's grid thumbnail. Used while the full-res decode
  * Keyed by uri (not id): two wallpapers sharing a backing file share the thumbnail too.
  */
-internal fun wallpaperThumbCacheKey(uri: Uri) = "wallpaper-thumb-$uri"
+internal fun wallpaperThumbCacheKey(uri: String) = "wallpaper-thumb-$uri"
 
 /**
  * Same placeholder trick for *edited* wallpapers, under a separate key: their
  * grid request is sized to the screen-aspect virtual frame (see [EditableWallpaperImage][com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage])
  * so the bitmaps aren't interchangeable with the non-edited thumbnail's.
  */
-internal fun wallpaperEditThumbCacheKey(uri: Uri) = "wallpaper-edit-thumb-$uri"
+internal fun wallpaperEditThumbCacheKey(uri: String) = "wallpaper-edit-thumb-$uri"
 
 /** Width/height of the loaded image, or null if the size is degenerate. */
 internal fun AsyncImagePainter.State.Success.intrinsicAspectRatio(): Float? {
@@ -600,8 +599,8 @@ private fun SharedTransitionScope.WallpaperThumbnail(
                 if (wallpaper.editParams == null) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data(wallpaper.uri)
-                            .memoryCacheKey(wallpaperThumbCacheKey(wallpaper.uri))
+                            .data(wallpaper.uriString)
+                            .memoryCacheKey(wallpaperThumbCacheKey(wallpaper.uriString))
                             .build(),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
@@ -615,7 +614,7 @@ private fun SharedTransitionScope.WallpaperThumbnail(
                         wallpaper = wallpaper,
                         contentDescription = null,
                         decodeFraction = 1f / GRID_COLUMNS,
-                        memoryCacheKey = wallpaperEditThumbCacheKey(wallpaper.uri),
+                        memoryCacheKey = wallpaperEditThumbCacheKey(wallpaper.uriString),
                         modifier = imageModifier
                     )
                 }
@@ -687,7 +686,7 @@ fun CollectionImageScreenPreview() {
         WallpaperImage(
             id = id,
             collectionId = 1,
-            uri = Uri.EMPTY,
+            uriString = "",
             editParams = if (id == 3L || id == 7L) EditParams(zoom = 1.5f, offsetX = 0f, offsetY = 0f) else null
         )
     }
@@ -715,7 +714,7 @@ fun CollectionImageScreenSelectionPreview() {
         WallpaperImage(
             id = id,
             collectionId = 1,
-            uri = Uri.EMPTY
+            uriString = ""
         )
     }
 

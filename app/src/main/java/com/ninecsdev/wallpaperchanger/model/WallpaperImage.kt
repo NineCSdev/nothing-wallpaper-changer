@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.model
 
-import android.net.Uri
 import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
@@ -66,7 +65,7 @@ data class WallpaperImage(
     val id: Long = 0,
     val collectionId: Long,
     val fileId: Long = 0,
-    val uri: Uri,
+    @ColumnInfo(name = "uri") val uriString: String,
     val sourceType: SourceType = SourceType.INTERNALIZED,
     val isAvailable: Boolean = true,
     @Embedded val editParams: EditParams? = null,

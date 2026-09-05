@@ -101,7 +101,7 @@ class CollectionImageViewModel @Inject constructor(
      */
     fun addWallpapers(uris: List<Uri>) {
         viewModelScope.launch {
-            val result = repository.addImagesToCollection(collectionId, uris)
+            val result = repository.addImagesToCollection(collectionId, uris.map { it.toString() })
             _uiState.update { it.copy(importSummary = result) }
         }
     }
@@ -134,7 +134,7 @@ class CollectionImageViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            val result = repository.relinkUnavailableFile(target, uri)
+            val result = repository.relinkUnavailableFile(target, uri.toString())
             _uiState.update {
                 it.copy(
                     relinkTarget = null,

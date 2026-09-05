@@ -57,14 +57,14 @@ internal fun EditableWallpaperImage(
     val context = LocalContext.current
     val (screenW, screenH) = remember { ImageProcessingUtils.getWallpaperCanvasSize(context) }
     // null until ANY painter reports an intrinsic size. Guessing rendered a visible wrong-crop flash during flights.
-    var imageAspectRatio by remember(wallpaper.uri) { mutableStateOf<Float?>(null) }
+    var imageAspectRatio by remember(wallpaper.uriString) { mutableStateOf<Float?>(null) }
 
-    val model = remember(wallpaper.uri, edit.zoom, decodeFraction, memoryCacheKey, placeholderMemoryCacheKey) {
+    val model = remember(wallpaper.uriString, edit.zoom, decodeFraction, memoryCacheKey, placeholderMemoryCacheKey) {
         val zoomFactor = ceil(edit.zoom).toInt().coerceAtLeast(1)
         val targetW = (screenW * decodeFraction * zoomFactor).roundToInt().coerceIn(1, screenW)
         val targetH = (screenH * decodeFraction * zoomFactor).roundToInt().coerceIn(1, screenH)
         ImageRequest.Builder(context)
-            .data(wallpaper.uri)
+            .data(wallpaper.uriString)
             .size(targetW, targetH)
             .scale(Scale.FILL)
             .apply {

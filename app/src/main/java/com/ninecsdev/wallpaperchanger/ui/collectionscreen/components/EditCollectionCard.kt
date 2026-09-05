@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionscreen.components
 
-import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -599,7 +598,7 @@ private val previewManualCollection = WallpaperCollection(
 )
 
 /** Stand-in override for the previews; the row's shape is what they exercise, not the image. */
-private val PREVIEW_DEFAULT_WALLPAPER = WallpaperImage(id = 1, collectionId = 1, uri = Uri.EMPTY)
+private val PREVIEW_DEFAULT_WALLPAPER = WallpaperImage(id = 1, collectionId = 1, uriString = "")
 
 
 /** Simulates the Dialog scrim so previews look identical to the in-app experience. */

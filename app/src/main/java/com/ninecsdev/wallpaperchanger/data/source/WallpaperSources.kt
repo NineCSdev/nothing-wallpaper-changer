@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.core.net.toUri
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
@@ -35,7 +36,7 @@ data class PickImportResult(
  * register in the file registry, plus the [PickImportResult] counts for the UI.
  */
 data class PickImportOutcome(
-    val files: List<Pair<Uri, SourceType>>,
+    val files: List<Pair<String, SourceType>>,
     val result: PickImportResult
 )
 
@@ -63,7 +64,7 @@ class WallpaperSources @Inject constructor(
     }
 
     /**
-     * Makes a batch of picked [uris] durable, deciding how per uri: if the user's "keep local
+     * Makes a batch of picked [uris][uriStrings] durable, deciding how per uri: if the user's "keep local
      * copies" setting is on or `READ_MEDIA_IMAGES` was denied, everything is internalized.
      * Otherwise, each picker uri is kept as an external reference by converting it to its stable
      * MediaStore uri and verifying it points at the picked bytes; a uri that fails the conversion
@@ -71,13 +72,14 @@ class WallpaperSources @Inject constructor(
      * and a uri that fails internalization too is dropped.
      * See [tryConvertToMediaStore].
      */
-    suspend fun acquirePicked(uris: List<Uri>): PickImportOutcome {
-        if (uris.isEmpty()) return PickImportOutcome(emptyList(), PickImportResult())
+    suspend fun acquirePicked(uriStrings: List<String>): PickImportOutcome {
+        if (uriStrings.isEmpty()) return PickImportOutcome(emptyList(), PickImportResult())
+        val uris = uriStrings.map { it.toUri() }
 
         if (appDataStore.getKeepLocalCopies() || !hasMediaAccess()) {
             val internalizedUris = imageInternalizer.internalizeImages(uris)
             return PickImportOutcome(
-                files = internalizedUris.map { it to SourceType.INTERNALIZED },
+                files = internalizedUris.map { it.toString() to SourceType.INTERNALIZED },
                 result = PickImportResult(
                     internalized = internalizedUris.size,
                     skipped = uris.size - internalizedUris.size
@@ -95,8 +97,8 @@ class WallpaperSources @Inject constructor(
             emptyList()
         }
 
-        val files = referenced.map { (_, mediaUri) -> mediaUri to SourceType.MEDIA_STORE } +
-            internalizedUris.map { it to SourceType.INTERNALIZED }
+        val files = referenced.map { (_, mediaUri) -> mediaUri.toString() to SourceType.MEDIA_STORE } +
+            internalizedUris.map { it.toString() to SourceType.INTERNALIZED }
 
         return PickImportOutcome(
             files = files,
@@ -125,9 +127,9 @@ class WallpaperSources @Inject constructor(
             PackageManager.PERMISSION_GRANTED
 
     /** True if [uri] can currently be opened for reading. */
-    suspend fun isReadable(uri: Uri): Boolean = withContext(Dispatchers.IO) {
+    suspend fun isReadable(uri: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            appContext.contentResolver.openAssetFileDescriptor(uri, "r")?.use { true } ?: false
+            appContext.contentResolver.openAssetFileDescriptor(uri.toUri(), "r")?.use { true } ?: false
         } catch (_: Exception) {
             false
         }
@@ -137,10 +139,10 @@ class WallpaperSources @Inject constructor(
      * Reclaims a source's backing resource per [sourceType]: app-private copies are deleted;
      * MediaStore references and folder documents are left alone.
      */
-    suspend fun reclaim(uri: Uri, sourceType: SourceType) {
+    suspend fun reclaim(uri: String, sourceType: SourceType) {
         when (sourceType) {
             // Only this branch touches disk so run that part in IO
-            SourceType.INTERNALIZED -> withContext(Dispatchers.IO) { imageInternalizer.deleteInternalFile(uri.path) }
+            SourceType.INTERNALIZED -> withContext(Dispatchers.IO) { imageInternalizer.deleteInternalFile(uri.toUri().path) }
             SourceType.MEDIA_STORE -> Unit
             SourceType.FOLDER_DOC -> Unit
         }
@@ -150,10 +152,10 @@ class WallpaperSources @Inject constructor(
      * Takes a persistable READ grant for [uri] (a folder tree from the system folder picker) so it
      * survives across reboots. Counterpart of [releasePersistedGrant]
      */
-    suspend fun takePersistedGrant(uri: Uri) {
+    suspend fun takePersistedGrant(uri: String) {
         withContext(Dispatchers.IO) {
             appContext.contentResolver.takePersistableUriPermission(
-                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                uri.toUri(), Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
         }
     }
@@ -163,20 +165,20 @@ class WallpaperSources @Inject constructor(
      * must take this snapshot *before* computing their keep set so a grant acquired concurrently
      * can never look orphaned.
      */
-    suspend fun persistedGrantUris(): List<Uri> =
+    suspend fun persistedGrantUris(): List<String> =
         withContext(Dispatchers.IO) {
-            appContext.contentResolver.persistedUriPermissions.map { it.uri }
+            appContext.contentResolver.persistedUriPermissions.map { it.uri.toString() }
         }
 
     /**
      * Releases a persisted READ URI permission previously taken via `takePersistableUriPermission`
      * (a folder tree grant). Safe to call even if already released.
      */
-    suspend fun releasePersistedGrant(uri: Uri) {
+    suspend fun releasePersistedGrant(uri: String) {
         withContext(Dispatchers.IO) {
             try {
                 appContext.contentResolver.releasePersistableUriPermission(
-                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    uri.toUri(), Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
             } catch (e: SecurityException) {
                 Log.w(TAG, "Permission already released for: $uri", e)
@@ -185,26 +187,33 @@ class WallpaperSources @Inject constructor(
     }
 
     /**
-     * Disk ↔ DB reconcile of `internal_wallpapers/`: deletes any file whose name isn't in
-     * [keepFileNames]. The keep set is the caller's job (it comes from the DB plus the default
-     * wallpaper uri). See [ImageInternalizer.deleteOrphanInternalFiles] for the grace-period guard
-     * against racing an in-progress import.
+     * Disk ↔ DB reconcile of `internal_wallpapers/`: deletes any file the rows no longer reference.
+     * Callers pass the uris they want kept and [ImageInternalizer.deleteOrphanInternalFiles] resolves
+     * them to filenames, so nobody outside that class has to know how an internal file is named.
+     * See it for the grace-period guard against racing an in-progress import.
      */
-    suspend fun sweepInternalFiles(keepFileNames: Set<String>) {
+    suspend fun sweepInternalFiles(keepUris: List<String>) {
         withContext(Dispatchers.IO) {
-            imageInternalizer.deleteOrphanInternalFiles(keepFileNames)
+            imageInternalizer.deleteOrphanInternalFiles(keepUris)
         }
     }
 
     /**
-     * The subset of [mediaStoreIds] that currently exists in the device's MediaStore image table.
+     * The subset of [uris] whose image still exists in the device's MediaStore image table.
      * One indexed `_ID IN (...)` query per chunk. Callers must hold `READ_MEDIA_IMAGES`.
+     *
+     * **A uri with no readable media id counts as existing.**
      */
-    suspend fun queryExistingMediaStoreIds(mediaStoreIds: Collection<Long>): Set<Long> =
+    suspend fun queryExistingMediaStoreUris(uris: List<String>): Set<String> =
         withContext(Dispatchers.IO) {
-            val existing = mutableSetOf<Long>()
+            val (checkable, unreadable) = uris
+                .map { it to it.toUri().lastPathSegment?.toLongOrNull() }
+                .partition { it.second != null }
 
-            mediaStoreIds.chunked(MEDIA_QUERY_CHUNK_SIZE).forEach { chunk ->
+            val existing = unreadable.map { it.first }.toMutableSet()
+            val idToUri = checkable.associate { (uri, id) -> id!! to uri }
+
+            idToUri.keys.chunked(MEDIA_QUERY_CHUNK_SIZE).forEach { chunk ->
                 val selection = "${MediaStore.Images.Media._ID} IN (${chunk.joinToString(",")})"
                 appContext.contentResolver.query(
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
@@ -213,7 +222,7 @@ class WallpaperSources @Inject constructor(
                     null,
                     null
                 )?.use { cursor ->
-                    while (cursor.moveToNext()) existing.add(cursor.getLong(0))
+                    while (cursor.moveToNext()) idToUri[cursor.getLong(0)]?.let { existing.add(it) }
                 }
             }
             existing
