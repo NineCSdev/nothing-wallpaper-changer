@@ -4,12 +4,12 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle
 import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
 import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
@@ -42,7 +42,7 @@ import javax.inject.Inject
 class CollectionViewModel @Inject constructor(
     private val repository: WallpaperRepository,
     appDataStore: AppDataStore,
-    serviceStateManager: ServiceStateManager
+    serviceLifecycle: ServiceLifecycle
 ) : ViewModel(), CollectionListActions {
 
     private companion object {
@@ -105,7 +105,7 @@ class CollectionViewModel @Inject constructor(
         previewsFlow,
         modalInputs,
         _sortOrder,
-        serviceStateManager.serviceState
+        serviceLifecycle.serviceState
     ) { collections, previews, modalInput, sort, serviceState ->
         val sorted = when (sort) {
             CollectionSortOrder.NAME -> collections.sortedBy { it.name.lowercase() }

@@ -10,17 +10,17 @@ import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
-import com.ninecsdev.wallpaperchanger.data.ServiceLifecycleTracker
-import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle
+import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycleTracker
 import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
 import com.ninecsdev.wallpaperchanger.logic.RotationCoordinator
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.logic.RotationScheduler
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
-import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
-import com.ninecsdev.wallpaperchanger.model.ServiceState
+import com.ninecsdev.wallpaperchanger.model.LifecycleVerdict
+import com.ninecsdev.wallpaperchanger.model.ServiceIntent
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,13 +48,12 @@ class WallpaperService : Service() {
     @Inject lateinit var rotationEngine: RotationEngine
     @Inject lateinit var wallpaperApplier: WallpaperApplier
     @Inject lateinit var lifecycleTracker: ServiceLifecycleTracker
-    @Inject lateinit var serviceStateManager: ServiceStateManager
+    @Inject lateinit var serviceLifecycle: ServiceLifecycle
     @Inject lateinit var appDataStore: AppDataStore
     @Inject lateinit var rotationCoordinator: RotationCoordinator
     @Inject lateinit var rotationScheduler: RotationScheduler
 
     private var screenStateReceiver: BroadcastReceiver? = null
-    private var systemEventReceiver: BroadcastReceiver? = null
     private var atmosphereDisplayedReceiver: BroadcastReceiver? = null
     private var notificationJob: Job? = null
     // SupervisorJob ensures one failing task doesn't kill the whole service scope
@@ -72,34 +71,30 @@ class WallpaperService : Service() {
 
         startRotationTriggers()
 
-        systemEventReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                val pm = context.getSystemService(POWER_SERVICE) as PowerManager
-
-                serviceScope.launch {
-                    val policy = appDataStore.getBatterySaverPolicy()
-
-                    if (pm.isPowerSaveMode) {
-                        when (policy) {
-                            BatterySaverPolicy.STOP -> handleStopCommand()
-                            BatterySaverPolicy.PAUSE -> pauseEngine()
-                            BatterySaverPolicy.IGNORE -> { /* keep running normally */ }
-                        }
-                    } else {
-                        // Only resume if we were paused by battery saver
-                        if (policy == BatterySaverPolicy.PAUSE) {
-                            resumeEngine()
-                        }
-                    }
-                }
-            }
-        }
-        val systemFilter = IntentFilter().apply {
-            addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
-        }
-        registerReceiver(systemEventReceiver, systemFilter, RECEIVER_NOT_EXPORTED)
-
+        startLifecycleActionCollector()
         registerAtmosphereDisplayedReceiver()
+    }
+
+    /** Obeys the lifecycle authority for as long as the service lives */
+    private fun startLifecycleActionCollector() {
+        serviceScope.launch { serviceLifecycle.lifecycleActions.collect(::applyLifecycleAction) }
+    }
+
+    /** Runs the side effects one verdict calls for. This only touches the engine, the triggers and the wallpaper. */
+    private fun applyLifecycleAction(action: LifecycleVerdict) {
+        when (action) {
+            is LifecycleVerdict.RunActive -> {
+                Log.i(tag, "Engine active")
+                startRotationTriggers()
+            }
+            is LifecycleVerdict.RunPaused -> {
+                Log.i(tag, "Engine paused")
+                stopRotationTriggers()
+                serviceScope.launch { revertToDefaultIfRequested() }
+            }
+            is LifecycleVerdict.Abort -> handleStopCommand()
+            else -> Unit
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -123,46 +118,38 @@ class WallpaperService : Service() {
             return START_NOT_STICKY
         }
 
-        // If the service is still in the middle of its teardown, ignore the re-start
-        // to avoid the stop→start race condition where onDestroy clears the new instance's state.
-        if (serviceStateManager.rawServiceState.value is ServiceState.Stopping) {
-            Log.w(tag, "Start ignored: service is still stopping.")
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
         serviceScope.launch {
-            serviceStateManager.markServiceLoading()
+            val startup = serviceLifecycle.onIntent(
+                ServiceIntent.ServiceStarting(
+                    // Both facts are read fresh
+                    hasActiveCollection = repository.getActiveCollectionOnce() != null,
+                    policy = appDataStore.getBatterySaverPolicy()
+                )
+            )
 
-            if (repository.getActiveCollectionOnce() == null) {
-                Log.w(tag, "Abort startup: No collection found.")
-                serviceStateManager.markServiceStopped()
-                handleStopCommand()
-                return@launch
-            }
-
-            // Battery Saver may already be active on a cold start (e.g. boot restart),
-            // so the policy must be evaluated here rather than only on the next transition.
-            val pm = getSystemService(POWER_SERVICE) as PowerManager
-            val policy = appDataStore.getBatterySaverPolicy()
-
-            if (pm.isPowerSaveMode && policy == BatterySaverPolicy.STOP) {
-                Log.w(tag, "Abort startup: Battery Saver active with STOP policy.")
-                handleStopCommand()
-                return@launch
+            when (startup) {
+                // Still tearing down
+                is LifecycleVerdict.Rejected -> {
+                    Log.w(tag, "Start refused: ${startup.reason}")
+                    stopSelf()
+                    return@launch
+                }
+                is LifecycleVerdict.Abort -> {
+                    Log.w(tag, "Abort startup: nothing to rotate, or Battery Saver forbids it.")
+                    handleStopCommand()
+                    return@launch
+                }
+                else -> Unit
             }
 
             // Subscribes the engine to the active collection's images and blocks until the first
-            // buffer is prepared, so we only mark Running once a wallpaper is ready to apply.
+            // buffer is prepared, so we only report Running once a wallpaper is ready to apply
             rotationEngine.start(serviceScope)
 
             startNotificationCollector()
 
-            if (pm.isPowerSaveMode && policy == BatterySaverPolicy.PAUSE) {
-                pauseEngine()
-            } else {
-                serviceStateManager.markServiceRunning()
-            }
+            // Re-asks as the engine took seconds to come up and Battery Saver may have arrived during them
+            applyLifecycleAction(serviceLifecycle.onIntent(ServiceIntent.EngineReady))
         }
 
         return START_STICKY
@@ -177,7 +164,7 @@ class WallpaperService : Service() {
         notificationJob?.cancel()
         notificationJob = serviceScope.launch {
             combine(
-                serviceStateManager.rawServiceState,
+                serviceLifecycle.lifecycleIntent,
                 repository.activeCollectionFlow()
             ) { state, collection -> notificationContentFor(state, collection) }
                 .map { notificationHelper.textFor(it) }
@@ -187,50 +174,28 @@ class WallpaperService : Service() {
     }
 
     private fun handleStopCommand() {
+        if (serviceLifecycle.onIntent(ServiceIntent.TeardownBegan) is LifecycleVerdict.NoChange) return
         Log.i(tag, "Stopping service via command.")
-        serviceStateManager.markServiceStopping()
-        // Belt and braces with the Hidden mapping: no notify() can arrive once teardown starts,
-        // which would otherwise outlive stopForeground(STOP_FOREGROUND_REMOVE) as an undismissable
-        // notification with no service behind it.
+        // No notify() can arrive once teardown starts, which would otherwise outlive
+        // stopForeground(STOP_FOREGROUND_REMOVE) as an undismissable notification with no service behind it
         notificationJob?.cancel()
 
         serviceScope.launch {
-            withContext(NonCancellable) {
-                if (appDataStore.shouldRevertToDefault()) {
-                    wallpaperApplier.applyDefaultWallpaper(useCollectionOverride = true)
-                }
-            }
+            revertToDefaultIfRequested()
             stopSelf()
         }
     }
 
     /**
-     * Pauses the wallpaper changing by stopping both rotation triggers.
-     * The foreground service stays alive so it can auto-resume.
+     * Puts the user's chosen wallpaper back when rotation gives up the screen. Non-cancellable so a
+     * scope teardown cannot leave the last rotated image standing.
      */
-    private fun pauseEngine() {
-        if (serviceStateManager.rawServiceState.value is ServiceState.Paused) return
-        Log.i(tag, "Pausing engine (Power Save ON)")
-        serviceStateManager.markServicePaused()
-
-        stopRotationTriggers()
-
-        serviceScope.launch {
-            withContext(NonCancellable) {
-                if (appDataStore.shouldRevertToDefault()) {
-                    wallpaperApplier.applyDefaultWallpaper(useCollectionOverride = true)
-                }
+    private suspend fun revertToDefaultIfRequested() {
+        withContext(NonCancellable) {
+            if (appDataStore.shouldRevertToDefault()) {
+                wallpaperApplier.applyDefaultWallpaper(useCollectionOverride = true)
             }
         }
-    }
-
-    /** Resumes the wallpaper changing by restarting both rotation triggers. */
-    private fun resumeEngine() {
-        if (serviceStateManager.rawServiceState.value !is ServiceState.Paused) return
-        Log.i(tag, "Resuming engine (Power Save OFF)")
-        serviceStateManager.markServiceRunning()
-
-        startRotationTriggers()
     }
 
     override fun onDestroy() {
@@ -239,7 +204,6 @@ class WallpaperService : Service() {
         Log.i(tag, "Service Destroyed. Cleaning up.")
 
         stopRotationTriggers()
-        systemEventReceiver?.let { unregisterReceiver(it) }
         atmosphereDisplayedReceiver?.let { unregisterReceiver(it) }
 
         // Cancel the scope first so the engine's reactive collector stops before we clear its state.
@@ -247,7 +211,7 @@ class WallpaperService : Service() {
         rotationEngine.clearMagazine()
         stopForeground(STOP_FOREGROUND_REMOVE)
 
-        serviceStateManager.markServiceStopped()
+        serviceLifecycle.onIntent(ServiceIntent.TeardownFinished)
     }
 
     /** Starts both rotation triggers: the screen-state receiver and the interval scheduler. */

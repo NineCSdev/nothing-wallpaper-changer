@@ -4,11 +4,11 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
 import com.ninecsdev.wallpaperchanger.data.StartupMaintenance
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
+import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
@@ -38,7 +38,7 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val repository: WallpaperRepository,
-    serviceStateManager: ServiceStateManager,
+    serviceLifecycle: ServiceLifecycle,
     private val appDataStore: AppDataStore,
     private val imageInternalizer: ImageInternalizer,
     private val wallpaperApplier: WallpaperApplier,
@@ -125,7 +125,7 @@ class MainViewModel @Inject constructor(
     val uiState: StateFlow<MainUiState?> = combine(
         combine(
             settingsFlow,
-            serviceStateManager.serviceState,
+            serviceLifecycle.serviceState,
             activeCollectionFlow,
             previewsFlow,
             mediaAccessLostFlow

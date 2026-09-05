@@ -128,7 +128,7 @@ class AppDataStore @Inject constructor(
 
     /**
      * Persisted user intent — "the service was last left on." Unlike [serviceRunningFlow],
-     * this is never cleared by [ServiceStateManager][com.ninecsdev.wallpaperchanger.data.ServiceStateManager]'s
+     * this is never cleared by [ServiceLifecycle][com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle]'s
      * stale-flag self-heal, so it survives an ungraceful kill (e.g. package replace, where
      * `onDestroy` never runs) and drives the restart decision in
      * [ServiceRestartReceiver][com.ninecsdev.wallpaperchanger.service.ServiceRestartReceiver].

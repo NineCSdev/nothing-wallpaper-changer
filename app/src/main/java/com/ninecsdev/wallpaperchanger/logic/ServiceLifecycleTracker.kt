@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.data
+package com.ninecsdev.wallpaperchanger.logic
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +13,7 @@ import javax.inject.Singleton
  * explicit and removing coupling between the data layer and the service layer and
  * removing a possible race condition when previously readying the value in onCreate/onDelete.
  *
- * Lives in the data layer (next to [ServiceStateManager], its only reader)
+ * Lives next to [ServiceLifecycle], its only reader.
  *
  * The value resets to `false` on process death (same semantics as the
  * previous static flag) because Hilt singletons are scoped to the process.

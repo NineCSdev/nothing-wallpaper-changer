@@ -95,7 +95,7 @@ class RotationEngine @Inject constructor(
 
     /**
      * Advances to the next image and pre-renders it into the disk buffer. Called both by the
-     * reactive reload (already holding the lock via [reloadAndRefill]) and by `ScreenOffReceiver`
+     * reactive reload (already holding the lock via [reloadAndRefill]) and by `ScreenStateReceiver`
      * after each rotation (via the public [refillDiskBuffer]). Self-heals by marking a file
      * unavailable the moment its source is definitively gone (see [BufferPreparationResult.Failure]),
      * rather than deleting the wallpaper/collection entry so the user's curation is never destroyed by

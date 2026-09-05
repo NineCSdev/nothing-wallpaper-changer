@@ -6,9 +6,9 @@
     <string name="status_disabled_folder">Servicio deshabilitado (Ninguna colección seleccionada)</string>
     <string name="status_loading">Cargando…</string>
     <string name="notification_channel_name">ESTADO DEL SERVICIO</string>
-    <string name="notification_initializing">INICIALIZANDO…</string>
+    <string name="notification_initializing">Inicializando…</string>
     <string name="notification_cycling">Rotando: %1$s</string>
-    <string name="notification_active_collection_fallback">ACTIVO</string>
+    <string name="notification_active_collection_fallback">Activo</string>
     <string name="notification_paused_power_save">Pausado (Ahorro de batería)</string>
 
     <!-- Content descriptions -->

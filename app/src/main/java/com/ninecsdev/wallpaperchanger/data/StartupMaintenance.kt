@@ -14,7 +14,8 @@ import javax.inject.Singleton
 /**
  * One-shot app-startup housekeeping, triggered from the UI's entry point but owned here so
  * the work is decoupled from any UI lifecycle. Runs on a singleton-lived scope (mirroring
- * [ServiceStateManager]) rather than a `viewModelScope`, so it isn't canceled if the user
+ * [ServiceLifecycle][com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle]) rather than a
+ * `viewModelScope`, so it isn't canceled if the user
  * opens then immediately closes the app.
  */
 @Singleton

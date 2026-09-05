@@ -23,7 +23,7 @@ import javax.inject.Inject
  *
  * Both paths gate on [AppDataStore.isServiceDesired], the persisted user intent that,
  * unlike `service_running`, survives an ungraceful kill (not self-healed by
- * [ServiceStateManager][com.ninecsdev.wallpaperchanger.data.ServiceStateManager])
+ * [ServiceLifecycle][com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle])
  */
 @AndroidEntryPoint
 class ServiceRestartReceiver : BroadcastReceiver() {

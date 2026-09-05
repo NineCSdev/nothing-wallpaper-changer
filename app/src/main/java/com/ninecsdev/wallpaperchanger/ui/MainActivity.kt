@@ -11,15 +11,21 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
+import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle
+import com.ninecsdev.wallpaperchanger.model.LifecycleVerdict
+import com.ninecsdev.wallpaperchanger.model.ServiceIntent
 import com.ninecsdev.wallpaperchanger.service.WallpaperService
 import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionViewModel
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.MainViewModel
 import com.ninecsdev.wallpaperchanger.ui.navigation.AppNavigation
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject lateinit var serviceLifecycle: ServiceLifecycle
 
     // ViewModels are kept here so the activity-result launchers can call
     // ViewModel methods when the system returns a result.
@@ -102,6 +108,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startWallpaperServiceNow() {
-        startForegroundService(Intent(this, WallpaperService::class.java))
+        // Same wish the tile expresses, so both surfaces show the tap the same way.
+        if (serviceLifecycle.onIntent(ServiceIntent.StartRequested) is LifecycleVerdict.Accepted) {
+            startForegroundService(Intent(this, WallpaperService::class.java))
+        }
     }
 }

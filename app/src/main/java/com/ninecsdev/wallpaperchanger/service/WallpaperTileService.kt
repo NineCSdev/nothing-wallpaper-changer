@@ -6,7 +6,9 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.R
-import com.ninecsdev.wallpaperchanger.data.ServiceStateManager
+import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle
+import com.ninecsdev.wallpaperchanger.model.LifecycleVerdict
+import com.ninecsdev.wallpaperchanger.model.ServiceIntent
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.ui.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
@@ -26,7 +28,7 @@ import javax.inject.Inject
 class WallpaperTileService : TileService() {
 
     private val tag = "WallpaperTileService"
-    @Inject lateinit var serviceStateManager: ServiceStateManager
+    @Inject lateinit var serviceLifecycle: ServiceLifecycle
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private var stateJob: Job? = null
@@ -36,9 +38,7 @@ class WallpaperTileService : TileService() {
 
         // Single source of truth: render the tile from the manager's derived state flow.
         // This replaces the old serviceEvent collection + separate power-save BroadcastReceiver.
-        stateJob = serviceScope.launch {
-            serviceStateManager.serviceState.collectLatest { render(it) }
-        }
+        stateJob = serviceScope.launch { serviceLifecycle.serviceState.collectLatest { render(it) } }
     }
 
     override fun onStopListening() {
@@ -57,7 +57,7 @@ class WallpaperTileService : TileService() {
     override fun onClick() {
         super.onClick()
 
-        when (serviceStateManager.serviceState.value) {
+        when (serviceLifecycle.serviceState.value) {
             is ServiceState.DisabledNoCollection -> {
                 showTileMessage(getString(R.string.tile_no_collection_message))
             }
@@ -65,8 +65,11 @@ class WallpaperTileService : TileService() {
             is ServiceState.Stopping -> Unit
             is ServiceState.Loading -> Unit
             is ServiceState.Stopped -> {
-                serviceStateManager.markServiceLoading()
-                startForegroundService(Intent(this, WallpaperService::class.java))
+                // Express the wish, the authority decides whether it is legal and shows the
+                // tap immediately as Loading, self-healing if the service never arrives
+                if (serviceLifecycle.onIntent(ServiceIntent.StartRequested) is LifecycleVerdict.Accepted) {
+                    startForegroundService(Intent(this, WallpaperService::class.java))
+                }
             }
             is ServiceState.Running, is ServiceState.Paused -> {
                 val intent = Intent(this, WallpaperService::class.java).apply {

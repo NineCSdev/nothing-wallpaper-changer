@@ -11,6 +11,8 @@ import com.ninecsdev.wallpaperchanger.data.source.FolderScanner
 import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.data.source.computeFolderSyncDiff
+import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle
+import com.ninecsdev.wallpaperchanger.model.ServiceIntent
 import com.ninecsdev.wallpaperchanger.model.enums.AppCollectionRole
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
@@ -76,7 +78,7 @@ private fun List<Pair<Uri, SourceType>>.asDrafts() = map { (uri, sourceType) -> 
  * rotation-engine coordination. The split with `data/source/`: DB rows and transactions live here;
  * a source's backing resource (picker grants, internal copies) is acquired/probed/reclaimed by
  * [WallpaperSources], and folder scanning by [FolderScanner].
- * Service state is managed by [ServiceStateManager] and settings by [AppDataStore] mostly
+ * Service state is managed by [ServiceLifecycle] and settings by [AppDataStore] mostly
  * injected directly by consumers that need them, though this class also reads [AppDataStore] for
  * the default-wallpaper uri when computing the internal-files keep set.
  *
@@ -86,7 +88,7 @@ private fun List<Pair<Uri, SourceType>>.asDrafts() = map { (uri, sourceType) -> 
 class WallpaperRepository @Inject constructor(
     private val database: AppDatabase,
     private val dao: WallpaperDao,
-    private val serviceStateManager: ServiceStateManager,
+    private val serviceLifecycle: ServiceLifecycle,
     private val wallpaperSources: WallpaperSources,
     private val folderScanner: FolderScanner
 ) {
@@ -731,11 +733,12 @@ class WallpaperRepository @Inject constructor(
 
     /**
      * Deletes a collection and cleans up associated files and permissions.
-     * If the deleted collection was active, marks the service as stopped via [ServiceStateManager]
+     * Deleting the active collection ends the user's standing intent to rotate, so the service
+     * is not brought back on the next boot. Stopping the live service is the caller's to command.
      */
     suspend fun deleteCollection(collection: WallpaperCollection) {
         if (collection.isActive) {
-            serviceStateManager.markServiceStopped()
+            serviceLifecycle.onIntent(ServiceIntent.ActiveCollectionDeleted)
         }
 
         // Removing the collection cascades its join rows; then reclaim any now-unreferenced files.
