@@ -366,8 +366,7 @@
     <string name="label_processing">PROCESSING…</string>
 
     <!-- Wallpaper preview overlay -->
-    <string name="preview_title">WALLPAPER PREVIEW</string>
-    <string name="preview_tap_to_exit">TAP ANYWHERE TO EXIT</string>
+    <string name="preview_page_indicator">%1$d / %2$d</string>
 
     <!-- Wallpaper edit screen -->
     <string name="edit_screen_title">EDIT WALLPAPER</string>

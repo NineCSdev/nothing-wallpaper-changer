@@ -8,7 +8,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -26,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -50,7 +50,9 @@ import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.ControlsPanel
 import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.EditTopBar
 import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.FloatingSaveButton
 import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.GestureTransform
+import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.MinZoom
 import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.applyEditGesture
+import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.runEditGestures
 import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.calculateFitHeightZoom
 import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.coerceOffset
 import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.coerceZoom
@@ -218,24 +220,29 @@ private fun WallpaperCanvas(
         },
         modifier = modifier
             .pointerInput(Unit) {
-                // centroid/pan/zoom are in this node's pixel space; `size` is the container.
-                detectTransformGestures { centroid, pan, gestureZoom, _ ->
-                    currentOnGesture(
-                        applyEditGesture(
-                            zoom = currentZoom,
-                            offsetX = currentOffsetX,
-                            offsetY = currentOffsetY,
-                            centroidX = centroid.x,
-                            centroidY = centroid.y,
-                            panX = pan.x,
-                            panY = pan.y,
-                            gestureZoom = gestureZoom,
-                            containerWidth = size.width.toFloat(),
-                            containerHeight = size.height.toFloat(),
-                            imageAspectRatio = currentAspect,
+                runEditGestures(
+                    // centroid/pan/zoom arrive in this node's pixel space, size is the container.
+                    onGesture = { centroid, pan, zoomDelta ->
+                        currentOnGesture(
+                            applyEditGesture(
+                                zoom = currentZoom,
+                                offsetX = currentOffsetX,
+                                offsetY = currentOffsetY,
+                                centroidX = centroid.x,
+                                centroidY = centroid.y,
+                                panX = pan.x,
+                                panY = pan.y,
+                                gestureZoom = zoomDelta,
+                                containerWidth = size.width.toFloat(),
+                                containerHeight = size.height.toFloat(),
+                                imageAspectRatio = currentAspect,
+                            )
                         )
-                    )
-                }
+                    },
+                    currentZoom = { currentZoom },
+                    currentOffset = { Offset(currentOffsetX, currentOffsetY) },
+                    onSettleAtRest = { currentOnGesture(GestureTransform(MinZoom, 0f, 0f)) }
+                )
             }
             .onSizeChanged { size ->
                 if (size.width > 0 && size.height > 0) {

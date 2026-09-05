@@ -136,7 +136,7 @@ internal fun AsyncImagePainter.State.Success.intrinsicAspectRatio(): Float? {
 internal val PreviewFlightBoundsTransform = BoundsTransform { _, _ ->
     spring(
         dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = 1000f, // how fast the animation plays
+        stiffness = 1000f, // how fast the flight plays
         visibilityThreshold = Rect.VisibilityThreshold
     )
 }

@@ -1,7 +1,10 @@
 package com.ninecsdev.wallpaperchanger.ui.walleditscreen.components
 
+import androidx.compose.ui.geometry.Offset
 import com.ninecsdev.wallpaperchanger.logic.computeEditTransform
 import com.ninecsdev.wallpaperchanger.model.EditParams
+import com.ninecsdev.wallpaperchanger.ui.components.MaxZoom
+import com.ninecsdev.wallpaperchanger.ui.components.focalPan
 import kotlin.math.abs
 
 /*
@@ -12,8 +15,8 @@ import kotlin.math.abs
 
 private const val EditValueEpsilon = 0.001f
 
-private const val MinZoom = 1f
-private const val MaxZoom = 5f
+internal const val MinZoom = 1f
+
 private const val MinOffset = -1f
 private const val MaxOffset = 1f
 
@@ -149,9 +152,6 @@ internal fun applyEditGesture(
         return GestureTransform(newZoom, offsetX, offsetY)
     }
 
-    // Effective scale ratio actually applied (accounts for zoom coercion at the bounds).
-    val zoomRatio = newZoom / zoom
-
     // Current pan in container pixels, and the pan range at the new zoom, both straight from
     // the shared render math so gesture and render never drift.
     val current = computeEditTransform(
@@ -178,11 +178,16 @@ internal fun applyEditGesture(
     val focalY = centroidY - containerHeight / 2f
 
     // Keep the focal content point fixed under the fingers, then apply the finger drag.
-    val newPanX = focalX * (1f - zoomRatio) + zoomRatio * current.panX + panX
-    val newPanY = focalY * (1f - zoomRatio) + zoomRatio * current.panY + panY
+    val newPan = focalPan(
+        drag = Offset(panX, panY),
+        centroid = Offset(focalX, focalY),
+        current = Offset(current.panX, current.panY),
+        fromZoom = zoom,
+        toZoom = newZoom
+    )
 
-    val newOffsetX = if (scaled.maxPanX > 0f) coerceOffset(newPanX / scaled.maxPanX) else offsetX
-    val newOffsetY = if (scaled.maxPanY > 0f) coerceOffset(newPanY / scaled.maxPanY) else offsetY
+    val newOffsetX = if (scaled.maxPanX > 0f) coerceOffset(newPan.x / scaled.maxPanX) else offsetX
+    val newOffsetY = if (scaled.maxPanY > 0f) coerceOffset(newPan.y / scaled.maxPanY) else offsetY
 
     return GestureTransform(newZoom, newOffsetX, newOffsetY)
 }

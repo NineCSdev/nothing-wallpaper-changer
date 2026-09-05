@@ -333,7 +333,7 @@
     <string name="cd_selection_more">Más acciones</string>
     <string name="selection_menu_copy">COPIAR</string>
     <string name="selection_menu_move">MOVER</string>
-    <string name="selection_menu_collection_default">ELEGIR PREDETERMINADO</string>
+    <string name="selection_menu_collection_default">PREDEFINIR</string>
     <string name="transfer_dialog_title_copy">COPIAR A</string>
     <string name="transfer_dialog_title_move">MOVER A</string>
     <string name="transfer_dialog_empty">NO HAY OTRAS COLECCIONES</string>
@@ -368,8 +368,7 @@
     <string name="label_processing">PROCESANDO…</string>
 
     <!-- Wallpaper preview overlay -->
-    <string name="preview_title">VISTA PREVIA</string>
-    <string name="preview_tap_to_exit">TOCA EN CUALQUIER LADO PARA SALIR</string>
+    <string name="preview_page_indicator">%1$d / %2$d</string>
 
     <!-- Wallpaper edit screen -->
     <string name="edit_screen_title">EDITAR FONDO DE PANTALLA</string>
