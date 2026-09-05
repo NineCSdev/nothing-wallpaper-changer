@@ -2,6 +2,7 @@ package com.ninecsdev.wallpaperchanger.data
 
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -33,23 +34,26 @@ class StartupMaintenance @Inject constructor(
     private val hasRun = AtomicBoolean(false)
 
     /**
-     * Runs the startup tasks once per process. Apart from the first, all are reconciliation sweeps
-     * kept permanently (not one-time migrations), reclaiming whatever a process death left
-     * half-cleaned. Ordered deliberately: the default-wallpaper backfill first, because until it
-     * runs that file is referenced by nothing and the sweeps below would reclaim it; then the
-     * registry GC (reclaims backing resources and deletes orphan file rows), then the grant,
-     * MediaStore-availability, and disk sweeps, which diff the system's persisted grants, the
-     * device's MediaStore, and `internal_wallpapers/` against the rows that survived.
+     * Runs the startup tasks once per process, in the one order that matters: the backfill migrates
+     * the default wallpaper into rows, and until it has, that file is referenced by nothing and
+     * [WallpaperRepository.reconcileStorage] would reclaim it. So the backfill failing skips
+     * reconciliation entirely rather than letting it run against state the migration still owns.
      */
+    // TODO tests: check "tests/Storage Reconcile Tests" note (the backfill gate)
     fun runOnce() {
         if (!hasRun.compareAndSet(false, true)) return
 
         scope.launch {
-            backfillDefaultWallpaper()
-            repository.cleanupOrphanFileRegistry()
-            repository.cleanupOrphanPersistedGrants()
-            repository.reconcileMediaStoreAvailability()
-            repository.cleanupOrphanInternalFiles()
+            try {
+                backfillDefaultWallpaper()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Retried next launch. Reconciliation is skipped
+                Log.e(TAG, "Default-wallpaper backfill failed, skipping reconciliation", e)
+                return@launch
+            }
+            repository.reconcileStorage()
         }
     }
 

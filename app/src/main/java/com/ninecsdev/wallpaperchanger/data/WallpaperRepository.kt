@@ -772,12 +772,25 @@ class WallpaperRepository @Inject constructor(
     }
 
     /**
-     * Startup reconciliation entry point for [gcOrphanFiles]. The GC normally runs right after the
-     * mutation that removed join rows; this pass reclaims whatever a process death in that window
-     * left behind.
+     * Brings persisted state back into line with the file registry. Each step diffs one external
+     * system against the rows and fixes the divergence, reclaiming whatever a process death left
+     * half-cleaned. Idempotent and non-destructive, a no-op when nothing has drifted.
+     *
+     * **The order is a completeness rule.**
      */
-    suspend fun cleanupOrphanFileRegistry() {
-        gcOrphanFiles()
+    // TODO tests: check "tests/Storage Reconcile Tests" note
+    suspend fun reconcileStorage() {
+        step("orphan file registry") { gcOrphanFiles() }
+        step("persisted grants") { cleanupOrphanPersistedGrants() }
+        step("MediaStore availability") { reconcileMediaStoreAvailability() }
+        step("internal files") { cleanupOrphanInternalFiles() }
+    }
+
+    /** Runs one reconciliation step, logging its failure. */
+    private suspend fun step(name: String, block: suspend () -> Unit) {
+        try { block()
+        } catch (e: CancellationException) { throw e
+        } catch (e: Exception) { Log.e(TAG, "Reconciliation step '$name' failed; continuing", e) }
     }
 
     /**
@@ -787,7 +800,7 @@ class WallpaperRepository @Inject constructor(
      * Safe to call on every app start; a no-op when nothing leaked.
      */
     // TODO tests: check "WallpaperSources Tests" note
-    suspend fun cleanupOrphanPersistedGrants() {
+    private suspend fun cleanupOrphanPersistedGrants() {
         // The grant snapshot is taken *before* the keep set so a grant acquired by a concurrent import
         // can never look orphaned (its rows are in by the time the keep set is read).
         val granted = wallpaperSources.persistedGrantUris()
@@ -809,7 +822,7 @@ class WallpaperRepository @Inject constructor(
      * is unreadable by definition, so all of them are marked unavailable without querying; the
      * main screen prompts for a re-grant and this sweep restores them once it's back.
      *
-     * Runs at startup ([StartupMaintenance]) or on mid-session re-grant.
+     * A step of [reconcileStorage], public as a mid-session `READ_MEDIA_IMAGES` re-grant needs this sweep alone.
      */
     // TODO tests: check "MediaStore Transition Tests" note
     suspend fun reconcileMediaStoreAvailability() {
@@ -845,7 +858,7 @@ class WallpaperRepository @Inject constructor(
      * when nothing is orphaned. The keep set is computed here (it needs the DAO); the sweep itself
      * is [WallpaperSources.sweepInternalFiles].
      */
-    suspend fun cleanupOrphanInternalFiles() {
+    private suspend fun cleanupOrphanInternalFiles() {
         val keep = dao.getFileUrisBySourceType(SourceType.INTERNALIZED)
             .mapNotNull { it.lastPathSegment }
             .toSet()
