@@ -187,13 +187,16 @@ class WallpaperRepository @Inject constructor(
             // Collection row and its images commit together so a failure can't leave a partial collection behind.
             return database.withTransaction {
                 val isFirst = dao.getActiveCollection() == null
+                val now = System.currentTimeMillis()
                 val collectionId = dao.insertCollection(
                     WallpaperCollection(
                         name = name,
                         type = CollectionType.FOLDER,
                         rootUriString = treeUri,
                         isActive = isFirst,
-                        defaultCropRule = rule
+                        defaultCropRule = rule,
+                        createdAt = now,
+                        lastUsedAt = now
                     )
                 )
 
@@ -223,13 +226,16 @@ class WallpaperRepository @Inject constructor(
         val isFirst = dao.getActiveCollection() == null
         val imported = wallpaperSources.acquirePicked(uris)
 
+        val now = System.currentTimeMillis()
         val collectionId = dao.insertCollection(
             WallpaperCollection(
                 name = name,
                 type = CollectionType.MANUAL,
                 rootUriString = null,
                 isActive = isFirst,
-                defaultCropRule = rule
+                defaultCropRule = rule,
+                createdAt = now,
+                lastUsedAt = now
             )
         )
 
@@ -413,6 +419,7 @@ class WallpaperRepository @Inject constructor(
     private suspend fun getOrCreateFavoritesCollection(): Long {
         val existing = dao.getFavoritesCollection()
         if (existing != null) return existing.id
+        val now = System.currentTimeMillis()
         return dao.insertCollection(
             // Just in case we save the collection.name as Favourites as a final fallback
             WallpaperCollection(
@@ -420,7 +427,9 @@ class WallpaperRepository @Inject constructor(
                 type = CollectionType.MANUAL,
                 appRole = AppCollectionRole.FAVORITES,
                 // Pinned by default (like the migration does for existing rows); user may unpin.
-                isPinned = true
+                isPinned = true,
+                createdAt = now,
+                lastUsedAt = now
             )
         )
     }
@@ -478,8 +487,15 @@ class WallpaperRepository @Inject constructor(
     private suspend fun getOrCreateDefaultsCollection(): Long {
         val existing = dao.getDefaultsCollection()
         if (existing != null) return existing.id
+        val now = System.currentTimeMillis()
         return dao.insertCollection(
-            WallpaperCollection(name = "Defaults", type = CollectionType.MANUAL, appRole = AppCollectionRole.DEFAULTS)
+            WallpaperCollection(
+                name = "Defaults",
+                type = CollectionType.MANUAL,
+                appRole = AppCollectionRole.DEFAULTS,
+                createdAt = now,
+                lastUsedAt = now
+            )
         )
     }
 

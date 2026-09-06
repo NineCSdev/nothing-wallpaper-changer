@@ -588,13 +588,17 @@ private fun FolderActionButton(
 private val previewFolderCollection = WallpaperCollection(
     id = 1,
     name = "Amoled Dark",
-    type = CollectionType.FOLDER
+    type = CollectionType.FOLDER,
+    createdAt = 0L,
+    lastUsedAt = 0L
 )
 
 private val previewManualCollection = WallpaperCollection(
     id = 2,
     name = "Custom Favorites",
-    type = CollectionType.MANUAL
+    type = CollectionType.MANUAL,
+    createdAt = 0L,
+    lastUsedAt = 0L
 )
 
 /** Stand-in override for the previews; the row's shape is what they exercise, not the image. */

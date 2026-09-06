@@ -43,8 +43,8 @@ data class WallpaperCollection(
     val defaultCropRule: CropRule = DEFAULT_CROP_RULE,
     val rotationPolicy: CollectionRotationSetting = CollectionRotationSetting.FollowGlobal,
     val lastWallpaperChangeAt: Long = 0L,
-    val createdAt: Long = System.currentTimeMillis(),
-    val lastUsedAt: Long = System.currentTimeMillis(),
+    val createdAt: Long,
+    val lastUsedAt: Long,
     val isPinned: Boolean = false,
     val appRole: AppCollectionRole? = null,
     val defaultWallpaperId: Long? = null

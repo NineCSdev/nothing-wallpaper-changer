@@ -146,7 +146,7 @@ fun PreviewSelectionCardActive() {
     WallpaperChangerTheme {
         Box(Modifier.padding(16.dp)) {
             WallpaperSelectionCard(
-                activeCollection = WallpaperCollection(name = "Amoled Collection", type = CollectionType.FOLDER),
+                activeCollection = WallpaperCollection(name = "Amoled Collection", type = CollectionType.FOLDER, createdAt = 0L, lastUsedAt = 0L),
                 previewImages = emptyList(),
                 totalImages = 15,
                 onSelectCollectionClick = {}

@@ -242,10 +242,10 @@ fun CollectionListScreenPopulatedPreview() {
         CollectionListScreen(
             uiState = CollectionUiState(
                 allCollections = listOf(
-                    WallpaperCollection(id = 1, name = "AMOLED HIGH", type = CollectionType.FOLDER),
-                    WallpaperCollection(id = 2, name = "NATURE PACK", type = CollectionType.FOLDER),
-                    WallpaperCollection(id = 3, name = "Favourites", type = CollectionType.MANUAL, appRole = AppCollectionRole.FAVORITES),
-                    WallpaperCollection(id = 4, name = "MINIMALISM", type = CollectionType.FOLDER)
+                    WallpaperCollection(id = 1, name = "AMOLED HIGH", type = CollectionType.FOLDER, createdAt = 0L, lastUsedAt = 0L),
+                    WallpaperCollection(id = 2, name = "NATURE PACK", type = CollectionType.FOLDER, createdAt = 0L, lastUsedAt = 0L),
+                    WallpaperCollection(id = 3, name = "Favourites", type = CollectionType.MANUAL, appRole = AppCollectionRole.FAVORITES, createdAt = 0L, lastUsedAt = 0L),
+                    WallpaperCollection(id = 4, name = "MINIMALISM", type = CollectionType.FOLDER, createdAt = 0L, lastUsedAt = 0L)
                 ),
                 previewStates = mapOf(
                     1L to CollectionPreviewState(previewUris = emptyList(), totalCount = 12),
