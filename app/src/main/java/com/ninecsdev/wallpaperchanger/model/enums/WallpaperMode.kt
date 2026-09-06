@@ -3,7 +3,7 @@ package com.ninecsdev.wallpaperchanger.model.enums
 /**
  * The user's chosen delivery mechanism for wallpapers.
  *
- * This is the *desired* mode only; the effective mode additionally requires NWC's live
+ * This is the *desired* mode only; the effective mode additionally requires our live
  * wallpaper to actually be set as the system wallpaper.
  */
 enum class WallpaperMode {

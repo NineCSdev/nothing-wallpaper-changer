@@ -38,14 +38,15 @@ import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
  * exit-live-wallpaper path (handled downstream in `setWallpaperMode`).
  *
  * Atmosphere being *desired* (the stored preference) is distinct from it being *effective*
- * ([engineActive], i.e. NWC's live wallpaper is actually set on the system). While desired but not
+ * ([engineActive], i.e. our live wallpaper is actually set on the system). While desired but not
  * active, the block surfaces the mismatch and offers the set-button that sends the user to the
- * system live-wallpaper picker; once active it shows a confirmed state instead.
+ * system live-wallpaper picker; once active it shows a confirmed state instead. A null
+ * [engineActive] means not yet checked, and shows neither.
  */
 @Composable
 internal fun AtmosphereModeSection(
     selectedMode: WallpaperMode,
-    engineActive: Boolean,
+    engineActive: Boolean?,
     hasSource: Boolean,
     onModeChange: (WallpaperMode) -> Unit,
     onSetAtmosphere: () -> Unit
@@ -62,7 +63,8 @@ internal fun AtmosphereModeSection(
             infoDialogBody = stringResource(R.string.settings_wallpaper_mode_dialog_body)
         )
 
-        if (selectedMode == WallpaperMode.ATMOSPHERE) {
+        // Held back until liveness is known
+        if (selectedMode == WallpaperMode.ATMOSPHERE && engineActive != null) {
             Spacer(modifier = Modifier.height(2.dp))
 
             if (engineActive) {

@@ -15,7 +15,7 @@ import javax.inject.Singleton
  * Single authority for "which mode is *actually* in effect right now".
  *
  * The stored [WallpaperMode] (see [AppDataStore.wallpaperModeFlow]) is only the user's *desired*
- * mode. Atmosphere is *effective* solely when NWC's live wallpaper engine is the system wallpaper
+ * mode. Atmosphere is *effective* solely when our live wallpaper engine is the system wallpaper
  * (the user may have picked ATMOSPHERE but never confirmed it on the system picker, or replaced it
  * later with another launcher/wallpaper).
  * Both delivery routing and zoom-fix gating must consult [effectiveMode] rather than the raw preference.
@@ -31,35 +31,27 @@ class WallpaperModeResolver @Inject constructor(
     private val appDataStore: AppDataStore
 ) {
     /**
-     * True when NWC's [AtmosphereWallpaperService] is the currently-set system live wallpaper.
+     * True when [AtmosphereWallpaperService] is the currently-set system live wallpaper.
      * A live wallpaper reports its component via [WallpaperManager.getWallpaperInfo]; a static
      * wallpaper (or another app's live wallpaper) yields null / a different component.
      *
-     * Blocking: [WallpaperManager.getWallpaperInfo] is a synchronous binder call into system_server.
-     * Deliberately left non-suspend because [AtmosphereTransition] seeds its liveness snapshot with
-     * it inline; call it off the main thread wherever a suspend context is available
-     * ([effectiveMode] already does).
+     * On [Dispatchers.IO] because [WallpaperManager.getWallpaperInfo] is a synchronous call.
      */
-    fun isAtmosphereEngineActive(): Boolean {
-        val info = WallpaperManager.getInstance(appContext).wallpaperInfo ?: return false
+    suspend fun isAtmosphereEngineActive(): Boolean = withContext(Dispatchers.IO) {
+        val info = WallpaperManager.getInstance(appContext).wallpaperInfo ?: return@withContext false
         // The direct class reference is deliberate. This is not the app talking to the engine, it is the
         // app asking the platform which wallpaper is live, so not part of AtmosphereProtocol.kt
-        return info.packageName == appContext.packageName &&
+        info.packageName == appContext.packageName &&
             info.serviceName == AtmosphereWallpaperService::class.java.name
     }
 
     /**
      * ATMOSPHERE only when the user desires it **and** the engine is actually live; STATIC otherwise
      * (including the "desired atmosphere but not confirmed on the system" mismatch case).
-     *
-     * Runs on [Dispatchers.IO] because [isAtmosphereEngineActive] blocks on binder: callers reach
-     * this from whatever dispatcher they happen to be on, and two of the three
-     * ([RotationEngine.refillDiskBuffer][com.ninecsdev.wallpaperchanger.logic.RotationEngine.refillDiskBuffer] via `SettingsViewModel`'s `viewModelScope` and via the
-     * foreground service's main-dispatcher scope) are on the main thread.
      */
-    suspend fun effectiveMode(): WallpaperMode = withContext(Dispatchers.IO) {
+    suspend fun effectiveMode(): WallpaperMode {
         val desired = appDataStore.getWallpaperMode()
-        if (desired == WallpaperMode.ATMOSPHERE && isAtmosphereEngineActive()) {
+        return if (desired == WallpaperMode.ATMOSPHERE && isAtmosphereEngineActive()) {
             WallpaperMode.ATMOSPHERE
         } else {
             WallpaperMode.STATIC

@@ -33,8 +33,8 @@ data class SettingsUiState(
     val skipOnDnd: Boolean = false,
     val wallpaperDestination: WallpaperDestination = WallpaperDestination.LOCK,
     val wallpaperMode: WallpaperMode = WallpaperMode.STATIC,
-    // Whether NWC's live wallpaper is actually the system wallpaper.
-    val atmosphereEngineActive: Boolean = false,
+    // Whether our live wallpaper is actually the system wallpaper; null until the first check
+    val atmosphereEngineActive: Boolean? = null,
     // Whether a source image exists to feed the atmosphere renderer gates the set-button up-front.
     val hasAtmosphereSource: Boolean = false,
     val atmosphereNotice: AtmosphereNotice? = null,

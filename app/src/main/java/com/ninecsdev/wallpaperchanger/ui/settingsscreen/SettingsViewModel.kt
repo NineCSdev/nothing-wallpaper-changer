@@ -11,6 +11,7 @@ import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereExitOutcome
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereTransition
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.logic.StorageUsage
 import com.ninecsdev.wallpaperchanger.model.RotationPolicy
@@ -47,6 +48,7 @@ class SettingsViewModel @Inject constructor(
     private val imageInternalizer: ImageInternalizer,
     private val wallpaperSources: WallpaperSources,
     private val atmosphereTransition: AtmosphereTransition,
+    private val wallpaperModeResolver: WallpaperModeResolver,
     @param:ApplicationContext private val context: Context
 ) : ViewModel(), SettingsActions {
 
@@ -77,7 +79,7 @@ class SettingsViewModel @Inject constructor(
 
     private data class AtmosphereSettings(
         val mode: WallpaperMode,
-        val engineActive: Boolean,
+        val engineActive: Boolean?,
         val hasSource: Boolean,
         val notice: AtmosphereNotice?
     )
@@ -243,10 +245,8 @@ class SettingsViewModel @Inject constructor(
      */
     override fun setWallpaperMode(mode: WallpaperMode) {
         viewModelScope.launch {
-            val previous = appDataStore.getWallpaperMode()
-            val leavingActiveAtmosphere = previous == WallpaperMode.ATMOSPHERE &&
-                mode == WallpaperMode.STATIC &&
-                atmosphereTransition.liveness.value
+            // The resolver, not the rendered liveness snapshot
+            val leavingActiveAtmosphere = mode == WallpaperMode.STATIC && wallpaperModeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE
 
             if (leavingActiveAtmosphere) {
                 atmosphereNotice.value = atmosphereTransition.exitAtmosphere().toNotice()

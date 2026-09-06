@@ -66,10 +66,10 @@ class AtmosphereTransition @Inject constructor(
         const val KEY_SEPARATOR = '|'
     }
 
-    private val _liveness = MutableStateFlow(modeResolver.isAtmosphereEngineActive())
+    private val _liveness = MutableStateFlow<Boolean?>(null)
 
-    /** Snapshot of whether NWC's engine is the system wallpaper right now, as of the last [reconcile]. */
-    val liveness: StateFlow<Boolean> = _liveness.asStateFlow()
+    /** Whether our engine is the system wallpaper, as of the last [reconcile]; null until the first one runs. */
+    val liveness: StateFlow<Boolean?> = _liveness.asStateFlow()
 
     /**
      * Whether anything exists to feed the renderer: an available image in the active collection, or
@@ -116,9 +116,10 @@ class AtmosphereTransition @Inject constructor(
         // leaves the next rotation applying a wallpaper framed for atmo in static
         withContext(NonCancellable) { rotationEngine.refillDiskBuffer() }
 
-        _liveness.value = modeResolver.isAtmosphereEngineActive()
+        val stillLive = modeResolver.isAtmosphereEngineActive()
+        _liveness.value = stillLive
         // Reclaim the source file once the engine is confirmed gone
-        if (!_liveness.value) {
+        if (!stillLive) {
             atmosphereDelivery.clearSource()
             wallpaperRecordStore.setAtmosphereRenderKey(null)
         }
@@ -156,7 +157,7 @@ class AtmosphereTransition @Inject constructor(
         }
 
         // The buffer is framed against effective mode, so it is only wrong across this edge.
-        if (!wasLive && appDataStore.getWallpaperMode() == WallpaperMode.ATMOSPHERE) {
+        if (wasLive == false && appDataStore.getWallpaperMode() == WallpaperMode.ATMOSPHERE) {
             rotationEngine.refillDiskBuffer()
         }
     }
