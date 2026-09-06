@@ -44,26 +44,11 @@ class AtmosphereWallpaperService : GLWallpaperService() {
          */
         private const val COMMAND_KEYGUARD_GOING_AWAY = "android.wallpaper.keyguardgoingaway"
 
-        /**
-         * Delay between screen-off and returning to the lock visual.
-         *
-         * The reset rewinds the frame counter and re-rolls the blob layout, and the panel is still
-         * fading when `ACTION_SCREEN_OFF` arrives — so doing it immediately shows the home screen
-         * visibly changing on the way out. Waiting for the fade to finish hides it. Unlock latency
-         * is unaffected: this only ever runs while the screen is going dark, and a wake inside the
-         * window cancels it.
-         */
-        private const val LOCK_DELAY_MS = 300L
-
         /** Refresh rate the morph votes its own surface to, for the morph's duration; 0 disables it */
         private const val PIN_MORPH_FRAME_RATE_HZ = 120f
 
-        /**
-         * How long after the keyguard starts to disappear a newly visible engine still counts as
-         * *that* unlocks reveal.
-         */
-        private const val UNLOCK_REVEAL_WINDOW_MS = 500L
-
+        /** Identifies the deferred lock reset on the handler, so it can be canceled by token. */
+        private val LOCK_RESET_TOKEN = Any()
     }
 
     override fun onCreateEngine(): Engine = AtmosphereEngine()
@@ -93,8 +78,8 @@ class AtmosphereWallpaperService : GLWallpaperService() {
             getSystemService(POWER_SERVICE) as PowerManager
         }
 
-        /** Deferred by [LOCK_DELAY_MS] so the reset lands after the panel is dark. */
-        private val lockRunnable = Runnable { renderer.setLocked(true) }
+        /** Owns whether an unlock morphs or settles silently. */
+        private val lockPresence = LockPresence()
 
         /**
          * Set in [onDestroy] so work already queued on the main looper can tell it is running
@@ -102,19 +87,27 @@ class AtmosphereWallpaperService : GLWallpaperService() {
          */
         private var destroyed = false
 
-        /**
-         * When the keyguard last began to disappear with nobody watching, or 0 for none held.
-         * Weighed against [UNLOCK_REVEAL_WINDOW_MS] the moment the engine becomes visible.
-         */
-        private var unlockAwaitingViewer = 0L
+        /** Feeds one observation in and carries out whatever comes back, in order. */
+        private fun dispatch(event: LockEvent) {
+            for (decision in lockPresence.on(event, SystemClock.uptimeMillis())) {
+                when (decision) {
+                    is LockDecision.SetLocked -> renderer.setLocked(decision.locked, decision.animate)
+                    LockDecision.SettleNow -> {
+                        // Ending the replay first is what lets the settle stick
+                        renderer.stopMorphLoop()
+                        renderer.settleNow()
+                    }
 
-        /**
-         * Leaves the lock visual.[onVisibilityChanged] picks it up,
-         * and [UNLOCK_REVEAL_WINDOW_MS] decides whether it is still worth playing by then.
-         */
-        private fun unlock() {
-            if (isVisible) renderer.setLocked(false, animate = true)
-            else unlockAwaitingViewer = SystemClock.uptimeMillis()
+                    is LockDecision.ScheduleLockReset ->
+                        handler.postAtTime(
+                            { dispatch(LockEvent.LockResetDue) },
+                            LOCK_RESET_TOKEN,
+                            decision.atMs
+                        )
+
+                    LockDecision.CancelLockReset -> handler.removeCallbacksAndMessages(LOCK_RESET_TOKEN)
+                }
+            }
         }
 
         /**
@@ -129,28 +122,17 @@ class AtmosphereWallpaperService : GLWallpaperService() {
         private val systemReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 when (intent?.action) {
-                    Intent.ACTION_SCREEN_OFF -> {
-                        // A held unlock cannot belong to a panel that has gone dark again since.
-                        unlockAwaitingViewer = 0L
-                        handler.removeCallbacks(lockRunnable)
-                        handler.postDelayed(lockRunnable, LOCK_DELAY_MS)
-                    }
+                    Intent.ACTION_SCREEN_OFF -> dispatch(LockEvent.ScreenOff)
 
                     // The event a fast toggle cannot skip. Visibility takes ~190 ms to drop after the panel goes off,
-                    // so a toggle quicker than leaves the effect up behind the keyguard. Skipped while an unlock is held
-                    Intent.ACTION_SCREEN_ON -> {
-                        handler.removeCallbacks(lockRunnable)
-                        if (unlockAwaitingViewer == 0L) {
-                            renderer.setLocked(keyguardManager.isKeyguardLocked, animate = false)
-                        }
-                    }
+                    // so a toggle quicker leaves the effect up behind the keyguard; reconciling here is what catches it.
+                    Intent.ACTION_SCREEN_ON -> dispatch(LockEvent.ScreenOn(keyguardManager.isKeyguardLocked))
 
                     // Backstop for COMMAND_KEYGUARD_GOING_AWAY on a platform that does not send
                     // it, at the cost of a morph that starts a beat into the unlock
-                    Intent.ACTION_USER_PRESENT -> unlock()
+                    Intent.ACTION_USER_PRESENT -> dispatch(LockEvent.Unlocked)
 
-                    AtmosphereProtocol.ACTION_RELOAD ->
-                        reloadSource(intent.getBooleanExtra(AtmosphereProtocol.EXTRA_FROM_ROTATION, false))
+                    AtmosphereProtocol.ACTION_RELOAD -> reloadSource(intent.getBooleanExtra(AtmosphereProtocol.EXTRA_FROM_ROTATION, false))
                 }
             }
         }
@@ -197,10 +179,8 @@ class AtmosphereWallpaperService : GLWallpaperService() {
 
             // Seed the visual from the real keyguard rather than assuming locked.
             // No morph: this is the state the device is already in, not a transition into it.
-            val startLocked = !isPreview && keyguardManager.isKeyguardLocked
-            // Created behind the keyguard is the boot case, and seeding the lock visual is also
-            // what arms the first unlock after a reboot to morph.
-            renderer.setLocked(startLocked, animate = false)
+            // A preview never sits behind a keyguard, and this seed is the only lock event it gets.
+            dispatch(LockEvent.Created(!isPreview && keyguardManager.isKeyguardLocked))
 
             // A preview engine plays the morph on repeat instead. Stopped on the way out of visibility
             if (isPreview) renderer.startMorphLoop()
@@ -218,18 +198,15 @@ class AtmosphereWallpaperService : GLWallpaperService() {
             extras: Bundle?,
             resultRequested: Boolean
         ): Bundle? {
-            if (action == COMMAND_KEYGUARD_GOING_AWAY) unlock()
+            if (action == COMMAND_KEYGUARD_GOING_AWAY) dispatch(LockEvent.Unlocked)
             return super.onCommand(action, x, y, z, extras, resultRequested)
         }
 
         override fun onVisibilityChanged(visible: Boolean) {
-            if (!visible) {
-                // Before super, which draws one last frame before parking the GL thread: settling
-                // first makes that frame the settled state rather than a half-finished morph.
-                // Ending the replay first is what lets that settle stick.
-                renderer.stopMorphLoop()
-                renderer.settleNow()
-            }
+            // Before super, which draws one last frame before parking the GL thread: settling
+            // first makes that frame the settled state rather than a half-finished morph.
+            if (!visible) dispatch(LockEvent.BecameInvisible)
+
             super.onVisibilityChanged(visible)
 
             if (!visible) return
@@ -240,31 +217,14 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                 return
             }
 
-            // Always consumed: a held unlock is only offered to the first engine that becomes visible after it
-            val heldUnlock = unlockAwaitingViewer
-            unlockAwaitingViewer = 0L
-
-            when {
-                // The reveal this engine is being made visible *for*. It outranks the keyguard
-                // because the keyguard still reports itself locked all the way through its dismissal
-                heldUnlock != 0L && SystemClock.uptimeMillis() - heldUnlock <= UNLOCK_REVEAL_WINDOW_MS ->
-                    renderer.setLocked(false, animate = true)
-
-                // Nothing held, or held too long ago: a wake onto the lock screen shows the photo it will be dismissed from
-                keyguardManager.isKeyguardLocked -> renderer.setLocked(true, animate = false)
-
-                // A held unlock that missed its window, doesn't morph
-                heldUnlock != 0L -> renderer.setLocked(false, animate = false)
-
-                // Either a wake with no keyguard to dismiss, or a return to a home screen that never locked
-                else -> unlock()
-            }
+            // After super, so the surface is live by the time a morph is asked for.
+            dispatch(LockEvent.BecameVisible(keyguardManager.isKeyguardLocked))
         }
 
         override fun onDestroy() {
             pinMorphFrameRate(false)
             destroyed = true
-            handler.removeCallbacks(lockRunnable)
+            dispatch(LockEvent.Destroyed)
             runCatching { unregisterReceiver(systemReceiver) }
             if (BuildConfig.DEBUG) runCatching { unregisterReceiver(seekReceiver) }
             // Stops decodes that have not started; ones already past the decode are caught by the
