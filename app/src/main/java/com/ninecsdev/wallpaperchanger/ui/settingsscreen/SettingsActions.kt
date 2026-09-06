@@ -17,6 +17,7 @@ interface SettingsActions {
     fun setStartOnBoot(enabled: Boolean)
     fun setRotationPolicy(policy: RotationPolicy)
     fun setBatterySaverPolicy(policy: BatterySaverPolicy)
+    fun setSkipOnDnd(skip: Boolean)
     fun setWallpaperDestination(destination: WallpaperDestination)
     fun setWallpaperMode(mode: WallpaperMode)
     fun setWallpaperZoomFix(zoomFix: WallpaperZoomFix)

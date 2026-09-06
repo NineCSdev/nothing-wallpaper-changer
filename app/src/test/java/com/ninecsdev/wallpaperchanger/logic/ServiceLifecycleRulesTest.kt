@@ -24,6 +24,7 @@ class ServiceLifecycleRulesTest {
         ServiceState.Stopping,
         ServiceState.Stopped,
         ServiceState.Paused,
+        ServiceState.PausedDnd,
         ServiceState.DisabledPowerSave,
         ServiceState.DisabledNoCollection,
     )
@@ -60,6 +61,69 @@ class ServiceLifecycleRulesTest {
         for ((isPowerSave, policy) in cells) {
             batterySaverAction(isPowerSave, policy)
         }
+    }
+
+    // ---- lifecycleAction: the two pause sources, and which one wins ----
+
+    @Test
+    fun `do not disturb pauses only when the user asked for it`() {
+        assertEquals(
+            LifecycleVerdict.RunPausedQuiet,
+            lifecycleAction(isPowerSave = false, policy = BatterySaverPolicy.IGNORE, isDnd = true, skipOnDnd = true)
+        )
+        assertEquals(
+            "the setting is off, so DnD is not a signal at all",
+            LifecycleVerdict.RunActive,
+            lifecycleAction(isPowerSave = false, policy = BatterySaverPolicy.IGNORE, isDnd = true, skipOnDnd = false)
+        )
+        assertEquals(
+            LifecycleVerdict.RunActive,
+            lifecycleAction(isPowerSave = false, policy = BatterySaverPolicy.IGNORE, isDnd = false, skipOnDnd = true)
+        )
+    }
+
+    @Test
+    fun `battery saver outranks do not disturb when both would pause`() {
+        // Both pauses stop rotation, but only one of them explains itself correctly to the user,
+        // and only the power-save one reverts to the default wallpaper.
+        assertEquals(
+            LifecycleVerdict.RunPaused,
+            lifecycleAction(isPowerSave = true, policy = BatterySaverPolicy.PAUSE, isDnd = true, skipOnDnd = true)
+        )
+    }
+
+    @Test
+    fun `tearing down outranks both pauses`() {
+        assertEquals(
+            LifecycleVerdict.Abort,
+            lifecycleAction(isPowerSave = true, policy = BatterySaverPolicy.STOP, isDnd = true, skipOnDnd = true)
+        )
+    }
+
+    @Test
+    fun `do not disturb still decides when battery saver has nothing to say`() {
+        // IGNORE means power save is not an input, so an active DnD is the only rule left.
+        assertEquals(
+            LifecycleVerdict.RunPausedQuiet,
+            lifecycleAction(isPowerSave = true, policy = BatterySaverPolicy.IGNORE, isDnd = true, skipOnDnd = true)
+        )
+    }
+
+    @Test
+    fun `the combined rule is total over its inputs`() {
+        // 2 x 3 x 2 x 2. A policy or a third pause source added later lands here first.
+        var cells = 0
+        for (isPowerSave in bools) {
+            for (policy in policies) {
+                for (isDnd in bools) {
+                    for (skipOnDnd in bools) {
+                        lifecycleAction(isPowerSave, policy, isDnd, skipOnDnd)
+                        cells++
+                    }
+                }
+            }
+        }
+        assertEquals(24, cells)
     }
 
     // ---- resolve ----
@@ -107,10 +171,21 @@ class ServiceLifecycleRulesTest {
         // The two disagree in the ordinary course of a start and a stop: the tracker goes live before
         // the flag is persisted, and the flag survives a crash the tracker did not see. Requiring
         // both would blink the UI to Stopped in the gap.
-        for (raw in listOf(ServiceState.Running, ServiceState.Paused)) {
+        for (raw in listOf(ServiceState.Running, ServiceState.Paused, ServiceState.PausedDnd)) {
             assertSame("tracker alone", raw, resolve(raw, persistedRunning = false, isAlive = true, powerSaveBlocking = false, hasActiveCollection = true))
             assertSame("flag alone", raw, resolve(raw, persistedRunning = true, isAlive = false, powerSaveBlocking = false, hasActiveCollection = true))
             assertSame("both", raw, resolve(raw, persistedRunning = true, isAlive = true, powerSaveBlocking = false, hasActiveCollection = true))
+        }
+    }
+
+    @Test
+    fun `the two paused states stay distinct from each other`() {
+        // Collapsing them would name the wrong cause in the status header and the notification.
+        for (raw in listOf(ServiceState.Paused, ServiceState.PausedDnd)) {
+            assertSame(
+                raw,
+                resolve(raw, persistedRunning = true, isAlive = true, powerSaveBlocking = false, hasActiveCollection = true)
+            )
         }
     }
 
@@ -126,7 +201,7 @@ class ServiceLifecycleRulesTest {
 
     @Test
     fun `a running state with no liveness at all means the service died without saying so`() {
-        for (raw in listOf(ServiceState.Running, ServiceState.Paused)) {
+        for (raw in listOf(ServiceState.Running, ServiceState.Paused, ServiceState.PausedDnd)) {
             assertEquals(
                 "$raw, nothing alive",
                 ServiceState.Stopped,

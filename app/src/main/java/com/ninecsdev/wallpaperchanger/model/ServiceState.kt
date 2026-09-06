@@ -21,6 +21,9 @@ sealed class ServiceState {
     /** The service is paused due to power save mode but will auto-resume when power save is off. */
     data object Paused : ServiceState()
 
+    /** The service is paused because Do Not Disturb is on, it auto-resumes when DnD ends. */
+    data object PausedDnd : ServiceState()
+
     /** The service is disabled because the system is in power save mode and was not running. */
     data object DisabledPowerSave : ServiceState()
 

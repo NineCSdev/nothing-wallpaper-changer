@@ -50,5 +50,7 @@ data class MainUiState(
         get() = serviceState is ServiceState.Stopped
 
     val isStopEnabled: Boolean
-        get() = serviceState is ServiceState.Running || serviceState is ServiceState.Paused
+        get() = serviceState is ServiceState.Running ||
+            serviceState is ServiceState.Paused ||
+            serviceState is ServiceState.PausedDnd
 }

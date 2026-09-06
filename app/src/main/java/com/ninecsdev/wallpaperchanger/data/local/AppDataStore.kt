@@ -37,6 +37,7 @@ private val KEY_WALLPAPER_DESTINATION = stringPreferencesKey("wallpaper_destinat
 private val KEY_WALLPAPER_MODE = stringPreferencesKey("wallpaper_mode")
 private val KEY_KEEP_LOCAL_COPIES = booleanPreferencesKey("keep_local_copies")
 private val KEY_ROTATION_POLICY = stringPreferencesKey("rotation_policy")
+private val KEY_SKIP_ON_DND = booleanPreferencesKey("skip_on_dnd")
 
 /**
  * The user's settings: what they chose, as distinct from the [WallpaperRecordStore]'s record of what
@@ -138,6 +139,9 @@ class AppDataStore @Inject constructor(
     fun rotationPolicyFlow(): Flow<RotationPolicy> =
         mappedSettingFlow(KEY_ROTATION_POLICY, RotationPolicy.PerLock) { RotationPolicy.decode(it) }
 
+    fun skipOnDndFlow(): Flow<Boolean> =
+        settingFlow(KEY_SKIP_ON_DND, false)
+
     // Suspend reads (suspend, one-shot)
 
     /**
@@ -192,6 +196,9 @@ class AppDataStore @Inject constructor(
 
     suspend fun setRevertToDefault(revert: Boolean) =
         set(KEY_REVERT_TO_DEFAULT, revert)
+
+    suspend fun setSkipOnDnd(skip: Boolean) =
+        set(KEY_SKIP_ON_DND, skip)
 
     suspend fun setServiceRunning(isRunning: Boolean) =
         set(KEY_SERVICE_RUNNING, isRunning)

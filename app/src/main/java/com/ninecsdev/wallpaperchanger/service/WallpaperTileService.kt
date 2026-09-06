@@ -71,7 +71,7 @@ class WallpaperTileService : TileService() {
                     startForegroundService(Intent(this, WallpaperService::class.java))
                 }
             }
-            is ServiceState.Running, is ServiceState.Paused -> {
+            is ServiceState.Running, is ServiceState.Paused, is ServiceState.PausedDnd -> {
                 val intent = Intent(this, WallpaperService::class.java).apply {
                     action = WallpaperService.ACTION_STOP_SERVICE
                 }
@@ -116,6 +116,10 @@ class WallpaperTileService : TileService() {
             is ServiceState.Paused -> {
                 tile.state = Tile.STATE_ACTIVE
                 tile.subtitle = getString(R.string.tile_subtitle_paused)
+            }
+            is ServiceState.PausedDnd -> {
+                tile.state = Tile.STATE_ACTIVE
+                tile.subtitle = getString(R.string.tile_subtitle_paused_dnd)
             }
         }
         tile.updateTile()

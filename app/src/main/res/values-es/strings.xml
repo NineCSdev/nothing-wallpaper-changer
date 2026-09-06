@@ -10,6 +10,7 @@
     <string name="notification_cycling">Rotando: %1$s</string>
     <string name="notification_active_collection_fallback">Activo</string>
     <string name="notification_paused_power_save">Pausado (Ahorro de batería)</string>
+    <string name="notification_paused_dnd">Pausado (No molestar)</string>
 
     <!-- Content descriptions -->
     <string name="cd_settings">Ajustes</string>
@@ -45,6 +46,7 @@
     <string name="status_label_active">ACTIVO</string>
     <string name="status_label_inactive">INACTIVO</string>
     <string name="status_label_paused_battery">PAUSA (BATERÍA)</string>
+    <string name="status_label_paused_dnd">PAUSA (NO MOLESTAR)</string>
     <string name="status_label_power_save_on">AHORRO BATERÍA</string>
     <string name="status_label_setup_needed">SIN CONFIGURAR</string>
     <string name="status_label_initializing">INICIALIZANDO</string>
@@ -87,6 +89,15 @@
         \nPausar mantiene el servicio vivo, pero deja de cambiar fondos haciendo que prácticamente no use bateria,
         reanudándose automáticamente al desactivarse el ahorro.
         \nIgnorar sigue rotando con normalidad.
+    </string>
+    <string name="settings_dnd_title">PAUSAR CON NO MOLESTAR</string>
+    <string name="settings_dnd_subtitle">Dejar de rotar mientras No molestar esté activo</string>
+    <string name="settings_dnd_dialog_title">Pausar con No molestar</string>
+    <string name="settings_dnd_dialog_body">
+        Mantiene el servicio vivo, pero deja de cambiar fondos mientras No molestar está activo,
+        reanudándose al desactivarse.
+        \n\nUna rutina de descanso programada también cuenta, porque activa No molestar.
+        El modo Concentración no: Android pausa las apps que elijas sin silenciar el teléfono.
     </string>
     <string name="settings_destination_title">DESTINO DEL FONDO DE PANTALLA</string>
     <string name="settings_destination_subtitle">Aplicar a pantalla de bloqueo, pantalla de inicio o ambas</string>
@@ -391,6 +402,7 @@
     <string name="tile_subtitle_ready">Listo</string>
     <string name="tile_subtitle_no_collection">Sin colección</string>
     <string name="tile_subtitle_power_save">Ahorro de batería</string>
+    <string name="tile_subtitle_paused_dnd">Pausado (No molestar)</string>
     <string name="tile_subtitle_paused">Pausado (Batería)</string>
     <string name="tile_dialog_title">Wallpaper Changer</string>
     <string name="tile_no_collection_message">No hay colección activa. Configura una en la app.</string>

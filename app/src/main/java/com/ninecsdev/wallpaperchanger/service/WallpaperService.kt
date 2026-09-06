@@ -92,6 +92,10 @@ class WallpaperService : Service() {
                 stopRotationTriggers()
                 serviceScope.launch { revertToDefaultIfRequested() }
             }
+            is LifecycleVerdict.RunPausedQuiet -> {
+                Log.i(tag, "Engine paused (Do Not Disturb)")
+                stopRotationTriggers()
+            }
             is LifecycleVerdict.Abort -> handleStopCommand()
             else -> Unit
         }

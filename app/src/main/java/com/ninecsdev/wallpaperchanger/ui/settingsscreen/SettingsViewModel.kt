@@ -71,7 +71,8 @@ class SettingsViewModel @Inject constructor(
         val batterySaverPolicy: BatterySaverPolicy,
         val wallpaperZoomFix: WallpaperZoomFix,
         val wallpaperDestination: WallpaperDestination,
-        val rotationPolicy: RotationPolicy
+        val rotationPolicy: RotationPolicy,
+        val skipOnDnd: Boolean
     )
 
     private data class AtmosphereSettings(
@@ -95,6 +96,7 @@ class SettingsViewModel @Inject constructor(
         appDataStore.wallpaperZoomFixFlow(),
         appDataStore.wallpaperDestinationFlow(),
         appDataStore.rotationPolicyFlow(),
+        appDataStore.skipOnDndFlow(),
         ::LockscreenSettings
     )
 
@@ -151,6 +153,7 @@ class SettingsViewModel @Inject constructor(
             screenOffDelayMs = delay,
             startOnBoot = boot,
             batterySaverPolicy = bundle.lockscreen.batterySaverPolicy,
+            skipOnDnd = bundle.lockscreen.skipOnDnd,
             wallpaperZoomFix = bundle.lockscreen.wallpaperZoomFix,
             wallpaperDestination = bundle.lockscreen.wallpaperDestination,
             rotationPolicy = bundle.lockscreen.rotationPolicy,
@@ -207,6 +210,10 @@ class SettingsViewModel @Inject constructor(
 
     override fun setCompressionQualityLow(quality: Int) {
         viewModelScope.launch { appDataStore.setCompressionQualityLow(quality) }
+    }
+
+    override fun setSkipOnDnd(skip: Boolean) {
+        viewModelScope.launch { appDataStore.setSkipOnDnd(skip) }
     }
 
     override fun setBatterySaverPolicy(policy: BatterySaverPolicy) {

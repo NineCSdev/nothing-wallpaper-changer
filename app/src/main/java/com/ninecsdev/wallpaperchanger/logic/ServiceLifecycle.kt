@@ -4,7 +4,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.database.ContentObserver
 import android.os.PowerManager
+import android.provider.Settings
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperDao
@@ -65,6 +67,10 @@ class ServiceLifecycle @Inject constructor(
         /** How long an optimistic `Loading` may stand before it is cleared. */
         const val START_TIMEOUT_MS = 5_000L
         const val REJECT_STILL_STOPPING = "service is still stopping"
+
+        /** The system-wide DND level. Zero is off; other values are partial filters we count as DND. */
+        const val ZEN_MODE_SETTING = "zen_mode"
+        const val ZEN_MODE_OFF = 0
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
@@ -96,31 +102,71 @@ class ServiceLifecycle @Inject constructor(
         awaitClose { appContext.unregisterReceiver(receiver) }
     }.distinctUntilChanged()
 
+    /** Reactive view of the system Do Not Disturb state, backed by the [ZEN_MODE_SETTING] value. */
+    private fun dndActiveFlow(): Flow<Boolean> = callbackFlow {
+        val observer = object : ContentObserver(null) {
+            override fun onChange(selfChange: Boolean) {
+                trySend(isDndActive())
+            }
+        }
+        appContext.contentResolver.registerContentObserver(
+            Settings.Global.getUriFor(ZEN_MODE_SETTING),
+            false,
+            observer
+        )
+        trySend(isDndActive())
+        awaitClose { appContext.contentResolver.unregisterContentObserver(observer) }
+    }.distinctUntilChanged()
+
+    private fun isDndActive(): Boolean = Settings.Global.getInt(appContext.contentResolver, ZEN_MODE_SETTING, ZEN_MODE_OFF) != ZEN_MODE_OFF
+
     /**
-     * What the battery-saver rule currently says, as one hot value.
+     * Both pause rules, evaluated together but kept separable.
      *
-     * This is the only subscription to the power-save broadcast in the app, and the only place the
-     * rule is evaluated: the running-service action ([lifecycleActions]), the startup gate and the
-     * `DisabledPowerSave` state all read [batterySaverAction].
+     * [LifecycleRules.effective] is what a live service should do. [LifecycleRules.battery] is
+     * carried because only the power-save half can also block a *stopped* service from starting.
+     */
+    private data class LifecycleRules(
+        val battery: LifecycleVerdict,
+        val effective: LifecycleVerdict
+    )
+
+    /**
+     * What the two pause rules currently say, as one hot value.
+     *
+     * This is the only subscription to the power-save broadcast and the only observer of the
+     * Do Not Disturb setting in the app, and the only place either rule is evaluated.
      *
      * `null` means "not resolved yet". Consumers that must not act on a guess filter it out.
      */
-    private val powerSaveAction: StateFlow<LifecycleVerdict?> =
-        combine(powerSaveModeFlow(), appDataStore.batterySaverPolicyFlow()) { isPowerSave, policy ->
-            batterySaverAction(isPowerSave, policy)
-        }.distinctUntilChanged().stateIn(scope, SharingStarted.Eagerly, null)
+    private val rules: StateFlow<LifecycleRules?> = combine(
+        powerSaveModeFlow(),
+        appDataStore.batterySaverPolicyFlow(),
+        dndActiveFlow(),
+        appDataStore.skipOnDndFlow()
+    ) { isPowerSave, policy, isDnd, skipOnDnd ->
+        LifecycleRules(
+            battery = batterySaverAction(isPowerSave, policy),
+            effective = lifecycleAction(isPowerSave, policy, isDnd, skipOnDnd)
+        )
+    }.distinctUntilChanged().stateIn(scope, SharingStarted.Eagerly, null)
 
     /**
-     * What a live service should do when the battery-saver decision changes under it.
+     * What a live service should do when either pause decision changes under it.
      *
      * Transitions only: the first value is dropped. Collected for as long as the service lives.
      */
-    val lifecycleActions: Flow<LifecycleVerdict> = powerSaveAction.filterNotNull().drop(1).onEach(::recordAction)
+    val lifecycleActions: Flow<LifecycleVerdict> =
+        rules.filterNotNull()
+            .map { it.effective }
+            .distinctUntilChanged()
+            .drop(1)
+            .onEach(::recordAction)
 
     /** Whether the battery-saver rule is currently blocking the service in any way. */
     private val powerSaveBlockingFlow: Flow<Boolean> =
-        powerSaveAction.filterNotNull()
-            .map { it != LifecycleVerdict.RunActive }
+        rules.filterNotNull()
+            .map { it.battery != LifecycleVerdict.RunActive }
             .distinctUntilChanged()
 
     /**
@@ -217,7 +263,7 @@ class ServiceLifecycle @Inject constructor(
      */
     private fun onEngineReady(): LifecycleVerdict {
         // Falls back to RunActive only if the rule has still not resolved
-        val action = powerSaveAction.value ?: LifecycleVerdict.RunActive
+        val action = rules.value?.effective ?: LifecycleVerdict.RunActive
         recordAction(action)
         return action
     }
@@ -228,6 +274,10 @@ class ServiceLifecycle @Inject constructor(
             is LifecycleVerdict.RunPaused -> {
                 persistRunningState(true)
                 updateLifecycleIntent(ServiceState.Paused)
+            }
+            is LifecycleVerdict.RunPausedQuiet -> {
+                persistRunningState(true)
+                updateLifecycleIntent(ServiceState.PausedDnd)
             }
             is LifecycleVerdict.RunActive -> {
                 persistRunningState(true)
@@ -288,6 +338,28 @@ internal fun batterySaverAction(
     else -> LifecycleVerdict.Abort
 }
 
+/** The Do Not Disturb rule: it only applies to a user who asked for it. */
+internal fun quietHoursAction(
+    isDnd: Boolean,
+    skipOnDnd: Boolean
+): LifecycleVerdict = if (isDnd && skipOnDnd) LifecycleVerdict.RunPausedQuiet else LifecycleVerdict.RunActive
+
+/**
+ * The two pause rules folded into the one verdict a live service acts on.
+ *
+ * Precedence: a battery-saver verdict other than [LifecycleVerdict.RunActive] wins outright.
+ * DND only decides when battery saver has nothing to say.
+ */
+internal fun lifecycleAction(
+    isPowerSave: Boolean,
+    policy: BatterySaverPolicy,
+    isDnd: Boolean,
+    skipOnDnd: Boolean
+): LifecycleVerdict {
+    val battery = batterySaverAction(isPowerSave, policy)
+    return if (battery != LifecycleVerdict.RunActive) battery else quietHoursAction(isDnd, skipOnDnd)
+}
+
 /** Pure resolution of the authoritative [ServiceState] from the lifecycle intent and the runtime signals. */
 internal fun resolve(
     raw: ServiceState,
@@ -304,7 +376,7 @@ internal fun resolve(
     return when {
         raw is ServiceState.Loading -> ServiceState.Loading
         raw is ServiceState.Stopping -> ServiceState.Stopping
-        raw is ServiceState.Running || raw is ServiceState.Paused -> if (isServiceMarkedActive) raw else stoppedState
+        raw is ServiceState.Running || raw is ServiceState.Paused || raw is ServiceState.PausedDnd -> if (isServiceMarkedActive) raw else stoppedState
         raw is ServiceState.Stopped -> stoppedState
         isServiceMarkedActive -> ServiceState.Running
         else -> stoppedState

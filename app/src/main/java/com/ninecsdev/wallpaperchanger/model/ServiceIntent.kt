@@ -40,8 +40,11 @@ sealed class LifecycleVerdict {
     /** The service should be up and rotating. */
     data object RunActive : LifecycleVerdict()
 
-    /** The service should be up but not rotating. */
+    /** The service should be up but not rotating, and should fall back to the default wallpaper. */
     data object RunPaused : LifecycleVerdict()
+
+    /** The service should be up but not rotating, leaving the current wallpaper alone. */
+    data object RunPausedQuiet : LifecycleVerdict()
 
     /** The service must not run, tear it down. */
     data object Abort : LifecycleVerdict()

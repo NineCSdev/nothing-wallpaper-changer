@@ -29,6 +29,7 @@ sealed interface NotificationContent {
     data object Initializing : NotificationContent
     data class Cycling(val collectionName: String?, val isFavorites: Boolean) : NotificationContent
     data object PausedPowerSave : NotificationContent
+    data object PausedDnd : NotificationContent
     data object Hidden : NotificationContent
 }
 
@@ -44,6 +45,7 @@ fun notificationContentFor(
         isFavorites = activeCollection?.isFavorites == true
     )
     is ServiceState.Paused -> NotificationContent.PausedPowerSave
+    is ServiceState.PausedDnd -> NotificationContent.PausedDnd
     // Teardown, plus the resolved-only states that a posting service can never actually be in.
     is ServiceState.Stopping,
     is ServiceState.Stopped,
@@ -94,9 +96,7 @@ class NotificationHelper @Inject constructor(
      * *text* rather than the inputs that produced it.
      */
     fun textFor(content: NotificationContent): String? = when (content) {
-        is NotificationContent.Initializing ->
-            context.getString(R.string.notification_initializing)
-
+        is NotificationContent.Initializing -> context.getString(R.string.notification_initializing)
         is NotificationContent.Cycling -> {
             // Blank is unreachable in practice (startup aborts without an active collection); the
             // fallback keeps the mapping total rather than describing a state we design for.
@@ -106,10 +106,8 @@ class NotificationHelper @Inject constructor(
                 ?: context.getString(R.string.notification_active_collection_fallback)
             context.getString(R.string.notification_cycling, name)
         }
-
-        is NotificationContent.PausedPowerSave ->
-            context.getString(R.string.notification_paused_power_save)
-
+        is NotificationContent.PausedPowerSave -> context.getString(R.string.notification_paused_power_save)
+        is NotificationContent.PausedDnd -> context.getString(R.string.notification_paused_dnd)
         is NotificationContent.Hidden -> null
     }
 

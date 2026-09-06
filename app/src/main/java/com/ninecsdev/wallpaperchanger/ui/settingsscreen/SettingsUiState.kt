@@ -30,6 +30,7 @@ data class SettingsUiState(
     /** The app-wide cadence; collections without an override follow it. */
     val rotationPolicy: RotationPolicy = RotationPolicy.PerLock,
     val batterySaverPolicy: BatterySaverPolicy = BatterySaverPolicy.PAUSE,
+    val skipOnDnd: Boolean = false,
     val wallpaperDestination: WallpaperDestination = WallpaperDestination.LOCK,
     val wallpaperMode: WallpaperMode = WallpaperMode.STATIC,
     // Whether NWC's live wallpaper is actually the system wallpaper.

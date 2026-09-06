@@ -12,6 +12,7 @@
     <string name="notification_cycling">Cycling: %1$s</string>
     <string name="notification_active_collection_fallback">Active</string>
     <string name="notification_paused_power_save">Paused (Power Save)</string>
+    <string name="notification_paused_dnd">Paused (Do Not Disturb)</string>
 
     <!-- Content descriptions -->
     <string name="cd_settings">Settings</string>
@@ -47,6 +48,7 @@
     <string name="status_label_active">ACTIVE</string>
     <string name="status_label_inactive">INACTIVE</string>
     <string name="status_label_paused_battery">PAUSED (BATTERY)</string>
+    <string name="status_label_paused_dnd">PAUSED (DND)</string>
     <string name="status_label_power_save_on">POWER SAVE ON</string>
     <string name="status_label_setup_needed">SETUP NEEDED</string>
     <string name="status_label_initializing">INITIALIZING</string>
@@ -89,6 +91,15 @@
         \nPause keeps the service alive but stops swapping wallpapers making it consume close to no battery,
         resuming automatically when Battery Saver turns off.
         Ignore keeps rotating normally.
+    </string>
+    <string name="settings_dnd_title">PAUSE ON DO NOT DISTURB</string>
+    <string name="settings_dnd_subtitle">Stop rotating while Do Not Disturb is on</string>
+    <string name="settings_dnd_dialog_title">Pause on Do Not Disturb</string>
+    <string name="settings_dnd_dialog_body">
+        Keeps the service alive but stops swapping wallpapers while Do Not Disturb (DND) is on,
+        resuming when it turns off.
+        \n\nA scheduled Bedtime or sleep routine counts too, because it turns Do Not Disturb on.
+        Focus mode does not: Android pauses your chosen apps without silencing the phone.
     </string>
     <string name="settings_destination_title">WALLPAPER DESTINATION</string>
     <string name="settings_destination_subtitle">Apply to your lock screen, home screen or both</string>
@@ -389,6 +400,7 @@
     <string name="tile_subtitle_ready">Ready</string>
     <string name="tile_subtitle_no_collection">No Collection</string>
     <string name="tile_subtitle_power_save">Power Save</string>
+    <string name="tile_subtitle_paused_dnd">Paused (DND)</string>
     <string name="tile_subtitle_paused">Paused (Battery)</string>
     <string name="tile_dialog_title">Wallpaper Changer</string>
     <string name="tile_no_collection_message">No collection active. Please set one up in the app.</string>

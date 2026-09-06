@@ -161,6 +161,15 @@ fun SettingsScreen(
                         infoDialogTitle = stringResource(R.string.settings_battery_saver_dialog_title),
                         infoDialogBody = stringResource(R.string.settings_battery_saver_dialog_body)
                     )
+
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_dnd_title),
+                        subtitle = stringResource(R.string.settings_dnd_subtitle),
+                        checked = uiState.skipOnDnd,
+                        onCheckedChange = actions::setSkipOnDnd,
+                        infoDialogTitle = stringResource(R.string.settings_dnd_dialog_title),
+                        infoDialogBody = stringResource(R.string.settings_dnd_dialog_body)
+                    )
                 }
 
                 SettingsSection(label = stringResource(R.string.settings_section_appearance)) {
@@ -271,6 +280,7 @@ fun SettingsScreenPreview() {
                 rotationPolicy = RotationPolicy.PerLock,
                 startOnBoot = true,
                 batterySaverPolicy = BatterySaverPolicy.PAUSE,
+                skipOnDnd = false,
                 wallpaperZoomFix = WallpaperZoomFix.BLURRED,
                 compressionQualityHigh = 95,
                 compressionQualityLow = 80,
@@ -297,6 +307,7 @@ private object PreviewSettingsActions : SettingsActions {
     override fun setRotationPolicy(policy: RotationPolicy) {}
     override fun setStartOnBoot(enabled: Boolean) {}
     override fun setBatterySaverPolicy(policy: BatterySaverPolicy) {}
+    override fun setSkipOnDnd(skip: Boolean) {}
     override fun setWallpaperDestination(destination: WallpaperDestination) {}
     override fun setWallpaperMode(mode: WallpaperMode) {}
     override fun setWallpaperZoomFix(zoomFix: WallpaperZoomFix) {}
