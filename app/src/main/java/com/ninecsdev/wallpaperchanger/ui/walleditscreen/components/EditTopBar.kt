@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Settings
@@ -61,7 +62,9 @@ internal fun EditTopBar(
                     )
                 )
             )
-            .padding(top = 40.dp, bottom = 24.dp, start = 4.dp, end = 4.dp)
+            // After the gradient so it paints behind the status bar.
+            .statusBarsPadding()
+            .padding(top = 8.dp, bottom = 24.dp, start = 4.dp, end = 4.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),

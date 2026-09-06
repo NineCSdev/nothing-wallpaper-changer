@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
@@ -147,7 +146,6 @@ fun MainScreen(
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
                     .padding(24.dp)
-                    .statusBarsPadding()
             ) {
                 ServiceControlButtons(
                     isStartEnabled = uiState.isStartEnabled,
