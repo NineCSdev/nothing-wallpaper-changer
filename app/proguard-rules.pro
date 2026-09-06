@@ -12,10 +12,7 @@
 #   public *;
 #}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Keep line numbers in release stack traces, and rewrite the source file name so
+# they cost nothing in disclosure. Only useful if mapping.txt is kept per release.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "NothingWallpapperChanger"
+rootProject.name = "NothingWallpaperChanger"
 include(":app")
