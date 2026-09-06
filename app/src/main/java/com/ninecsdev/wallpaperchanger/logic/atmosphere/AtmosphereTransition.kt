@@ -5,6 +5,7 @@ import android.content.Context
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
@@ -50,6 +51,7 @@ data class AtmosphereEntry(
 class AtmosphereTransition @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
     private val appDataStore: AppDataStore,
+    private val wallpaperRecordStore: WallpaperRecordStore,
     private val repository: WallpaperRepository,
     private val modeResolver: WallpaperModeResolver,
     private val atmosphereExit: AtmosphereExit,
@@ -118,7 +120,7 @@ class AtmosphereTransition @Inject constructor(
         // Reclaim the source file once the engine is confirmed gone
         if (!_liveness.value) {
             atmosphereDelivery.clearSource()
-            appDataStore.setAtmosphereRenderKey(null)
+            wallpaperRecordStore.setAtmosphereRenderKey(null)
         }
         return outcome
     }
@@ -140,16 +142,16 @@ class AtmosphereTransition @Inject constructor(
         if (!isLive) return
 
         val current = renderKey()
-        val stored = appDataStore.getAtmosphereRenderKey()
+        val stored = wallpaperRecordStore.snapshot().atmosphereRenderKey
         if (current != stored) {
             if (stored != null && current.namesSameImageAs(stored)) {
                 // Same image, different settings: draw it again
                 if (sourceProvisioner.reprovisionLive()) {
-                    appDataStore.setAtmosphereRenderKey(renderKey())
+                    wallpaperRecordStore.setAtmosphereRenderKey(renderKey())
                 }
             } else {
                 // A different image is live and already rendered under the current settings. Nothing to redraw.
-                appDataStore.setAtmosphereRenderKey(current)
+                wallpaperRecordStore.setAtmosphereRenderKey(current)
             }
         }
 
@@ -166,7 +168,7 @@ class AtmosphereTransition @Inject constructor(
      */
     private suspend fun provisionAndRecord(): Boolean {
         if (!sourceProvisioner.provision()) return false
-        appDataStore.setAtmosphereRenderKey(renderKey())
+        wallpaperRecordStore.setAtmosphereRenderKey(renderKey())
         return true
     }
 
@@ -179,7 +181,7 @@ class AtmosphereTransition @Inject constructor(
      */
     private suspend fun renderKey(): String {
         val zoomFix = appDataStore.getWallpaperZoomFix().name
-        val wallpaperId = appDataStore.getAtmosphereLiveWallpaperId() ?: return "none$KEY_SEPARATOR$zoomFix"
+        val wallpaperId = wallpaperRecordStore.snapshot().liveAtmosphereWallpaperId ?: return "none$KEY_SEPARATOR$zoomFix"
 
         val wallpaper = repository.getWallpaperById(wallpaperId) ?: return "missing:$wallpaperId$KEY_SEPARATOR$zoomFix"
         val cropRule = repository.getCollectionById(wallpaper.collectionId)?.defaultCropRule ?: WallpaperCollection.DEFAULT_CROP_RULE

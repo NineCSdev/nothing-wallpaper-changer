@@ -2,7 +2,8 @@ package com.ninecsdev.wallpaperchanger.logic.atmosphere
 
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
-import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecord
+import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
 import com.ninecsdev.wallpaperchanger.logic.BufferManager
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
@@ -20,7 +21,7 @@ import javax.inject.Singleton
 @Singleton
 class AtmosphereSourceProvisioner @Inject constructor(
     private val repository: WallpaperRepository,
-    private val appDataStore: AppDataStore,
+    private val wallpaperRecordStore: WallpaperRecordStore,
     private val bufferManager: BufferManager,
     private val atmosphereDelivery: AtmosphereDelivery
 ) {
@@ -53,7 +54,7 @@ class AtmosphereSourceProvisioner @Inject constructor(
      * Falls back to [provision] when nothing is live, or when the live image has gone away.
      */
     suspend fun reprovisionLive(): Boolean {
-        val liveId = appDataStore.getAtmosphereLiveWallpaperId() ?: return provision()
+        val liveId = wallpaperRecordStore.snapshot().liveAtmosphereWallpaperId ?: return provision()
         val live = wallpaperById(liveId) ?: run {
             Log.i(TAG, "Live image $liveId is gone or unavailable; picking a source instead.")
             return provision()
@@ -76,7 +77,7 @@ class AtmosphereSourceProvisioner @Inject constructor(
      * Picks the image + crop rule to feed the atmosphere renderer, in the order of how close each
      * candidate is to what the user is looking at.
      *
-     * 1. **The wallpaper on screen** ([AppDataStore.getAppliedWallpaperId]). Not restricted to the
+     * 1. **The wallpaper on screen** ([WallpaperRecord.appliedWallpaperId]). Not restricted to the
      *    active collection: if the user switched collections the image on screen still belongs to the
      *    old one. Rendered with *its own* membership's crop rule and edits (how it was framed).
      * 2. **The active collection's first available image**, on fresh install, a service that has never run,
@@ -101,7 +102,7 @@ class AtmosphereSourceProvisioner @Inject constructor(
 
     /** The membership currently applied as the static wallpaper, if it is still usable. */
     private suspend fun onScreenWallpaper(): Pair<WallpaperImage, CropRule>? {
-        val appliedId = appDataStore.getAppliedWallpaperId() ?: return null
+        val appliedId = wallpaperRecordStore.snapshot().appliedWallpaperId ?: return null
         return wallpaperById(appliedId)
     }
 

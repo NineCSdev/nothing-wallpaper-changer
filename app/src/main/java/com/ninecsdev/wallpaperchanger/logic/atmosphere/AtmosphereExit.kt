@@ -5,7 +5,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
-import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecord
+import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
 import com.ninecsdev.wallpaperchanger.logic.BufferManager
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
@@ -32,7 +33,7 @@ enum class AtmosphereExitOutcome { REPLACED, CLEARED, FAILED }
  * step is to what the user is looking at:
  *
  * 1. **The image the engine is showing**, re-rendered with static framing. Which one that is comes
- *    from [AppDataStore.getAtmosphereLiveWallpaperId]
+ *    from [WallpaperRecord.liveAtmosphereWallpaperId]
  * 2. **The user's default wallpaper** Applied regardless of the revert-to-default preference.
  * 3. **[WallpaperManager.clear]**, the device's built-in as final fallback.
  *
@@ -43,7 +44,7 @@ enum class AtmosphereExitOutcome { REPLACED, CLEARED, FAILED }
 @Singleton
 class AtmosphereExit @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
-    private val appDataStore: AppDataStore,
+    private val wallpaperRecordStore: WallpaperRecordStore,
     private val repository: WallpaperRepository,
     private val bufferManager: BufferManager
 ) {
@@ -72,7 +73,7 @@ class AtmosphereExit @Inject constructor(
      * Returns false whenever that image cannot be named or produced.
      */
     private suspend fun applyLiveImage(): Boolean {
-        val wallpaperId = appDataStore.getAtmosphereLiveWallpaperId() ?: return false
+        val wallpaperId = wallpaperRecordStore.snapshot().liveAtmosphereWallpaperId ?: return false
         val wallpaper = repository.getWallpaperById(wallpaperId)
 
         if (wallpaper == null || !wallpaper.isAvailable) {

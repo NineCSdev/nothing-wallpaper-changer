@@ -2,18 +2,14 @@ package com.ninecsdev.wallpaperchanger.data.local
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.core.net.toUri
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
@@ -21,22 +17,11 @@ import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
-
-// Migration things
-private const val OLD_PREFS_NAME = "smart_wallpaper_prefs"
-private val Context.dataStore by preferencesDataStore(
-    name = "app_settings",
-    produceMigrations = { context ->
-        listOf(SharedPreferencesMigration(context, OLD_PREFS_NAME))
-    }
-)
 
 private val KEY_DEFAULT_WALLPAPER_URI = stringPreferencesKey("default_wallpaper_uri")
 private val KEY_REVERT_TO_DEFAULT = booleanPreferencesKey("revert_to_default_on_stop")
@@ -51,44 +36,19 @@ private val KEY_WALLPAPER_ZOOM_FIX = intPreferencesKey("lockscreen_zoom_fix")
 private val KEY_WALLPAPER_DESTINATION = stringPreferencesKey("wallpaper_destination")
 private val KEY_WALLPAPER_MODE = stringPreferencesKey("wallpaper_mode")
 private val KEY_KEEP_LOCAL_COPIES = booleanPreferencesKey("keep_local_copies")
-private val KEY_BUFFERED_WALLPAPER_ID = longPreferencesKey("buffered_wallpaper_id")
-private val KEY_BUFFERED_COLLECTION_ID = longPreferencesKey("buffered_collection_id")
-private val KEY_ATMOSPHERE_LIVE_WALLPAPER_ID = longPreferencesKey("atmosphere_live_wallpaper_id")
-private val KEY_ATMOSPHERE_RENDER_KEY = stringPreferencesKey("atmosphere_render_key")
-private val KEY_APPLIED_WALLPAPER_ID = longPreferencesKey("applied_wallpaper_id")
 private val KEY_ROTATION_POLICY = stringPreferencesKey("rotation_policy")
 
 /**
- * Manages simple key-value pairs for global application settings using
- * Jetpack DataStore. Replaces the legacy SharedPreferences-based AppPreferences.
- *
- * On first launch after migration, existing SharedPreferences values are
- * automatically imported and the old file is deleted.
+ * The user's settings: what they chose, as distinct from the [WallpaperRecordStore]'s record of what
+ * happened. Both sit on the preferences file declared in [appPreferences].
  */
 @Singleton
 class AppDataStore @Inject constructor(
     @ApplicationContext context: Context
 ) {
-    private companion object {
-        const val TAG = "AppDataStore"
-    }
+    private val dataStore: DataStore<Preferences> = context.appPreferences
 
-    private val dataStore: DataStore<Preferences> = context.dataStore
-
-    /**
-     * Shared safe data flow. Catches IO and corruption errors from the DataStore file
-     * (CorruptionException is an IOException) and falls back to empty preferences,
-     * returning defaults instead of crashing. Any other error propagates.
-     */
-    private val safeData: Flow<Preferences> = dataStore.data
-        .catch { e ->
-            if (e is IOException) {
-                Log.e(TAG, "DataStore read failed, falling back to defaults", e)
-                emit(emptyPreferences())
-            } else {
-                throw e
-            }
-        }
+    private val safeData: Flow<Preferences> = dataStore.safeData()
 
     // Generic helpers, every setting below is one of these
 
@@ -224,21 +184,6 @@ class AppDataStore @Inject constructor(
     suspend fun getRotationPolicy(): RotationPolicy =
         rotationPolicyFlow().first()
 
-    suspend fun getBufferedWallpaperId(): Long? =
-        mappedSettingFlow(KEY_BUFFERED_WALLPAPER_ID, null) { it }.first()
-
-    suspend fun getBufferedCollectionId(): Long? =
-        mappedSettingFlow(KEY_BUFFERED_COLLECTION_ID, null) { it }.first()
-
-    suspend fun getAtmosphereLiveWallpaperId(): Long? =
-        mappedSettingFlow(KEY_ATMOSPHERE_LIVE_WALLPAPER_ID, null) { it }.first()
-
-    suspend fun getAtmosphereRenderKey(): String? =
-        mappedSettingFlow(KEY_ATMOSPHERE_RENDER_KEY, null) { it }.first()
-
-    suspend fun getAppliedWallpaperId(): Long? =
-        mappedSettingFlow(KEY_APPLIED_WALLPAPER_ID, null) { it }.first()
-
     // Writes (suspend)
 
     // TODO: remove with the backfill in v0.4.1, along with KEY_DEFAULT_WALLPAPER_URI
@@ -283,37 +228,4 @@ class AppDataStore @Inject constructor(
 
     suspend fun setRotationPolicy(policy: RotationPolicy) =
         set(KEY_ROTATION_POLICY, policy.encode())
-
-    /**
-     * What the prepared buffer holds (wallpaper and collection id) Together so they can't diverge.
-     * Nulls record "nothing identifiable in the buffer".
-     */
-    suspend fun setBufferedWallpaper(wallpaperId: Long?, collectionId: Long?) {
-        dataStore.edit { prefs ->
-            if (wallpaperId == null) prefs.remove(KEY_BUFFERED_WALLPAPER_ID)
-            else prefs[KEY_BUFFERED_WALLPAPER_ID] = wallpaperId
-
-            if (collectionId == null) prefs.remove(KEY_BUFFERED_COLLECTION_ID)
-            else prefs[KEY_BUFFERED_COLLECTION_ID] = collectionId
-        }
-    }
-
-    /** Null records "the live image belongs to no collection". */
-    suspend fun setAtmosphereLiveWallpaperId(wallpaperId: Long?) =
-        setOrClear(KEY_ATMOSPHERE_LIVE_WALLPAPER_ID, wallpaperId)
-
-    /**
-     * Records the render inputs the delivered atmosphere source was produced from, so a later
-     * reconcile can tell "still correct" from "needs re-rendering" without decoding.
-     * Null clears it, which reads as "nothing delivered".
-     */
-    suspend fun setAtmosphereRenderKey(renderKey: String?) =
-        setOrClear(KEY_ATMOSPHERE_RENDER_KEY, renderKey)
-
-    /**
-     * The membership whose image is on screen as the static wallpaper twin of [setAtmosphereLiveWallpaperId]
-     * Null records "nothing of ours", covering a revert to the default wallpaper and a fresh install.
-     */
-    suspend fun setAppliedWallpaperId(wallpaperId: Long?) =
-        setOrClear(KEY_APPLIED_WALLPAPER_ID, wallpaperId)
 }

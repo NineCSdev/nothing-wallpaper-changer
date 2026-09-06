@@ -5,6 +5,7 @@ import android.content.Context
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
@@ -49,6 +50,7 @@ enum class WallpaperApplyOutcome { SHOWN, DEFERRED, ALREADY_LIVE, FAILED }
 class WallpaperApplier @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
     private val appDataStore: AppDataStore,
+    private val wallpaperRecordStore: WallpaperRecordStore,
     private val repository: WallpaperRepository,
     private val bufferManager: BufferManager,
     private val wallpaperModeResolver: WallpaperModeResolver,
@@ -116,7 +118,7 @@ class WallpaperApplier @Inject constructor(
                 destination.toFlags()
             )
 
-            appDataStore.setAppliedWallpaperId(defaultWallpaper.id)
+            wallpaperRecordStore.setAppliedWallpaperId(defaultWallpaper.id)
 
             Log.i(TAG, "Successfully applied default wallpaper to $destination.")
             true
@@ -139,8 +141,9 @@ class WallpaperApplier @Inject constructor(
         if (wallpaperModeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE) {
             // Keyed on ids rather than on timing: an unknown buffer id (null, written while a refill
             // is in flight) never matches, so this can never decide to sit out forever.
-            val bufferedId = appDataStore.getBufferedWallpaperId()
-            if (bufferedId != null && bufferedId == appDataStore.getAtmosphereLiveWallpaperId()) {
+            val record = wallpaperRecordStore.snapshot()
+            val bufferedId = record.bufferedWallpaperId
+            if (bufferedId != null && bufferedId == record.liveAtmosphereWallpaperId) {
                 Log.i(TAG, "Buffered image $bufferedId is already live; not delivering or advancing.")
                 return@withContext WallpaperApplyOutcome.ALREADY_LIVE
             }
@@ -160,6 +163,7 @@ class WallpaperApplier @Inject constructor(
         warnIfDesiringAtmosphere("applyBufferWallpaper")
         val destination = appDataStore.getWallpaperDestination()
         try {
+            val bufferedId = wallpaperRecordStore.snapshot().bufferedWallpaperId
             val prepared = bufferManager.openPrepared() ?: return@withContext WallpaperApplyOutcome.FAILED
 
             // The platform write and our record of it are one step
@@ -174,7 +178,7 @@ class WallpaperApplier @Inject constructor(
                 }
 
                 // Records what the user is now looking at
-                appDataStore.setAppliedWallpaperId(appDataStore.getBufferedWallpaperId())
+                wallpaperRecordStore.setAppliedWallpaperId(bufferedId)
             }
 
             Log.i(TAG, "Wallpaper applied successfully from the prepared image to $destination.")

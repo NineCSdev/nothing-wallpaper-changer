@@ -3,7 +3,7 @@ package com.ninecsdev.wallpaperchanger.logic.atmosphere
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
 import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereSource
@@ -29,7 +29,7 @@ import javax.inject.Singleton
 @Singleton
 class AtmosphereDelivery @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
-    private val appDataStore: AppDataStore
+    private val wallpaperRecordStore: WallpaperRecordStore
 ) {
     private companion object {
         const val TAG = "AtmosphereDelivery"
@@ -53,7 +53,7 @@ class AtmosphereDelivery @Inject constructor(
     suspend fun confirmDisplayed(): Long? {
         val delivered = inFlight.getAndSet(null) ?: return null
 
-        appDataStore.setAtmosphereLiveWallpaperId(delivered.wallpaperId)
+        wallpaperRecordStore.setLiveAtmosphereWallpaperId(delivered.wallpaperId)
         return delivered.collectionId
     }
 
@@ -68,7 +68,7 @@ class AtmosphereDelivery @Inject constructor(
     suspend fun deliverPrepared(collectionId: Long?): Boolean = withContext(Dispatchers.IO) {
         // Tagged as a rotation delivery: its display, and only its display, advances the magazine
         // and names the live image. Set before publishing so the confirmation can never arrive ahead of it.
-        val latched = InFlightDelivery(collectionId, appDataStore.getBufferedWallpaperId())
+        val latched = InFlightDelivery(collectionId, wallpaperRecordStore.snapshot().bufferedWallpaperId)
         try {
             inFlight.set(latched)
             if (!AtmosphereSource.promotePending(appContext.filesDir)) {
@@ -105,7 +105,7 @@ class AtmosphereDelivery @Inject constructor(
             inFlight.set(null)
             publish(render.seeds, ImageProcessingUtils.compressToBytes(render.bitmap), fromRotation = false)
                 .also { published ->
-                    if (published) appDataStore.setAtmosphereLiveWallpaperId(wallpaperId)
+                    if (published) wallpaperRecordStore.setLiveAtmosphereWallpaperId(wallpaperId)
                 }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to deliver a rendered image", e)
@@ -130,7 +130,7 @@ class AtmosphereDelivery @Inject constructor(
         AtmosphereSource.clearPending(appContext.filesDir)
         // Nothing is published anymore, so nothing is live and nothing is in flight
         inFlight.set(null)
-        appDataStore.setAtmosphereLiveWallpaperId(null)
+        wallpaperRecordStore.setLiveAtmosphereWallpaperId(null)
     }
 
     /**

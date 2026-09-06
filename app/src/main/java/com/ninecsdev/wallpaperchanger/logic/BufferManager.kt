@@ -15,6 +15,7 @@ import androidx.core.graphics.createBitmap
 import androidx.core.net.toUri
 import kotlinx.coroutines.CancellationException
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereRender
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.SeedExtractor
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
@@ -61,13 +62,14 @@ sealed class BufferPreparationResult {
  * WebP buffer; an atmosphere refill leaves a staged container holding the same pixels plus their
  * seeds. Which file exists *is* the record of which mode prepared it.
  *
- * **What is prepared is also stamped with where it came from** ([AppDataStore.setBufferedWallpaper]),
+ * **What is prepared is also stamped with where it came from** ([WallpaperRecordStore.setBufferedWallpaper]),
  * so a caller can tell whether what is prepared is the one it is asking for.
  */
 @Singleton
 class BufferManager @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
     private val appDataStore: AppDataStore,
+    private val wallpaperRecordStore: WallpaperRecordStore,
     private val modeResolver: WallpaperModeResolver,
     private val seedExtractor: SeedExtractor
 ) {
@@ -107,10 +109,10 @@ class BufferManager @Inject constructor(
     private fun getBufferFile(): File = File(appContext.cacheDir, BUFFER_FILENAME)
 
     /** The collection the prepared artifact was drawn from, or null when nothing usable is prepared. */
-    suspend fun preparedCollectionId(): Long? = appDataStore.getBufferedCollectionId()
+    suspend fun preparedCollectionId(): Long? = wallpaperRecordStore.snapshot().bufferedCollectionId
 
     /** Records that nothing prepared is usable. The artifact may still be on disk but belongs to no rotation*/
-    suspend fun forgetPrepared() = appDataStore.setBufferedWallpaper(null, null)
+    suspend fun forgetPrepared() = wallpaperRecordStore.setBufferedWallpaper(null, null)
 
     /**
      * Opens the prepared image for a static apply, or null when nothing is prepared. Caller
@@ -181,7 +183,7 @@ class BufferManager @Inject constructor(
             if (!AtmosphereSource.writePending(appContext.filesDir, render.seeds, imageBytes)) {
                 return BufferPreparationResult.Failure(definitive = false)
             }
-            appDataStore.setBufferedWallpaper(wallpaper.id, wallpaper.collectionId)
+            wallpaperRecordStore.setBufferedWallpaper(wallpaper.id, wallpaper.collectionId)
             Log.d(TAG, "Staged atmosphere delivery: ${imageBytes.size / 1024} KB | Rule: $cropRule")
         } finally {
             render.bitmap.recycle()
@@ -197,7 +199,7 @@ class BufferManager @Inject constructor(
         try {
             AtmosphereSource.clearPending(appContext.filesDir)
             writeBuffer(rendered, cropRule)
-            appDataStore.setBufferedWallpaper(wallpaper.id, wallpaper.collectionId)
+            wallpaperRecordStore.setBufferedWallpaper(wallpaper.id, wallpaper.collectionId)
         } finally {
             rendered.recycle()
         }
