@@ -22,6 +22,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
@@ -35,7 +36,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
 import com.ninecsdev.wallpaperchanger.logic.computeEditTransform
+import com.ninecsdev.wallpaperchanger.logic.computeLayerTransform
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
@@ -207,6 +210,13 @@ private fun WallpaperCanvas(
     val currentAspect by rememberUpdatedState(imageAspectRatio)
     val currentOnGesture by rememberUpdatedState(onGestureTransform)
 
+    // The photo is framed against the wallpaper canvas
+    val context = LocalContext.current
+    val (wallpaperCanvasW, wallpaperCanvasH) = remember {
+        val (w, h) = ImageProcessingUtils.getWallpaperCanvasSize(context)
+        w.toFloat() to h.toFloat()
+    }
+
     AsyncImage(
         model = wallpaperUri,
         contentDescription = stringResource(R.string.cd_wallpaper_being_edited),
@@ -249,20 +259,21 @@ private fun WallpaperCanvas(
                 }
             }
             .graphicsLayer {
-                val transform = computeEditTransform(
-                    contentWidth = imageAspectRatio,
-                    contentHeight = 1f,
+                val layer = computeLayerTransform(
+                    contentAspect = imageAspectRatio,
                     containerWidth = size.width,
                     containerHeight = size.height,
+                    canvasWidth = wallpaperCanvasW,
+                    canvasHeight = wallpaperCanvasH,
                     zoom = zoom,
                     offsetX = offsetX,
                     offsetY = offsetY
                 )
 
-                scaleX = zoom
-                scaleY = zoom
-                translationX = transform.panX
-                translationY = transform.panY
+                scaleX = layer.scale
+                scaleY = layer.scale
+                translationX = layer.translationX
+                translationY = layer.translationY
             }
     )
 }
@@ -380,8 +391,8 @@ private fun WallpaperEditContent(
             zoom = zoom,
             offsetX = offsetX,
             offsetY = offsetY,
-            canPanX = panRange == null || panRange.maxPanX > 0f,
-            canPanY = panRange == null || panRange.maxPanY > 0f,
+            canPanX = panRange == null || panRange.canPanX,
+            canPanY = panRange == null || panRange.canPanY,
             onZoomChange = onZoomChange,
             onOffsetXChange = onOffsetXChange,
             onOffsetYChange = onOffsetYChange,

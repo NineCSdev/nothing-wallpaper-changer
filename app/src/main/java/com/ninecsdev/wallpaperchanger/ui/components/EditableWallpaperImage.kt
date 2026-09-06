@@ -18,12 +18,10 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
-import com.ninecsdev.wallpaperchanger.logic.computeEditTransform
+import com.ninecsdev.wallpaperchanger.logic.computeLayerTransform
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import kotlin.math.ceil
 import kotlin.math.roundToInt
-
-// TODO: Add tests for the frame math here (see "EditTransform Tests" in the notes)
 
 /**
  * Displays an edited wallpaper exactly as it will appear on the device screen.
@@ -98,27 +96,20 @@ internal fun EditableWallpaperImage(
                         alpha = 0f
                         return@graphicsLayer
                     }
-                    val cw = size.width
-                    val ch = size.height
-                    // Virtual screen-aspect frame, cover-fitted into the container
-                    // (in container pixels; one axis matches, the other overflows).
-                    val cover = maxOf(cw / screenW, ch / screenH)
-                    val frameW = screenW * cover
-                    val frameH = screenH * cover
-                    val t = computeEditTransform(
-                        contentWidth = aspect,
-                        contentHeight = 1f,
-                        containerWidth = frameW,
-                        containerHeight = frameH,
+                    val layer = computeLayerTransform(
+                        contentAspect = aspect,
+                        containerWidth = size.width,
+                        containerHeight = size.height,
+                        canvasWidth = screenW.toFloat(),
+                        canvasHeight = screenH.toFloat(),
                         zoom = edit.zoom,
                         offsetX = edit.offsetX,
                         offsetY = edit.offsetY,
                     )
-                    val containerFitScale = minOf(cw / aspect, ch)
-                    scaleX = t.scale / containerFitScale
-                    scaleY = t.scale / containerFitScale
-                    translationX = t.panX
-                    translationY = t.panY
+                    scaleX = layer.scale
+                    scaleY = layer.scale
+                    translationX = layer.translationX
+                    translationY = layer.translationY
                 }
         )
     }

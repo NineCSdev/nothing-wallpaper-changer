@@ -186,10 +186,11 @@ internal fun applyEditGesture(
         toZoom = newZoom
     )
 
-    val newOffsetX = if (scaled.maxPanX > 0f) coerceOffset(newPan.x / scaled.maxPanX) else offsetX
-    val newOffsetY = if (scaled.maxPanY > 0f) coerceOffset(newPan.y / scaled.maxPanY) else offsetY
-
-    return GestureTransform(newZoom, newOffsetX, newOffsetY)
+    return GestureTransform(
+        newZoom,
+        scaled.offsetXFor(newPan.x, offsetX),
+        scaled.offsetYFor(newPan.y, offsetY),
+    )
 }
 
 /**

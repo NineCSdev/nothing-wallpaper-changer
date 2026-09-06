@@ -5,14 +5,8 @@ package com.ninecsdev.wallpaperchanger.logic
 /**
  * Result of the edit transform calculation. All values are in container units.
  *
- * Consumers read different fields depending on their rendering model:
- * - The editor preview and [EditableWallpaperImage][com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage]
- *   render the image pre-fitted (`ContentScale.Fit`, centered) and apply a scale + [panX]/[panY]
- *   via `graphicsLayer` (the editor scales by `zoom` directly; EditableWallpaperImage derives its
- *   layer scale from [scale] because its fit base differs from its transform container), ignoring
- *   [drawX]/[drawY].
- * - [BufferManager] draws the raw source bitmap through a `Matrix` and uses [scale] plus
- *   [drawX]/[drawY].
+ * Callers that draw the raw source through a `Matrix` read [scale] with [drawX]/[drawY]. Callers
+ * whose framework already fitted the content go through [computeLayerTransform] instead.
  */
 data class EditTransform(
     /** Absolute content→container scale: fit scale × zoom. */
@@ -25,17 +19,38 @@ data class EditTransform(
     val drawX: Float,
     /** Top-left Y of the scaled content: centering + pan. Ready for `Matrix.postTranslate`. */
     val drawY: Float,
-    /** Maximum pixel pan from center on the X axis (offset ±1 maps to ±this; `panX = offsetX * maxPanX`). 0 when the axis doesn't overflow. */
-    val maxPanX: Float,
-    /** Maximum pixel pan from center on the Y axis (offset ±1 maps to ±this; `panY = offsetY * maxPanY`). 0 when the axis doesn't overflow. */
-    val maxPanY: Float,
+    // Only ever divided by, to convert a pixel pan back into a normalized offset
+    private val maxPanX: Float,
+    private val maxPanY: Float,
+) {
+    /** Whether the scaled content overflows the X axis, and so has any pan to give. */
+    val canPanX: Boolean get() = maxPanX > 0f
+
+    /** Whether the scaled content overflows the Y axis, and so has any pan to give. */
+    val canPanY: Boolean get() = maxPanY > 0f
+
+    /**
+     * Converts a pixel pan back into the persisted -1..1 offset, clamped to that range.
+     *
+     * Returns [fallback] unchanged on an axis with no room to pan.
+     */
+    fun offsetXFor(pan: Float, fallback: Float): Float = if (maxPanX > 0f) (pan / maxPanX).coerceIn(-1f, 1f) else fallback
+
+    /** The Y-axis twin of [offsetXFor]. */
+    fun offsetYFor(pan: Float, fallback: Float): Float = if (maxPanY > 0f) (pan / maxPanY).coerceIn(-1f, 1f) else fallback
+}
+
+/** `graphicsLayer` values for content a framework has already fitted to its container. */
+data class LayerTransform(
+    val scale: Float,
+    val translationX: Float,
+    val translationY: Float,
 )
 
 /**
  * The single source of truth for the edit transform math (fit + zoom + normalized pan),
- * shared by the editor preview, [EditableWallpaperImage][com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage],
- * and [BufferManager]'s render path — so the wallpaper that lands on screen matches exactly
- * what the user saw in the editor.
+ * shared by the editor preview, the thumbnails and [BufferManager]'s render path, so the
+ * wallpaper that lands on screen matches exactly what the user saw in the editor.
  *
  * Semantics:
  * - zoom = 1.0 → the content fits the container exactly (letterboxed / pillarboxed as needed).
@@ -77,5 +92,46 @@ fun computeEditTransform(
         drawY = centerY + panY,
         maxPanX = maxPanX,
         maxPanY = maxPanY,
+    )
+}
+
+/**
+ * The same framing as [computeEditTransform], for a container that has **already fitted the
+ * content itself** and can only transform it afterward.
+ *
+ * The content is framed against the wallpaper canvas, and the container then shows a centered
+ * window onto that framing. [scale][LayerTransform.scale] divides out the fit the container already applied.
+ *
+ * All dimensions in container pixels, all > 0; [contentAspect] is width / height.
+ */
+fun computeLayerTransform(
+    contentAspect: Float,
+    containerWidth: Float,
+    containerHeight: Float,
+    canvasWidth: Float,
+    canvasHeight: Float,
+    zoom: Float,
+    offsetX: Float,
+    offsetY: Float,
+): LayerTransform {
+    // The canvas, cover-fitted into the container: one axis matches, the other overflows.
+    val cover = maxOf(containerWidth / canvasWidth, containerHeight / canvasHeight)
+
+    val transform = computeEditTransform(
+        contentWidth = contentAspect,
+        contentHeight = 1f,
+        containerWidth = canvasWidth * cover,
+        containerHeight = canvasHeight * cover,
+        zoom = zoom,
+        offsetX = offsetX,
+        offsetY = offsetY,
+    )
+
+    val containerFitScale = minOf(containerWidth / contentAspect, containerHeight)
+
+    return LayerTransform(
+        scale = transform.scale / containerFitScale,
+        translationX = transform.panX,
+        translationY = transform.panY,
     )
 }
