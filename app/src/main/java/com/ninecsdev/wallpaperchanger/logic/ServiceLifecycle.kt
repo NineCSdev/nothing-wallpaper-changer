@@ -244,40 +244,6 @@ class ServiceLifecycle @Inject constructor(
         return LifecycleVerdict.Accepted
     }
 
-    /** The battery-saver rule, in one place. */
-    internal fun batterySaverAction(
-        isPowerSave: Boolean,
-        policy: BatterySaverPolicy
-    ): LifecycleVerdict = when {
-        !isPowerSave -> LifecycleVerdict.RunActive
-        policy == BatterySaverPolicy.IGNORE -> LifecycleVerdict.RunActive
-        policy == BatterySaverPolicy.PAUSE -> LifecycleVerdict.RunPaused
-        else -> LifecycleVerdict.Abort
-    }
-
-    /** Pure resolution of the authoritative [ServiceState] from the lifecycle intent and the runtime signals. */
-    internal fun resolve(
-        raw: ServiceState,
-        persistedRunning: Boolean,
-        isAlive: Boolean,
-        powerSaveBlocking: Boolean,
-        hasActiveCollection: Boolean
-    ): ServiceState {
-        if (!hasActiveCollection) return ServiceState.DisabledNoCollection
-
-        val isServiceMarkedActive = isAlive || persistedRunning
-        val stoppedState = if (powerSaveBlocking) ServiceState.DisabledPowerSave else ServiceState.Stopped
-
-        return when {
-            raw is ServiceState.Loading -> ServiceState.Loading
-            raw is ServiceState.Stopping -> ServiceState.Stopping
-            raw is ServiceState.Running || raw is ServiceState.Paused -> if (isServiceMarkedActive) raw else stoppedState
-            raw is ServiceState.Stopped -> stoppedState
-            isServiceMarkedActive -> ServiceState.Running
-            else -> stoppedState
-        }
-    }
-
     /** Clears an optimistic `Loading` if the service it was promising never comes alive. */
     private fun armStartTimeout() {
         startTimeoutJob?.cancel()
@@ -308,5 +274,39 @@ class ServiceLifecycle @Inject constructor(
             appDataStore.setServiceRunning(isRunning)
             appDataStore.setServiceDesired(isRunning)
         }
+    }
+}
+
+/** The battery-saver rule, in one place. */
+internal fun batterySaverAction(
+    isPowerSave: Boolean,
+    policy: BatterySaverPolicy
+): LifecycleVerdict = when {
+    !isPowerSave -> LifecycleVerdict.RunActive
+    policy == BatterySaverPolicy.IGNORE -> LifecycleVerdict.RunActive
+    policy == BatterySaverPolicy.PAUSE -> LifecycleVerdict.RunPaused
+    else -> LifecycleVerdict.Abort
+}
+
+/** Pure resolution of the authoritative [ServiceState] from the lifecycle intent and the runtime signals. */
+internal fun resolve(
+    raw: ServiceState,
+    persistedRunning: Boolean,
+    isAlive: Boolean,
+    powerSaveBlocking: Boolean,
+    hasActiveCollection: Boolean
+): ServiceState {
+    if (!hasActiveCollection) return ServiceState.DisabledNoCollection
+
+    val isServiceMarkedActive = isAlive || persistedRunning
+    val stoppedState = if (powerSaveBlocking) ServiceState.DisabledPowerSave else ServiceState.Stopped
+
+    return when {
+        raw is ServiceState.Loading -> ServiceState.Loading
+        raw is ServiceState.Stopping -> ServiceState.Stopping
+        raw is ServiceState.Running || raw is ServiceState.Paused -> if (isServiceMarkedActive) raw else stoppedState
+        raw is ServiceState.Stopped -> stoppedState
+        isServiceMarkedActive -> ServiceState.Running
+        else -> stoppedState
     }
 }

@@ -15,7 +15,6 @@ import kotlin.math.roundToInt
  * **Padding and cropping are inverse operations and do not share a fraction.** Reaching for one number
  * to do both is the mistake this module exists to make impossible.
  */
-// TODO Tests specced in the vault: `tests/ParallaxZoom Tests.md`.
 object ParallaxZoom {
 
     /** The factor the platform enlarges a static wallpaper surface by before drawing its center. */
