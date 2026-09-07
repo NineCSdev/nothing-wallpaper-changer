@@ -80,17 +80,17 @@ class WallpaperService : Service() {
         serviceScope.launch { serviceLifecycle.lifecycleActions.collect(::applyLifecycleAction) }
     }
 
-    /** Runs the side effects one verdict calls for. This only touches the engine, the triggers and the wallpaper. */
+    /** Runs the side effects one verdict calls for. This only touches the rotation triggers and teardown. */
     private fun applyLifecycleAction(action: LifecycleVerdict) {
         when (action) {
             is LifecycleVerdict.RunActive -> {
                 Log.i(tag, "Engine active")
                 startRotationTriggers()
             }
+            // A pause suspends rotation and leaves the screen as it is
             is LifecycleVerdict.RunPaused -> {
                 Log.i(tag, "Engine paused")
                 stopRotationTriggers()
-                serviceScope.launch { revertToDefaultIfRequested() }
             }
             is LifecycleVerdict.RunPausedQuiet -> {
                 Log.i(tag, "Engine paused (Do Not Disturb)")

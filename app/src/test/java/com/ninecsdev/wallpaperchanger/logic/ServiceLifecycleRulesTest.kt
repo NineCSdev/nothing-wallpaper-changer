@@ -84,8 +84,8 @@ class ServiceLifecycleRulesTest {
 
     @Test
     fun `battery saver outranks do not disturb when both would pause`() {
-        // Both pauses stop rotation, but only one of them explains itself correctly to the user,
-        // and only the power-save one reverts to the default wallpaper.
+        // Both pauses do the same thing to rotation; the verdicts differ only so the status header
+        // and the notification can name the cause the user can actually act on.
         assertEquals(
             LifecycleVerdict.RunPaused,
             lifecycleAction(isPowerSave = true, policy = BatterySaverPolicy.PAUSE, isDnd = true, skipOnDnd = true)

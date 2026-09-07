@@ -40,10 +40,10 @@ sealed class LifecycleVerdict {
     /** The service should be up and rotating. */
     data object RunActive : LifecycleVerdict()
 
-    /** The service should be up but not rotating, and should fall back to the default wallpaper. */
+    /** The service should be up but not rotating, leaving the current wallpaper alone. */
     data object RunPaused : LifecycleVerdict()
 
-    /** The service should be up but not rotating, leaving the current wallpaper alone. */
+    /** [RunPaused], caused by Do Not Disturb rather than by power save. Named apart so the UI can say which. */
     data object RunPausedQuiet : LifecycleVerdict()
 
     /** The service must not run, tear it down. */
