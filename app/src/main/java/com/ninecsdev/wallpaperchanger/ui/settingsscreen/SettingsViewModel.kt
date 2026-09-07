@@ -21,10 +21,14 @@ import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
@@ -80,8 +84,7 @@ class SettingsViewModel @Inject constructor(
     private data class AtmosphereSettings(
         val mode: WallpaperMode,
         val engineActive: Boolean?,
-        val hasSource: Boolean,
-        val notice: AtmosphereNotice?
+        val hasSource: Boolean
     )
 
     private data class SettingsBundle(
@@ -110,8 +113,16 @@ class SettingsViewModel @Inject constructor(
     private fun snapshotMediaAccess(): Pair<Boolean, Boolean> =
         wallpaperSources.hasMediaAccess() to wallpaperSources.hasPartialMediaAccess()
 
-    // One-shot: what the last mode change did that the user needs telling about.
-    private val atmosphereNotice = MutableStateFlow<AtmosphereNotice?>(null)
+    // What the last mode change did that the user needs telling about. No replay, so a notice
+    // raised while the screen is off-view is dropped; the buffer only covers showing the previous one.
+    // TODO tests: see vault note tests/One-Shot Event Delivery Tests
+    private val _notices = MutableSharedFlow<AtmosphereNotice>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+
+    /** Words owed to the user, each delivered once to whoever is showing the screen. */
+    val notices: SharedFlow<AtmosphereNotice> = _notices.asSharedFlow()
 
     // Held back because entry hands straight off to the system picker. Raised on the resume instead
     private var lockRemovalPending = false
@@ -120,7 +131,6 @@ class SettingsViewModel @Inject constructor(
         appDataStore.wallpaperModeFlow(),
         atmosphereTransition.liveness,
         atmosphereTransition.canEnter,
-        atmosphereNotice,
         ::AtmosphereSettings
     )
 
@@ -162,7 +172,6 @@ class SettingsViewModel @Inject constructor(
             wallpaperMode = bundle.atmosphere.mode,
             atmosphereEngineActive = bundle.atmosphere.engineActive,
             hasAtmosphereSource = bundle.atmosphere.hasSource,
-            atmosphereNotice = bundle.atmosphere.notice,
             compressionQualityHigh = qualityHigh,
             compressionQualityLow = qualityLow,
             keepLocalCopies = bundle.keepLocalCopies,
@@ -249,7 +258,7 @@ class SettingsViewModel @Inject constructor(
             val leavingActiveAtmosphere = mode == WallpaperMode.STATIC && wallpaperModeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE
 
             if (leavingActiveAtmosphere) {
-                atmosphereNotice.value = atmosphereTransition.exitAtmosphere().toNotice()
+                atmosphereTransition.exitAtmosphere().toNotice()?.let { _notices.tryEmit(it) }
             } else {
                 appDataStore.setWallpaperMode(mode)
                 // No-op unless the engine is somehow already live (re-entering after an external
@@ -264,11 +273,6 @@ class SettingsViewModel @Inject constructor(
         AtmosphereExitOutcome.REPLACED -> null // User asked for this outcome so we don't notice anything
         AtmosphereExitOutcome.CLEARED -> AtmosphereNotice.EXIT_CLEARED
         AtmosphereExitOutcome.FAILED -> AtmosphereNotice.EXIT_FAILED
-    }
-
-    /** Clears the notice once the UI has shown the snackbar. */
-    override fun clearAtmosphereNotice() {
-        atmosphereNotice.value = null
     }
 
     override fun setKeepLocalCopies(enabled: Boolean) {
@@ -290,7 +294,7 @@ class SettingsViewModel @Inject constructor(
             if (lockRemovalPending) {
                 lockRemovalPending = false
                 // Raised whether or not they went through with it as the wallpaper is gone either way.
-                atmosphereNotice.value = AtmosphereNotice.LOCK_WALLPAPER_REMOVED
+                _notices.tryEmit(AtmosphereNotice.LOCK_WALLPAPER_REMOVED)
             }
         }
     }

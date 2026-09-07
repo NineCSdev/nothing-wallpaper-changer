@@ -1,7 +1,6 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen
 
 import com.ninecsdev.wallpaperchanger.data.TransferResult
-import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 
@@ -18,7 +17,7 @@ data class TransferTarget(
 )
 
 /**
- * One-shot outcome of the last transfer; drives the summary snackbar.
+ * Outcome of the last transfer, carried by [CollectionImageNotice.Transfer].
  * Counts follow [TransferResult]'s rule: [transferred] is operations that took effect
  * (insert or edit-adoption), [alreadyPresent] is nothing-changed duplicates.
  */
@@ -44,18 +43,12 @@ data class CollectionImageUiState(
     val isSelectionMode: Boolean = false,
     val selectedIds: Set<Long> = emptySet(),
     val previewWallpaper: WallpaperImage? = null,
-    /** One-shot summary of the last pick import; cleared via [CollectionImageViewModel.clearImportSummary]. */
-    val importSummary: PickImportResult? = null,
     /** The unavailable image the user tapped to re-link; Null when no re-link is in progress. */
     val relinkTarget: WallpaperImage? = null,
-    /** One-shot flag: the last re-link attempt failed; drives the error snackbar. */
-    val relinkFailed: Boolean = false,
     /** The transfer being configured (target picker open); null when no transfer is in progress. */
     val transferMode: TransferMode? = null,
     /** Destination candidates for the open target picker (all collections except this one). */
-    val transferTargets: List<TransferTarget> = emptyList(),
-    /** One-shot summary of the last transfer; cleared via [CollectionImageViewModel.clearTransferSummary]. */
-    val transferSummary: TransferSummary? = null
+    val transferTargets: List<TransferTarget> = emptyList()
 ) {
     /** The wallpaper the edit action targets: the single selection, or null when edit doesn't apply. */
     val selectedWallpaper: WallpaperImage?

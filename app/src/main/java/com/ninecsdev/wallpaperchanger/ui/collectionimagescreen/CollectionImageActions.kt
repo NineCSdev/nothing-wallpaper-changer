@@ -24,7 +24,6 @@ interface CollectionImageActions {
     fun requestTransfer(mode: TransferMode)
     fun transferToCollection(target: TransferTarget)
     fun cancelTransfer()
-    fun clearTransferSummary()
 
     // Favourites
     fun toggleFavoriteSelected()
@@ -37,8 +36,4 @@ interface CollectionImageActions {
     // Re-link unavailable image
     fun requestRelink(wallpaper: WallpaperImage)
     fun cancelRelink()
-    fun clearRelinkFailed()
-
-    // One-shot summaries
-    fun clearImportSummary()
 }

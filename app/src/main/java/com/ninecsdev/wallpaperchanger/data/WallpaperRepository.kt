@@ -110,17 +110,27 @@ class WallpaperRepository @Inject constructor(
      * subscribes to so it reloads its magazine whenever the active collection or its images change.
      *
      * Emits the active collection paired with its images, or `null` when there is no active
-     * collection. Deliberately re-emits only when the active collection's **identity or crop rule**
-     * changes. Excludes files marked unavailable so self-heal never re-selects a known-broken source.
+     * collection. Excludes files marked unavailable so self-heal never re-selects a known-broken
+     * source. Image changes always re-emit; only *collection-row* churn is filtered, by [magazineRebuildKey].
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun activeCollectionImagesFlow(): Flow<Pair<WallpaperCollection, List<WallpaperImage>>?> =
         dao.observeActiveCollection()
-            .distinctUntilChangedBy { it?.id to it?.defaultCropRule }
+            .distinctUntilChangedBy(::magazineRebuildKey)
             .flatMapLatest { collection ->
                 if (collection == null) flowOf(null)
                 else dao.observeAvailableImagesForCollection(collection.id).map { collection to it }
             }
+
+    /**
+     * What a magazine rebuild depends on. Any other column changing must **not** reach
+     * [activeCollectionImagesFlow]. An unfiltered rebuild would reshuffle the magazine each time
+     * and destroy its no-repeat ordering.
+     *
+     * Selected upstream of the images query on purpose as it gates re-subscription only, leaving
+     * image changes free to propagate.
+     */
+    private fun magazineRebuildKey(collection: WallpaperCollection?) = collection?.id to collection?.defaultCropRule
 
     /** The active collection itself, re-emitting on every change to its row — identity *and* name. */
     fun activeCollectionFlow(): Flow<WallpaperCollection?> = dao.observeActiveCollection()
@@ -625,6 +635,7 @@ class WallpaperRepository @Inject constructor(
         }
     }
 
+    /** Stamps the rotation clock. Watched by [activeCollectionImagesFlow] and filtered there — see [magazineRebuildKey]. */
     suspend fun markWallpaperChanged(collectionId: Long) {
         dao.updateLastWallpaperChangeAt(collectionId)
     }

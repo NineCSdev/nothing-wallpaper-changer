@@ -10,8 +10,12 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.pinnedFirst
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -32,6 +36,16 @@ class CollectionImageViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(CollectionImageUiState())
     val uiState: StateFlow<CollectionImageUiState> = _uiState.asStateFlow()
+
+    // No replay, so a notice raised while the screen is off-view is dropped rather than shown late
+    // TODO tests: see vault note tests/One-Shot Event Delivery Tests
+    private val _notices = MutableSharedFlow<CollectionImageNotice>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+
+    /** Words owed to the user, each delivered once to whoever is showing the screen. */
+    val notices: SharedFlow<CollectionImageNotice> = _notices.asSharedFlow()
 
     init {
         loadCollectionMetadata()
@@ -102,13 +116,8 @@ class CollectionImageViewModel @Inject constructor(
     fun addWallpapers(uris: List<Uri>) {
         viewModelScope.launch {
             val result = repository.addImagesToCollection(collectionId, uris.map { it.toString() })
-            _uiState.update { it.copy(importSummary = result) }
+            _notices.tryEmit(CollectionImageNotice.Import(result))
         }
-    }
-
-    /** Clears the pick-import summary once the UI has shown it. */
-    override fun clearImportSummary() {
-        _uiState.update { it.copy(importSummary = null) }
     }
 
     // Re-link unavailable image
@@ -125,7 +134,7 @@ class CollectionImageViewModel @Inject constructor(
     /**
      * Handles the photo-picker result for a re-link. A null [uri] (picker canceled) just closes the
      * flow; otherwise the picked source is rebound onto the target's file row.
-     * A failure raises a one-shot snackbar flag.
+     * A failure is owed the user a word.
      */
     fun onRelinkPicked(uri: Uri?) {
         val target = _uiState.value.relinkTarget
@@ -135,18 +144,11 @@ class CollectionImageViewModel @Inject constructor(
         }
         viewModelScope.launch {
             val result = repository.relinkUnavailableFile(target, uri.toString())
-            _uiState.update {
-                it.copy(
-                    relinkTarget = null,
-                    relinkFailed = result == RelinkResult.FAILED
-                )
+            _uiState.update { it.copy(relinkTarget = null) }
+            if (result == RelinkResult.FAILED) {
+                _notices.tryEmit(CollectionImageNotice.RelinkFailed)
             }
         }
-    }
-
-    /** Clears the re-link failure flag once the UI has shown the snackbar. */
-    override fun clearRelinkFailed() {
-        _uiState.update { it.copy(relinkFailed = false) }
     }
 
     // Selection mode
@@ -248,22 +250,21 @@ class CollectionImageViewModel @Inject constructor(
                 it.copy(
                     transferMode = null,
                     transferTargets = emptyList(),
-                    transferSummary = TransferSummary(
-                        mode = mode,
-                        transferred = result.transferred,
-                        alreadyPresent = result.alreadyPresent,
-                        targetName = target.name
-                    ),
                     isSelectionMode = false,
                     selectedIds = emptySet()
                 )
             }
+            _notices.tryEmit(
+                CollectionImageNotice.Transfer(
+                    TransferSummary(
+                        mode = mode,
+                        transferred = result.transferred,
+                        alreadyPresent = result.alreadyPresent,
+                        targetName = target.name
+                    )
+                )
+            )
         }
-    }
-
-    /** Clears the transfer summary once the UI has shown the snackbar. */
-    override fun clearTransferSummary() {
-        _uiState.update { it.copy(transferSummary = null) }
     }
 
     // Favourite actions

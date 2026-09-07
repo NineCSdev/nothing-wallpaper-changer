@@ -83,7 +83,6 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.resolveCollectionDisplayName
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.FavoriteBadge
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.SelectionActionBar
-import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.TransferSummarySnackbarEffect
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.UnavailableBadge
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.WallpaperPreviewOverlay
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.EditedBadge
@@ -92,7 +91,6 @@ import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.CollectionPickerItem
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.CollectionPickerSheet
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
-import com.ninecsdev.wallpaperchanger.ui.components.overlay.ImportSummarySnackbarEffect
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
@@ -169,29 +167,13 @@ internal fun SharedTransitionScope.previewFlightModifier(
 fun CollectionImageScreen(
     uiState: CollectionImageUiState,
     actions: CollectionImageActions,
+    snackbarHostState: SnackbarHostState,
     onBackClick: () -> Unit,
     onAddWallpapers: () -> Unit,
     onEditWallpaper: (WallpaperImage) -> Unit,
     onRelinkConfirm: () -> Unit
 ) {
     var showDeleteConfirmation by remember { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    ImportSummarySnackbarEffect(uiState.importSummary, snackbarHostState, actions::clearImportSummary)
-
-    val relinkFailedMessage = stringResource(R.string.relink_failed_snackbar)
-    LaunchedEffect(uiState.relinkFailed) {
-        if (uiState.relinkFailed) {
-            snackbarHostState.showSnackbar(relinkFailedMessage)
-            actions.clearRelinkFailed()
-        }
-    }
-
-    TransferSummarySnackbarEffect(
-        uiState.transferSummary,
-        snackbarHostState,
-        actions::clearTransferSummary
-    )
 
     SharedTransitionLayout {
         val sharedScope = this
@@ -699,6 +681,7 @@ fun CollectionImageScreenPreview() {
                 isLoading = false
             ),
             actions = PreviewCollectionImageActions,
+            snackbarHostState = SnackbarHostState(),
             onBackClick = {},
             onAddWallpapers = {},
             onEditWallpaper = {},
@@ -728,6 +711,7 @@ fun CollectionImageScreenSelectionPreview() {
                 selectedIds = setOf(2L, 4L)
             ),
             actions = PreviewCollectionImageActions,
+            snackbarHostState = SnackbarHostState(),
             onBackClick = {},
             onAddWallpapers = {},
             onEditWallpaper = {},
@@ -747,6 +731,7 @@ fun CollectionImageScreenEmptyPreview() {
                 isLoading = false
             ),
             actions = PreviewCollectionImageActions,
+            snackbarHostState = SnackbarHostState(),
             onBackClick = {},
             onAddWallpapers = {},
             onEditWallpaper = {},
@@ -766,13 +751,10 @@ private object PreviewCollectionImageActions : CollectionImageActions {
     override fun requestTransfer(mode: TransferMode) {}
     override fun transferToCollection(target: TransferTarget) {}
     override fun cancelTransfer() {}
-    override fun clearTransferSummary() {}
     override fun toggleFavoriteSelected() {}
     override fun toggleFavorite(wallpaper: WallpaperImage) {}
     override fun toggleCollectionDefaultSelected() {}
     override fun toggleCollectionDefault(wallpaper: WallpaperImage) {}
     override fun requestRelink(wallpaper: WallpaperImage) {}
     override fun cancelRelink() {}
-    override fun clearRelinkFailed() {}
-    override fun clearImportSummary() {}
 }

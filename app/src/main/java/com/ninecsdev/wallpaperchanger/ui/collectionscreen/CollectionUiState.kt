@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionscreen
 
-import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.ServiceState
@@ -28,8 +27,6 @@ data class CollectionUiState(
     /** The app-wide cadence, so the edit card can seed a fresh override from what the collection was already getting. */
     val globalRotationPolicy: RotationPolicy = RotationPolicy.PerLock,
     val isProcessing: Boolean = false,
-    /** One-shot summary of the last manual-collection pick import; cleared via [CollectionViewModel.clearImportSummary]. */
-    val importSummary: PickImportResult? = null,
     /** True when the last collection-creation attempt failed; reset on the next attempt or when the modal closes. */
     val createError: Boolean = false
 )

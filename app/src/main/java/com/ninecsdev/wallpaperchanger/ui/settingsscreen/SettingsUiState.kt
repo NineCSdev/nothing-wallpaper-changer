@@ -37,7 +37,6 @@ data class SettingsUiState(
     val atmosphereEngineActive: Boolean? = null,
     // Whether a source image exists to feed the atmosphere renderer gates the set-button up-front.
     val hasAtmosphereSource: Boolean = false,
-    val atmosphereNotice: AtmosphereNotice? = null,
     val wallpaperZoomFix: WallpaperZoomFix = WallpaperZoomFix.OFF,
     val compressionQualityHigh: Int = 95,
     val compressionQualityLow: Int = 80,

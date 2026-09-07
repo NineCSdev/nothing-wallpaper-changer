@@ -24,8 +24,6 @@ interface CollectionListActions {
     fun syncEditingCollection()
     fun restoreRemovedImages()
 
-    fun clearImportSummary()
-
     // Long-press context menu intents
     fun togglePinned(collectionId: Long)
     fun setActiveCollection(collectionId: Long)

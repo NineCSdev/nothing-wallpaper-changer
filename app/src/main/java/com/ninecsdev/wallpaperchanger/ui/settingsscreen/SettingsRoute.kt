@@ -6,7 +6,9 @@ import android.content.Intent
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +48,26 @@ fun SettingsRoute(onBack: () -> Unit) {
         onPauseOrDispose { }
     }
 
+    // The snackbar host is owned here, because this is where notices arrive.
+    // A mode change can owe the user a word: it cleared their wallpaper, it could not leave, or
+    // entering cost them their separate lock-screen wallpaper.
+    val snackbarHostState = remember { SnackbarHostState() }
+    val exitClearedMessage = stringResource(R.string.settings_atmosphere_exit_cleared_snackbar)
+    val exitFailedMessage = stringResource(R.string.settings_atmosphere_exit_failed_snackbar)
+    val lockRemovedMessage = stringResource(R.string.settings_atmosphere_lock_removed_snackbar)
+
+    LaunchedEffect(Unit) {
+        viewModel.notices.collect { notice ->
+            snackbarHostState.showSnackbar(
+                when (notice) {
+                    AtmosphereNotice.EXIT_CLEARED -> exitClearedMessage
+                    AtmosphereNotice.EXIT_FAILED -> exitFailedMessage
+                    AtmosphereNotice.LOCK_WALLPAPER_REMOVED -> lockRemovedMessage
+                }
+            )
+        }
+    }
+
     // Tapping the locked keep-local-copies toggle asks for the permission instead of doing nothing.
     val mediaAccessLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -76,6 +98,7 @@ fun SettingsRoute(onBack: () -> Unit) {
     SettingsScreen(
         uiState = loadedUiState,
         actions = viewModel,
+        snackbarHostState = snackbarHostState,
         onBackClick = onBack,
         onRequestMediaAccess = {
             // From the partial "selected photos" state a re-request only re-opens the

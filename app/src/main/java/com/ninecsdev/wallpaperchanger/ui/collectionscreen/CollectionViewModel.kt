@@ -16,13 +16,20 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.pinnedFirst
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
+import com.ninecsdev.wallpaperchanger.ui.ServiceCommand
 import com.ninecsdev.wallpaperchanger.ui.components.asPreviewStates
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -56,6 +63,24 @@ class CollectionViewModel @Inject constructor(
 
     /** Current sort order for the collection list. */
     private val _sortOrder = MutableStateFlow(CollectionSortOrder.LAST_USED)
+
+    // No replay, so a notice raised while the screen is off-view is dropped rather than shown late
+    // TODO tests: see vault note tests/One-Shot Event Delivery Tests
+    private val _notices = MutableSharedFlow<PickImportResult>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+
+    /** Import counts owed to the user, delivered once to whoever is showing the screen. */
+    val notices: SharedFlow<PickImportResult> = _notices.asSharedFlow()
+
+    // Buffered, unlike the notices above: a start the user asked for is still wanted once
+    // something is listening again, so it waits rather than being dropped.
+    // TODO tests: see vault note tests/One-Shot Event Delivery Tests
+    private val _serviceCommands = Channel<ServiceCommand>(Channel.BUFFERED)
+
+    /** Start/stop requests for the activity to carry out. */
+    val serviceCommands: Flow<ServiceCommand> = _serviceCommands.receiveAsFlow()
 
     /** Modal/processing state managed by this screen. */
     private val _screenState = MutableStateFlow(ScreenModalState())
@@ -126,7 +151,6 @@ class CollectionViewModel @Inject constructor(
             editingDefaultWallpaper = modalInput.defaultWallpaper,
             globalRotationPolicy = modalInput.globalRotationPolicy,
             isProcessing = modalInput.modal.isProcessing,
-            importSummary = modalInput.modal.importSummary,
             createError = modalInput.modal.createError
         )
     }.stateIn(
@@ -154,16 +178,16 @@ class CollectionViewModel @Inject constructor(
     /**
      * Creates the pending collection, folder or manual, whichever source is currently pending.
      */
-    fun finalizeCollection(name: String, rule: CropRule, onComplete: (shouldStartService: Boolean) -> Unit) {
+    fun finalizeCollection(name: String, rule: CropRule) {
         _screenState.update { it.copy(createError = false) }
         if (pendingFolderUri != null) {
-            finalizeFolderCollection(name, rule, onComplete)
+            finalizeFolderCollection(name, rule)
         } else {
-            finalizeManualCollection(name, rule, onComplete)
+            finalizeManualCollection(name, rule)
         }
     }
 
-    private fun finalizeFolderCollection(name: String, rule: CropRule, onComplete: (shouldStartService: Boolean) -> Unit) {
+    private fun finalizeFolderCollection(name: String, rule: CropRule) {
         val uri = pendingFolderUri ?: return
         launchProcessing(
             operation = "Create folder collection",
@@ -171,11 +195,11 @@ class CollectionViewModel @Inject constructor(
         ) {
             val shouldStartService = repository.createFolderCollection(name, uri.toString(), rule)
             pendingFolderUri = null
-            onComplete(shouldStartService)
+            onCollectionCreated(shouldStartService)
         }
     }
 
-    private fun finalizeManualCollection(name: String, rule: CropRule, onComplete: (shouldStartService: Boolean) -> Unit) {
+    private fun finalizeManualCollection(name: String, rule: CropRule) {
         if (pendingPhotosUris.isEmpty()) return
         launchProcessing(
             operation = "Create manual collection",
@@ -183,27 +207,28 @@ class CollectionViewModel @Inject constructor(
         ) {
             val (shouldStartService, importResult) = repository.createManualCollection(name, pendingPhotosUris.map { it.toString() }, rule)
             pendingPhotosUris = emptyList()
-            _screenState.update { it.copy(importSummary = importResult) }
-            onComplete(shouldStartService)
+            _notices.tryEmit(importResult)
+            onCollectionCreated(shouldStartService)
         }
     }
 
-    /** Clears the pick-import summary once the UI has shown it. */
-    override fun clearImportSummary() {
-        _screenState.update { it.copy(importSummary = null) }
+    /** Success tail both create paths share: the modal closes, and an idle service is asked to start. */
+    private fun onCollectionCreated(shouldStartService: Boolean) {
+        toggleCreateModal(false)
+        if (shouldStartService) _serviceCommands.trySend(ServiceCommand.Start)
     }
 
     /**
-     * Deletes the collection currently open in the edit modal. [onDeleted] receives whether it was
-     * the active collection.
+     * Deletes the collection currently open in the edit modal, asking for the service to stop when
+     * it was the active one.
      */
-    fun deleteEditingCollection(onDeleted: (wasActive: Boolean) -> Unit) {
+    fun deleteEditingCollection() {
         val collection = editingCollection() ?: return
         val wasActive = collection.isActive
         viewModelScope.launch {
             repository.deleteCollection(collection)
             closeEditModal()
-            onDeleted(wasActive)
+            if (wasActive) _serviceCommands.trySend(ServiceCommand.Stop)
         }
     }
 
@@ -346,6 +371,5 @@ private data class ScreenModalState(
     val hasPendingPhotos: Boolean = false,
     val editingCollectionId: Long? = null,
     val isProcessing: Boolean = false,
-    val importSummary: PickImportResult? = null,
     val createError: Boolean = false
 )

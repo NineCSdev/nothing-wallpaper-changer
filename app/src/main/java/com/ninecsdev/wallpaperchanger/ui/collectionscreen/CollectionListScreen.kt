@@ -26,7 +26,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -44,7 +43,6 @@ import com.ninecsdev.wallpaperchanger.model.resolveDisplayName
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionGridItem
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 import com.ninecsdev.wallpaperchanger.ui.components.StatusLed
-import com.ninecsdev.wallpaperchanger.ui.components.overlay.ImportSummarySnackbarEffect
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.components.getVisualsForState
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
@@ -69,6 +67,7 @@ import com.ninecsdev.wallpaperchanger.ui.collectionscreen.components.SortDropdow
 fun CollectionListScreen(
     uiState: CollectionUiState,
     actions: CollectionListActions,
+    snackbarHostState: SnackbarHostState,
     onCollectionClick: (Long) -> Unit,
     onEditCollection: (Long) -> Unit,
     onBackClick: () -> Unit,
@@ -79,10 +78,6 @@ fun CollectionListScreen(
     onCreateCollection: (name: String, rule: CropRule) -> Unit,
     onDeleteCollection: () -> Unit
 ) {
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    ImportSummarySnackbarEffect(uiState.importSummary, snackbarHostState, actions::clearImportSummary)
-
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             snackbarHost = { NothingSnackbarHost(snackbarHostState) },
@@ -255,6 +250,7 @@ fun CollectionListScreenPopulatedPreview() {
                 )
             ),
             actions = PreviewCollectionListActions,
+            snackbarHostState = SnackbarHostState(),
             onCollectionClick = {},
             onEditCollection = {},
             onBackClick = {},
@@ -273,6 +269,7 @@ fun CollectionListScreenEmptyPreview() {
         CollectionListScreen(
             uiState = CollectionUiState(),
             actions = PreviewCollectionListActions,
+            snackbarHostState = SnackbarHostState(),
             onCollectionClick = {},
             onEditCollection = {},
             onBackClick = {},
@@ -295,7 +292,6 @@ private object PreviewCollectionListActions : CollectionListActions {
     override fun clearEditingCollectionDefault() {}
     override fun syncEditingCollection() {}
     override fun restoreRemovedImages() {}
-    override fun clearImportSummary() {}
     override fun togglePinned(collectionId: Long) {}
     override fun setActiveCollection(collectionId: Long) {}
 }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
@@ -21,6 +22,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.ninecsdev.wallpaperchanger.ui.ServiceCommand
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.CollectionImageRoute
 import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionListRoute
 import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionViewModel
@@ -50,6 +52,17 @@ fun AppNavigation(
     val popBack: () -> Unit = {
         if (navController.previousBackStackEntry != null) {
             navController.popBackStack()
+        }
+    }
+
+    // Collected out here rather than inside the destination: the collection that asks for a start
+    // may finish saving after the user has already navigated on, and the request is still theirs
+    LaunchedEffect(Unit) {
+        collectionViewModel.serviceCommands.collect { command ->
+            when (command) {
+                ServiceCommand.Start -> onStartClick()
+                ServiceCommand.Stop -> onStopService()
+            }
         }
     }
 
@@ -113,9 +126,7 @@ fun AppNavigation(
                         navController.navigate(Route.collectionImages(id))
                     },
                     onLaunchFolderPicker = onLaunchFolderPicker,
-                    onLaunchPhotosPicker = onLaunchPhotosPicker,
-                    onStartService = onStartClick,
-                    onStopService = onStopService
+                    onLaunchPhotosPicker = onLaunchPhotosPicker
                 )
             }
         }
