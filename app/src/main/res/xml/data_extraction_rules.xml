@@ -1,19 +1,20 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   What leaves the device through Android's system backup.
+
+   Cloud backup runs against a 25 MB quota, so the local image copies are excluded.
+   Device-to-device transfer has no quota and a new phone is exactly where those copies are worth having.
+
+   Everything else is deliberately included.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="file" path="internal_wallpapers" />
+        <exclude domain="file" path="atmosphere_source.bin" />
+        <exclude domain="file" path="atmosphere_pending.bin" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="file" path="atmosphere_source.bin" />
+        <exclude domain="file" path="atmosphere_pending.bin" />
     </device-transfer>
-    -->
 </data-extraction-rules>

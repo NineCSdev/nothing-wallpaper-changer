@@ -52,7 +52,7 @@ android {
         targetSdk = 37
 
         versionCode = verMajor * 1_000_000 + verMinor * 10_000 + verPatch * 100 + verBuild
-        versionName = "${verMajor}.${verMinor}.${verPatch}-beta"
+        versionName = "${verMajor}.${verMinor}.${verPatch}"
         versionNameSuffix = "-beta"
     }
 

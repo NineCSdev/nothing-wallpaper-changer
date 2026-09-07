@@ -14,7 +14,6 @@
         android:name=".WallpaperApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="${appLabel}"
         android:enableOnBackInvokedCallback="true"
