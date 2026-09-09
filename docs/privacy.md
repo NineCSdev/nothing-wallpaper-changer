@@ -105,4 +105,4 @@ Questions about this policy or the app's privacy behaviour:
 
 **ninecsdev@gmail.com**
 
-Source code: https://github.com/NineCSdev/nothing-wallpaper-changer
+[Source code](https://github.com/NineCSdev/nothing-wallpaper-changer)
