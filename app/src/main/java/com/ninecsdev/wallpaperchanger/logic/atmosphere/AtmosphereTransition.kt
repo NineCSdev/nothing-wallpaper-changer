@@ -21,17 +21,14 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * What entering atmosphere produced: whether a source is ready for the system picker, and whether
- * getting there cost the user their separate lock-screen wallpaper.
- */
+/** Enter atmosphere consequence: is source ready?, was user lockscreen cleared? */
 data class AtmosphereEntry(
     val sourceReady: Boolean,
     val lockWallpaperRemoved: Boolean
 )
 
 /**
- * Owns crossing between wallpaper modes, in both directions, and keeping the live engine supplied.
+ * Owns crossing between wallpaper modes and keeping the live engine supplied.
  *
  * Entering has to stage a source *before* handing off to the picker, and leaving is a compensating
  * transaction that must roll the preference back if the live wallpaper cannot actually
@@ -83,13 +80,11 @@ class AtmosphereTransition @Inject constructor(
     }
 
     /**
-     * Stages the source image and takes both screens (as atmosphere NEEDS both), ready for the
+     * Prepares source image and takes both screens (atmosphere NEEDS both), ready for the
      * caller to hand off to the system live-wallpaper picker. Writes no preference.
      */
     suspend fun enterAtmosphere(): AtmosphereEntry {
-        // Order matters: the lock screen is taken only once there is something to show. Clearing
-        // first would destroy the user's lock wallpaper even on the path that then fails to
-        // provision and never reaches the picker, leaving them with neither.
+        // Only clear the lockscreen if a source was produced
         if (!provisionAndRecord()) return AtmosphereEntry(sourceReady = false, lockWallpaperRemoved = false)
         return AtmosphereEntry(sourceReady = true, lockWallpaperRemoved = releaseLockScreen())
     }

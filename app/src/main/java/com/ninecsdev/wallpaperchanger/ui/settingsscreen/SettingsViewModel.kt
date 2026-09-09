@@ -300,11 +300,8 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
-     * Stages the atmosphere source and takes both screens, returning true once the source is ready
-     * for the system live-wallpaper picker.
-     *
-     * Not part of [SettingsActions]: it's a suspend call the Route awaits before firing the activity
-     * intent (mirrors how `onRequestMediaAccess` is a plain Route-level callback).
+     * Stages the atmosphere source and takes both screens
+     * @return True if there is a source for the live-wallpaper picker
      */
     suspend fun enterAtmosphere(): Boolean {
         val entry = atmosphereTransition.enterAtmosphere()

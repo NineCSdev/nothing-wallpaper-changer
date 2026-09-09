@@ -40,7 +40,7 @@ fun SettingsRoute(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // Media-access and atmosphere-engine states have no system callback; re-check on every resume
+    // Media-access and atmosphere-engine states have no system callback, re-check on every resume
     // (the user may grant/revoke a permission, or set/replace the live wallpaper on the system picker).
     LifecycleResumeEffect(Unit) {
         viewModel.refreshMediaAccess()
@@ -107,8 +107,6 @@ fun SettingsRoute(onBack: () -> Unit) {
             else mediaAccessLauncher.launch(mediaAccessPermissions())
         },
         onSetAtmosphere = {
-            // Stage the source and take both screens first, then hand off to the system
-            // live-wallpaper confirmation screen. onResume re-checks the engine state after.
             scope.launch {
                 if (viewModel.enterAtmosphere()) {
                     val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).putExtra(
