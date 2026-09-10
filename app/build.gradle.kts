@@ -32,7 +32,7 @@ if (!canSignRelease && gradle.startParameter.taskNames.any { it.contains("releas
 val verMajor = 0
 val verMinor = 4
 val verPatch = 0
-val verBuild = 4
+val verBuild = 6
 
 plugins {
     alias(libs.plugins.android.application)
@@ -53,6 +53,7 @@ android {
 
         versionCode = verMajor * 1_000_000 + verMinor * 10_000 + verPatch * 100 + verBuild
         versionName = "${verMajor}.${verMinor}.${verPatch}"
+        versionNameSuffix = "-beta"
     }
 
     signingConfigs {

@@ -68,8 +68,7 @@
             android:icon="@drawable/ic_notification_icon">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Persistent wallpaper cycling service that changes
-                the lock screen wallpaper on screen-off events from a user-configured local collection." />
+                android:value="Rotates the device wallpaper in the background on the cadence the user chose (at screen-off, on a timed interval, or daily) applying the next image from a user-configured local collection to the lock screen, the home screen, or both." />
         </service>
 
         <service
