@@ -1,6 +1,5 @@
 package com.ninecsdev.wallpaperchanger.logic
 
-// TODO: Add tests for this (see "EditTransform Tests" in the notes)
 
 /**
  * Result of the edit transform calculation. All values are in container units.

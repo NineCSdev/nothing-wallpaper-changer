@@ -60,7 +60,6 @@ object AtmosphereSource {
      * Replaces the current source. Returns false and leaves the existing file untouched on any
      * failure, which is what lets the engine keep rendering its last good source.
      */
-    // TODO tests: see vault note tests/Atmosphere Delivery Tests.md (container round-trip)
     fun write(dir: File, seeds: List<VertexInfo>, imageBytes: ByteArray): Boolean =
         writeContainer(dir, file(dir), seeds, imageBytes)
 
