@@ -32,7 +32,7 @@ if (!canSignRelease && gradle.startParameter.taskNames.any { it.contains("releas
 val verMajor = 0
 val verMinor = 4
 val verPatch = 0
-val verBuild = 6
+val verBuild = 7
 
 plugins {
     alias(libs.plugins.android.application)
@@ -40,6 +40,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.androidx.room)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -134,6 +135,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

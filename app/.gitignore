@@ -1,5 +1,6 @@
 /build
 *.apk
 *.dm
+*.aab
 output-metadata.json
 app/release/
