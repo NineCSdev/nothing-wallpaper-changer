@@ -21,6 +21,7 @@ import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.FolderExclusion
 import com.ninecsdev.wallpaperchanger.model.Wallpaper
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
+import com.ninecsdev.wallpaperchanger.model.WallpaperFile
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -50,6 +51,39 @@ enum class RelinkResult { RELINKED, MERGED, FAILED }
  * target (for a move, their source rows are still removed).
  */
 data class TransferResult(val transferred: Int = 0, val alreadyPresent: Int = 0)
+
+/** A whole install, ready to replace the one on disk (see [WallpaperRepository.replaceInstall]). */
+data class InstallSnapshot(
+    val collections: List<WallpaperCollection> = emptyList(),
+    val files: List<WallpaperFile> = emptyList(),
+    val memberships: List<SnapshotMembership> = emptyList(),
+    val exclusions: List<SnapshotExclusion> = emptyList(),
+    val collectionDefaults: Map<Int, Int> = emptyMap()
+)
+
+/**
+ * Every row of an install, as stored (see [WallpaperRepository.readInstallRows]). The read side of
+ * [InstallSnapshot]: real ids, no positional refs, because the caller still has to map one to the other.
+ */
+data class InstallRows(
+    val collections: List<WallpaperCollection>,
+    val files: List<WallpaperFile>,
+    val memberships: List<Wallpaper>,
+    val exclusions: List<FolderExclusion>
+)
+
+/** A membership in an [InstallSnapshot], pointing at its collection and file by position. */
+data class SnapshotMembership(
+    val collectionIndex: Int,
+    val fileIndex: Int,
+    val wallpaper: Wallpaper
+)
+
+/** An exclusion tombstone in an [InstallSnapshot], pointing at its collection by position. */
+data class SnapshotExclusion(
+    val collectionIndex: Int,
+    val exclusion: FolderExclusion
+)
 
 /**
  * One membership about to be created, as [WallpaperRepository.linkMemberships] wants it.
@@ -132,7 +166,7 @@ class WallpaperRepository @Inject constructor(
      */
     private fun magazineRebuildKey(collection: WallpaperCollection?) = collection?.id to collection?.defaultCropRule
 
-    /** The active collection itself, re-emitting on every change to its row — identity *and* name. */
+    /** The active collection itself, re-emitting on every change to its row (identity *and* name). */
     fun activeCollectionFlow(): Flow<WallpaperCollection?> = dao.observeActiveCollection()
 
     /**
@@ -542,7 +576,7 @@ class WallpaperRepository @Inject constructor(
     /**
      * Re-checks files marked unavailable in [collectionId] and clears the flag for any that are
      * readable again (source restored, permission re-granted, connectivity back). A file shared by
-     * several wallpapers in the collection is probed once. Safe to call often — a no-op when
+     * several wallpapers in the collection is probed once. Safe to call often, a no-op when
      * nothing is unavailable. Triggered on collection-image screen open and during folder sync.
      */
     suspend fun reprobeUnavailableFiles(collectionId: Long) {
@@ -584,7 +618,7 @@ class WallpaperRepository @Inject constructor(
             when {
                 // Picker returned the same source that was probed just now: nothing to rebind.
                 existing?.id == oldFileId -> {
-                    dao.setFileAvailability(oldFileId, true)
+                    dao.markFileRelinked(oldFileId)
                     RelinkResult.RELINKED
                 }
                 // Picked uri is already a different registered file: fold memberships into it.
@@ -592,7 +626,7 @@ class WallpaperRepository @Inject constructor(
                     dao.deleteJoinRowsDuplicatedByMerge(oldFileId, existing.id)
                     dao.repointJoinRows(oldFileId, existing.id)
                     dao.deleteFilesByIds(listOf(oldFileId))
-                    dao.setFileAvailability(existing.id, true)
+                    dao.markFileRelinked(existing.id)
                     RelinkResult.MERGED
                 }
                 // Brand-new source: rebind the existing row in place, keeping join rows intact.
@@ -608,6 +642,76 @@ class WallpaperRepository @Inject constructor(
             wallpaperSources.reclaim(oldUri, oldSourceType)
         }
         return result
+    }
+
+    // Whole-install snapshot (backup export and import)
+
+    /** Reads the entire install in one transaction. Ids as stored, the caller maps them to positions. */
+    suspend fun readInstallRows(): InstallRows = database.withTransaction {
+        InstallRows(
+            collections = dao.getAllCollections(),
+            files = dao.getAllFiles(),
+            memberships = dao.getAllWallpapers(),
+            exclusions = dao.getAllExclusions()
+        )
+    }
+
+    /**
+     * Replaces the install with [snapshot], in one transaction.
+     *
+     * Two passes, because a collection's default-wallpaper override is a foreign key onto a
+     * membership. **Nothing physical is reclaimed here.** That is left to [reconcileStorage]
+     */
+    // TODO tests: see vault note tests/Backup Archive Tests.md (the failed-commit path)
+    suspend fun replaceInstall(snapshot: InstallSnapshot) {
+        database.withTransaction {
+            dao.deleteEverything()
+
+            val collectionIds = snapshot.collections.map { collection ->
+                dao.insertCollection(collection.copy(id = 0, defaultWallpaperId = null))
+            }
+            val fileIds = snapshot.files.map { file -> insertRestoredFile(file) }
+
+            val membershipIds = snapshot.memberships.map { membership ->
+                dao.insertWallpaper(
+                    membership.wallpaper.copy(
+                        id = 0,
+                        collectionId = collectionIds[membership.collectionIndex],
+                        fileId = fileIds[membership.fileIndex]
+                    )
+                )
+            }
+
+            snapshot.collectionDefaults.forEach { (collectionIndex, membershipIndex) ->
+                // -1 means the membership collided with one already inserted for that collection.
+                // An override pointing at nothing would fail the foreign key and roll the import back.
+                membershipIds.getOrNull(membershipIndex)?.takeIf { it != -1L }?.let { membershipId ->
+                    dao.setCollectionDefaultWallpaper(collectionIds[collectionIndex], membershipId)
+                }
+            }
+
+            dao.insertExclusions(
+                snapshot.exclusions.map { exclusion ->
+                    exclusion.exclusion.copy(id = 0, collectionId = collectionIds[exclusion.collectionIndex])
+                }
+            )
+        }
+        Log.i(TAG, "Replaced the install: ${snapshot.collections.size} collection(s), ${snapshot.files.size} file(s)")
+    }
+
+    /**
+     * Inserts one restored file row and returns its id, reusing the existing row if the uri is
+     * already registered.
+     */
+    private suspend fun insertRestoredFile(file: WallpaperFile): Long {
+        val inserted = dao.insertFile(file.copy(id = 0))
+        if (inserted != -1L) return inserted
+
+        val existing = dao.getFileByUri(file.uriString)!!
+        // Both flags collapse pessimistic, if either can't be vouched for then we don't
+        if (existing.isAvailable && !file.isAvailable) dao.setFileAvailability(existing.id, false)
+        if (existing.isVerified && !file.isVerified) dao.setFileVerified(existing.id, false)
+        return existing.id
     }
 
     suspend fun getCollectionById(collectionId: Long): WallpaperCollection? =
@@ -635,7 +739,7 @@ class WallpaperRepository @Inject constructor(
         }
     }
 
-    /** Stamps the rotation clock. Watched by [activeCollectionImagesFlow] and filtered there — see [magazineRebuildKey]. */
+    /** Stamps the rotation clock. Watched by [activeCollectionImagesFlow] and filtered there, see [magazineRebuildKey]. */
     suspend fun markWallpaperChanged(collectionId: Long) {
         dao.updateLastWallpaperChangeAt(collectionId)
     }
@@ -827,12 +931,13 @@ class WallpaperRepository @Inject constructor(
      */
     // TODO tests: check "WallpaperSources Tests" note
     private suspend fun cleanupOrphanPersistedGrants() {
-        // The grant snapshot is taken *before* the keep set so a grant acquired by a concurrent import
+        // The grant snapshot is taken before the keep set so a grant acquired by a concurrent import
         // can never look orphaned (its rows are in by the time the keep set is read).
         val granted = wallpaperSources.persistedGrantUris()
         if (granted.isEmpty()) return
 
-        val keep = dao.getAllRootUris().toSet()
+        // A grant held by the archive a restore is using looks like a leak. Whoever holds it pinned it
+        val keep = dao.getAllRootUris().toSet() + wallpaperSources.pinnedGrantUris()
         val leaked = granted.filterNot { it in keep }
 
         leaked.forEach { wallpaperSources.releasePersistedGrant(it) }
@@ -866,7 +971,7 @@ class WallpaperRepository @Inject constructor(
         val existing = wallpaperSources.queryExistingMediaStoreUris(references.map { it.uriString })
 
         val lost = references.filter { it.isAvailable && it.uriString !in existing }.map { it.id }
-        val recovered = references.filter { !it.isAvailable && it.uriString in existing }.map { it.id }
+        val recovered = references.filter { !it.isAvailable && it.isVerified && it.uriString in existing }.map { it.id }
 
         dao.setFilesAvailability(lost, false)
         dao.setFilesAvailability(recovered, true)

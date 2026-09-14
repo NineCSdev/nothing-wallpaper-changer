@@ -5,17 +5,26 @@ import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.database.Cursor
 import android.net.Uri
 import androidx.core.net.toUri
 import android.os.Build
+import android.provider.DocumentsContract
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import android.util.Log
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.data.local.appPreferences
+import com.ninecsdev.wallpaperchanger.data.local.safeData
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.model.enums.SourceType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -61,6 +70,24 @@ class WallpaperSources @Inject constructor(
 
         /** Ids per MediaStore `IN (...)` query, kept well under SQLite's bind/expression limits. */
         const val MEDIA_QUERY_CHUNK_SIZE = 500
+
+        /** Grants held on purpose by something other than a collection root. See [pinnedGrantUris]. */
+        val KEY_PINNED_GRANTS = stringSetPreferencesKey("pinned_grant_uris")
+        const val MILLIS_PER_SECOND = 1000L
+
+        /** What [fingerprint] reads from a MediaStore row. */
+        val MEDIA_FINGERPRINT_COLUMNS = arrayOf(
+            OpenableColumns.DISPLAY_NAME,
+            OpenableColumns.SIZE,
+            MediaStore.MediaColumns.DATE_MODIFIED
+        )
+
+        /** [MEDIA_FINGERPRINT_COLUMNS]' counterpart for a document uri. */
+        val DOCUMENT_FINGERPRINT_COLUMNS = arrayOf(
+            OpenableColumns.DISPLAY_NAME,
+            OpenableColumns.SIZE,
+            DocumentsContract.Document.COLUMN_LAST_MODIFIED
+        )
     }
 
     /**
@@ -126,6 +153,42 @@ class WallpaperSources @Inject constructor(
             appContext.checkSelfPermission(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) ==
             PackageManager.PERMISSION_GRANTED
 
+    /** Reads [uri]'s [SourceFingerprint]. */
+    suspend fun fingerprint(uri: String, sourceType: SourceType): SourceFingerprint =
+        withContext(Dispatchers.IO) {
+            if (sourceType == SourceType.INTERNALIZED) return@withContext fingerprintLocalFile(uri)
+
+            val fromMediaStore = sourceType == SourceType.MEDIA_STORE
+            val columns = if (fromMediaStore) MEDIA_FINGERPRINT_COLUMNS else DOCUMENT_FINGERPRINT_COLUMNS
+            val modifiedColumn = if (fromMediaStore) MediaStore.MediaColumns.DATE_MODIFIED else DocumentsContract.Document.COLUMN_LAST_MODIFIED
+
+            try {
+                appContext.contentResolver.query(uri.toUri(), columns, null, null, null)?.use { cursor ->
+                    if (!cursor.moveToFirst()) return@use SourceFingerprint()
+                    SourceFingerprint(
+                        displayName = cursor.stringOrNull(OpenableColumns.DISPLAY_NAME),
+                        sizeBytes = cursor.longOrNull(OpenableColumns.SIZE),
+                        // MediaStore counts seconds, every other source milliseconds
+                        modifiedAt = cursor.longOrNull(modifiedColumn)?.let { if (fromMediaStore) it * MILLIS_PER_SECOND else it }
+                    )
+                } ?: SourceFingerprint()
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not fingerprint $uri", e)
+                SourceFingerprint()
+            }
+        }
+
+    /** An app-private copy is a plain file, no provider is involved. */
+    private fun fingerprintLocalFile(uri: String): SourceFingerprint {
+        val path = uri.toUri().path ?: return SourceFingerprint()
+        val file = File(path)
+        if (!file.exists()) return SourceFingerprint()
+        return SourceFingerprint(file.name, file.length(), file.lastModified())
+    }
+
+    private fun Cursor.stringOrNull(column: String): String? = stringAt(getColumnIndex(column))
+    private fun Cursor.longOrNull(column: String): Long? = longAt(getColumnIndex(column))
+
     /** True if [uri] can currently be opened for reading. */
     suspend fun isReadable(uri: String): Boolean = withContext(Dispatchers.IO) {
         try {
@@ -169,6 +232,31 @@ class WallpaperSources @Inject constructor(
         withContext(Dispatchers.IO) {
             appContext.contentResolver.persistedUriPermissions.map { it.uri.toString() }
         }
+
+    /**
+     * Uris a grant is deliberately held for by something that is not a collection root (a wizard
+     * still reading the file it was handed). Persisted because the holder and the sweep aren't in the same process.
+     */
+    suspend fun pinnedGrantUris(): Set<String> {
+        val pinned = appContext.appPreferences.safeData().first()[KEY_PINNED_GRANTS].orEmpty()
+        if (pinned.isEmpty()) return emptySet()
+
+        val live = pinned intersect persistedGrantUris().toSet()
+        if (live.size != pinned.size) editPins { live }
+        return live
+    }
+
+    /** Holds [uri] out of the reclaim sweep until [unpinGrant]. */
+    suspend fun pinGrant(uri: String) = editPins { it + uri }
+
+    /** Hands [uri] back to the sweep. Releasing the grant itself stays the caller's to do. */
+    suspend fun unpinGrant(uri: String) = editPins { it - uri }
+
+    private suspend fun editPins(transform: (Set<String>) -> Set<String>) {
+        appContext.appPreferences.edit { prefs ->
+            prefs[KEY_PINNED_GRANTS] = transform(prefs[KEY_PINNED_GRANTS].orEmpty())
+        }
+    }
 
     /**
      * Releases a persisted READ URI permission previously taken via `takePersistableUriPermission`
@@ -258,3 +346,9 @@ class WallpaperSources @Inject constructor(
         null
     }
 }
+
+/** The folder tree a document uri was built from, or null when it was not built from one. */
+internal fun treeUriOf(documentUri: String): String? = documentUri.substringBefore(DOCUMENT_SEGMENT, "").takeIf { it.isNotEmpty() }
+
+/** A tree-built document uri is `.../tree/<tree>/document/<doc>`; this splits the two. */
+private const val DOCUMENT_SEGMENT = "/document/"

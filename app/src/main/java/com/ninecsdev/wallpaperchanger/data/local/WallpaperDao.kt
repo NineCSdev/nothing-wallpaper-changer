@@ -146,7 +146,7 @@ abstract class WallpaperDao {
         val inserted = insertFile(WallpaperFile(uriString = uri, sourceType = sourceType, addedAt = addedAt))
         if (inserted != -1L) return inserted
         val existing = getFileByUri(uri)!!
-        if (!existing.isAvailable) setFileAvailability(existing.id, true)
+        if (!existing.isAvailable || !existing.isVerified) markFileRelinked(existing.id)
         return existing.id
     }
 
@@ -185,8 +185,16 @@ abstract class WallpaperDao {
      *
      * Note: Caller must guarantee [uri] isn't already held by a different file row (uri is unique).
      */
-    @Query("UPDATE wallpaper_files SET uri = :uri, sourceType = :sourceType, isAvailable = 1 WHERE id = :fileId")
+    @Query("UPDATE wallpaper_files SET uri = :uri, sourceType = :sourceType, isAvailable = 1, isVerified = 1 WHERE id = :fileId")
     abstract suspend fun rebindFile(fileId: Long, uri: String, sourceType: SourceType)
+
+    /** Sets whether this device has proven the row's uri names the image it claims. */
+    @Query("UPDATE wallpaper_files SET isVerified = :verified WHERE id = :fileId")
+    abstract suspend fun setFileVerified(fileId: Long, verified: Boolean)
+
+    /** Clears both self-heal flags at once, for a file whose source the user has just picked. */
+    @Query("UPDATE wallpaper_files SET isAvailable = 1, isVerified = 1 WHERE id = :fileId")
+    abstract suspend fun markFileRelinked(fileId: Long)
 
     /**
      * Merge step for re-link when the picked uri already exists as a different file row: drops the
@@ -400,6 +408,9 @@ abstract class WallpaperDao {
     @Query("DELETE FROM folder_exclusions WHERE collectionId = :collectionId")
     abstract suspend fun deleteExclusionsForCollection(collectionId: Long)
 
+    @Query("SELECT * FROM folder_exclusions")
+    abstract suspend fun getAllExclusions(): List<FolderExclusion>
+
     /**
      * Clears exclusions matching the given uris, the add-path half of the invariant that a uri is
      * never both excluded from and a member of the same collection. [uris] may be of any length.
@@ -411,5 +422,45 @@ abstract class WallpaperDao {
 
     @Query("DELETE FROM folder_exclusions WHERE collectionId = :collectionId AND uri IN (:uris)")
     protected abstract suspend fun deleteExclusionsForUrisChunk(collectionId: Long, uris: List<String>)
+
+    // Whole-database access (backup export and import)
+
+    /** Including the defaults one */
+    @Query("SELECT * FROM collections")
+    abstract suspend fun getAllCollections(): List<WallpaperCollection>
+
+    @Query("SELECT * FROM wallpaper_files")
+    abstract suspend fun getAllFiles(): List<WallpaperFile>
+
+    @Query("SELECT * FROM wallpapers")
+    abstract suspend fun getAllWallpapers(): List<Wallpaper>
+
+    /** Inserts one join row and returns its id, or -1 when the collection already holds that file. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    abstract suspend fun insertWallpaper(wallpaper: Wallpaper): Long
+
+    /**
+     * Empties every table. The caller is responsible for the physical files the deleted rows
+     * referenced, which are left on disk.
+     */
+    @Transaction
+    open suspend fun deleteEverything() {
+        deleteAllWallpapers()
+        deleteAllExclusions()
+        deleteAllCollections()
+        deleteAllFiles()
+    }
+
+    @Query("DELETE FROM wallpapers")
+    protected abstract suspend fun deleteAllWallpapers()
+
+    @Query("DELETE FROM folder_exclusions")
+    protected abstract suspend fun deleteAllExclusions()
+
+    @Query("DELETE FROM collections")
+    protected abstract suspend fun deleteAllCollections()
+
+    @Query("DELETE FROM wallpaper_files")
+    protected abstract suspend fun deleteAllFiles()
 
 }

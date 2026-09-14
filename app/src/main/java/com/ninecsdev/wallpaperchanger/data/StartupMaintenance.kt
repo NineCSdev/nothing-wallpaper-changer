@@ -2,10 +2,9 @@ package com.ninecsdev.wallpaperchanger.data
 
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.di.ApplicationScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
@@ -14,21 +13,18 @@ import javax.inject.Singleton
 
 /**
  * One-shot app-startup housekeeping, triggered from the UI's entry point but owned here so
- * the work is decoupled from any UI lifecycle. Runs on a singleton-lived scope (mirroring
- * [ServiceLifecycle][com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle]) rather than a
- * `viewModelScope`, so it isn't canceled if the user
- * opens then immediately closes the app.
+ * the work is decoupled from any UI lifecycle. Runs on the process-lived [ApplicationScope] rather
+ * than a `viewModelScope`, so it isn't canceled if the user opens then immediately closes the app.
  */
 @Singleton
 class StartupMaintenance @Inject constructor(
     private val repository: WallpaperRepository,
-    private val appDataStore: AppDataStore
+    private val appDataStore: AppDataStore,
+    @param:ApplicationScope private val scope: CoroutineScope
 ) {
     private companion object {
         const val TAG = "StartupMaintenance"
     }
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /** Ensures the tasks run at most once per process, even if triggered from several places. */
     private val hasRun = AtomicBoolean(false)

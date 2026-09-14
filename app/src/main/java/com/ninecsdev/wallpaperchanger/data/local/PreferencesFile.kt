@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.SharedPreferencesMigration
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStore
@@ -36,4 +37,9 @@ internal fun DataStore<Preferences>.safeData(): Flow<Preferences> = data.catch {
     } else {
         throw e
     }
+}
+
+/** For values whose absence is meaningful: writes [value], or removes the key when it is null. */
+internal fun <T> MutablePreferences.setOrClear(key: Preferences.Key<T>, value: T?) {
+    if (value == null) remove(key) else this[key] = value
 }

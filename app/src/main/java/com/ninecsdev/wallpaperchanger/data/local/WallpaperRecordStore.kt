@@ -3,7 +3,6 @@ package com.ninecsdev.wallpaperchanger.data.local
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -85,11 +84,18 @@ class WallpaperRecordStore @Inject constructor(
     suspend fun setAppliedWallpaperId(wallpaperId: Long?) =
         edit(KEY_APPLIED_WALLPAPER_ID, wallpaperId)
 
-    private suspend fun <T> edit(key: Preferences.Key<T>, value: T?) {
-        dataStore.edit { prefs -> prefs.setOrClear(key, value) }
+    /** Wipes every field. */
+    suspend fun clear() {
+        dataStore.edit { prefs ->
+            prefs.remove(KEY_APPLIED_WALLPAPER_ID)
+            prefs.remove(KEY_ATMOSPHERE_LIVE_WALLPAPER_ID)
+            prefs.remove(KEY_ATMOSPHERE_RENDER_KEY)
+            prefs.remove(KEY_BUFFERED_WALLPAPER_ID)
+            prefs.remove(KEY_BUFFERED_COLLECTION_ID)
+        }
     }
 
-    private fun <T> MutablePreferences.setOrClear(key: Preferences.Key<T>, value: T?) {
-        if (value == null) remove(key) else this[key] = value
+    private suspend fun <T> edit(key: Preferences.Key<T>, value: T?) {
+        dataStore.edit { prefs -> prefs.setOrClear(key, value) }
     }
 }

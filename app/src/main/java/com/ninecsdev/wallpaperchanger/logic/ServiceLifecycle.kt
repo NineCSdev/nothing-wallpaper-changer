@@ -14,6 +14,7 @@ import com.ninecsdev.wallpaperchanger.model.LifecycleVerdict
 import com.ninecsdev.wallpaperchanger.model.ServiceIntent
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
+import com.ninecsdev.wallpaperchanger.service.WallpaperService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -206,6 +207,26 @@ class ServiceLifecycle @Inject constructor(
         val verdict = judge(intent)
         Log.d(TAG, "$intent → $verdict")
         return verdict
+    }
+
+    /**
+     * Commands the running service down and returns once it has been told.
+     *
+     * Distinct from [ServiceIntent.ActiveCollectionDeleted], which only clears the standing intent so
+     * the service is not brought back on the next boot. Needed for the backup import. No-op on dead service.
+     */
+    // TODO: Breaks this class contract but I need to think more about it
+    fun requestStop() {
+        if (!lifecycleTracker.isAlive.value) return
+        try {
+            appContext.startService(
+                Intent(appContext, WallpaperService::class.java).apply {
+                    action = WallpaperService.ACTION_STOP_SERVICE
+                }
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not command the service to stop", e)
+        }
     }
 
     private fun judge(intent: ServiceIntent): LifecycleVerdict = when (intent) {

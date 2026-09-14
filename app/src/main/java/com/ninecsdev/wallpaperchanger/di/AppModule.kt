@@ -12,6 +12,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import java.io.File
 import javax.inject.Singleton
 
@@ -32,7 +35,8 @@ object AppModule {
                 AppDatabase.MIGRATION_2_3,
                 AppDatabase.MIGRATION_3_4,
                 AppDatabase.MIGRATION_4_5,
-                AppDatabase.MIGRATION_5_6
+                AppDatabase.MIGRATION_5_6,
+                AppDatabase.MIGRATION_6_7
             )
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onOpen(db: SupportSQLiteDatabase) {
@@ -51,7 +55,11 @@ object AppModule {
     }
 
     @Provides
-    fun provideWallpaperDao(database: AppDatabase): WallpaperDao {
-        return database.wallpaperDao()
-    }
+    fun provideWallpaperDao(database: AppDatabase): WallpaperDao = database.wallpaperDao()
+
+    /** A scope that outlives every screen. [SupervisorJob] so one failed operation cannot cancel the next one */
+    @Provides
+    @Singleton
+    @ApplicationScope
+    fun provideApplicationScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 }

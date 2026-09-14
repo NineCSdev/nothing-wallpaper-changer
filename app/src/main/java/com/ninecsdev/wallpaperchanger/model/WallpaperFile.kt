@@ -11,12 +11,13 @@ import com.ninecsdev.wallpaperchanger.model.enums.SourceType
  *
  * A [Wallpaper] (join row) references one of these by [id]; many wallpapers across different
  * collections can point at the same file, so a photo added to several collections is stored once.
- * The [uri] is unique: [WallpaperRepository][com.ninecsdev.wallpaperchanger.data.WallpaperRepository]
- * dedups by it (get-or-create), and a file row is deleted only when no [Wallpaper] references it.
+ * The [uriString] is unique: [WallpaperRepository][com.ninecsdev.wallpaperchanger.data.WallpaperRepository]
+ * de-duplicates by it (get-or-create), and a file row is deleted only when no [Wallpaper] references it.
  *
  * [sourceType] drives orphan cleanup; [isAvailable] is toggled by rotation self-heal when the bytes
  * become unreadable (source deleted / grant revoked) so the image is excluded from rotation without
- * being destroyed.
+ * being destroyed. [isVerified] says whether this row's [uriString] has ever been proven, *on this device*, to name the
+ * image it claims. Only a restore can produce an unverified row.
  */
 @Entity(
     tableName = "wallpaper_files",
@@ -28,5 +29,6 @@ data class WallpaperFile(
     @ColumnInfo(name = "uri") val uriString: String,
     val sourceType: SourceType,
     val isAvailable: Boolean = true,
+    val isVerified: Boolean = true,
     val addedAt: Long = System.currentTimeMillis()
 )

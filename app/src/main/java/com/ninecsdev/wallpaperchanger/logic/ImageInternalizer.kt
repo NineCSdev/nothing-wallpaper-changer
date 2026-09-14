@@ -9,11 +9,6 @@ import androidx.core.graphics.scale
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
@@ -45,6 +40,10 @@ class ImageInternalizer @Inject constructor(
         /** Skip files younger than this so a scan never races a file mid-registration. */
         private const val ORPHAN_GRACE_PERIOD_MS = 10 * 60 * 1000L // 10 minutes
 
+        /** Max decodes in flight at once, bounds peak bitmap memory */
+        // on Phone 1 both 4 and 10 take the same time, but it stays high for use in better hardware
+        private const val INTERNALIZE_CONCURRENCY = 10
+
         /** True if [uri] points inside the app-private internal wallpapers' folder. */
         fun isInternalUri(uri: Uri): Boolean = uri.pathSegments.contains(INTERNAL_FOLDER)
     }
@@ -67,29 +66,16 @@ class ImageInternalizer @Inject constructor(
             val qualityHigh = appDataStore.getCompressionQualityHigh()
             val qualityLow = appDataStore.getCompressionQualityLow()
 
-            // Added a semaphore approach to avoid possible OOM errors thought in my testing the previous
-            // one process per uri for pure speed didn't produce problems. Added it because I didn't
-            // find a noticeable time increase between this and previous approach probably due to Android/Kotlin
-            // guardrails
-            // Although on my Phone 1 it takes the same with 4 than 10 keep it high for higher performance phones
-            val batchSemaphore = Semaphore(10)
-
-            coroutineScope {
-                uris.map { uri ->
-                    async {
-                        batchSemaphore.withPermit {
-                            try {
-                                val fileSize = appContext.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
-                                val quality = if (fileSize > LARGE_FILE_THRESHOLD) qualityLow else qualityHigh
-                                internalizeImage(uri, internalDir, screenW, screenH, quality)
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Failed to access image for internalization: $uri", e)
-                                null
-                            }
-                        }
-                    }
-                }.awaitAll().filterNotNull()
-            }
+            uris.mapConcurrently(INTERNALIZE_CONCURRENCY) { uri ->
+                try {
+                    val fileSize = appContext.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
+                    val quality = if (fileSize > LARGE_FILE_THRESHOLD) qualityLow else qualityHigh
+                    internalizeImage(uri, internalDir, screenW, screenH, quality)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to access image for internalization: $uri", e)
+                    null
+                }
+            }.filterNotNull()
         }
     }
 

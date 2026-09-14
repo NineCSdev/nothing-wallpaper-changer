@@ -72,7 +72,7 @@ class AppDataStore @Inject constructor(
 
     /** For settings whose absence is meaningful. Writes [value], or removes the key when it is null */
     private suspend fun <T> setOrClear(key: Preferences.Key<T>, value: T?) {
-        dataStore.edit { prefs -> if (value == null) prefs.remove(key) else prefs[key] = value }
+        dataStore.edit { prefs -> prefs.setOrClear(key, value) }
     }
 
     /** Enum-by-name parse that treats a corrupted/unknown stored value as the default. */
@@ -187,6 +187,9 @@ class AppDataStore @Inject constructor(
 
     suspend fun getRotationPolicy(): RotationPolicy =
         rotationPolicyFlow().first()
+
+    suspend fun getSkipOnDnd(): Boolean =
+        skipOnDndFlow().first()
 
     // Writes (suspend)
 
