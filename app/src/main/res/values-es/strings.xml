@@ -429,4 +429,95 @@
     <string name="settings_atmosphere_exit_failed_snackbar">No se pudo salir: no hay fondo de reemplazo</string>
     <string name="settings_atmosphere_exit_cleared_snackbar">Saliste de Atmosphere. Tu fondo se restableció al no tener ningún fondo que poner.</string>
     <string name="settings_atmosphere_lock_removed_snackbar">Se quitó tu fondo de pantalla de bloqueo para que Atmosphere pueda usar ambas pantallas.</string>
+
+    <!-- Copia de seguridad (exportar / restaurar) -->
+    <string name="backup_screen_title">COPIA DE SEGURIDAD</string>
+    <string name="settings_backup_title">COPIA DE SEGURIDAD</string>
+    <string name="settings_backup_subtitle">Guarda tus colecciones, recortes y ajustes</string>
+    <string name="settings_backup_dialog_title">Copia de seguridad</string>z
+    <string name="settings_backup_dialog_body">
+        Guarda todo lo que has personalizado en la app (cada colección, el encuadre de cada imagen, las imágenes que quitaste,
+        tus fondos predeterminados y todos tus ajustes) en un archivo, de esta forma no lo pierdes al desinstalar la app.
+        \n\nO restaura, reemplazando todo lo que hay en la app por lo que guarda una copia. No se cambia nada hasta que lo confirmes.
+    </string>
+    <string name="backup_section_export">EXPORTAR</string>
+    <string name="backup_section_restore">RESTAURAR</string>
+    <string name="backup_export_title">EXPORTAR COPIA</string>
+    <string name="backup_export_subtitle">Guarda tus colecciones, ajustes y recortes en un archivo</string>
+    <string name="backup_export_dialog_title">Copia de seguridad</string>
+    <string name="backup_export_dialog_body">
+        El archivo se escribe donde tú elijas, así que sobrevive a desinstalar la app. Lo que va dentro lo decides aquí.
+        \n\nPor defecto guarda enlaces a tus fotos más una copia de las imágenes que la app guarda internamente:
+        suelen ser unos pocos megabytes y se restaura perfectamente en el mismo móvil.
+        \n\nCon \"Incluir todas las imágenes\" copia también las fotos en sí. Eso puede ocupar
+        cientos de megabytes, y es lo que quieres al cambiar de móvil.
+    </string>
+    <string name="backup_export_portable_title">INCLUIR TODAS LAS IMÁGENES</string>
+    <string name="backup_export_portable_subtitle">Archivo mucho más grande, funciona en otro móvil</string>
+    <string name="backup_export_action">Exportar</string>
+    <string name="backup_export_running">ESCRIBIENDO %1$d / %2$d</string>
+    <string name="backup_export_done">COPIA GUARDADA &#183; %1$s</string>
+    <string name="backup_export_unreadable">NO SE PUDIERON LEER %1$d IMAGEN(ES)</string>
+    <string name="backup_export_failed">LA COPIA HA FALLADO</string>
+    <string name="backup_export_interrupted">LA ÚLTIMA COPIA SE INTERRUMPIÓ</string>
+    <string name="backup_export_interrupted_body">
+        La aplicación se cerró mientras aún escribía la copia, así que el archivo probablemente no sirva.
+        Vuelve a exportar y comprueba el archivo nuevo antes de desinstalar.
+    </string>
+    <string name="backup_export_interrupted_file">Archivo inservible: %1$s</string>
+
+    <string name="backup_import_title">RESTAURAR COPIA</string>
+    <string name="backup_import_subtitle">Reemplaza todo lo de la app con un archivo de copia</string>
+    <string name="backup_import_choose">Elige una copia de seguridad</string>
+    <string name="backup_import_reading">LEYENDO LA COPIA&#8230;</string>
+    <string name="backup_import_review_title">ESTO REEMPLAZA TODO</string>
+    <string name="backup_import_review_body">
+        Esta copia contiene %1$s y %2$s. Restaurarla las pone en lugar de todo lo que hay en la app.
+        No se cambia nada hasta que la restauración se ejecuta.
+    </string>
+    <plurals name="backup_import_collections">
+        <item quantity="one">%d colección</item>
+        <item quantity="many">%d colecciones</item>
+        <item quantity="other">%d colecciones</item>
+    </plurals>
+    <plurals name="backup_import_images">
+        <item quantity="one">%d imagen</item>
+        <item quantity="many">%d imágenes</item>
+        <item quantity="other">%d imágenes</item>
+    </plurals>
+    <string name="backup_import_review_meta">Creada el %1$s</string>
+    <string name="backup_import_review_portable">Incluye todas las imágenes</string>
+    <string name="backup_import_review_device">Enlaces a tus fotos, más las copias internas de la app</string>
+    <string name="backup_import_review_continue">Continuar</string>
+    <string name="backup_import_review_file">Archivo: %1$s</string>
+    <string name="backup_import_choose_different">Elegir otro archivo</string>
+    <string name="backup_import_folder_title">HACE FALTA LA CARPETA</string>
+    <string name="backup_import_folder_body">\"%1$s\" se creó desde una carpeta. Elige la misma carpeta para restaurar sus %2$s con su encuadre.</string>
+    <string name="backup_import_folder_bundled_warning">%1$d de estas imágenes están guardadas en esta copia de seguridad y se perderán si la omites.</string>
+    <string name="backup_import_folder_pick">Elegir carpeta</string>
+    <string name="backup_import_folder_skip">Omitir esta colección</string>
+    <string name="backup_import_step">RESTAURAR · PASO %1$d DE %2$d</string>
+    <string name="backup_import_step_folder">RESTAURAR · PASO %1$d DE %2$d · CARPETA %3$d / %4$d</string>
+    <string name="backup_import_safe_to_leave">Tus colecciones siguen intactas. Salir ahora no cuesta nada.</string>
+    <string name="backup_import_working">RESTAURANDO %1$d / %2$d</string>
+    <string name="backup_import_done_title">RESTAURACIÓN COMPLETA</string>
+    <string name="backup_import_done_body">Se restauraron %1$s y %2$s.</string>
+    <string name="backup_import_done_unavailable">No se encontraron %1$d imagen(es) y quedan marcadas como no disponibles. Puedes volver a enlazarlas más tarde.</string>
+    <string name="backup_import_done_skipped">Se omitieron %1$d colección(es). Vuelve a restaurar para recuperarlas.</string>
+    <string name="backup_import_start_service">Iniciar rotación</string>
+    <string name="backup_import_finish">Listo</string>
+    <string name="backup_import_failed_title">RESTAURACIÓN DETENIDA</string>
+    <string name="backup_import_failed_not_archive">Ese archivo no es una copia hecha por esta app.</string>
+    <string name="backup_import_failed_newer">Esta copia se hizo con una versión más nueva de la app.</string>
+    <string name="backup_import_failed_malformed">No se pudo leer esta copia.</string>
+    <string name="backup_import_failed_incomplete">Este archivo de copia está incompleto &#8212; se cortó mientras se escribía.</string>
+    <string name="backup_import_failed_space">No hay espacio suficiente: necesita unos %1$s libres.</string>
+    <string name="backup_import_failed_interrupted">
+        La restauración ya había empezado a reemplazar tus colecciones cuando se detuvo, así que lo que hay ahora en la app
+        puede ser en parte antiguo y en parte nuevo. Vuelve a restaurar con para misma para arreglarlo.
+    </string>
+    <string name="backup_import_failed_unexpected">No se pudo completar la restauración. No se cambió nada.</string>
+    <string name="backup_import_nothing_changed">Tus colecciones no se tocaron.</string>
+    <string name="collections_empty_restore">RESTAURAR DESDE COPIA</string>
+
 </resources>

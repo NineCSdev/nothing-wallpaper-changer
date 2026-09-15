@@ -41,6 +41,8 @@ import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.resolveDisplayName
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionGridItem
+import com.ninecsdev.wallpaperchanger.ui.components.NothingButton
+import com.ninecsdev.wallpaperchanger.ui.components.NothingButtonVariant
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 import com.ninecsdev.wallpaperchanger.ui.components.StatusLed
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
@@ -71,12 +73,13 @@ fun CollectionListScreen(
     onCollectionClick: (Long) -> Unit,
     onEditCollection: (Long) -> Unit,
     onBackClick: () -> Unit,
-    // Composites wired in [CollectionListRoute]: they pair a ViewModel call with a
-    // launcher, navigation, or service-lifecycle side effect this screen can't own.
+    // Composites wired in CollectionListRoute: they pair a ViewModel call with a
+    // launcher, navigation, or service-lifecycle side effect this screen can't own
     onFolderSelect: () -> Unit,
     onPhotosSelect: () -> Unit,
     onCreateCollection: (name: String, rule: CropRule) -> Unit,
-    onDeleteCollection: () -> Unit
+    onDeleteCollection: () -> Unit,
+    onRestoreBackup: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -141,7 +144,7 @@ fun CollectionListScreen(
                 }
 
                 if (uiState.allCollections.isEmpty()) {
-                    EmptyCollectionsView()
+                    EmptyCollectionsView(onRestoreBackup = onRestoreBackup)
                 } else {
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),
@@ -210,7 +213,7 @@ fun CollectionListScreen(
 }
 
 @Composable
-private fun EmptyCollectionsView() {
+private fun EmptyCollectionsView(onRestoreBackup: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
@@ -226,6 +229,13 @@ private fun EmptyCollectionsView() {
             text = stringResource(R.string.collections_empty_hint),
             style = NothingType.metaLabel,
             color = NothingWhite.copy(alpha = 0.2f)
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        NothingButton(
+            text = stringResource(R.string.collections_empty_restore),
+            onClick = onRestoreBackup,
+            variant = NothingButtonVariant.SECONDARY,
+            modifier = Modifier.padding(horizontal = 48.dp)
         )
     }
 }
@@ -257,7 +267,8 @@ fun CollectionListScreenPopulatedPreview() {
             onFolderSelect = {},
             onPhotosSelect = {},
             onCreateCollection = { _, _ -> },
-            onDeleteCollection = {}
+            onDeleteCollection = {},
+            onRestoreBackup = {}
         )
     }
 }
@@ -276,7 +287,8 @@ fun CollectionListScreenEmptyPreview() {
             onFolderSelect = {},
             onPhotosSelect = {},
             onCreateCollection = { _, _ -> },
-            onDeleteCollection = {}
+            onDeleteCollection = {},
+            onRestoreBackup = {}
         )
     }
 }

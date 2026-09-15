@@ -1,5 +1,6 @@
 package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
+import com.ninecsdev.wallpaperchanger.data.backup.BackupExportState
 import com.ninecsdev.wallpaperchanger.logic.StorageUsage
 import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
@@ -46,7 +47,8 @@ data class SettingsUiState(
     val availableLanguages: List<LanguageOption> = emptyList(),
     val selectedLanguageTag: String = "",
     val appVersion: String = "",
-    val storageUsage: StorageUsage? = null
+    val storageUsage: StorageUsage? = null,
+    val backupExport: BackupExportState = BackupExportState.Idle
 ) {
     /**
      * What "keep local copies" actually does right now: without `READ_MEDIA_IMAGES` every pick is

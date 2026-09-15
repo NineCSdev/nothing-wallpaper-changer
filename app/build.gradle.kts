@@ -32,7 +32,7 @@ if (!canSignRelease && gradle.startParameter.taskNames.any { it.contains("releas
 val verMajor = 0
 val verMinor = 4
 val verPatch = 0
-val verBuild = 7
+val verBuild = 8
 
 plugins {
     alias(libs.plugins.android.application)

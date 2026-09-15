@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
+import com.ninecsdev.wallpaperchanger.data.backup.BackupExporter
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereExitOutcome
@@ -50,6 +51,7 @@ class SettingsViewModel @Inject constructor(
     private val appDataStore: AppDataStore,
     private val repository: WallpaperRepository,
     private val imageInternalizer: ImageInternalizer,
+    private val backupExporter: BackupExporter,
     private val wallpaperSources: WallpaperSources,
     private val atmosphereTransition: AtmosphereTransition,
     private val wallpaperModeResolver: WallpaperModeResolver,
@@ -193,8 +195,15 @@ class SettingsViewModel @Inject constructor(
         initialValue = null
     )
 
+    // Watched, not driven: the export itself is started and canceled from the Backup screen
     val uiState: StateFlow<SettingsUiState?> =
-        combine(settingsState, storageUsage) { state, usage -> state.copy(storageUsage = usage) }
+        combine(
+            settingsState,
+            storageUsage,
+            backupExporter.state
+        ) { state, usage, export ->
+            state.copy(storageUsage = usage, backupExport = export)
+        }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.Eagerly,

@@ -25,7 +25,8 @@ fun CollectionListRoute(
     onBack: () -> Unit,
     onViewImages: (Long) -> Unit,
     onLaunchFolderPicker: () -> Unit,
-    onLaunchPhotosPicker: () -> Unit
+    onLaunchPhotosPicker: () -> Unit,
+    onRestoreBackup: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -59,6 +60,7 @@ fun CollectionListRoute(
             onLaunchPhotosPicker()
         },
         onCreateCollection = viewModel::finalizeCollection,
-        onDeleteCollection = viewModel::deleteEditingCollection
+        onDeleteCollection = viewModel::deleteEditingCollection,
+        onRestoreBackup = onRestoreBackup
     )
 }

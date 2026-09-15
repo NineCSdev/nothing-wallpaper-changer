@@ -35,14 +35,15 @@ import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import com.ninecsdev.wallpaperchanger.ui.components.SettingsToggleRow
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.AtmosphereModeSection
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.BackupRow
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.LanguageSelector
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.LocalCopiesRow
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.QualitySlider
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.RotationPolicySection
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.ScreenOffDelayField
-import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.SettingsSection
+import com.ninecsdev.wallpaperchanger.ui.components.SettingsSection
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.SettingsSegmentedSelector
-import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.SettingsSubsection
+import com.ninecsdev.wallpaperchanger.ui.components.SettingsSubsection
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.WallpaperZoomFixSelector
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
@@ -60,7 +61,8 @@ fun SettingsScreen(
     snackbarHostState: SnackbarHostState,
     onBackClick: () -> Unit,
     onRequestMediaAccess: () -> Unit,
-    onSetAtmosphere: () -> Unit
+    onSetAtmosphere: () -> Unit,
+    onOpenBackup: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -225,6 +227,11 @@ fun SettingsScreen(
                         selectedTag = uiState.selectedLanguageTag,
                         onLanguageSelected = actions::setAppLanguage
                     )
+
+                    BackupRow(
+                        exportState = uiState.backupExport,
+                        onOpenBackup = onOpenBackup
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -249,7 +256,7 @@ fun SettingsScreen(
 
 // Previews
 
-@Preview(showSystemUi = true, name = "Settings", backgroundColor = 0xFF000000, device = "spec:width=411dp,height=1350dp,dpi=420")
+@Preview(showSystemUi = true, name = "Settings", backgroundColor = 0xFF000000, device = "spec:width=411dp,height=1500dp,dpi=420")
 @Composable
 fun SettingsScreenPreview() {
     WallpaperChangerTheme {
@@ -269,14 +276,15 @@ fun SettingsScreenPreview() {
                     LanguageOption("es", "Español", "Spanish")
                 ),
                 selectedLanguageTag = "",
-                appVersion = "0.3.3-beta",
+                appVersion = "0.4.0-beta",
                 storageUsage = StorageUsage(totalBytes = 148_897_792, fileCount = 87)
             ),
             actions = PreviewSettingsActions,
             snackbarHostState = SnackbarHostState(),
             onBackClick = {},
             onRequestMediaAccess = {},
-            onSetAtmosphere = {}
+            onSetAtmosphere = {},
+            onOpenBackup = {}
         )
     }
 }

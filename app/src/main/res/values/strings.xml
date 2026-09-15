@@ -427,4 +427,106 @@
     <string name="settings_atmosphere_exit_failed_snackbar">Couldn\'t leave: no wallpaper to replace it</string>
     <string name="settings_atmosphere_exit_cleared_snackbar">Left atmosphere. Your wallpaper was reset as you don\'t have one to replace it.</string>
     <string name="settings_atmosphere_lock_removed_snackbar">Your separate lock screen wallpaper was removed so Atmosphere can use both screens.</string>
+
+    <!-- Backup archive (export / import) -->
+    <string name="backup_screen_title">BACKUP</string>
+    <string name="settings_backup_title">BACKUP</string>
+    <string name="settings_backup_subtitle">Save your collections, edits and settings</string>
+    <string name="settings_backup_dialog_title">Backup</string>
+    <string name="settings_backup_dialog_body">
+        Save everything you customized in this app (every collection, every image\'s framing, the images you removed,
+        your default wallpapers and all your settings) to a file, so it survives uninstalling the app.
+        \n\nOr restore, replacing everything in the app with what a backup holds. Nothing changes until you confirm.
+    </string>
+    <string name="backup_section_export">EXPORT</string>
+    <string name="backup_section_restore">RESTORE</string>
+    <string name="backup_export_title">EXPORT BACKUP</string>
+    <string name="backup_export_subtitle">Save your collections, edits and settings to a file</string>
+    <string name="backup_export_dialog_title">Backup archive</string>
+    <string name="backup_export_dialog_body">
+        The file is written wherever you choose, so it survives uninstalling the app. What goes inside is your choice here.
+        \n\nBy default it stores links to your photos plus a copy of any image the app keeps itself,
+        which is usually a few megabytes and restores perfectly on the same phone.
+        \n\nWith \"Include every image\" it copies the photos themselves in as well. That can be hundreds of megabytes,
+        and it is what you want for moving to a new phone.
+    </string>
+    <string name="backup_export_portable_title">INCLUDE EVERY IMAGE</string>
+    <string name="backup_export_portable_subtitle">Much larger file, works on another phone</string>
+    <string name="backup_export_action">Export</string>
+    <string name="backup_export_running">WRITING %1$d / %2$d</string>
+    <!-- %1$s = formatted size (e.g. "142 MB") -->
+    <string name="backup_export_done">BACKUP SAVED &#183; %1$s</string>
+    <string name="backup_export_unreadable">%1$d IMAGE(S) COULD NOT BE READ</string>
+    <string name="backup_export_failed">BACKUP FAILED</string>
+    <string name="backup_export_interrupted">LAST BACKUP WAS INTERRUPTED</string>
+    <string name="backup_export_interrupted_body">
+        The app was closed while it was still writing the backup, so the file is probably unusable.
+        Export again, and check the new file before you uninstall.
+    </string>
+    <!-- %1$s = the half-written archive\'s file name, so the user knows which one to delete -->
+    <string name="backup_export_interrupted_file">Unusable file: %1$s</string>
+    <!-- %1$s = today\'s date, e.g. "2026-09-12" -->
+    <string name="backup_export_default_name" translatable="false">NWC-backup-%1$s</string>
+
+    <string name="backup_import_title">RESTORE BACKUP</string>
+    <string name="backup_import_subtitle">Replace everything in the app with a backup file</string>
+    <string name="backup_import_choose">Choose backup file</string>
+    <string name="backup_import_reading">READING BACKUP&#8230;</string>
+    <string name="backup_import_review_title">THIS REPLACES EVERYTHING</string>
+    <!-- %1$s = pluralized collection count, %2$s = pluralized image count. Both describe the BACKUP\'s contents, never the phone\'s. -->
+    <string name="backup_import_review_body">
+        This backup holds %1$s and %2$s. Restoring puts them in place of everything in the app.
+        Nothing is changed until the restore actually runs.
+    </string>
+    <plurals name="backup_import_collections">
+        <item quantity="one">%d collection</item>
+        <item quantity="other">%d collections</item>
+    </plurals>
+    <plurals name="backup_import_images">
+        <item quantity="one">%d image</item>
+        <item quantity="other">%d images</item>
+    </plurals>
+    <!-- %1$s = the date the backup was written -->
+    <string name="backup_import_review_meta">Written %1$s</string>
+    <string name="backup_import_review_portable">Includes every image</string>
+    <string name="backup_import_review_device">Links to your photos, plus the app\'s own copies</string>
+    <string name="backup_import_review_continue">Continue</string>
+    <!-- %1$s = the archive\'s file name -->
+    <string name="backup_import_review_file">File: %1$s</string>
+    <string name="backup_import_choose_different">Choose a different file</string>
+    <string name="backup_import_folder_title">FOLDER NEEDED</string>
+    <!-- %1$s = collection name, %2$s = pluralized image count -->
+    <string name="backup_import_folder_body">\"%1$s\" was built from a folder. Pick that folder again to restore its %2$s with their framing.</string>
+    <string name="backup_import_folder_bundled_warning">%1$d of these images are stored in this backup and will be lost too if you skip.</string>
+    <string name="backup_import_folder_pick">Pick folder</string>
+    <string name="backup_import_folder_skip">Skip this collection</string>
+    <!-- %1$d = current step, %2$d = total steps -->
+    <string name="backup_import_step">RESTORE · STEP %1$d OF %2$d</string>
+    <!-- %1$d = current step, %2$d = total steps, %3$d = current folder, %4$d = total folders -->
+    <string name="backup_import_step_folder">RESTORE · STEP %1$d OF %2$d · FOLDER %3$d / %4$d</string>
+    <string name="backup_import_safe_to_leave">Your collections are still untouched. Backing now costs nothing.</string>
+    <string name="backup_import_working">RESTORING %1$d / %2$d</string>
+    <string name="backup_import_done_title">RESTORE COMPLETE</string>
+    <!-- %1$s = pluralized collection count, %2$s = pluralized image count -->
+    <string name="backup_import_done_body">Restored %1$s and %2$s.</string>
+    <string name="backup_import_done_unavailable">%1$d image(s) could not be found and are marked unavailable. You can re-link them later.</string>
+    <string name="backup_import_done_skipped">%1$d collection(s) skipped. Run the restore again to bring them back.</string>
+    <string name="backup_import_start_service">Start rotation</string>
+    <string name="backup_import_finish">Done</string>
+    <string name="backup_import_failed_title">RESTORE STOPPED</string>
+    <string name="backup_import_failed_not_archive">That file is not a backup made by this app.</string>
+    <string name="backup_import_failed_newer">This backup was made by a newer version of the app.</string>
+    <string name="backup_import_failed_malformed">This backup could not be read.</string>
+    <string name="backup_import_failed_incomplete">This backup file is incomplete &#8212; it was cut short while being written.</string>
+    <!-- %1$s = formatted size (e.g. "142 MB") -->
+    <string name="backup_import_failed_space">Not enough space: it needs about %1$s free.</string>
+    <!-- The restore had already begun replacing the install when it stopped -->
+    <string name="backup_import_failed_interrupted">
+        The restore had already started replacing your collections when it stopped, so what is on the
+        app now may be part old and part new. Run the restore again with the same backup to fix it.
+    </string>
+    <string name="backup_import_failed_unexpected">The restore could not be completed. Nothing was changed.</string>
+    <string name="backup_import_nothing_changed">Your collections were not touched.</string>
+    <string name="collections_empty_restore">RESTORE FROM BACKUP</string>
+
 </resources>

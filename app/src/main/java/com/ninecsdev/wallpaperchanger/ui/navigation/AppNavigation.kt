@@ -28,6 +28,7 @@ import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionListRoute
 import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionViewModel
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.MainRoute
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.MainViewModel
+import com.ninecsdev.wallpaperchanger.ui.backupscreen.BackupRoute
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.SettingsRoute
 import com.ninecsdev.wallpaperchanger.ui.walleditscreen.WallpaperEditRoute
 
@@ -126,7 +127,8 @@ fun AppNavigation(
                         navController.navigate(Route.collectionImages(id))
                     },
                     onLaunchFolderPicker = onLaunchFolderPicker,
-                    onLaunchPhotosPicker = onLaunchPhotosPicker
+                    onLaunchPhotosPicker = onLaunchPhotosPicker,
+                    onRestoreBackup = { navController.navigate(Route.BACKUP) }
                 )
             }
         }
@@ -157,7 +159,16 @@ fun AppNavigation(
         composable(
             route = Route.SETTINGS
         ) {
-            SettingsRoute(onBack = popBack)
+            SettingsRoute(
+                onBack = popBack,
+                onOpenBackup = { navController.navigate(Route.BACKUP) }
+            )
+        }
+
+        composable(
+            route = Route.BACKUP
+        ) {
+            BackupRoute(onBack = popBack, onStartService = onStartClick)
         }
     }
 }
@@ -222,6 +233,7 @@ object Route {
     const val COLLECTION_IMAGES = "collection_images/{collectionId}"
     const val WALLPAPER_EDIT = "wallpaper_edit/{wallpaperId}"
     const val SETTINGS = "settings"
+    const val BACKUP = "backup"
 
     /** Builds the route for a specific collection's image screen. */
     fun collectionImages(collectionId: Long) = "collection_images/$collectionId"

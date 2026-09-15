@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
@@ -31,7 +32,8 @@ internal fun SettingsRowHeader(
     subtitle: String?,
     modifier: Modifier = Modifier,
     infoDialogTitle: String? = null,
-    infoDialogBody: String? = null
+    infoDialogBody: String? = null,
+    subtitleColor: Color = NothingWhite.copy(alpha = 0.4f)
 ) {
     Column(modifier = modifier) {
         Row(
@@ -54,7 +56,7 @@ internal fun SettingsRowHeader(
             Text(
                 text = subtitle,
                 style = NothingType.caption,
-                color = NothingWhite.copy(alpha = 0.4f)
+                color = subtitleColor
             )
         }
     }

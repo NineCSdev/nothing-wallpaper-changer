@@ -34,7 +34,10 @@ import kotlinx.coroutines.launch
  * parameters so this composable stays independent of the nav graph.
  */
 @Composable
-fun SettingsRoute(onBack: () -> Unit) {
+fun SettingsRoute(
+    onBack: () -> Unit,
+    onOpenBackup: () -> Unit
+) {
     val viewModel: SettingsViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -122,6 +125,7 @@ fun SettingsRoute(onBack: () -> Unit) {
                     Log.w("SettingsRoute", "No atmosphere source could be prepared")
                 }
             }
-        }
+        },
+        onOpenBackup = onOpenBackup
     )
 }
