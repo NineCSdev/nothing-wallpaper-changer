@@ -10,7 +10,7 @@ import com.ninecsdev.wallpaperchanger.model.Wallpaper
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperFile
 
-const val DB_SCHEMA_VERSION = 7
+const val DB_SCHEMA_VERSION = 6
 
 /**
  * Main Database for the app.
@@ -192,6 +192,11 @@ abstract class AppDatabase : RoomDatabase() {
                 // rather than one of a collection's images.
                 db.execSQL("ALTER TABLE wallpapers ADD COLUMN isDefault INTEGER NOT NULL DEFAULT 0")
 
+                // `isVerified` records whether this device has ever proven the uri names the image it
+                // claims. Every existing row was registered by a pick or a scan that had just read the
+                // source, so they all default to verified; only a restore can introduce a 0.
+                db.execSQL("ALTER TABLE wallpaper_files ADD COLUMN isVerified INTEGER NOT NULL DEFAULT 1")
+
                 // Rebuild `collections` for two changes at once. Needed because `isFavorites` shipped in v5
                 //
                 //  - `isFavorites` becomes `appRole`, one nullable key naming *which* app-owned
@@ -236,15 +241,6 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("DROP TABLE collections")
                 db.execSQL("ALTER TABLE collections_new RENAME TO collections")
                 db.execSQL("CREATE INDEX index_collections_defaultWallpaperId ON collections(defaultWallpaperId)")
-            }
-        }
-
-        val MIGRATION_6_7 = object : Migration(6, 7) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                // `isVerified` records whether this device has ever proven the uri names the image it
-                // claims. Every existing row was registered by a pick or a scan that had just read the
-                // source, so they all default to verified; only a restore can introduce a 0.
-                db.execSQL("ALTER TABLE wallpaper_files ADD COLUMN isVerified INTEGER NOT NULL DEFAULT 1")
             }
         }
     }

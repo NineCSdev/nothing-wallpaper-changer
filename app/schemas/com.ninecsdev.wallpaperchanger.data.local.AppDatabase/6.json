@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 6,
-    "identityHash": "d1fb798343531d3026a9f0674537fb36",
+    "identityHash": "e972b74d118db595f65fb25fe9e31feb",
     "entities": [
       {
         "tableName": "collections",
@@ -33,7 +33,7 @@
             "notNull": true
           },
           {
-            "fieldPath": "rootUri",
+            "fieldPath": "rootUriString",
             "columnName": "rootUri",
             "affinity": "TEXT"
           },
@@ -117,7 +117,7 @@
       },
       {
         "tableName": "wallpaper_files",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `uri` TEXT NOT NULL, `sourceType` TEXT NOT NULL, `isAvailable` INTEGER NOT NULL, `addedAt` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `uri` TEXT NOT NULL, `sourceType` TEXT NOT NULL, `isAvailable` INTEGER NOT NULL, `isVerified` INTEGER NOT NULL, `addedAt` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -126,7 +126,7 @@
             "notNull": true
           },
           {
-            "fieldPath": "uri",
+            "fieldPath": "uriString",
             "columnName": "uri",
             "affinity": "TEXT",
             "notNull": true
@@ -140,6 +140,12 @@
           {
             "fieldPath": "isAvailable",
             "columnName": "isAvailable",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isVerified",
+            "columnName": "isVerified",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -302,7 +308,7 @@
             "notNull": true
           },
           {
-            "fieldPath": "uri",
+            "fieldPath": "uriString",
             "columnName": "uri",
             "affinity": "TEXT",
             "notNull": true
@@ -373,7 +379,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd1fb798343531d3026a9f0674537fb36')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e972b74d118db595f65fb25fe9e31feb')"
     ]
   }
 }
