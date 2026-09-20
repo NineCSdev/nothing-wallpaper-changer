@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -130,7 +131,7 @@ class CollectionViewModel @Inject constructor(
         previewsFlow,
         modalInputs,
         _sortOrder,
-        serviceLifecycle.serviceState
+        serviceLifecycle.serviceState.filterNotNull()
     ) { collections, previews, modalInput, sort, serviceState ->
         val sorted = when (sort) {
             CollectionSortOrder.NAME -> collections.sortedBy { it.name.lowercase() }

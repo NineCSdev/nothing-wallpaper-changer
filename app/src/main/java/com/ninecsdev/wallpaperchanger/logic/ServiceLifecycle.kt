@@ -173,10 +173,10 @@ class ServiceLifecycle @Inject constructor(
     /**
      * Single authoritative service state. Every UI and tile consumer collects this flow.
      *
-     * Kept hot for the process lifetime ([SharingStarted.Eagerly]) so [StateFlow.value] is always
-     * current for the tile's synchronous reads.
+     * `null` means "not resolved yet". Consumers that must not act on a guess filter it out.
+     * Kept hot for the process lifetime so [StateFlow.value] is current for the tile's reads.
      */
-    val serviceState: StateFlow<ServiceState> = combine(
+    val serviceState: StateFlow<ServiceState?> = combine(
         _lifecycleIntent,
         appDataStore.serviceRunningFlow(),
         lifecycleTracker.isAlive,
@@ -184,7 +184,7 @@ class ServiceLifecycle @Inject constructor(
         dao.observeActiveCollection().map { it != null }.distinctUntilChanged()
     ) { raw, persistedRunning, isAlive, powerSaveBlocking, hasActiveCollection ->
         resolve(raw, persistedRunning, isAlive, powerSaveBlocking, hasActiveCollection)
-    }.stateIn(scope, SharingStarted.Eagerly, ServiceState.Stopped)
+    }.stateIn(scope, SharingStarted.Eagerly, null)
 
     init {
         // Self-heal the persisted running flag: if it says "running" but the service is not actually alive
@@ -381,7 +381,11 @@ internal fun lifecycleAction(
     return if (battery != LifecycleVerdict.RunActive) battery else quietHoursAction(isDnd, skipOnDnd)
 }
 
-/** Pure resolution of the authoritative [ServiceState] from the lifecycle intent and the runtime signals. */
+/**
+ * Pure resolution of the authoritative [ServiceState] from the lifecycle intent and the runtime
+ * signals. The liveness signals only ever *demote*: they strip a running claim the service no
+ * longer backs, and never raise a stopped one.
+ */
 internal fun resolve(
     raw: ServiceState,
     persistedRunning: Boolean,
@@ -398,8 +402,6 @@ internal fun resolve(
         raw is ServiceState.Loading -> ServiceState.Loading
         raw is ServiceState.Stopping -> ServiceState.Stopping
         raw is ServiceState.Running || raw is ServiceState.Paused || raw is ServiceState.PausedDnd -> if (isServiceMarkedActive) raw else stoppedState
-        raw is ServiceState.Stopped -> stoppedState
-        isServiceMarkedActive -> ServiceState.Running
         else -> stoppedState
     }
 }

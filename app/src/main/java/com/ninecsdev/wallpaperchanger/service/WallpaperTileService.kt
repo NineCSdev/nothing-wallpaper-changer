@@ -5,6 +5,7 @@ import android.content.Intent
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.util.Log
+import androidx.annotation.StringRes
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle
 import com.ninecsdev.wallpaperchanger.model.LifecycleVerdict
@@ -18,14 +19,24 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /**
  * Quick settings tile for instant control of the app.
+ *
+ * The tile is an active tile, so the panel never binds it.
  */
 @AndroidEntryPoint
 class WallpaperTileService : TileService() {
+
+    private companion object {
+        /** How long a tap waits for the state to resolve before it is given up on. */
+        const val RESOLVE_TIMEOUT_MS = 3_000L
+    }
 
     private val tag = "WallpaperTileService"
     @Inject lateinit var serviceLifecycle: ServiceLifecycle
@@ -38,7 +49,9 @@ class WallpaperTileService : TileService() {
 
         // Single source of truth: render the tile from the manager's derived state flow.
         // This replaces the old serviceEvent collection + separate power-save BroadcastReceiver.
-        stateJob = serviceScope.launch { serviceLifecycle.serviceState.collectLatest { render(it) } }
+        stateJob = serviceScope.launch {
+            serviceLifecycle.serviceState.filterNotNull().collectLatest { render(it) }
+        }
     }
 
     override fun onStopListening() {
@@ -51,13 +64,41 @@ class WallpaperTileService : TileService() {
         serviceScope.cancel()
     }
 
-    /**
-     * Handles the user tapping the tile.
-     */
+    /** Handles the user tapping the tile. sA tap on a cold process arrives before the state has resolved. */
     override fun onClick() {
         super.onClick()
 
-        when (serviceLifecycle.serviceState.value) {
+        // What the user actually tapped, read before anything repaints it
+        val shown = qsTile?.takeIf { !it.subtitle.isNullOrBlank() }?.state
+
+        val resolved = serviceLifecycle.serviceState.value
+        if (resolved != null) {
+            act(resolved, shown)
+            return
+        }
+
+        serviceScope.launch {
+            val state = withTimeoutOrNull(RESOLVE_TIMEOUT_MS) {
+                serviceLifecycle.serviceState.filterNotNull().first()
+            }
+            if (state == null) {
+                Log.w(tag, "Tap dropped: state did not resolve within ${RESOLVE_TIMEOUT_MS}ms")
+            } else {
+                act(state, shown)
+            }
+        }
+    }
+
+    /** Acts on [state], unless the tile was showing something [state] contradicts. */
+    private fun act(state: ServiceState, shown: Int?) {
+        if (shown != null && shown != tileStateFor(state)) {
+            // The copy on screen outlived the process that painted it. Correct it and let the user choose again
+            Log.d(tag, "Tap dropped: tile showed $shown, state is $state")
+            render(state)
+            return
+        }
+
+        when (state) {
             is ServiceState.DisabledNoCollection -> {
                 showTileMessage(getString(R.string.tile_no_collection_message))
             }
@@ -87,43 +128,32 @@ class WallpaperTileService : TileService() {
         val tile = qsTile ?: return
 
         tile.label = getString(R.string.tile_label)
+        tile.state = tileStateFor(state)
+        tile.subtitle = getString(subtitleFor(state))
 
-        when (state) {
-            is ServiceState.Running -> {
-                tile.state = Tile.STATE_ACTIVE
-                tile.subtitle = getString(R.string.tile_subtitle_active)
-            }
-            is ServiceState.Loading -> {
-                tile.state = Tile.STATE_ACTIVE
-                tile.subtitle = getString(R.string.tile_subtitle_initializing)
-            }
-            is ServiceState.Stopping -> {
-                tile.state = Tile.STATE_INACTIVE
-                tile.subtitle = getString(R.string.tile_subtitle_stopping)
-            }
-            is ServiceState.Stopped -> {
-                tile.state = Tile.STATE_INACTIVE
-                tile.subtitle = getString(R.string.tile_subtitle_ready)
-            }
-            is ServiceState.DisabledNoCollection -> {
-                tile.state = Tile.STATE_UNAVAILABLE
-                tile.subtitle = getString(R.string.tile_subtitle_no_collection)
-            }
-            is ServiceState.DisabledPowerSave -> {
-                tile.state = Tile.STATE_UNAVAILABLE
-                tile.subtitle = getString(R.string.tile_subtitle_power_save)
-            }
-            is ServiceState.Paused -> {
-                tile.state = Tile.STATE_ACTIVE
-                tile.subtitle = getString(R.string.tile_subtitle_paused)
-            }
-            is ServiceState.PausedDnd -> {
-                tile.state = Tile.STATE_ACTIVE
-                tile.subtitle = getString(R.string.tile_subtitle_paused_dnd)
-            }
-        }
         tile.updateTile()
         Log.d(tag, "Tile updated: state=${tile.state}")
+    }
+
+    /**
+     * The `Tile.STATE_*` a [ServiceState] paints as.
+     */
+    private fun tileStateFor(state: ServiceState): Int = when (state) {
+        is ServiceState.Running, is ServiceState.Loading, is ServiceState.Paused, is ServiceState.PausedDnd -> Tile.STATE_ACTIVE
+        is ServiceState.Stopping, is ServiceState.Stopped -> Tile.STATE_INACTIVE
+        is ServiceState.DisabledNoCollection, is ServiceState.DisabledPowerSave -> Tile.STATE_UNAVAILABLE
+    }
+
+    @StringRes
+    private fun subtitleFor(state: ServiceState): Int = when (state) {
+        is ServiceState.Running -> R.string.tile_subtitle_active
+        is ServiceState.Loading -> R.string.tile_subtitle_initializing
+        is ServiceState.Stopping -> R.string.tile_subtitle_stopping
+        is ServiceState.Stopped -> R.string.tile_subtitle_ready
+        is ServiceState.DisabledNoCollection -> R.string.tile_subtitle_no_collection
+        is ServiceState.DisabledPowerSave -> R.string.tile_subtitle_power_save
+        is ServiceState.Paused -> R.string.tile_subtitle_paused
+        is ServiceState.PausedDnd -> R.string.tile_subtitle_paused_dnd
     }
 
     /**
