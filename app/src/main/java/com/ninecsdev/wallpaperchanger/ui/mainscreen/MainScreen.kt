@@ -114,8 +114,7 @@ fun MainScreen(
 
                 WallpaperSelectionCard(
                     activeCollection = uiState.activeCollection,
-                    previewImages = uiState.previewImages,
-                    totalImages = uiState.activeCollectionSize,
+                    collectionImages = uiState.collectionImages,
                     onSelectCollectionClick = onSelectCollectionClick
                 )
 

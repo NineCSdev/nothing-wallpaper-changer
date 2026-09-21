@@ -1,9 +1,9 @@
-package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components
+package com.ninecsdev.wallpaperchanger.ui.components
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -17,33 +17,33 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /**
- * Small rounded white box with a filled red heart.
- * Passive indicator that a wallpaper's file is favourited (a member of the Favourites collection).
- * Shown on every copy of a favourited file across collections, suppressed inside Favourites itself.
+ * Small rounded box with a warning icon.
+ * Indicates that a wallpaper's source file could no longer be read (deleted, permission
+ * revoked, offline) — it is excluded from rotation until it becomes readable again.
  */
 @Composable
-internal fun FavoriteBadge(modifier: Modifier = Modifier, size: Int = 14) {
+internal fun UnavailableBadge(modifier: Modifier = Modifier, size: Int = 14) {
     StatusBadge(
-        backgroundColor = NothingWhite,
+        backgroundColor = NothingRed,
         modifier = modifier,
         size = size
     ) {
         Icon(
-            imageVector = Icons.Default.Favorite,
-            contentDescription = stringResource(R.string.cd_favorited_wallpaper),
-            tint = NothingRed,
+            imageVector = Icons.Default.Warning,
+            contentDescription = stringResource(R.string.cd_unavailable_wallpaper),
+            tint = NothingWhite,
             modifier = Modifier.size(size.dp)
         )
     }
 }
 
-@Preview(name = "Favorite Badge preview", backgroundColor = 0xFF000000)
+@Preview(name = "Unavailable Badge preview", backgroundColor = 0xFF000000)
 @Composable
-private fun FavoriteBadgePreview() {
+private fun UnavailableBadgePreview() {
     Surface(
         color = NothingBlack,
         modifier = Modifier.padding(16.dp)
     ) {
-        FavoriteBadge()
+        UnavailableBadge()
     }
 }

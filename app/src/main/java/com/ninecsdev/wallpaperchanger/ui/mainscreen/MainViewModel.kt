@@ -77,7 +77,7 @@ class MainViewModel @Inject constructor(
         .distinctUntilChangedBy { it?.id }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val previewsFlow: Flow<List<WallpaperImage>> = activeCollectionIdFlow
+    private val collectionImagesFlow: Flow<List<WallpaperImage>> = activeCollectionIdFlow
         .flatMapLatest { active ->
             if (active != null) {
                 repository.getImagesForCollection(active.id)
@@ -128,14 +128,13 @@ class MainViewModel @Inject constructor(
             settingsFlow,
             serviceLifecycle.serviceState.filterNotNull(),
             activeCollectionFlow,
-            previewsFlow,
+            collectionImagesFlow,
             mediaAccessLostFlow
-        ) { (default, revert), serviceState, active, previews, mediaAccessLost ->
+        ) { (default, revert), serviceState, active, images, mediaAccessLost ->
             MainUiState(
                 serviceState = serviceState,
                 activeCollection = active,
-                previewImages = previews.take(PREVIEW_IMAGE_COUNT),
-                activeCollectionSize = previews.size,
+                collectionImages = images,
                 defaultWallpaper = default,
                 revertToDefaultOnStop = revert,
                 mediaAccessLostCount = mediaAccessLost

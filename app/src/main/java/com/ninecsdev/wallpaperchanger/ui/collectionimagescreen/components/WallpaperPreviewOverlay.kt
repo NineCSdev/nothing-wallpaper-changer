@@ -69,6 +69,7 @@ import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.previewFlightModi
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.wallpaperEditThumbCacheKey
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.wallpaperThumbCacheKey
 import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
+import com.ninecsdev.wallpaperchanger.ui.components.EditedBadge
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType

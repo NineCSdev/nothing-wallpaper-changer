@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components
+package com.ninecsdev.wallpaperchanger.ui.components
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size

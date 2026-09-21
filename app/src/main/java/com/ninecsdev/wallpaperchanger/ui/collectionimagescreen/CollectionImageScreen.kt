@@ -81,13 +81,13 @@ import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.resolveCollectionDisplayName
-import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.FavoriteBadge
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.SelectionActionBar
-import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.UnavailableBadge
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.WallpaperPreviewOverlay
-import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.EditedBadge
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
+import com.ninecsdev.wallpaperchanger.ui.components.EditedBadge
+import com.ninecsdev.wallpaperchanger.ui.components.FavoriteBadge
+import com.ninecsdev.wallpaperchanger.ui.components.UnavailableBadge
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.CollectionPickerItem
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.CollectionPickerSheet
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay

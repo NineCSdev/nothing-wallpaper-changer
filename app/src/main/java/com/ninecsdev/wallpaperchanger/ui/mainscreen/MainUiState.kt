@@ -16,13 +16,6 @@ data class CollectionPickerSheetState(
 )
 
 /**
- * Number of preview thumbnails shown for the active collection on the main screen.
- * Shared by [MainViewModel] (which truncates [MainUiState.previewImages] to this) and
- * [com.ninecsdev.wallpaperchanger.ui.mainscreen.components.WallpaperSelectionCard] (which derives placeholders and the "+N more" count from it).
- */
-const val PREVIEW_IMAGE_COUNT = 3
-
-/**
  * Snapshot of the Main screen state.
  * Owned entirely by [MainViewModel].
  */
@@ -32,8 +25,7 @@ data class MainUiState(
 
     // Active collection card data
     val activeCollection: WallpaperCollection? = null,
-    val previewImages: List<WallpaperImage> = emptyList(),
-    val activeCollectionSize: Int = 0,
+    val collectionImages: List<WallpaperImage> = emptyList(),
 
     // Default wallpaper data
     val defaultWallpaper: WallpaperImage? = null,

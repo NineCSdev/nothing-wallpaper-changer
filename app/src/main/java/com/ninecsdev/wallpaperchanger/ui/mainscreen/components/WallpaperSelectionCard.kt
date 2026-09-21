@@ -7,17 +7,21 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,21 +35,29 @@ import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.resolveDisplayName
-import com.ninecsdev.wallpaperchanger.ui.components.NothingThumbnail
-import com.ninecsdev.wallpaperchanger.ui.mainscreen.PREVIEW_IMAGE_COUNT
+import com.ninecsdev.wallpaperchanger.ui.components.UnavailableBadge
+import com.ninecsdev.wallpaperchanger.ui.components.WallpaperThumbnail
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
+private val TileWidth = 81.dp
+private val TileHeight = 108.dp
+
+/** Share of the screen width one tile occupies; feeds Coil's decode sizing. */
+private const val TILE_DECODE_FRACTION = 0.2f
+
+/** Empty tiles standing in for a collection with no images, and for none selected at all. */
+private const val PLACEHOLDER_TILE_COUNT = 4
+
 /**
  * Component for choosing the active collection.
- * Shows a preview of the first 3 wallpapers of the collection.
+ * Scrolls through every wallpaper in it.
  */
 @Composable
 internal fun WallpaperSelectionCard(
     activeCollection: WallpaperCollection?,
-    previewImages: List<WallpaperImage>,
-    totalImages: Int,
+    collectionImages: List<WallpaperImage>,
     onSelectCollectionClick: () -> Unit
 ) {
     val displayName = activeCollection?.resolveDisplayName(LocalContext.current)
@@ -88,56 +100,62 @@ internal fun WallpaperSelectionCard(
 
         NothingCardDivider()
 
-        Row(
+        val listState = remember(activeCollection?.id) { LazyListState() }
+
+        LazyRow(
+            state = listState,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(20.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // The ViewModel already truncates previewImages to PREVIEW_IMAGE_COUNT.
-            previewImages.forEach { image ->
-                NothingThumbnail(
-                    uri = image.uriString,
-                    modifier = Modifier
-                        .weight(1f)
-                        .aspectRatio(0.75f)
-                )
-            }
-
-            // Placeholders for empty collections and loading
-            if (previewImages.size < PREVIEW_IMAGE_COUNT) {
-                repeat(PREVIEW_IMAGE_COUNT - previewImages.size) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(0.75f)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(NothingWhite.copy(alpha = 0.05f))
-                            .border(1.dp, NothingWhite.copy(alpha = 0.05f), RoundedCornerShape(4.dp))
-                    )
+            if (collectionImages.isEmpty()) {
+                items(PLACEHOLDER_TILE_COUNT) { PlaceholderTile() }
+            } else {
+                items(collectionImages, key = { it.id }) { image ->
+                    WallpaperTile(image = image)
                 }
-            }
-
-            Box(
-                modifier = Modifier.size(width = 45.dp, height = 60.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                val countText = when {
-                    activeCollection == null -> ""
-                    totalImages > PREVIEW_IMAGE_COUNT -> "+${totalImages - PREVIEW_IMAGE_COUNT}"
-                    totalImages == 0 -> "0"
-                    else -> ""
-                }
-
-                Text(
-                    text = countText,
-                    style = NothingType.countBadge,
-                    color = NothingWhite.copy(alpha = 0.5f)
-                )
             }
         }
     }
+}
+
+/**
+ * One tile of the row: the wallpaper framed the way it will be applied.
+ */
+@Composable
+private fun WallpaperTile(image: WallpaperImage) {
+    Box(modifier = Modifier.size(width = TileWidth, height = TileHeight)) {
+        WallpaperThumbnail(
+            wallpaper = image,
+            modifier = Modifier.fillMaxSize(),
+            decodeFraction = TILE_DECODE_FRACTION
+        )
+
+        // The only badge the card carries: an unreadable source renders as a blank tile, so
+        // nothing else here says why. An edit is visible in the framing, and a favourite is
+        // not actionable from this card.
+        if (!image.isAvailable) {
+            UnavailableBadge(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(6.dp)
+            )
+        }
+    }
+}
+
+/** Empty slot shown when the collection has no images, or none is selected. */
+@Composable
+private fun PlaceholderTile() {
+    Box(
+        modifier = Modifier
+            .size(width = TileWidth, height = TileHeight)
+            .clip(RoundedCornerShape(4.dp))
+            .background(NothingWhite.copy(alpha = 0.05f))
+            .border(1.dp, NothingWhite.copy(alpha = 0.05f), RoundedCornerShape(4.dp))
+    )
 }
 
 @Preview(name = "Selection: Active Folder", showBackground = true, backgroundColor = 0xFF000000)
@@ -147,8 +165,7 @@ fun PreviewSelectionCardActive() {
         Box(Modifier.padding(16.dp)) {
             WallpaperSelectionCard(
                 activeCollection = WallpaperCollection(name = "Amoled Collection", type = CollectionType.FOLDER, createdAt = 0L, lastUsedAt = 0L),
-                previewImages = emptyList(),
-                totalImages = 15,
+                collectionImages = List(8) { WallpaperImage(id = it.toLong(), collectionId = 1L, uriString = "") },
                 onSelectCollectionClick = {}
             )
         }

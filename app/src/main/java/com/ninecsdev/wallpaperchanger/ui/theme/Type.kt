@@ -89,9 +89,6 @@ object NothingType {
 
     // Misc
 
-    /** "+N" more-images count on the active-collection card (bodyMedium · 14sp). */
-    val countBadge: TextStyle = Base.bodyMedium.copy(fontWeight = FontWeight.Black)
-
     /** Service status word ("ACTIVE") — headlineSmall · 24sp. */
     val statusValue: TextStyle = Base.headlineSmall.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp)
 
