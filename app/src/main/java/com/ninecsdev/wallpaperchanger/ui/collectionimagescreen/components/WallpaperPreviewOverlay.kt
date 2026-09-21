@@ -171,10 +171,13 @@ internal fun WallpaperPreviewOverlay(
         )
         val zoomState = rememberPreviewZoomState(initialPage = safeInitialIndex)
 
+        val acceptsGestures = rememberUpdatedState(transition.targetState == EnterExitState.Visible && !zoomState.leaveRequested)
+
         // Reported on the settled page, not current one to stay mid-swipe
         LaunchedEffect(pagerState, wallpapers) {
             snapshotFlow { pagerState.settledPage }
                 .collect { page ->
+                    if (!acceptsGestures.value) return@collect
                     wallpapers.getOrNull(page)?.let(onPageChanged)
                 }
         }
@@ -194,9 +197,6 @@ internal fun WallpaperPreviewOverlay(
                 dismiss()
             }
         }
-
-        // Once the overlay is on its way out it stops taking touches at all
-        val acceptsGestures = transition.targetState == EnterExitState.Visible && !zoomState.leaveRequested
 
         // A gesture that left froze this state mid-shrink for the close to unwind, so an open
         // that reuses it must seed from rest rather than from wherever the last one was abandoned
@@ -228,6 +228,7 @@ internal fun WallpaperPreviewOverlay(
             HorizontalPager(
                 state = pagerState,
                 pageSpacing = PAGE_SPACING,
+                userScrollEnabled = acceptsGestures.value,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 val wallpaper = wallpapers[page]
@@ -253,7 +254,7 @@ internal fun WallpaperPreviewOverlay(
                             else Modifier
                         )
                         .then(
-                            if (!acceptsGestures || !isCurrent) Modifier else Modifier.pointerInput(zoomState) {
+                            if (!acceptsGestures.value || !isCurrent) Modifier else Modifier.pointerInput(zoomState) {
                                 detectPreviewGestures(
                                     state = zoomState,
                                     onTap = { chromeVisible = !chromeVisible },
