@@ -371,7 +371,9 @@ internal fun WallpaperPreviewOverlay(
                 }
 
                 AnimatedVisibility(
-                    visible = chromeVisible && currentWallpaper?.editParams != null,
+                    visible = chromeVisible &&
+                        !sharedTransitionScope.isTransitionActive &&
+                        currentWallpaper?.editParams != null,
                     enter = fadeIn(),
                     exit = ChromeExitFade,
                     modifier = Modifier.align(Alignment.BottomEnd)

@@ -96,10 +96,10 @@ internal class PreviewZoomState(
     private val panDecay: DecayAnimationSpec<Offset> = splineBasedDecay(density)
 
     private var rawZoom = PreviewMinZoom
-    private var shrinkCanLeave = false
+    private var shrinkCanLeave by mutableStateOf(false)
     private var settleJob: Job? = null
-    private var throwing = false // Wheter the animation in settleJob is a throw instead of settle
-    private var viewport = Size.Zero
+    private var throwing = false // Whether the animation in settleJob is a throw instead of settle
+    private var viewport by mutableStateOf(Size.Zero)
     private var content = Size.Zero
 
     private fun stopAnimation() {

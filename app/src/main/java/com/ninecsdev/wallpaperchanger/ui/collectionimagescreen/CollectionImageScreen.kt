@@ -139,6 +139,12 @@ internal val PreviewFlightBoundsTransform = BoundsTransform { _, _ ->
 }
 
 /**
+ * Fade for a thumbnail's corner chrome. Short enough that the badges are gone before the
+ * flight has traveled, and that on the way back they land rather than drift in.
+ */
+private val CellChromeFade = tween<Float>(durationMillis = 120)
+
+/**
  * Flight modifier for the grid ↔ preview shared-element zoom.
  * Both the grid cell and the overlay page must call this with the same [key] for
  * the transition to run; extracting the construction here keeps them in sync.
@@ -600,7 +606,17 @@ private fun SharedTransitionScope.WallpaperThumbnail(
                         modifier = imageModifier
                     )
                 }
+            }
+        }
 
+        // Corner chrome, outside the flight so they don't follow the wallpaper to its full-screen state
+        AnimatedVisibility(
+            visible = !hiddenForPreview && !sharesPreviewBounds,
+            enter = fadeIn(CellChromeFade),
+            exit = fadeOut(CellChromeFade),
+            modifier = Modifier.matchParentSize()
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
                 // Edited params badge (bottom-right of thumbnail)
                 if (wallpaper.editParams != null) {
                     EditedBadge(
