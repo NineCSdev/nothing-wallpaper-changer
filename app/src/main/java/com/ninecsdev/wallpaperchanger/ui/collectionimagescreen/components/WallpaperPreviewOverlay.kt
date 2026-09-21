@@ -172,7 +172,12 @@ internal fun WallpaperPreviewOverlay(
         )
         val zoomState = rememberPreviewZoomState(initialPage = safeInitialIndex)
 
-        val acceptsGestures = rememberUpdatedState(transition.targetState == EnterExitState.Visible && !zoomState.leaveRequested)
+        // Nothing is taken until the overlay has finished arriving
+        val acceptsGestures = rememberUpdatedState(
+            transition.currentState == EnterExitState.Visible &&
+                transition.targetState == EnterExitState.Visible &&
+                !zoomState.leaveRequested
+        )
 
         // Reported on the settled page, not current one to stay mid-swipe
         LaunchedEffect(pagerState, wallpapers) {
@@ -415,7 +420,7 @@ private val PreviewZoomState.shownScale: Float
  * and it draws only the end that is arriving: on the way out that is the grid cell, which has no pan or zoom
  * of its own. So a draw-time transform on the preview side is not merely mistimed on the way out, it is never
  * consulted, and the flight departs from the untransformed full-screen rect however carefully
- * that transform is animated.
+ * that transform is animated. **Only reaches the screen while no flight is in the air.**
  */
 private fun Modifier.previewFraming(state: PreviewZoomState, active: Boolean): Modifier =
     if (!active) this else this.layout { measurable, constraints ->
