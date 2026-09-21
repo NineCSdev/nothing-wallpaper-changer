@@ -438,6 +438,18 @@
         your default wallpapers and all your settings) to a file, so it survives uninstalling the app.
         \n\nOr restore, replacing everything in the app with what a backup holds. Nothing changes until you confirm.
     </string>
+
+    <!-- About section -->
+    <string name="settings_section_about">ABOUT</string>
+    <string name="settings_rate_title">RATE THIS APP</string>
+    <string name="settings_rate_subtitle">Leave a review on Google Play</string>
+    <string name="settings_source_title">SOURCE CODE</string>
+    <string name="settings_source_subtitle">Open source on GitHub. Stars are welcomed!</string>
+    <string name="settings_issues_title">REPORT A BUG</string>
+    <string name="settings_issues_subtitle">Open an issue on GitHub</string>
+    <string name="settings_version_byline">by NineCSdev</string>
+    <string name="cd_open_developer_profile">Open the developer\'s GitHub profile</string>
+
     <string name="backup_section_export">EXPORT</string>
     <string name="backup_section_restore">RESTORE</string>
     <string name="backup_export_title">EXPORT BACKUP</string>

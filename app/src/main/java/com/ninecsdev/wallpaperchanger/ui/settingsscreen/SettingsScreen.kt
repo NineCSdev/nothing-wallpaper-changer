@@ -1,10 +1,8 @@
 package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -20,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -34,6 +31,8 @@ import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 import com.ninecsdev.wallpaperchanger.ui.components.SettingsToggleRow
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.AboutSection
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.AppVersionFooter
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.AtmosphereModeSection
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.BackupRow
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.LanguageSelector
@@ -234,22 +233,17 @@ fun SettingsScreen(
                     )
                 }
 
+                SettingsSection(label = stringResource(R.string.settings_section_about)) {
+                    AboutSection()
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // App version footer
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 10.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "v${uiState.appVersion}",
-                    style = NothingType.metaLabel,
-                    color = NothingWhite.copy(alpha = 0.25f)
-                )
-            }
+            AppVersionFooter(
+                version = uiState.appVersion,
+                modifier = Modifier.padding(bottom = 10.dp)
+            )
         }
     }
 }

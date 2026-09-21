@@ -434,12 +434,23 @@
     <string name="backup_screen_title">COPIA DE SEGURIDAD</string>
     <string name="settings_backup_title">COPIA DE SEGURIDAD</string>
     <string name="settings_backup_subtitle">Guarda tus colecciones, recortes y ajustes</string>
-    <string name="settings_backup_dialog_title">Copia de seguridad</string>z
+    <string name="settings_backup_dialog_title">Copia de seguridad</string>
     <string name="settings_backup_dialog_body">
         Guarda todo lo que has personalizado en la app (cada colección, el encuadre de cada imagen, las imágenes que quitaste,
         tus fondos predeterminados y todos tus ajustes) en un archivo, de esta forma no lo pierdes al desinstalar la app.
         \n\nO restaura, reemplazando todo lo que hay en la app por lo que guarda una copia. No se cambia nada hasta que lo confirmes.
     </string>
+
+    <!-- Acerca de -->
+    <string name="settings_section_about">ACERCA DE</string>
+    <string name="settings_rate_title">VALORAR LA APP</string>
+    <string name="settings_rate_subtitle">Deja una reseña en Google Play</string>
+    <string name="settings_source_title">CÓDIGO FUENTE</string>
+    <string name="settings_source_subtitle">Código abierto en GitHub. ¡Las estrellas se agradecen!</string>
+    <string name="settings_issues_title">INFORMAR DE UN FALLO</string>
+    <string name="settings_issues_subtitle">Abre una incidencia en GitHub</string>
+    <string name="settings_version_byline">por NineCSdev</string>
+    <string name="cd_open_developer_profile">Abrir el perfil de GitHub del desarrollador</string>
     <string name="backup_section_export">EXPORTAR</string>
     <string name="backup_section_restore">RESTAURAR</string>
     <string name="backup_export_title">EXPORTAR COPIA</string>
