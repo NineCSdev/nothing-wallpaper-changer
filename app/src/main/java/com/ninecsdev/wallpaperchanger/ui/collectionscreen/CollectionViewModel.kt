@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
+import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
@@ -49,6 +50,7 @@ import javax.inject.Inject
 @HiltViewModel
 class CollectionViewModel @Inject constructor(
     private val repository: WallpaperRepository,
+    private val wallpaperSources: WallpaperSources,
     appDataStore: AppDataStore,
     serviceLifecycle: ServiceLifecycle
 ) : ViewModel(), CollectionListActions {
@@ -147,6 +149,7 @@ class CollectionViewModel @Inject constructor(
             isShowingCreateModal = modalInput.modal.isShowingCreateModal,
             hasPendingFolder = modalInput.modal.hasPendingFolder,
             hasPendingPhotos = modalInput.modal.hasPendingPhotos,
+            suggestedCollectionName = modalInput.modal.suggestedCollectionName,
             editingCollection = modalInput.modal.editingCollectionId?.let { id -> collections.find { it.id == id } },
             editingExclusionCount = modalInput.exclusionCount,
             editingDefaultWallpaper = modalInput.defaultWallpaper,
@@ -165,13 +168,22 @@ class CollectionViewModel @Inject constructor(
     fun setPendingFolderUri(uri: Uri) {
         pendingFolderUri = uri
         pendingPhotosUris = emptyList()
-        _screenState.update { it.copy(hasPendingFolder = true, hasPendingPhotos = false) }
+        _screenState.update {
+            it.copy(hasPendingFolder = true, hasPendingPhotos = false, suggestedCollectionName = null)
+        }
+        viewModelScope.launch {
+            val name = wallpaperSources.folderDisplayName(uri.toString()) ?: return@launch
+            if (pendingFolderUri != uri) return@launch
+            _screenState.update { it.copy(suggestedCollectionName = name) }
+        }
     }
 
     fun setPendingPhotos(uris: List<Uri>) {
         pendingPhotosUris = uris
         pendingFolderUri = null
-        _screenState.update { it.copy(hasPendingFolder = false, hasPendingPhotos = true) }
+        _screenState.update {
+            it.copy(hasPendingFolder = false, hasPendingPhotos = true, suggestedCollectionName = null)
+        }
     }
 
     // Collection CRUD
@@ -318,7 +330,13 @@ class CollectionViewModel @Inject constructor(
         if (!show) pendingFolderUri = null
         _screenState.update {
             if (show) it.copy(isShowingCreateModal = true, createError = false)
-            else it.copy(isShowingCreateModal = false, hasPendingFolder = false, hasPendingPhotos = false, createError = false)
+            else it.copy(
+                isShowingCreateModal = false,
+                hasPendingFolder = false,
+                hasPendingPhotos = false,
+                suggestedCollectionName = null,
+                createError = false
+            )
         }
     }
 
@@ -370,6 +388,7 @@ private data class ScreenModalState(
     val isShowingCreateModal: Boolean = false,
     val hasPendingFolder: Boolean = false,
     val hasPendingPhotos: Boolean = false,
+    val suggestedCollectionName: String? = null,
     val editingCollectionId: Long? = null,
     val isProcessing: Boolean = false,
     val createError: Boolean = false

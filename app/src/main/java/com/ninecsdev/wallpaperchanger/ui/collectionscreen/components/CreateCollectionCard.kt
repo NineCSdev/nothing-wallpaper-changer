@@ -19,6 +19,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +55,7 @@ internal fun CreateCollectionCard(
     hasError: Boolean = false,
     hasPendingFolder: Boolean,
     hasPendingPhotos: Boolean,
+    suggestedName: String? = null,
     onDismiss: () -> Unit,
     onFolderSelect: () -> Unit,
     onPhotosSelect: () -> Unit,
@@ -61,6 +63,13 @@ internal fun CreateCollectionCard(
 ) {
     var collectionName by remember { mutableStateOf("") }
     var selectedRule by remember { mutableStateOf(CropRule.CENTER) }
+    var offeredName by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(suggestedName) {
+        if (collectionName.isNotBlank() && collectionName != offeredName) return@LaunchedEffect
+        collectionName = suggestedName.orEmpty()
+        offeredName = suggestedName
+    }
 
     Dialog(
         onDismissRequest = if (isProcessing) ({}) else onDismiss,

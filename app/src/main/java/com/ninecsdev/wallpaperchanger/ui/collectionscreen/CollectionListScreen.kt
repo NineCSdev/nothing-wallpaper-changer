@@ -184,6 +184,7 @@ fun CollectionListScreen(
                 hasError = uiState.createError,
                 hasPendingFolder = uiState.hasPendingFolder,
                 hasPendingPhotos = uiState.hasPendingPhotos,
+                suggestedName = uiState.suggestedCollectionName,
                 onDismiss = { actions.toggleCreateModal(false) },
                 onFolderSelect = onFolderSelect,
                 onPhotosSelect = onPhotosSelect,

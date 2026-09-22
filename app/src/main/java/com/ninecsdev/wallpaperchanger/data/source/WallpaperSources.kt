@@ -153,6 +153,23 @@ class WallpaperSources @Inject constructor(
             appContext.checkSelfPermission(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) ==
             PackageManager.PERMISSION_GRANTED
 
+    /** Returns the folder's name for a [treeUri]. Null when the provider has no name for it. */
+    suspend fun folderDisplayName(treeUri: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val uri = treeUri.toUri()
+            // The tree uri itself is not queryable; its root document is
+            val rootDoc = DocumentsContract.buildDocumentUriUsingTree(uri, DocumentsContract.getTreeDocumentId(uri))
+            appContext.contentResolver.query(
+                rootDoc, arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME), null, null, null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.stringAt(0)?.takeIf { it.isNotBlank() } else null
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not read the folder name of $treeUri", e)
+            null
+        }
+    }
+
     /** Reads [uri]'s [SourceFingerprint]. */
     suspend fun fingerprint(uri: String, sourceType: SourceType): SourceFingerprint =
         withContext(Dispatchers.IO) {

@@ -51,14 +51,8 @@ fun CollectionListRoute(
         onCollectionClick = onViewImages,
         onEditCollection = viewModel::openEditModal,
         onBackClick = onBack,
-        onFolderSelect = {
-            viewModel.toggleCreateModal(false)
-            onLaunchFolderPicker()
-        },
-        onPhotosSelect = rememberMediaAccessGatedAction {
-            viewModel.toggleCreateModal(false)
-            onLaunchPhotosPicker()
-        },
+        onFolderSelect = onLaunchFolderPicker,
+        onPhotosSelect = rememberMediaAccessGatedAction { onLaunchPhotosPicker() },
         onCreateCollection = viewModel::finalizeCollection,
         onDeleteCollection = viewModel::deleteEditingCollection,
         onRestoreBackup = onRestoreBackup
