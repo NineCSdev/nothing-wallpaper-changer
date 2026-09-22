@@ -313,6 +313,6 @@ class BackupExporter @Inject constructor(
         } catch (e: Exception) {
             Log.w(TAG, "Could not delete the partial archive at $target", e)
         }
-        exportRecord.setInFlightTarget(null)
+        runCatching { exportRecord.setInFlightTarget(null) }.onFailure { Log.w(TAG, "Could not clear the in-flight export record", it) }
     }
 }

@@ -39,9 +39,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.util.UUID
 import java.util.zip.ZipInputStream
 import javax.inject.Inject
@@ -181,10 +183,26 @@ class BackupImporter @Inject constructor(
         ZipInputStream(BufferedInputStream(input)).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: return null
-                if (entry.name == BackupFormat.MANIFEST_ENTRY) return zip.readBytes().decodeToString()
+                if (entry.name == BackupFormat.MANIFEST_ENTRY) return readCappedManifest(zip)
                 zip.closeEntry()
             }
         }
+    }
+
+    /** The manifest entry's bytes, or null when it inflates past [BackupFormat.MANIFEST_MAX_BYTES]. */
+    private fun readCappedManifest(zip: InputStream): String? {
+        val out = ByteArrayOutputStream()
+        val buffer = ByteArray(COPY_BUFFER_BYTES)
+        while (true) {
+            val read = zip.read(buffer)
+            if (read == -1) break
+            if (out.size() + read > BackupFormat.MANIFEST_MAX_BYTES) {
+                Log.w(TAG, "Manifest exceeds ${BackupFormat.MANIFEST_MAX_BYTES} bytes; refusing the archive")
+                return null
+            }
+            out.write(buffer, 0, read)
+        }
+        return out.toByteArray().decodeToString()
     }
 
     private fun planOf(manifest: BackupManifest, archiveName: String?): BackupImportPlan {
@@ -457,8 +475,8 @@ class BackupImporter @Inject constructor(
             Result.success(summaryOf(resolved, staged))
         } catch (e: Exception) {
             Log.e(TAG, "Backup import failed", e)
-            staging.deleteRecursively()
-            importRecord.setCommitting(false)
+            runCatching { staging.deleteRecursively() }.onFailure { Log.e(TAG, "Could not sweep the staging folder after a failed import", it) }
+            runCatching { importRecord.setCommitting(false) }.onFailure { Log.e(TAG, "Could not clear the committing flag after a failed import", it) }
             // Told apart because before the commit began, the user's install is provably untouched;
             // after it, the rows may have rolled back but the rotation has been stopped.
             val failure = if (begun) BackupImportFailure.Interrupted else BackupImportFailure.Unexpected(e.message ?: e::class.java.simpleName)

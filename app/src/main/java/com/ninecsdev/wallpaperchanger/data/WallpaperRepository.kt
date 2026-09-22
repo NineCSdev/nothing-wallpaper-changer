@@ -20,6 +20,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.SourceType
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.FolderExclusion
 import com.ninecsdev.wallpaperchanger.model.Wallpaper
+import com.ninecsdev.wallpaperchanger.logic.mapConcurrently
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperFile
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
@@ -130,6 +131,7 @@ class WallpaperRepository @Inject constructor(
 
         /** Thumbnails a collection grid item draws (one 2x2 tile). */
         const val GRID_PREVIEW_LIMIT = 4
+        const val REPROBE_CONCURRENCY = 10
     }
 
     // UI Data Access (Flows)
@@ -582,11 +584,11 @@ class WallpaperRepository @Inject constructor(
     suspend fun reprobeUnavailableFiles(collectionId: Long) {
         dao.getUnavailableImagesForCollection(collectionId)
             .distinctBy { it.fileId }
-            .forEach { image ->
-                if (wallpaperSources.isReadable(image.uriString)) {
-                    dao.setFileAvailability(image.fileId, true)
-                }
+            .mapConcurrently(REPROBE_CONCURRENCY) { image ->
+                image.fileId.takeIf { wallpaperSources.isReadable(image.uriString) }
             }
+            .filterNotNull()
+            .forEach { fileId -> dao.setFileAvailability(fileId, true) }
     }
 
     /**

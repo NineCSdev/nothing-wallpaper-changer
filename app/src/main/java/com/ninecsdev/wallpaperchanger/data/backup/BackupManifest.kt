@@ -18,6 +18,7 @@ object BackupFormat {
     const val MIME_TYPE = "application/octet-stream"
 
     const val MANIFEST_ENTRY = "manifest.json"
+    const val MANIFEST_MAX_BYTES = 16 * 1024 * 1024
     const val IMAGE_DIR = "images/"
 
     /**
