@@ -8,7 +8,6 @@ import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
-import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -89,7 +88,7 @@ class WallpaperApplier @Inject constructor(
         val defaultWallpaper = (if (useCollectionOverride) repository.getCollectionDefaultOrGlobal() else repository.getDefaultWallpaper()) ?: return@withContext false
         if (!defaultWallpaper.isAvailable) return@withContext false
 
-        val cropRule = repository.getCollectionById(defaultWallpaper.collectionId)?.defaultCropRule ?: WallpaperCollection.DEFAULT_CROP_RULE
+        val cropRule = repository.cropRuleFor(defaultWallpaper)
 
         if (wallpaperModeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE) {
             // Revert-to-default flows through the atmosphere path: render the default and hand it

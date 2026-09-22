@@ -10,6 +10,8 @@ import com.ninecsdev.wallpaperchanger.logic.RotationCoordinator
 import com.ninecsdev.wallpaperchanger.logic.RotationScheduler
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -76,7 +78,7 @@ class ScreenStateReceiver(
 
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
 
-        serviceScope.launch(Dispatchers.IO) {
+        serviceScope.launch(Dispatchers.IO, start = CoroutineStart.ATOMIC) {
             try {
                 // Configurable delay (default 250ms for Nothing Phone animation)
                 delay(appDataStore.getScreenOffDelay())

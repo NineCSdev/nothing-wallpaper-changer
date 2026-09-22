@@ -68,9 +68,6 @@ class WallpaperService : Service() {
         lifecycleTracker.markAlive()
         Log.d(tag, "Service Created")
         notificationHelper.createChannel()
-
-        startRotationTriggers()
-
         startLifecycleActionCollector()
         registerAtmosphereDisplayedReceiver()
     }

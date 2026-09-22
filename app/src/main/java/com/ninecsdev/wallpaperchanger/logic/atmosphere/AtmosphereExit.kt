@@ -8,7 +8,6 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecord
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
 import com.ninecsdev.wallpaperchanger.logic.BufferManager
-import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -80,7 +79,7 @@ class AtmosphereExit @Inject constructor(
             Log.i(TAG, "Live wallpaper $wallpaperId is gone or unavailable; falling back.")
             return false
         }
-        return applyRendered(wallpaper, cropRuleOf(wallpaper), "the live atmosphere image")
+        return applyRendered(wallpaper, repository.cropRuleFor(wallpaper), "the live atmosphere image")
     }
 
     private suspend fun applyDefault(): Boolean {
@@ -89,11 +88,8 @@ class AtmosphereExit @Inject constructor(
             Log.i(TAG, "The default wallpaper is unavailable; falling back.")
             return false
         }
-        return applyRendered(wallpaper, cropRuleOf(wallpaper), "the default wallpaper")
+        return applyRendered(wallpaper, repository.cropRuleFor(wallpaper), "the default wallpaper")
     }
-
-    private suspend fun cropRuleOf(wallpaper: WallpaperImage): CropRule =
-        repository.getCollectionById(wallpaper.collectionId)?.defaultCropRule ?: WallpaperCollection.DEFAULT_CROP_RULE
 
     private suspend fun applyRendered(
         wallpaper: WallpaperImage,
@@ -103,7 +99,10 @@ class AtmosphereExit @Inject constructor(
         val rendered = bufferManager.renderForStatic(wallpaper, cropRule) ?: return false
         return try {
             setToBothScreens(rendered).also { applied ->
-                if (applied) Log.i(TAG, "Left atmosphere by applying $description.")
+                if (applied) {
+                    wallpaperRecordStore.setAppliedWallpaperId(wallpaper.id)
+                    Log.i(TAG, "Left atmosphere by applying $description.")
+                }
             }
         } finally {
             rendered.recycle()
@@ -115,7 +114,9 @@ class AtmosphereExit @Inject constructor(
     }.onFailure { Log.e(TAG, "Could not apply the replacement wallpaper", it) }.isSuccess
 
 
-    private fun clearToBuiltIn(): Boolean = runCatching {
+    private suspend fun clearToBuiltIn(): Boolean = runCatching {
         WallpaperManager.getInstance(appContext).clear()
-    }.onFailure { Log.e(TAG, "Could not clear to the built-in wallpaper", it) }.isSuccess
+    }.onFailure { Log.e(TAG, "Could not clear to the built-in wallpaper", it) }
+        .isSuccess
+        .also { cleared -> if (cleared) wallpaperRecordStore.setAppliedWallpaperId(null) }
 }

@@ -714,6 +714,9 @@ class WallpaperRepository @Inject constructor(
         return existing.id
     }
 
+    suspend fun cropRuleFor(wallpaper: WallpaperImage): CropRule =
+        getCollectionById(wallpaper.collectionId)?.defaultCropRule ?: WallpaperCollection.DEFAULT_CROP_RULE
+
     suspend fun getCollectionById(collectionId: Long): WallpaperCollection? =
         dao.getCollectionById(collectionId)
 

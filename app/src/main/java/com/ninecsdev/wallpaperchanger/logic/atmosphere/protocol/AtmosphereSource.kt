@@ -28,7 +28,6 @@ object AtmosphereSource {
     private const val TAG = "AtmosphereSource"
 
     private const val FILE_NAME = "atmosphere_source.bin"
-    private const val TEMP_FILE_NAME = "atmosphere_source.tmp"
 
     /** The delivery the next rotation will publish, written by the render pipeline. */
     // Kept in `filesDir` rather than the cache so platform cannot delete it under storage pressure.
@@ -37,6 +36,11 @@ object AtmosphereSource {
     /** 'ATMO'. Guards against decoding an unrelated file left at the same path. */
     private const val MAGIC = 0x41544D4F
     private const val VERSION = 1
+
+    private val writeLock = Any()
+
+    /** Scratch file for one destination. Distinct per destination so two writers cannot share one. */
+    private fun tempFor(dir: File, destination: File) = File(dir, "${destination.name}.tmp")
 
     /** A decoded container: the seeds, and the still-encoded image bytes. */
     class Payload(val seeds: List<VertexInfo>, val imageBytes: ByteArray)
@@ -81,11 +85,12 @@ object AtmosphereSource {
         }
 
         return try {
-            // A copy, not a move. The engine confirms display asynchronously and may never confirm at
-            // all. Consuming the staged file here would leave an unconfirmed delivery with nothing staged
-            // and nothing to re-stage it, and every later rotation would fail the same way.
-            writeAtomically(File(dir, TEMP_FILE_NAME), file(dir)) { temp ->
-                pending.copyTo(temp, overwrite = true)
+            synchronized(writeLock) {
+                val destination = file(dir)
+                // A copy, not a move. The engine confirms display asynchronously and may never confirm at all
+                writeAtomically(tempFor(dir, destination), destination) { temp ->
+                    pending.copyTo(temp, overwrite = true)
+                }
             }
             true
         } catch (e: Exception) {
@@ -113,21 +118,23 @@ object AtmosphereSource {
         }
 
         return try {
-            writeAtomically(File(dir, TEMP_FILE_NAME), destination) { temp ->
-                DataOutputStream(temp.outputStream().buffered()).use { out ->
-                    out.writeInt(MAGIC)
-                    out.writeInt(VERSION)
-                    out.writeInt(seeds.size)
-                    for (seed in seeds) {
-                        out.writeInt(seed.x)
-                        out.writeInt(seed.y)
-                        out.writeInt(seed.bitmapWidth)
-                        out.writeInt(seed.bitmapHeight)
-                        out.writeInt(seed.pixelColor)
-                        out.writeInt(seed.population)
+            synchronized(writeLock) {
+                writeAtomically(tempFor(dir, destination), destination) { temp ->
+                    DataOutputStream(temp.outputStream().buffered()).use { out ->
+                        out.writeInt(MAGIC)
+                        out.writeInt(VERSION)
+                        out.writeInt(seeds.size)
+                        for (seed in seeds) {
+                            out.writeInt(seed.x)
+                            out.writeInt(seed.y)
+                            out.writeInt(seed.bitmapWidth)
+                            out.writeInt(seed.bitmapHeight)
+                            out.writeInt(seed.pixelColor)
+                            out.writeInt(seed.population)
+                        }
+                        out.writeInt(imageBytes.size)
+                        out.write(imageBytes)
                     }
-                    out.writeInt(imageBytes.size)
-                    out.write(imageBytes)
                 }
             }
             true

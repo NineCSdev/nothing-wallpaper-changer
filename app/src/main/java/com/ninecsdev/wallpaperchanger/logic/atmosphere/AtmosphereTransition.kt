@@ -7,7 +7,6 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
-import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -180,7 +179,7 @@ class AtmosphereTransition @Inject constructor(
         val wallpaperId = wallpaperRecordStore.snapshot().liveAtmosphereWallpaperId ?: return "none$KEY_SEPARATOR$zoomFix"
 
         val wallpaper = repository.getWallpaperById(wallpaperId) ?: return "missing:$wallpaperId$KEY_SEPARATOR$zoomFix"
-        val cropRule = repository.getCollectionById(wallpaper.collectionId)?.defaultCropRule ?: WallpaperCollection.DEFAULT_CROP_RULE
+        val cropRule = repository.cropRuleFor(wallpaper)
         val edit = wallpaper.editParams
         val editKey = if (edit == null) "none" else "${edit.zoom},${edit.offsetX},${edit.offsetY}"
 

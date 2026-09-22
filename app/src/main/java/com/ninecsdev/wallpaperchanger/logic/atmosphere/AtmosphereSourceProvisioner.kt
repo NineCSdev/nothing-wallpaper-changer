@@ -5,7 +5,6 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecord
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
 import com.ninecsdev.wallpaperchanger.logic.BufferManager
-import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import kotlinx.coroutines.flow.first
@@ -97,7 +96,7 @@ class AtmosphereSourceProvisioner @Inject constructor(
         val default = repository.getDefaultWallpaper() ?: return null
         if (!default.isAvailable) return null
 
-        return default to cropRuleOf(default)
+        return default to repository.cropRuleFor(default)
     }
 
     /** The membership currently applied as the static wallpaper, if it is still usable. */
@@ -110,9 +109,6 @@ class AtmosphereSourceProvisioner @Inject constructor(
     private suspend fun wallpaperById(wallpaperId: Long): Pair<WallpaperImage, CropRule>? {
         val wallpaper = repository.getWallpaperById(wallpaperId) ?: return null
         if (!wallpaper.isAvailable) return null
-        return wallpaper to cropRuleOf(wallpaper)
+        return wallpaper to repository.cropRuleFor(wallpaper)
     }
-
-    private suspend fun cropRuleOf(wallpaper: WallpaperImage): CropRule =
-        repository.getCollectionById(wallpaper.collectionId)?.defaultCropRule ?: WallpaperCollection.DEFAULT_CROP_RULE
 }
