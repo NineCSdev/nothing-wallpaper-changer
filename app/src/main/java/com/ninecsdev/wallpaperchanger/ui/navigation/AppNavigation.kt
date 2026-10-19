@@ -74,6 +74,8 @@ fun AppNavigation(
         exitTransition = { NavigationTransitions.exitDefault },
         popEnterTransition = { NavigationTransitions.enterDefault },
         popExitTransition = { NavigationTransitions.exitDefault },
+        predictivePopEnterTransition = { NavigationTransitions.predictivePopEnter(targetState.destination.route) },
+        predictivePopExitTransition = { NavigationTransitions.predictivePopExit(initialState.destination.route) },
         modifier = modifier
     ) {
         composable(
@@ -224,6 +226,14 @@ private object NavigationTransitions {
     val exitDefault = fadeOut(
         animationSpec = tween(FADE_DURATION)
     )
+
+    private val slideRoutes = setOf(Route.MAIN, Route.COLLECTIONS)
+
+    fun predictivePopEnter(targetRoute: String?): EnterTransition =
+        if (targetRoute in slideRoutes) popEnterMain_Collections else enterDefault
+
+    fun predictivePopExit(initialRoute: String?): ExitTransition =
+        if (initialRoute in slideRoutes) popExitMain_Collections else exitDefault
 }
 
 /** Route constants for the app's navigation graph. */
