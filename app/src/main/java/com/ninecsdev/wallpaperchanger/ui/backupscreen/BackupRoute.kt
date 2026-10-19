@@ -2,6 +2,9 @@ package com.ninecsdev.wallpaperchanger.ui.backupscreen
 
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import android.content.Context
+import android.content.Intent
+import android.provider.DocumentsContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,7 +39,7 @@ fun BackupRoute(
 
     // The user chooses where the archive goes, and the export starts once the document exists
     val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument(BackupFormat.MIME_TYPE)
+        CreateDocumentInDownloads(BackupFormat.MIME_TYPE)
     ) { target -> target?.let { viewModel.export(it) } }
 
     val exportFileName = stringResource(
@@ -92,4 +95,17 @@ fun BackupRoute(
             onBack()
         }
     )
+}
+
+/** Opens the save picker at Downloads, as a starting point, instead of wherever it was last left */
+private class CreateDocumentInDownloads(mimeType: String) :
+    ActivityResultContracts.CreateDocument(mimeType) {
+    override fun createIntent(context: Context, input: String): Intent =
+        super.createIntent(context, input).putExtra(
+            DocumentsContract.EXTRA_INITIAL_URI,
+            DocumentsContract.buildDocumentUri(
+                "com.android.externalstorage.documents",
+                "primary:Download"
+            )
+        )
 }
