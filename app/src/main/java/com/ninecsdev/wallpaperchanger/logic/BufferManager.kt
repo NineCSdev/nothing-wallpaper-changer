@@ -2,7 +2,6 @@ package com.ninecsdev.wallpaperchanger.logic
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
@@ -373,18 +372,7 @@ class BufferManager @Inject constructor(
     private fun decodeSourceBitmap(sourceUri: Uri, targetSize: TargetSize, oversample: Int = 1): Bitmap? {
         val reqW = targetSize.width * oversample
         val reqH = targetSize.height * oversample
-        return if (ImageInternalizer.isInternalUri(sourceUri)) {
-            appContext.contentResolver.openInputStream(sourceUri)?.use {
-                BitmapFactory.decodeStream(it)
-            }
-        } else {
-            ImageProcessingUtils.decodeSampledBitmap(
-                appContext,
-                sourceUri,
-                reqW,
-                reqH
-            )
-        }
+        return ImageProcessingUtils.decodeSampledBitmap(appContext, sourceUri, reqW, reqH)
     }
 
     /**

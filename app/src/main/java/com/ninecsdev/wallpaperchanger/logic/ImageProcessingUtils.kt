@@ -2,9 +2,9 @@ package com.ninecsdev.wallpaperchanger.logic
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ImageDecoder
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.net.Uri
@@ -37,28 +37,26 @@ object ImageProcessingUtils {
     }
 
     /**
-     * Calculates an appropriate "inSampleSize" for [BitmapFactory.Options]
-     * so the decoded bitmap is roughly at (or just above) the requested
-     * [reqW] × [reqH] resolution without loading the full image into memory.
+     * The largest power-of-two sample size that keeps a [width] × [height] image at or just above
+     * [reqW] × [reqH], so decode never loads more pixels than the render needs.
      */
-    fun calculateInSampleSize(options: BitmapFactory.Options, reqW: Int, reqH: Int): Int {
-        val (height: Int, width: Int) = options.outHeight to options.outWidth
-        var inSampleSize = 1
+    private fun calculateSampleSize(width: Int, height: Int, reqW: Int, reqH: Int): Int {
+        var sampleSize = 1
         if (height > reqH || width > reqW) {
             val halfH = height / 2
             val halfW = width / 2
-            while (halfH / inSampleSize >= reqH && halfW / inSampleSize >= reqW) {
-                inSampleSize *= 2
+            while (halfH / sampleSize >= reqH && halfW / sampleSize >= reqW) {
+                sampleSize *= 2
             }
         }
-        return inSampleSize
+        return sampleSize
     }
 
     /**
-     * Two-pass decode: reads the image bounds first, computes an "inSampleSize"
-     * targeting [targetW] × [targetH], then decodes at reduced resolution.
+     * Decodes [uri] subsampled toward [targetW] × [targetH], with EXIF orientation applied.
+     * Software-backed, since callers draw it onto a software [Canvas].
      *
-     * @return the subsampled [Bitmap], or null if decoding fails.
+     * @return null if the data cannot be decoded; failures to open the source propagate.
      */
     fun decodeSampledBitmap(
         context: Context,
@@ -66,18 +64,18 @@ object ImageProcessingUtils {
         targetW: Int,
         targetH: Int
     ): Bitmap? {
-        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            BitmapFactory.decodeStream(input, null, options)
-        }
-
-        if (options.outWidth <= 0 || options.outHeight <= 0) return null
-
-        options.inSampleSize = calculateInSampleSize(options, targetW, targetH)
-        options.inJustDecodeBounds = false
-
-        return context.contentResolver.openInputStream(uri)?.use { input ->
-            BitmapFactory.decodeStream(input, null, options)
+        val source = ImageDecoder.createSource(context.contentResolver, uri)
+        return try {
+            ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+                decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                // info.size is already orientation-corrected
+                decoder.setTargetSampleSize(
+                    calculateSampleSize(info.size.width, info.size.height, targetW, targetH)
+                )
+            }
+        } catch (e: ImageDecoder.DecodeException) {
+            Log.w(TAG, "Could not decode $uri", e)
+            null
         }
     }
 

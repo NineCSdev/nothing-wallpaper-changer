@@ -43,14 +43,11 @@ class ImageInternalizer @Inject constructor(
         /** Max decodes in flight at once, bounds peak bitmap memory */
         // on Phone 1 both 4 and 10 take the same time, but it stays high for use in better hardware
         private const val INTERNALIZE_CONCURRENCY = 10
-
-        /** True if [uri] points inside the app-private internal wallpapers' folder. */
-        fun isInternalUri(uri: Uri): Boolean = uri.pathSegments.contains(INTERNAL_FOLDER)
     }
 
     /**
      * Copies a list of URIs into internal storage as WebP files.
-     * Uses inSampleSize subsampling to avoid loading full-res bitmaps and
+     * Uses subsampled decoding to avoid loading full-res bitmaps and
      * processes all images concurrently.
      * @return List of internal file URIs.
      */
