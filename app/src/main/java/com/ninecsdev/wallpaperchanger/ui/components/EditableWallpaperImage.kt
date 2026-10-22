@@ -20,7 +20,6 @@ import coil.size.Scale
 import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
 import com.ninecsdev.wallpaperchanger.logic.computeLayerTransform
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
-import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 /**
@@ -58,13 +57,13 @@ internal fun EditableWallpaperImage(
     var imageAspectRatio by remember(wallpaper.uriString) { mutableStateOf<Float?>(null) }
 
     val model = remember(wallpaper.uriString, edit.zoom, decodeFraction, memoryCacheKey, placeholderMemoryCacheKey) {
-        val zoomFactor = ceil(edit.zoom).toInt().coerceAtLeast(1)
-        val targetW = (screenW * decodeFraction * zoomFactor).roundToInt().coerceIn(1, screenW)
-        val targetH = (screenH * decodeFraction * zoomFactor).roundToInt().coerceIn(1, screenH)
+        val frameScale = decodeFraction * edit.zoom
+        val targetW = (screenW * frameScale).roundToInt().coerceIn(1, screenW)
+        val targetH = (screenH * frameScale).roundToInt().coerceIn(1, screenH)
         ImageRequest.Builder(context)
             .data(wallpaper.uriString)
             .size(targetW, targetH)
-            .scale(Scale.FILL)
+            .scale(if (decodeFraction >= 1f || frameScale > 1f) Scale.FILL else Scale.FIT)
             .apply {
                 memoryCacheKey?.let { memoryCacheKey(it) }
                 placeholderMemoryCacheKey?.let { placeholderMemoryCacheKey(it) }

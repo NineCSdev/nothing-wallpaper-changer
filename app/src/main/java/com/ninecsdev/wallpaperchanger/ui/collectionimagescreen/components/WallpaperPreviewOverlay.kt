@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import coil.size.Scale
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
 import com.ninecsdev.wallpaperchanger.model.EditParams
@@ -305,6 +306,9 @@ internal fun WallpaperPreviewOverlay(
                             model = ImageRequest.Builder(context)
                                 .data(wallpaper.uriString)
                                 .size(decodeWidth, decodeHeight)
+                                // Covering the canvas is the resolution a cropped wallpaper is applied at,
+                                // so zooming in never looks softer than the real wallpaper
+                                .scale(Scale.FILL)
                                 .placeholderMemoryCacheKey(wallpaperThumbCacheKey(wallpaper.uriString))
                                 .build(),
                             contentDescription = stringResource(R.string.cd_wallpaper_preview),
