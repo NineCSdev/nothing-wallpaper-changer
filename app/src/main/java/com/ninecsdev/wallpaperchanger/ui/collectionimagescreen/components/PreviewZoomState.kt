@@ -316,9 +316,15 @@ internal suspend fun PointerInputScope.detectPreviewGestures(
     onDoubleTap: (Offset) -> Unit,
     onGestureStart: () -> Unit
 ) {
+    // A tap that caught a coasting pan was for stopping the image, so it does not toggle the chrome.
+    // It still counts as the first half of a double tap.
+    var caughtThrow = false
     detectTapAwareGestures(
-        readGesture = { down -> readPreviewGesture(state, down, onGestureStart) },
-        onTap = { onTap() },
+        readGesture = { down ->
+            caughtThrow = state.onTouchDown()
+            readPreviewGesture(state, down, onGestureStart)
+        },
+        onTap = { if (!caughtThrow) onTap() },
         onDoubleTap = onDoubleTap
     )
 }
@@ -327,15 +333,12 @@ internal suspend fun PointerInputScope.detectPreviewGestures(
  * Reads one touch to its end and returns where it was tapped, relative to the viewport center, or
  * null if it wasn't a tap. Anything but a tap is applied to [state] and settled here; tap is left
  * for the caller, which alone has to wait to find out whether it was one of a pair.
- *
- * A touch that caught a coasting pan reports no tap: stopping the image was what it was for.
  */
 private suspend fun AwaitPointerEventScope.readPreviewGesture(
     state: PreviewZoomState,
     down: PointerInputChange,
     onGestureStart: () -> Unit
 ): Offset? {
-    val caughtThrow = state.onTouchDown()
     val startedAtRest = state.isAtRest
     val velocity = VelocityTracker()
     velocity.addPosition(down.uptimeMillis, down.position)
@@ -414,7 +417,7 @@ private suspend fun AwaitPointerEventScope.readPreviewGesture(
 
     return when (mode) {
         // Still undecided means the touch never passed slop, which is what a tap is.
-        PreviewGesture.Undecided -> if (caughtThrow) null else down.position - center
+        PreviewGesture.Undecided -> down.position - center
         PreviewGesture.Transform -> {
             // Only a drag can fling out, pinch release also carries vertical momentum so we ignore it
             val thrown = if (pinched) Offset.Zero else velocity.calculateVelocity().let { Offset(it.x, it.y) }
