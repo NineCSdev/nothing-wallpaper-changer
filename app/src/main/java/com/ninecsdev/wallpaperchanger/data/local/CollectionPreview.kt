@@ -1,13 +1,23 @@
 package com.ninecsdev.wallpaperchanger.data.local
 
+import androidx.room.ColumnInfo
+import com.ninecsdev.wallpaperchanger.model.enums.SourceType
+
 /**
- * What a collection grid item is drawn from: its newest few thumbnail uris and its total image
- * count. A projection, not a domain type why it lives here.
+ * What a collection grid item is drawn from: its newest few files and its total image count.
+ * A projection, not a domain type why it lives here.
  *
- * [previewUris] is capped by the caller's limit and ordered newest-first.
+ * [previewFiles] is capped by the caller's limit and ordered newest-first.
  * [imageCount] is the whole collection, so it is routinely larger.
  */
 data class CollectionPreview(
-    val previewUris: List<String> = emptyList(),
+    val previewFiles: List<PreviewFile> = emptyList(),
     val imageCount: Int = 0
+)
+
+/** One file a collection card shows: enough to find or create its grid thumbnail. */
+data class PreviewFile(
+    val fileId: Long,
+    @ColumnInfo(name = "uri") val uriString: String,
+    val sourceType: SourceType
 )

@@ -154,6 +154,9 @@ abstract class WallpaperDao {
     @Query("SELECT * FROM wallpaper_files WHERE id NOT IN (SELECT DISTINCT fileId FROM wallpapers)")
     abstract suspend fun getOrphanFiles(): List<WallpaperFile>
 
+    @Query("SELECT id FROM wallpaper_files")
+    abstract suspend fun getAllFileIds(): List<Long>
+
     /** All uris of the given source type. */
     @Query("SELECT uri FROM wallpaper_files WHERE sourceType = :type")
     abstract suspend fun getFileUrisBySourceType(type: SourceType): List<String>
@@ -230,19 +233,19 @@ abstract class WallpaperDao {
     abstract fun observeImagesForCollection(collectionId: Long): Flow<List<WallpaperImage>>
 
     /**
-     * Every collection's newest [limit] thumbnail uris, keyed by collection.
+     * Every collection's newest [limit] files, keyed by collection.
      *
      * `ROW_NUMBER()` numbers each collection's rows independently, so the outer `rn <= :limit`
      * takes a per-collection top-N without a query per collection. The outer `ORDER BY` puts each
-     * collection's uris into the map's list in rank order.
+     * collection's files into the map's list in rank order.
      *
      * A collection with no images is absent from the map.
      */
     // TODO tests: see vault note tests/Collection Picker Tests.md
     @Query(
         """
-        SELECT collectionId, uri FROM (
-            SELECT w.collectionId AS collectionId, f.uri AS uri,
+        SELECT collectionId, fileId, uri, sourceType FROM (
+            SELECT w.collectionId AS collectionId, f.id AS fileId, f.uri AS uri, f.sourceType AS sourceType,
                    ROW_NUMBER() OVER (
                        PARTITION BY w.collectionId ORDER BY w.addedAt DESC, w.id ASC
                    ) AS rn
@@ -253,9 +256,9 @@ abstract class WallpaperDao {
         ORDER BY collectionId, rn
         """
     )
-    abstract fun observePreviewUrisByCollection(limit: Int): Flow<Map<@MapColumn("collectionId") Long, List<@MapColumn("uri") String>>>
+    abstract fun observePreviewFilesByCollection(limit: Int): Flow<Map<@MapColumn("collectionId") Long, List<PreviewFile>>>
 
-    /** Every collection's image count, keyed by collection. Collections with no images are absent from the map as in [observePreviewUrisByCollection] */
+    /** Every collection's image count, keyed by collection. Collections with no images are absent from the map as in [observePreviewFilesByCollection] */
     @Query("SELECT collectionId, COUNT(*) AS imageCount FROM wallpapers WHERE isDefault = 0 GROUP BY collectionId")
     abstract fun observeImageCountsByCollection(): Flow<Map<@MapColumn("collectionId") Long, @MapColumn("imageCount") Int>>
 

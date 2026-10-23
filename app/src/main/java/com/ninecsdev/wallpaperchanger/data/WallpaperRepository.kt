@@ -7,6 +7,7 @@ import com.ninecsdev.wallpaperchanger.data.local.CollectionPreview
 import com.ninecsdev.wallpaperchanger.data.local.AppDatabase
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperDao
 import com.ninecsdev.wallpaperchanger.data.source.FolderScanner
+import com.ninecsdev.wallpaperchanger.data.source.GridThumbnailCache
 import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.data.source.computeFolderSyncDiff
@@ -124,7 +125,8 @@ class WallpaperRepository @Inject constructor(
     private val dao: WallpaperDao,
     private val serviceLifecycle: ServiceLifecycle,
     private val wallpaperSources: WallpaperSources,
-    private val folderScanner: FolderScanner
+    private val folderScanner: FolderScanner,
+    private val gridThumbnails: GridThumbnailCache
 ) {
     private companion object {
         const val TAG = "WallpaperRepository"
@@ -172,7 +174,7 @@ class WallpaperRepository @Inject constructor(
     fun activeCollectionFlow(): Flow<WallpaperCollection?> = dao.observeActiveCollection()
 
     /**
-     * Every collection's grid preview ([GRID_PREVIEW_LIMIT] thumbnails and its image count) as one reactive map.
+     * Every collection's grid preview ([GRID_PREVIEW_LIMIT] files and its image count) as one reactive map.
      *
      * Two aggregate queries, not two per collection so cost doesn't scale with number of collections.
      *
@@ -181,11 +183,11 @@ class WallpaperRepository @Inject constructor(
     // TODO tests: see vault note tests/Collection Picker Tests.md
     fun observeCollectionPreviews(): Flow<Map<Long, CollectionPreview>> =
         combine(
-            dao.observePreviewUrisByCollection(GRID_PREVIEW_LIMIT),
+            dao.observePreviewFilesByCollection(GRID_PREVIEW_LIMIT),
             dao.observeImageCountsByCollection()
-        ) { urisByCollection, countsByCollection ->
+        ) { filesByCollection, countsByCollection ->
             countsByCollection.mapValues { (collectionId, count) ->
-                CollectionPreview(urisByCollection[collectionId].orEmpty(), count)
+                CollectionPreview(filesByCollection[collectionId].orEmpty(), count)
             }
         }
 
@@ -904,6 +906,7 @@ class WallpaperRepository @Inject constructor(
         orphans.forEach { file ->
             wallpaperSources.reclaim(file.uriString, file.sourceType)
         }
+        gridThumbnails.delete(orphans.map { it.id })
     }
 
     /**
@@ -919,6 +922,7 @@ class WallpaperRepository @Inject constructor(
         step("persisted grants") { cleanupOrphanPersistedGrants() }
         step("MediaStore availability") { reconcileMediaStoreAvailability() }
         step("internal files") { cleanupOrphanInternalFiles() }
+        step("grid thumbnails") { gridThumbnails.retainOnly(dao.getAllFileIds().toSet()) }
     }
 
     /** Runs one reconciliation step, logging its failure. */

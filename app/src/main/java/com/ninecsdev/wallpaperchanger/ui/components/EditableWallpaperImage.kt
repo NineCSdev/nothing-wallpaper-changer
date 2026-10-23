@@ -39,6 +39,8 @@ import kotlin.math.roundToInt
  *   (set by the grid so the overlay can reuse the bitmap as a placeholder).
  * @param placeholderMemoryCacheKey Optional cache key of an already-loaded
  *   smaller rendition to draw while this request decodes (set by the overlay).
+ * @param fromGridThumbnail Decode from the file's [GridThumbnail] instead of its original. For
+ *   small renditions only: the full-screen preview and the editor keep the original's pixels.
  */
 @Composable
 internal fun EditableWallpaperImage(
@@ -48,6 +50,7 @@ internal fun EditableWallpaperImage(
     decodeFraction: Float = 1f,
     memoryCacheKey: String? = null,
     placeholderMemoryCacheKey: String? = null,
+    fromGridThumbnail: Boolean = false,
 ) {
     val edit = requireNotNull(wallpaper.editParams) { "EditableWallpaperImage requires editParams; non-edited images render with a plain AsyncImage" }
 
@@ -56,12 +59,15 @@ internal fun EditableWallpaperImage(
     // null until ANY painter reports an intrinsic size. Guessing rendered a visible wrong-crop flash during flights.
     var imageAspectRatio by remember(wallpaper.uriString) { mutableStateOf<Float?>(null) }
 
-    val model = remember(wallpaper.uriString, edit.zoom, decodeFraction, memoryCacheKey, placeholderMemoryCacheKey) {
+    val model = remember(wallpaper.uriString, edit.zoom, decodeFraction, memoryCacheKey, placeholderMemoryCacheKey, fromGridThumbnail) {
         val frameScale = decodeFraction * edit.zoom
         val targetW = (screenW * frameScale).roundToInt().coerceIn(1, screenW)
         val targetH = (screenH * frameScale).roundToInt().coerceIn(1, screenH)
         ImageRequest.Builder(context)
-            .data(wallpaper.uriString)
+            .data(
+                if (fromGridThumbnail) GridThumbnail(wallpaper.fileId, wallpaper.uriString, wallpaper.sourceType)
+                else wallpaper.uriString
+            )
             .size(targetW, targetH)
             .scale(if (decodeFraction >= 1f || frameScale > 1f) Scale.FILL else Scale.FIT)
             .apply {

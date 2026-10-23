@@ -463,7 +463,7 @@ fun CollectionImageScreen(
                 CollectionPickerItem(
                     id = target.collectionId,
                     name = target.name,
-                    previewState = CollectionPreviewState(target.previewUris, target.imageCount),
+                    previewState = CollectionPreviewState(target.previewFiles, target.imageCount),
                     isPinned = target.isPinned
                 )
             },
@@ -591,7 +591,7 @@ private fun SharedTransitionScope.WallpaperThumbnail(
                 if (wallpaper.editParams == null) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data(wallpaper.uriString)
+                            .data(GridThumbnail(wallpaper.fileId, wallpaper.uriString, wallpaper.sourceType))
                             .memoryCacheKey(wallpaperThumbCacheKey(wallpaper.uriString))
                             .build(),
                         contentDescription = null,
@@ -607,6 +607,7 @@ private fun SharedTransitionScope.WallpaperThumbnail(
                         contentDescription = null,
                         decodeFraction = 1f / GRID_COLUMNS,
                         memoryCacheKey = wallpaperEditThumbCacheKey(wallpaper.uriString),
+                        fromGridThumbnail = true,
                         modifier = imageModifier
                     )
                 }

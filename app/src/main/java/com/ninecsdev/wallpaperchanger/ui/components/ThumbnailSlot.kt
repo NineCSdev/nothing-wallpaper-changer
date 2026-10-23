@@ -11,20 +11,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.ninecsdev.wallpaperchanger.data.local.PreviewFile
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
- * Square slot for a single image preview.
- * Shared between CollectionGridItem and CollectionImageScreen.
+ * Square slot for one image of a [CollectionGridItem], drawn from the file's grid thumbnail.
+ *
+ * Its memory-cache key is its own, not the grid tile's.
  */
 @Composable
 fun ThumbnailSlot(
-    uri: String?,
+    file: PreviewFile?,
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(0.dp),
 ) {
@@ -34,9 +38,12 @@ fun ThumbnailSlot(
             .clip(shape)
             .background(NothingGray)
     ) {
-        if (uri != null) {
+        if (file != null) {
             AsyncImage(
-                model = uri,
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(GridThumbnail(file.fileId, file.uriString, file.sourceType))
+                    .memoryCacheKey("collection-slot-${file.uriString}")
+                    .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
@@ -50,7 +57,7 @@ fun ThumbnailSlot(
 fun PreviewThumbnailSlot() {
     WallpaperChangerTheme {
         ThumbnailSlot(
-            uri = null,
+            file = null,
             modifier = Modifier.size(100.dp),
             shape = RoundedCornerShape(SmallCornerRadius)
         )

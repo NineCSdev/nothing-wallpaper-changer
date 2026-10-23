@@ -1,6 +1,7 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen
 
 import com.ninecsdev.wallpaperchanger.data.TransferResult
+import com.ninecsdev.wallpaperchanger.data.local.PreviewFile
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 
@@ -11,7 +12,7 @@ enum class TransferMode { COPY, MOVE }
 data class TransferTarget(
     val collectionId: Long,
     val name: String,
-    val previewUris: List<String>,
+    val previewFiles: List<PreviewFile>,
     val imageCount: Int = 0,
     val isPinned: Boolean = false
 )

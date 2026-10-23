@@ -218,7 +218,7 @@ class CollectionImageViewModel @Inject constructor(
                     TransferTarget(
                         collectionId = collection.id,
                         name = collection.name,
-                        previewUris = preview.previewUris,
+                        previewFiles = preview.previewFiles,
                         imageCount = preview.imageCount,
                         isPinned = collection.isPinned
                     )

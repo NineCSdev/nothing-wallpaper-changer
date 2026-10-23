@@ -35,6 +35,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.data.local.CollectionPreview
+import com.ninecsdev.wallpaperchanger.data.local.PreviewFile
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
@@ -45,7 +46,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
  * Data state for the Grid Item for performance
  **/
 data class CollectionPreviewState(
-    val previewUris: List<String> = emptyList(),
+    val previewFiles: List<PreviewFile> = emptyList(),
     val totalCount: Int = 0
 )
 
@@ -56,7 +57,7 @@ data class CollectionPreviewState(
  * every call site already reads a missing key as [CollectionPreviewState]'s default.
  */
 fun Map<Long, CollectionPreview>.asPreviewStates(): Map<Long, CollectionPreviewState> =
-    mapValues { (_, preview) -> CollectionPreviewState(preview.previewUris, preview.imageCount) }
+    mapValues { (_, preview) -> CollectionPreviewState(preview.previewFiles, preview.imageCount) }
 
 /**
  * A square grid item representing a wallpaper collection.
@@ -96,7 +97,7 @@ fun CollectionGridItem(
                     else Modifier
                 )
         ) {
-            GridContent(state.previewUris, state.totalCount)
+            GridContent(state.previewFiles, state.totalCount)
 
             // Pinned marker, top-left over the preview.
             if (isPinned) {
@@ -156,25 +157,25 @@ fun CollectionGridItem(
  * Internal grid logic to separate layout from data handling.
  */
 @Composable
-private fun GridContent(uris: List<String>, totalCount: Int) {
+private fun GridContent(files: List<PreviewFile>, totalCount: Int) {
     val cornerRadius = 16.dp
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.weight(1f)) {
             ThumbnailSlot(
-                uri = uris.getOrNull(0),
+                file = files.getOrNull(0),
                 shape = RoundedCornerShape(topStart = cornerRadius),
                 modifier = Modifier.weight(1f)
             )
             ThumbnailSlot(
-                uri = uris.getOrNull(1),
+                file = files.getOrNull(1),
                 shape = RoundedCornerShape(topEnd = cornerRadius),
                 modifier = Modifier.weight(1f)
             )
         }
         Row(modifier = Modifier.weight(1f)) {
             ThumbnailSlot(
-                uri = uris.getOrNull(2),
+                file = files.getOrNull(2),
                 shape = RoundedCornerShape(bottomStart = cornerRadius),
                 modifier = Modifier.weight(1f)
             )
@@ -186,7 +187,7 @@ private fun GridContent(uris: List<String>, totalCount: Int) {
                     .aspectRatio(1f)
             ) {
                 ThumbnailSlot(
-                    uri = uris.getOrNull(3),
+                    file = files.getOrNull(3),
                     shape = RoundedCornerShape(bottomEnd = cornerRadius),
                     modifier = Modifier
                         .fillMaxSize()
@@ -228,7 +229,7 @@ fun CollectionGridItemMoreThan4Preview() {
             .width(160.dp)) {
             CollectionGridItem(
                 name = "AMOLED",
-                state = CollectionPreviewState(previewUris = emptyList(),totalCount = 12),
+                state = CollectionPreviewState(previewFiles = emptyList(),totalCount = 12),
                 onClick = {}
             )
         }
@@ -244,7 +245,7 @@ fun CollectionGridItemLessOr4Preview() {
             .width(160.dp)) {
             CollectionGridItem(
                 name = "AMOLED",
-                state = CollectionPreviewState(previewUris = emptyList(),totalCount = 4),
+                state = CollectionPreviewState(previewFiles = emptyList(),totalCount = 4),
                 onClick = {},
                 isPinned = true
             )

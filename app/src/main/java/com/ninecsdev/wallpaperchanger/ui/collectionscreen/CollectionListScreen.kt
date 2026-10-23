@@ -254,10 +254,10 @@ fun CollectionListScreenPopulatedPreview() {
                     WallpaperCollection(id = 4, name = "MINIMALISM", type = CollectionType.FOLDER, createdAt = 0L, lastUsedAt = 0L)
                 ),
                 previewStates = mapOf(
-                    1L to CollectionPreviewState(previewUris = emptyList(), totalCount = 12),
-                    2L to CollectionPreviewState(previewUris = emptyList(), totalCount = 4),
-                    3L to CollectionPreviewState(previewUris = emptyList(), totalCount = 2),
-                    4L to CollectionPreviewState(previewUris = emptyList(), totalCount = 2)
+                    1L to CollectionPreviewState(previewFiles = emptyList(), totalCount = 12),
+                    2L to CollectionPreviewState(previewFiles = emptyList(), totalCount = 4),
+                    3L to CollectionPreviewState(previewFiles = emptyList(), totalCount = 2),
+                    4L to CollectionPreviewState(previewFiles = emptyList(), totalCount = 2)
                 )
             ),
             actions = PreviewCollectionListActions,
