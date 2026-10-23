@@ -49,7 +49,7 @@ fun BackupRoute(
 
     // Cancelling leaves the user wherever they already were
     val archiveLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
+        OpenDocumentInDownloads()
     ) { uri -> uri?.let { importViewModel.onArchivePicked(it.toString()) } }
 
     // If denied the archive's references simply cannot be verified, and they restore unavailable
@@ -97,15 +97,21 @@ fun BackupRoute(
     )
 }
 
+/** Where exports are saved by default, so restores look there first too */
+private val DOWNLOADS_URI = DocumentsContract.buildDocumentUri(
+    "com.android.externalstorage.documents",
+    "primary:Download"
+)
+
 /** Opens the save picker at Downloads, as a starting point, instead of wherever it was last left */
 private class CreateDocumentInDownloads(mimeType: String) :
     ActivityResultContracts.CreateDocument(mimeType) {
     override fun createIntent(context: Context, input: String): Intent =
-        super.createIntent(context, input).putExtra(
-            DocumentsContract.EXTRA_INITIAL_URI,
-            DocumentsContract.buildDocumentUri(
-                "com.android.externalstorage.documents",
-                "primary:Download"
-            )
-        )
+        super.createIntent(context, input).putExtra(DocumentsContract.EXTRA_INITIAL_URI, DOWNLOADS_URI)
+}
+
+/** Opens the archive picker at Downloads, where the export side puts archives by default */
+private class OpenDocumentInDownloads : ActivityResultContracts.OpenDocument() {
+    override fun createIntent(context: Context, input: Array<String>): Intent =
+        super.createIntent(context, input).putExtra(DocumentsContract.EXTRA_INITIAL_URI, DOWNLOADS_URI)
 }
