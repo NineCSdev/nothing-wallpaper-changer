@@ -141,12 +141,20 @@
         Without photo access permission, copies are always kept regardless of this setting to have background access to them.
     </string>
     <string name="settings_storage_usage_title">STORAGE USED</string>
-    <!-- %1$s = formatted size (e.g. "142 MB"), %2$s = pluralized image count -->
-    <string name="settings_storage_usage_value">%1$s · %2$s</string>
-    <plurals name="settings_storage_usage_images">
-        <item quantity="one">%d IMAGE</item>
-        <item quantity="other">%d IMAGES</item>
-    </plurals>
+    <string name="settings_storage_by_app">by this app</string>
+    <string name="settings_storage_others">Others</string>
+    <string name="settings_storage_local_copies">Local copies</string>
+    <!-- %1$d = number of local copies -->
+    <string name="settings_storage_local_copies_count">Local copies (%1$d)</string>
+    <string name="settings_storage_cache">Cache</string>
+    <string name="settings_storage_free">Free</string>
+    <!-- %1$s = formatted cache size (e.g. "31 MB") -->
+    <string name="settings_storage_clear_cache">CLEAR CACHE · %1$s</string>
+    <string name="settings_storage_dialog_title">Storage used</string>
+    <string name="settings_storage_dialog_body">
+        Local copies are the photos this app keeps in its own storage. Cache holds the small thumbnails that make collections open fast.
+        Others is everything else on your device.
+    </string>
 
     <!-- Boot toggle -->
     <string name="settings_autostart_title">AUTOSTART ON BOOT</string>
@@ -159,6 +167,7 @@
 
     <!-- Wallpaper rotation -->
     <string name="settings_rotation_policy_title">WALLPAPER ROTATION</string>
+    <string name="settings_rotation_policy_subtitle">How often your wallpaper changes</string>
     <string name="settings_rotation_policy_dialog_title">Wallpaper rotation</string>
     <string name="settings_rotation_policy_dialog_body">Sets the rotation frequency used by every collection that doesn\'t carry its own.
         \n\nEvery unlock changes the wallpaper each time you lock the phone. A time interval changes it

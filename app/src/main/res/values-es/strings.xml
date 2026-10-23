@@ -137,12 +137,19 @@
         Sin el permiso de acceso a fotos, las copias se guardan siempre, independientemente de este ajuste para poder aceder en segundo plano a ellas.
     </string>
     <string name="settings_storage_usage_title">ESPACIO USADO</string>
-    <string name="settings_storage_usage_value">%1$s · %2$s</string>
-    <plurals name="settings_storage_usage_images">
-        <item quantity="one">%d IMAGEN</item>
-        <item quantity="many">%d IMÁGENES</item>
-        <item quantity="other">%d IMÁGENES</item>
-    </plurals>
+    <string name="settings_storage_by_app">de esta app</string>
+    <string name="settings_storage_others">Otros</string>
+    <string name="settings_storage_local_copies">Copias locales</string>
+    <string name="settings_storage_local_copies_count">Copias locales (%1$d)</string>
+    <string name="settings_storage_cache">Caché</string>
+    <string name="settings_storage_free">Libre</string>
+    <string name="settings_storage_clear_cache">BORRAR CACHÉ · %1$s</string>
+    <string name="settings_storage_dialog_title">Espacio usado</string>
+    <string name="settings_storage_dialog_body">
+        Las copias locales son las fotos que esta app guarda en su propio almacenamiento.
+        La caché contiene las miniaturas que hacen que las colecciones se abran rápido.
+        Otros es todo lo demás de tu dispositivo.
+    </string>
 
     <!-- Boot toggle -->
     <string name="settings_autostart_title">INICIO AUTOMÁTICO AL ARRANCAR</string>
@@ -155,6 +162,7 @@
 
     <!-- Rotación del fondo -->
     <string name="settings_rotation_policy_title">ROTACIÓN DEL FONDO DE PANTALLA</string>
+    <string name="settings_rotation_policy_subtitle">Cuánto cambia tu fondo de pantalla</string>
     <string name="settings_rotation_policy_dialog_title">Rotación del fondo de pantalla</string>
     <string name="settings_rotation_policy_dialog_body">
         Define la frecuencia de rotación que usan todas las colecciones que no tengan la suya propia.

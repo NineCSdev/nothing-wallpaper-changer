@@ -13,8 +13,8 @@ import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereExitOutcome
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereTransition
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
+import com.ninecsdev.wallpaperchanger.logic.AppCache
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
-import com.ninecsdev.wallpaperchanger.logic.StorageUsage
 import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
@@ -31,7 +31,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.xmlpull.v1.XmlPullParser
@@ -51,6 +50,7 @@ class SettingsViewModel @Inject constructor(
     private val appDataStore: AppDataStore,
     private val repository: WallpaperRepository,
     private val imageInternalizer: ImageInternalizer,
+    private val appCache: AppCache,
     private val backupExporter: BackupExporter,
     private val wallpaperSources: WallpaperSources,
     private val atmosphereTransition: AtmosphereTransition,
@@ -186,23 +186,31 @@ class SettingsViewModel @Inject constructor(
     }
 
     // Merged into the state after it has its own initial value, never folded into the combine above
-    private val storageUsage: StateFlow<StorageUsage?> = flow {
-        // Defaults aren't counted as they are always internalized (no matter user setting)
-        emit(imageInternalizer.getStorageUsage(repository.getDefaultOnlyFileUris()))
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = null
-    )
+    private val storage = MutableStateFlow<StorageBreakdown?>(null)
+    private val clearingCache = MutableStateFlow(false)
+
+    init {
+        viewModelScope.launch { loadStorage() }
+    }
+
+    private suspend fun loadStorage() {
+        storage.value = StorageBreakdown(
+            // Defaults aren't counted as they are always internalized (no matter user setting)
+            localCopies = imageInternalizer.getStorageUsage(repository.getDefaultOnlyFileUris()),
+            cacheBytes = appCache.sizeBytes(),
+            device = appCache.deviceStorage()
+        )
+    }
 
     // Watched, not driven: the export itself is started and canceled from the Backup screen
     val uiState: StateFlow<SettingsUiState?> =
         combine(
             settingsState,
-            storageUsage,
+            storage,
+            clearingCache,
             backupExporter.state
-        ) { state, usage, export ->
-            state.copy(storageUsage = usage, backupExport = export)
+        ) { state, storage, clearing, export ->
+            state.copy(storage = storage, isClearingCache = clearing, backupExport = export)
         }
             .stateIn(
                 scope = viewModelScope,
@@ -286,6 +294,19 @@ class SettingsViewModel @Inject constructor(
 
     override fun setKeepLocalCopies(enabled: Boolean) {
         viewModelScope.launch { appDataStore.setKeepLocalCopies(enabled) }
+    }
+
+    override fun clearCache() {
+        if (clearingCache.value) return
+        clearingCache.value = true
+        viewModelScope.launch {
+            try {
+                appCache.clear()
+                loadStorage()
+            } finally {
+                clearingCache.value = false
+            }
+        }
     }
 
     override fun refreshMediaAccess() {

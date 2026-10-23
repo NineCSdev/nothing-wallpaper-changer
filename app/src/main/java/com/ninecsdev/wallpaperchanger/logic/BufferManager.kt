@@ -107,6 +107,9 @@ class BufferManager @Inject constructor(
 
     private fun getBufferFile(): File = File(appContext.cacheDir, BUFFER_FILENAME)
 
+    /** The buffer's files in `cacheDir`, finished and in-flight, which a cache clear must leave alone. */
+    fun bufferFiles(): Set<File> = setOf(getBufferFile(), File(appContext.cacheDir, TEMP_FILENAME))
+
     /** The collection the prepared artifact was drawn from, or null when nothing usable is prepared. */
     suspend fun preparedCollectionId(): Long? = wallpaperRecordStore.snapshot().bufferedCollectionId
 

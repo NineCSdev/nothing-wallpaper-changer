@@ -16,5 +16,9 @@ val NothingOrange = Color(0xFFFFA500)
 val NothingDarkGray = Color(0xFF151515)
 val NothingDarkGraySelected = Color(0xFF222222)
 
+// Grouped settings panels: a surface just off black, and its outline
+val NothingPanel = Color(0xFF0A0A0A)
+val NothingPanelBorder = Color(0xFF1E1E1E)
+
 val CardCornerRadius = 16.dp
 val SmallCornerRadius = 8.dp

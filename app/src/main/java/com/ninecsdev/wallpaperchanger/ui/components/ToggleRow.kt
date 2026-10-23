@@ -6,13 +6,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -44,21 +47,23 @@ internal fun SettingsToggleRow(
             infoDialogBody = infoDialogBody
         )
 
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            enabled = enabled,
-            modifier = Modifier.scale(0.8f),
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = NothingBlack,
-                checkedTrackColor = NothingWhite,
-                uncheckedThumbColor = NothingWhite,
-                uncheckedTrackColor = NothingBlack,
-                uncheckedBorderColor = NothingWhite.copy(alpha = 0.5f),
-                disabledCheckedThumbColor = NothingBlack,
-                disabledCheckedTrackColor = NothingWhite.copy(alpha = 0.5f)
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                enabled = enabled,
+                modifier = Modifier.scale(0.8f),
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = NothingBlack,
+                    checkedTrackColor = NothingWhite,
+                    uncheckedThumbColor = NothingWhite,
+                    uncheckedTrackColor = NothingBlack,
+                    uncheckedBorderColor = NothingWhite.copy(alpha = 0.5f),
+                    disabledCheckedThumbColor = NothingBlack,
+                    disabledCheckedTrackColor = NothingWhite.copy(alpha = 0.5f)
+                )
             )
-        )
+        }
     }
 }
 

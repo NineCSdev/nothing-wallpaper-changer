@@ -1,6 +1,7 @@
 package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
 import com.ninecsdev.wallpaperchanger.data.backup.BackupExportState
+import com.ninecsdev.wallpaperchanger.logic.DeviceStorage
 import com.ninecsdev.wallpaperchanger.logic.StorageUsage
 import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
@@ -20,6 +21,22 @@ data class LanguageOption(
     val nativeName: String,
     val displayName: String?
 )
+
+/**
+ * The storage readout: the app's local copies and cache against the device as a whole.
+ * [device] is null when the platform will not report it, and the readout then shows only the app's share.
+ */
+data class StorageBreakdown(
+    val localCopies: StorageUsage,
+    val cacheBytes: Long,
+    val device: DeviceStorage?
+) {
+    val appBytes: Long
+        get() = localCopies.totalBytes + cacheBytes
+
+    val othersBytes: Long?
+        get() = device?.let { (it.totalBytes - it.freeBytes - appBytes).coerceAtLeast(0L) }
+}
 
 /**
  * Snapshot of the Settings screen state.
@@ -47,7 +64,8 @@ data class SettingsUiState(
     val availableLanguages: List<LanguageOption> = emptyList(),
     val selectedLanguageTag: String = "",
     val appVersion: String = "",
-    val storageUsage: StorageUsage? = null,
+    val storage: StorageBreakdown? = null,
+    val isClearingCache: Boolean = false,
     val backupExport: BackupExportState = BackupExportState.Idle
 ) {
     /**

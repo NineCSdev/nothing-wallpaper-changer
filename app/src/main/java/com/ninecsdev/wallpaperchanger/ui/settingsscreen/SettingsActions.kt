@@ -24,6 +24,7 @@ interface SettingsActions {
     fun setCompressionQualityHigh(quality: Int)
     fun setCompressionQualityLow(quality: Int)
     fun setKeepLocalCopies(enabled: Boolean)
+    fun clearCache()
     fun setAppLanguage(tag: String)
     fun refreshMediaAccess()
     fun refreshAtmosphereEngineActive()

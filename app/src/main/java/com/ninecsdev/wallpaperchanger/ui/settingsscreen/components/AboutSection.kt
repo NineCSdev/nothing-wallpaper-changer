@@ -1,5 +1,6 @@
 package com.ninecsdev.wallpaperchanger.ui.settingsscreen.components
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,7 +22,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.components.SettingsRowHeader
-import com.ninecsdev.wallpaperchanger.ui.components.SettingsSection
 import com.ninecsdev.wallpaperchanger.ui.components.safeClick
 import com.ninecsdev.wallpaperchanger.ui.openPlayStoreListing
 import com.ninecsdev.wallpaperchanger.ui.openUrl
@@ -34,24 +34,27 @@ private const val REPO_URL = "https://github.com/NineCSdev/nothing-wallpaper-cha
 private const val ISSUES_URL = "$REPO_URL/issues"
 private const val PROFILE_URL = "https://github.com/NineCSdev"
 
-/** The rows of the ABOUT section: the store listing, the repository and its issue tracker.*/
+/** The rows of the ABOUT section: the store listing, the repository and its issue tracker. */
 @Composable
 internal fun AboutSection() {
     val context = LocalContext.current
 
     AboutLinkRow(
+        icon = R.drawable.icon_star_border,
         title = stringResource(R.string.settings_rate_title),
         subtitle = stringResource(R.string.settings_rate_subtitle),
         onClick = safeClick({ openPlayStoreListing(context) })
     )
 
     AboutLinkRow(
+        icon = R.drawable.icon_code,
         title = stringResource(R.string.settings_source_title),
         subtitle = stringResource(R.string.settings_source_subtitle),
         onClick = safeClick({ openUrl(context, REPO_URL) })
     )
 
     AboutLinkRow(
+        icon = R.drawable.icon_bug_report,
         title = stringResource(R.string.settings_issues_title),
         subtitle = stringResource(R.string.settings_issues_subtitle),
         onClick = safeClick({ openUrl(context, ISSUES_URL) })
@@ -60,6 +63,7 @@ internal fun AboutSection() {
 
 @Composable
 private fun AboutLinkRow(
+    @DrawableRes icon: Int,
     title: String,
     subtitle: String,
     onClick: () -> Unit,
@@ -71,6 +75,15 @@ private fun AboutLinkRow(
             .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = NothingWhite,
+            modifier = Modifier
+                .padding(end = 16.dp)
+                .size(20.dp)
+        )
+
         SettingsRowHeader(
             title = title,
             subtitle = subtitle,
@@ -126,10 +139,7 @@ private fun AboutSectionPreview() {
                 .background(NothingBlack)
                 .padding(horizontal = 24.dp)
         ) {
-            SettingsSection(
-                label = stringResource(R.string.settings_section_about),
-                showDivider = false
-            ) {
+            SettingsPanel(label = stringResource(R.string.settings_section_about)) {
                 AboutSection()
             }
 

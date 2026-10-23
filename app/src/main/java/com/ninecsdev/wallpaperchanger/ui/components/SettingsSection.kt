@@ -44,7 +44,11 @@ internal fun SettingsSection(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        SectionLabel(text = label, alpha = 0.55f)
+        Text(
+            text = label,
+            style = NothingType.overline,
+            color = NothingWhite.copy(alpha = 0.55f)
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -53,37 +57,6 @@ internal fun SettingsSection(
             content = content
         )
     }
-}
-
-/**
- * A group of rows nested inside a [SettingsSection], for settings that belong to the section's
- * subject rather than beside it.
- */
-@Composable
-internal fun SettingsSubsection(
-    label: String,
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Column(modifier = modifier) {
-        SectionLabel(text = label, alpha = 0.4f)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Column(
-            verticalArrangement = Arrangement.spacedBy(RowGap),
-            content = content
-        )
-    }
-}
-
-@Composable
-private fun SectionLabel(text: String, alpha: Float) {
-    Text(
-        text = text,
-        style = NothingType.overline,
-        color = NothingWhite.copy(alpha = alpha)
-    )
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF000000)
@@ -101,9 +74,6 @@ private fun SettingsSectionPreview() {
             }
             SettingsSection(label = "SECOND SECTION") {
                 SettingsRowHeader(title = "ROW THREE", subtitle = "Supporting subtitle text")
-                SettingsSubsection(label = "NESTED GROUP") {
-                    SettingsRowHeader(title = "ROW FOUR", subtitle = "Supporting subtitle text")
-                }
             }
         }
     }

@@ -1,9 +1,8 @@
 package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -23,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.logic.DeviceStorage
 import com.ninecsdev.wallpaperchanger.logic.StorageUsage
 import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
@@ -40,9 +40,10 @@ import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.LocalCopiesRo
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.QualitySlider
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.RotationPolicySection
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.ScreenOffDelayField
-import com.ninecsdev.wallpaperchanger.ui.components.SettingsSection
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.SettingsPanel
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.SettingsPanelGroup
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.SettingsSegmentedSelector
-import com.ninecsdev.wallpaperchanger.ui.components.SettingsSubsection
+import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.StorageUsageRow
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.components.WallpaperZoomFixSelector
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
@@ -97,15 +98,10 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Column(
-                modifier = Modifier
-                    .padding(horizontal = 24.dp)
+                modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                Spacer(modifier = Modifier.height(8.dp))
-
-                SettingsSection(
-                    label = stringResource(R.string.settings_section_service),
-                    showDivider = false
-                ) {
+                SettingsPanel(label = stringResource(R.string.settings_section_service)) {
                     RotationPolicySection(
                         policy = uiState.rotationPolicy,
                         onPolicyChange = actions::setRotationPolicy
@@ -152,7 +148,7 @@ fun SettingsScreen(
                     )
                 }
 
-                SettingsSection(label = stringResource(R.string.settings_section_appearance)) {
+                SettingsPanel(label = stringResource(R.string.settings_section_appearance)) {
                     AtmosphereModeSection(
                         selectedMode = uiState.wallpaperMode,
                         engineActive = uiState.atmosphereEngineActive,
@@ -189,17 +185,22 @@ fun SettingsScreen(
                     )
                 }
 
-                SettingsSection(label = stringResource(R.string.settings_section_storage)) {
+                SettingsPanel(label = stringResource(R.string.settings_section_storage)) {
                     LocalCopiesRow(
                         checked = uiState.effectiveKeepLocalCopies,
                         hasMediaAccess = uiState.hasMediaAccess,
                         hasPartialMediaAccess = uiState.hasPartialMediaAccess,
-                        usage = uiState.storageUsage,
                         onCheckedChange = actions::setKeepLocalCopies,
                         onRequestMediaAccess = onRequestMediaAccess
                     )
 
-                    SettingsSubsection(label = stringResource(R.string.settings_section_quality)) {
+                    StorageUsageRow(
+                        storage = uiState.storage,
+                        isClearing = uiState.isClearingCache,
+                        onClearCache = actions::clearCache
+                    )
+
+                    SettingsPanelGroup(label = stringResource(R.string.settings_section_quality)) {
                         QualitySlider(
                             label = stringResource(R.string.settings_quality_high_label),
                             subtitle = stringResource(R.string.settings_quality_high_subtitle),
@@ -220,7 +221,7 @@ fun SettingsScreen(
                     }
                 }
 
-                SettingsSection(label = stringResource(R.string.settings_section_app)) {
+                SettingsPanel(label = stringResource(R.string.settings_section_app)) {
                     LanguageSelector(
                         languages = uiState.availableLanguages,
                         selectedTag = uiState.selectedLanguageTag,
@@ -233,16 +234,14 @@ fun SettingsScreen(
                     )
                 }
 
-                SettingsSection(label = stringResource(R.string.settings_section_about)) {
+                SettingsPanel(label = stringResource(R.string.settings_section_about)) {
                     AboutSection()
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
             }
 
             AppVersionFooter(
                 version = uiState.appVersion,
-                modifier = Modifier.padding(bottom = 10.dp)
+                modifier = Modifier.padding(top = 16.dp, bottom = 10.dp)
             )
         }
     }
@@ -271,7 +270,11 @@ fun SettingsScreenPreview() {
                 ),
                 selectedLanguageTag = "",
                 appVersion = "0.4.0-beta",
-                storageUsage = StorageUsage(totalBytes = 148_897_792, fileCount = 87)
+                storage = StorageBreakdown(
+                    localCopies = StorageUsage(totalBytes = 148_897_792, fileCount = 87),
+                    cacheBytes = 31_457_280,
+                    device = DeviceStorage(totalBytes = 256_000_000_000, freeBytes = 129_800_000_000)
+                )
             ),
             actions = PreviewSettingsActions,
             snackbarHostState = SnackbarHostState(),
@@ -296,6 +299,7 @@ private object PreviewSettingsActions : SettingsActions {
     override fun setCompressionQualityHigh(quality: Int) {}
     override fun setCompressionQualityLow(quality: Int) {}
     override fun setKeepLocalCopies(enabled: Boolean) {}
+    override fun clearCache() {}
     override fun setAppLanguage(tag: String) {}
     override fun refreshMediaAccess() {}
     override fun refreshAtmosphereEngineActive() {}
