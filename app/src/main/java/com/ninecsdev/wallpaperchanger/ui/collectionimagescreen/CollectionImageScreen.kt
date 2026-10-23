@@ -67,7 +67,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -85,6 +84,7 @@ import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.Select
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.WallpaperPreviewOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
+import com.ninecsdev.wallpaperchanger.ui.components.GridThumbnail
 import com.ninecsdev.wallpaperchanger.ui.components.EditedBadge
 import com.ninecsdev.wallpaperchanger.ui.components.FavoriteBadge
 import com.ninecsdev.wallpaperchanger.ui.components.UnavailableBadge
@@ -96,6 +96,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import kotlinx.coroutines.flow.first
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 private const val GRID_COLUMNS = 3
@@ -199,6 +200,7 @@ fun CollectionImageScreen(
 
         val currentPreview by rememberUpdatedState(uiState.previewWallpaper)
         val currentActions by rememberUpdatedState(actions)
+        val currentWallpapers by rememberUpdatedState(uiState.wallpapers)
 
         // This flip fires the reverse flight: the currently viewed wallpaper's cell enters exactly as the overlay exits
         val dismissPreview = {
@@ -364,17 +366,19 @@ fun CollectionImageScreen(
                     }
 
                     // Keep the currently viewed wallpaper's thumbnail composed so dismissing always
-                    // has a live  flight target that isn't covered by the top bar.
-                    val density = LocalDensity.current
+                    // has a live flight target that isn't covered by the top bar.
                     LaunchedEffect(uiState.previewWallpaper?.id) {
                         val wallpaper = uiState.previewWallpaper ?: return@LaunchedEffect
-                        if (!previewVisibleState.currentState) return@LaunchedEffect
-                        val index = uiState.wallpapers.indexOfFirst { it.id == wallpaper.id }
+                        // Wait for the open to settle: scrolling mid-flight would move its origin
+                        snapshotFlow {
+                            previewVisibleState.currentState && previewVisibleState.targetState &&
+                                !sharedScope.isTransitionActive
+                        }.first { it }
+                        val index = currentWallpapers.indexOfFirst { it.id == wallpaper.id }
                         if (index < 0) return@LaunchedEffect
-                        val topSafePx = with(density) { (padding.calculateTopPadding() + 8.dp).toPx() }
                         val info = gridState.layoutInfo.visibleItemsInfo.find { it.key == wallpaper.id }
                         val safelyVisible = info != null &&
-                            info.offset.y >= topSafePx &&
+                            info.offset.y >= 0 &&
                             info.offset.y + info.size.height <= gridState.layoutInfo.viewportEndOffset
                         if (!safelyVisible) {
                             // scrollToItem aligns the item to the start of the content area,
