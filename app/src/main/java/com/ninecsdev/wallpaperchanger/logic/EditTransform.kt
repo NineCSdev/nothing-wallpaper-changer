@@ -95,11 +95,48 @@ fun computeEditTransform(
 }
 
 /**
- * The same framing as [computeEditTransform], for a container that has **already fitted the
- * content itself** and can only transform it afterward.
+ * [computeEditTransform] framed against the wallpaper canvas, for a container of any shape that
+ * shows a centered window onto that framing. [drawX][EditTransform.drawX]/[drawY][EditTransform.drawY]
+ * are in container pixels, so a caller drawing the raw source needs nothing else.
  *
- * The content is framed against the wallpaper canvas, and the container then shows a centered
- * window onto that framing. [scale][LayerTransform.scale] divides out the fit the container already applied.
+ * Container and canvas dimensions all > 0.
+ */
+// TODO tests: see vault note tests/EditTransform Tests.md (computeCanvasEditTransform)
+fun computeCanvasEditTransform(
+    contentWidth: Float,
+    contentHeight: Float,
+    containerWidth: Float,
+    containerHeight: Float,
+    canvasWidth: Float,
+    canvasHeight: Float,
+    zoom: Float,
+    offsetX: Float,
+    offsetY: Float,
+): EditTransform {
+    // The canvas, cover-fitted into the container: one axis matches, the other overflows
+    val cover = maxOf(containerWidth / canvasWidth, containerHeight / canvasHeight)
+    val frameWidth = canvasWidth * cover
+    val frameHeight = canvasHeight * cover
+
+    val transform = computeEditTransform(
+        contentWidth = contentWidth,
+        contentHeight = contentHeight,
+        containerWidth = frameWidth,
+        containerHeight = frameHeight,
+        zoom = zoom,
+        offsetX = offsetX,
+        offsetY = offsetY,
+    )
+    return transform.copy(
+        drawX = transform.drawX + (containerWidth - frameWidth) / 2f,
+        drawY = transform.drawY + (containerHeight - frameHeight) / 2f,
+    )
+}
+
+/**
+ * The same framing as [computeCanvasEditTransform], for a container that has **already fitted the
+ * content itself** and can only transform it afterward.
+ * [scale][LayerTransform.scale] divides out the fit the container already applied.
  *
  * All dimensions in container pixels, all > 0; [contentAspect] is width / height.
  */
@@ -113,14 +150,13 @@ fun computeLayerTransform(
     offsetX: Float,
     offsetY: Float,
 ): LayerTransform {
-    // The canvas, cover-fitted into the container: one axis matches, the other overflows.
-    val cover = maxOf(containerWidth / canvasWidth, containerHeight / canvasHeight)
-
-    val transform = computeEditTransform(
+    val transform = computeCanvasEditTransform(
         contentWidth = contentAspect,
         contentHeight = 1f,
-        containerWidth = canvasWidth * cover,
-        containerHeight = canvasHeight * cover,
+        containerWidth = containerWidth,
+        containerHeight = containerHeight,
+        canvasWidth = canvasWidth,
+        canvasHeight = canvasHeight,
         zoom = zoom,
         offsetX = offsetX,
         offsetY = offsetY,

@@ -1,24 +1,25 @@
     package com.ninecsdev.wallpaperchanger.ui.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.platform.LocalContext
-import coil.compose.AsyncImage
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
-import com.ninecsdev.wallpaperchanger.logic.computeLayerTransform
+import com.ninecsdev.wallpaperchanger.logic.computeCanvasEditTransform
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import kotlin.math.roundToInt
 
@@ -28,7 +29,7 @@ import kotlin.math.roundToInt
  * The Coil request is sized from [decodeFraction] × screen
  * (a stable resting size, NOT the measured container) so
  * shared-element flights that remeasure this composable every frame never spam
- * new image loads. The per-frame transform is a pure graphicsLayer.
+ * new image loads. The per-frame transform is draw-only.
  *
  * @param wallpaper The wallpaper to display. Must carry [editParams][WallpaperImage.editParams].
  * @param contentDescription Accessibility description.
@@ -56,9 +57,6 @@ internal fun EditableWallpaperImage(
 
     val context = LocalContext.current
     val (screenW, screenH) = remember { ImageProcessingUtils.getWallpaperCanvasSize(context) }
-    // null until ANY painter reports an intrinsic size. Guessing rendered a visible wrong-crop flash during flights.
-    var imageAspectRatio by remember(wallpaper.uriString) { mutableStateOf<Float?>(null) }
-
     val model = remember(wallpaper.uriString, edit.zoom, decodeFraction, memoryCacheKey, placeholderMemoryCacheKey, fromGridThumbnail) {
         val frameScale = decodeFraction * edit.zoom
         val targetW = (screenW * frameScale).roundToInt().coerceIn(1, screenW)
@@ -77,32 +75,29 @@ internal fun EditableWallpaperImage(
             .build()
     }
 
-    fun learnAspectRatio(painter: Painter?) {
-        val intrinsic: Size = painter?.intrinsicSize ?: return
-        // NaN (Size.Unspecified, e.g. color painters) fails both comparisons.
-        if (intrinsic.width > 0 && intrinsic.height > 0) {
-            imageAspectRatio = intrinsic.width / intrinsic.height
-        }
-    }
+    val painter = rememberAsyncImagePainter(model)
 
     Box(modifier = modifier.clipToBounds()) {
-        AsyncImage(
-            model = model,
-            contentDescription = contentDescription,
-            contentScale = ContentScale.Fit,
-            onLoading = { state -> learnAspectRatio(state.painter) },
-            onSuccess = { state -> learnAspectRatio(state.painter) },
+        Spacer(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer {
-                    // Hidden with a placeholder (not wrongly-transformed) until the aspect is known;
-                    val aspect = imageAspectRatio
-                    if (aspect == null || size.width <= 0f || size.height <= 0f) {
-                        alpha = 0f
-                        return@graphicsLayer
+                .then(
+                    if (contentDescription == null) Modifier
+                    else Modifier.semantics {
+                        this.contentDescription = contentDescription
+                        role = Role.Image
                     }
-                    val layer = computeLayerTransform(
-                        contentAspect = aspect,
+                )
+                .drawBehind {
+                    // Drawn at its own size under one float transform
+                    val intrinsic = painter.intrinsicSize
+                    // Nothing until a painter knows its size: a guessed aspect draws the wrong crop
+                    if (!(intrinsic.width > 0f && intrinsic.height > 0f)) return@drawBehind
+                    if (size.width <= 0f || size.height <= 0f) return@drawBehind
+
+                    val t = computeCanvasEditTransform(
+                        contentWidth = intrinsic.width,
+                        contentHeight = intrinsic.height,
                         containerWidth = size.width,
                         containerHeight = size.height,
                         canvasWidth = screenW.toFloat(),
@@ -111,10 +106,12 @@ internal fun EditableWallpaperImage(
                         offsetX = edit.offsetX,
                         offsetY = edit.offsetY,
                     )
-                    scaleX = layer.scale
-                    scaleY = layer.scale
-                    translationX = layer.translationX
-                    translationY = layer.translationY
+                    withTransform({
+                        translate(left = t.drawX, top = t.drawY)
+                        scale(t.scale, t.scale, pivot = Offset.Zero)
+                    }) {
+                        with(painter) { draw(intrinsic) }
+                    }
                 }
         )
     }
