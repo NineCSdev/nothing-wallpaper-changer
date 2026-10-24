@@ -48,7 +48,7 @@ internal fun BackupWizard(
     step: BackupImportStep,
     actions: BackupImportActions,
     onChooseArchive: () -> Unit,
-    onPickFolder: (initialUri: String?) -> Unit,
+    onPickFolder: () -> Unit,
     onStartService: () -> Unit,
     onFinish: () -> Unit
 ) {
@@ -107,7 +107,7 @@ private fun ReviewStep(plan: BackupImportPlan, onConfirm: () -> Unit, onChooseAr
 @Composable
 private fun FolderStep(
     step: BackupImportStep.Folder,
-    onPickFolder: (String?) -> Unit,
+    onPickFolder: () -> Unit,
     onSkip: () -> Unit
 ) {
     Meta(stringResource(R.string.backup_import_step_folder, 2, 3, step.index, step.total))
@@ -130,7 +130,7 @@ private fun FolderStep(
     SafeToLeave()
     NothingButton(
         text = stringResource(R.string.backup_import_folder_pick),
-        onClick = { onPickFolder(step.prompt.rootUri) }
+        onClick = onPickFolder
     )
     NothingButton(
         text = stringResource(R.string.backup_import_folder_skip),
@@ -346,7 +346,7 @@ private fun BackupWizardFolderPreview() = PreviewStack {
     )
 }
 
-/*@Preview(name = "Wizard · outcomes", backgroundColor = 0xFF000000)
+@Preview(name = "Wizard · outcomes", backgroundColor = 0xFF000000)
 @Preview(name = "Wizard · questions (es)", backgroundColor = 0xFF000000, locale = "es")
 @Composable
 private fun BackupWizardOutcomePreview() = PreviewStack {

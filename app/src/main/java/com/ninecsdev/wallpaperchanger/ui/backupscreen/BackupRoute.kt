@@ -10,7 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
-import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ninecsdev.wallpaperchanger.R
@@ -86,8 +85,7 @@ fun BackupRoute(
         onExport = { exportLauncher.launch(exportFileName) },
         // The extension is ours, so no provider will filter on a type for it
         onChooseArchive = { archiveLauncher.launch(arrayOf("*/*")) },
-        // Pre-seeding the picker at the folder the collection came to make the lossless case one tap
-        onPickFolder = { initialUri -> folderLauncher.launch(initialUri?.toUri()) },
+        onPickFolder = { folderLauncher.launch(PICTURES_URI) },
         onStartService = onStartService,
         // A finished restore so it hands the user back to the app
         onFinishImport = {
@@ -96,6 +94,11 @@ fun BackupRoute(
         }
     )
 }
+
+private val PICTURES_URI = DocumentsContract.buildDocumentUri(
+    "com.android.externalstorage.documents",
+    "primary:Pictures"
+)
 
 /** Where exports are saved by default, so restores look there first too */
 private val DOWNLOADS_URI = DocumentsContract.buildDocumentUri(
@@ -115,3 +118,5 @@ private class OpenDocumentInDownloads : ActivityResultContracts.OpenDocument() {
     override fun createIntent(context: Context, input: Array<String>): Intent =
         super.createIntent(context, input).putExtra(DocumentsContract.EXTRA_INITIAL_URI, DOWNLOADS_URI)
 }
+
+

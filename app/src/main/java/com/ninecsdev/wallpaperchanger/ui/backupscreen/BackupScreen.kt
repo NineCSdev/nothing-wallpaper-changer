@@ -41,7 +41,7 @@ fun BackupScreen(
     onBack: () -> Unit,
     onExport: () -> Unit,
     onChooseArchive: () -> Unit,
-    onPickFolder: (initialUri: String?) -> Unit,
+    onPickFolder: () -> Unit,
     onStartService: () -> Unit,
     onFinishImport: () -> Unit
 ) {
