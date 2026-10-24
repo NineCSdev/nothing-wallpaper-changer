@@ -77,6 +77,8 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
@@ -99,6 +101,9 @@ private const val DISMISS_DRAG_SHRINK = 0.2f
 
 /** Longest the close waits for its departure bounds before going anyway. A few frames, not a feel. */
 private const val LEAVE_FRAMING_TIMEOUT_MILLIS = 100L
+
+/** Largest side, in px, `Constraints.fixed` holds on both axes at once (the true limit is 2^15 - 2) */
+private const val MAX_FRAMED_SIDE_PX = 32_000f
 
 /** Shared by all three pieces of chrome, so they leave together */
 private val ChromeExitFade = fadeOut(animationSpec = tween(durationMillis = 100))
@@ -440,14 +445,21 @@ private fun Modifier.previewFraming(state: PreviewZoomState, active: Boolean): M
         }
         val width = constraints.maxWidth
         val height = constraints.maxHeight
+        // Deep over-zoom outgrows what Constraints can hold, so layout stops there and a layer draws the rest
+        val layoutScale = min(scale, MAX_FRAMED_SIDE_PX / max(width, height))
+        val drawScale = scale / layoutScale
         val placeable = measurable.measure(
-            Constraints.fixed((width * scale).roundToInt(), (height * scale).roundToInt())
+            Constraints.fixed((width * layoutScale).roundToInt(), (height * layoutScale).roundToInt())
         )
         layout(width, height) {
-            placeable.place(
-                ((width - placeable.width) / 2f + state.pan.x).roundToInt(),
-                ((height - placeable.height) / 2f + state.pan.y + state.dismissTranslation).roundToInt()
-            )
+            // Both scale about the same center, so the rect is placed as if laid out at full scale
+            val x = ((width - placeable.width) / 2f + state.pan.x).roundToInt()
+            val y = ((height - placeable.height) / 2f + state.pan.y + state.dismissTranslation).roundToInt()
+            if (drawScale == 1f) placeable.place(x, y)
+            else placeable.placeWithLayer(x, y) {
+                scaleX = drawScale
+                scaleY = drawScale
+            }
             state.onFramed()
         }
     }
