@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -68,7 +67,6 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -80,6 +78,7 @@ import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.resolveCollectionDisplayName
+import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.NewCollectionNameDialog
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.SelectionActionBar
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.WallpaperPreviewOverlay
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
@@ -452,8 +451,13 @@ fun CollectionImageScreen(
         )
     }
 
-    // Copy/move destination picker.
-    if (uiState.transferMode != null) {
+    // Copy/move destination picker, or the name prompt once a new collection was chosen
+    if (uiState.isNamingNewTarget) {
+        NewCollectionNameDialog(
+            onConfirm = actions::transferToNewCollection,
+            onDismiss = actions::cancelTransfer
+        )
+    } else if (uiState.transferMode != null) {
         CollectionPickerSheet(
             title = stringResource(
                 if (uiState.transferMode == TransferMode.COPY) R.string.transfer_dialog_title_copy
@@ -473,17 +477,7 @@ fun CollectionImageScreen(
                     ?.let(actions::transferToCollection)
             },
             onDismiss = actions::cancelTransfer,
-            emptyContent = {
-                Text(
-                    text = stringResource(R.string.transfer_dialog_empty),
-                    style = NothingType.metaLabel,
-                    color = NothingWhite.copy(alpha = 0.4f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp)
-                )
-            }
+            onCreateNew = actions::requestNewTransferTarget
         )
     }
 
@@ -771,6 +765,8 @@ private object PreviewCollectionImageActions : CollectionImageActions {
     override fun deleteSelectedWallpapers() {}
     override fun requestTransfer(mode: TransferMode) {}
     override fun transferToCollection(target: TransferTarget) {}
+    override fun requestNewTransferTarget() {}
+    override fun transferToNewCollection(name: String) {}
     override fun cancelTransfer() {}
     override fun toggleFavoriteSelected() {}
     override fun toggleFavorite(wallpaper: WallpaperImage) {}

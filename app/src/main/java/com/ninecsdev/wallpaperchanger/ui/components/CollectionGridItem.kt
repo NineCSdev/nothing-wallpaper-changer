@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -28,6 +29,13 @@ import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -154,6 +162,64 @@ fun CollectionGridItem(
 }
 
 /**
+ * The "new collection" slot, sized and labeled like a [CollectionGridItem]. A dotted outline
+ * around a plus with no fill.
+ */
+@Composable
+fun NewCollectionGridItem(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val outlineColor = NothingWhite.copy(alpha = 0.3f)
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .aspectRatio(1f)
+                .drawBehind {
+                    val strokeWidth = 2.dp.toPx()
+                    val inset = strokeWidth / 2
+                    // Zero-length dashes with round caps draw as dots
+                    drawRoundRect(
+                        color = outlineColor,
+                        topLeft = Offset(inset, inset),
+                        size = Size(size.width - strokeWidth, size.height - strokeWidth),
+                        cornerRadius = CornerRadius(16.dp.toPx() - inset),
+                        style = Stroke(
+                            width = strokeWidth,
+                            cap = StrokeCap.Round,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(0f, 7.dp.toPx()))
+                        )
+                    )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                tint = NothingWhite.copy(alpha = 0.5f),
+                modifier = Modifier.size(32.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text(
+            text = stringResource(R.string.picker_new_collection),
+            style = NothingType.metaLabel,
+            color = NothingWhite.copy(alpha = 0.6f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+/**
  * Internal grid logic to separate layout from data handling.
  */
 @Composable
@@ -249,6 +315,18 @@ fun CollectionGridItemLessOr4Preview() {
                 onClick = {},
                 isPinned = true
             )
+        }
+    }
+}
+
+@Preview(name = "New collection",showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+fun NewCollectionGridItemPreview() {
+    WallpaperChangerTheme {
+        Box(modifier = Modifier
+            .padding(24.dp)
+            .width(160.dp)) {
+            NewCollectionGridItem(onClick = {})
         }
     }
 }

@@ -67,6 +67,7 @@ import com.ninecsdev.wallpaperchanger.model.resolveDisplayName
 import com.ninecsdev.wallpaperchanger.ui.components.NothingBottomSheet
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButton
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButtonVariant
+import com.ninecsdev.wallpaperchanger.ui.components.NothingDialogCard
 import com.ninecsdev.wallpaperchanger.ui.components.RotationPickerContent
 import com.ninecsdev.wallpaperchanger.ui.components.SettingsRowHeader
 import com.ninecsdev.wallpaperchanger.ui.components.WallpaperThumbnail

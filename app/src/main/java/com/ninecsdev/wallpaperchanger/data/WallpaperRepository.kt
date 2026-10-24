@@ -224,9 +224,10 @@ class WallpaperRepository @Inject constructor(
     }
 
     /**
-     * Creates a folder collection. Returns `true` if it became the active collection.
+     * Creates a folder collection, made active when it is the first one or [activate] asks for it.
+     * Returns `true` only when it is the first collection.
      */
-    suspend fun createFolderCollection(name: String, treeUri: String, rule: CropRule): Boolean {
+    suspend fun createFolderCollection(name: String, treeUri: String, rule: CropRule, activate: Boolean = false): Boolean {
         wallpaperSources.takePersistedGrant(treeUri)
         try {
             // Scan first to avoid creating an orphan empty collection (or one with a partial/empty image set) on a transient scan failure.
@@ -253,6 +254,7 @@ class WallpaperRepository @Inject constructor(
                     scannedUris.map { MembershipDraft(it, SourceType.FOLDER_DOC) },
                     isManuallyAdded = false
                 )
+                if (activate && !isFirst) dao.setActiveCollection(collectionId)
                 Log.d(TAG, "Imported ${scannedUris.size} images to collection: $name")
                 isFirst
             }
@@ -267,10 +269,16 @@ class WallpaperRepository @Inject constructor(
     }
 
     /**
-     * Creates a manual collection. Returns whether it became the active collection, plus a summary
-     * of how the picked images were imported (see [WallpaperSources.acquirePicked]).
+     * Creates a manual collection, made active when it is the first one or [activate] asks for it.
+     * Returns whether it is the first collection, plus a summary of how the picked images were
+     * imported (see [WallpaperSources.acquirePicked]).
      */
-    suspend fun createManualCollection(name: String, uris: List<String>, rule: CropRule): Pair<Boolean, PickImportResult> {
+    suspend fun createManualCollection(
+        name: String,
+        uris: List<String>,
+        rule: CropRule,
+        activate: Boolean = false
+    ): Pair<Boolean, PickImportResult> {
         val isFirst = dao.getActiveCollection() == null
         val imported = wallpaperSources.acquirePicked(uris)
 
@@ -288,6 +296,7 @@ class WallpaperRepository @Inject constructor(
         )
 
         linkMemberships(collectionId, imported.files.asDrafts(), isManuallyAdded = false)
+        if (activate && !isFirst) dao.setActiveCollection(collectionId)
         return isFirst to imported.result
     }
 
@@ -395,6 +404,33 @@ class WallpaperRepository @Inject constructor(
      */
     suspend fun moveImagesToCollection(images: List<WallpaperImage>, targetCollectionId: Long): TransferResult =
         transferImagesToCollection(images, targetCollectionId, removeFromSource = true)
+
+    /**
+     * Creates a manual collection named [name] and copies or moves ([removeFromSource]) [images]
+     * into it, inheriting [sourceCollectionId]'s crop rule.
+     */
+    // TODO tests: check "tests/Wallpaper Transfer Tests" note
+    suspend fun createCollectionWithImages(
+        name: String,
+        images: List<WallpaperImage>,
+        sourceCollectionId: Long,
+        removeFromSource: Boolean
+    ): TransferResult = database.withTransaction {
+        val rule = dao.getCollectionById(sourceCollectionId)?.defaultCropRule ?: CropRule.CENTER
+        val now = System.currentTimeMillis()
+        val collectionId = dao.insertCollection(
+            WallpaperCollection(
+                name = name,
+                type = CollectionType.MANUAL,
+                rootUriString = null,
+                isActive = false,
+                defaultCropRule = rule,
+                createdAt = now,
+                lastUsedAt = now
+            )
+        )
+        transferImagesToCollection(images, collectionId, removeFromSource)
+    }
 
     // TODO tests: check "tests/Wallpaper Transfer Tests" note
     private suspend fun transferImagesToCollection(

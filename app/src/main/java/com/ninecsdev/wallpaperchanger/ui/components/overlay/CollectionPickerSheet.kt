@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionGridItem
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
+import com.ninecsdev.wallpaperchanger.ui.components.NewCollectionGridItem
 import com.ninecsdev.wallpaperchanger.ui.components.NothingBottomSheet
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
@@ -44,8 +45,9 @@ data class CollectionPickerItem(
  * of [CollectionGridItems][com.ninecsdev.wallpaperchanger.ui.components.CollectionGridItem].
  * Tapping an item acts immediately and scrim tap, swipe-down and system back all dismiss via [onDismiss].
  *
- * Shared by the main screen's active-collection picker and the copy/move transfer target picker;
- * [emptyContent] lets each caller supply its own zero-items treatment.
+ * Shared by the main screen's active-collection picker and the copy/move transfer target picker.
+ * With [onCreateNew] set, a "new collection" tile leads the grid and also stands in for the empty
+ * state; otherwise [emptyContent] is the zero-items treatment. Both actions run after the slide-out.
  */
 // TODO tests: see vault note tests/Collection Picker Tests.md
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,6 +59,7 @@ fun CollectionPickerSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     sheetState: SheetState = rememberModalBottomSheetState(),
+    onCreateNew: (() -> Unit)? = null,
     emptyContent: @Composable ColumnScope.() -> Unit = {}
 ) {
     NothingBottomSheet(
@@ -65,7 +68,13 @@ fun CollectionPickerSheet(
         sheetState = sheetState
     ) { hideThen ->
         // The click runs after the slide-out, so the caller's own teardown doesn't cut it short
-        CollectionPickerContent(title, items, { item -> hideThen { onItemClick(item) } }, emptyContent)
+        CollectionPickerContent(
+            title = title,
+            items = items,
+            onItemClick = { item -> hideThen { onItemClick(item) } },
+            onCreateNew = onCreateNew?.let { create -> { hideThen(create) } },
+            emptyContent = emptyContent
+        )
     }
 }
 
@@ -74,6 +83,7 @@ private fun CollectionPickerContent(
     title: String,
     items: List<CollectionPickerItem>,
     onItemClick: (CollectionPickerItem) -> Unit,
+    onCreateNew: (() -> Unit)?,
     emptyContent: @Composable ColumnScope.() -> Unit
 ) {
     Column(
@@ -90,7 +100,7 @@ private fun CollectionPickerContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (items.isEmpty()) {
+        if (items.isEmpty() && onCreateNew == null) {
             emptyContent()
         } else {
             LazyVerticalGrid(
@@ -100,6 +110,9 @@ private fun CollectionPickerContent(
                 verticalArrangement = Arrangement.spacedBy(24.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
+                if (onCreateNew != null) {
+                    item(key = "new") { NewCollectionGridItem(onClick = onCreateNew) }
+                }
                 items(items, key = { it.id }) { item ->
                     CollectionGridItem(
                         name = item.name,
@@ -129,7 +142,8 @@ private fun CollectionPickerSheetPopulatedPreview() {
             title = "TRANSFER TO",
             items = items,
             onItemClick = {},
-            onDismiss = {}
+            onDismiss = {},
+            onCreateNew = {}
         )
     }
 }

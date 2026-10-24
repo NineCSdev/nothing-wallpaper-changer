@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.importSummaryText
 import com.ninecsdev.wallpaperchanger.ui.components.rememberMediaAccessGatedAction
 
@@ -33,6 +34,13 @@ fun CollectionListRoute(
     // The snackbar host is owned here, not by the screen, because this is where notices arrive
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+
+    // A creation requested from the main screen's picker waits out the slide-in
+    LaunchedEffect(Unit) {
+        if (!viewModel.takeCreateOnArrival()) return@LaunchedEffect
+        delay(750L)
+        viewModel.openCreateModalActivating()
+    }
 
     LaunchedEffect(Unit) {
         viewModel.notices.collect { result ->

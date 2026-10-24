@@ -23,6 +23,7 @@ import com.ninecsdev.wallpaperchanger.ui.components.openAppSettings
 fun MainRoute(
     viewModel: MainViewModel,
     onOpenCollections: () -> Unit,
+    onCreateCollection: () -> Unit,
     onOpenSettings: () -> Unit,
     onStartService: () -> Unit,
     onStopService: () -> Unit,
@@ -58,6 +59,7 @@ fun MainRoute(
         },
         onDismissPicker = { viewModel.setPickerSheetOpen(false) },
         onOpenCollectionsClick = onOpenCollections,
+        onCreateCollectionClick = onCreateCollection,
         onSettingsClick = onOpenSettings,
         onToggleRevert = viewModel::setRevertToDefault,
         onSelectDefaultClick = onLaunchDefaultWallpaperPicker,

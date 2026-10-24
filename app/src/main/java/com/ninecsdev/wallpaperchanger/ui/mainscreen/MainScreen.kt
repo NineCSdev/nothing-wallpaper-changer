@@ -52,6 +52,7 @@ fun MainScreen(
     onPickCollection: (Long) -> Unit,
     onDismissPicker: () -> Unit,
     onOpenCollectionsClick: () -> Unit,
+    onCreateCollectionClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onToggleRevert: (Boolean) -> Unit,
     onSelectDefaultClick: () -> Unit,
@@ -165,7 +166,7 @@ fun MainScreen(
             onDismiss = onDismissPicker,
             onCreateCollection = {
                 onDismissPicker()
-                onOpenCollectionsClick()
+                onCreateCollectionClick()
             }
         )
     }
@@ -187,6 +188,7 @@ fun MainScreenRunningPreview() {
                 onPickCollection = {},
                 onDismissPicker = {},
                 onOpenCollectionsClick = {},
+                onCreateCollectionClick = {},
                 onSettingsClick = {},
                 onToggleRevert = {},
                 onSelectDefaultClick = {},
@@ -215,6 +217,7 @@ fun MainScreenEmptyPreview() {
                 onPickCollection = {},
                 onDismissPicker = {},
                 onOpenCollectionsClick = {},
+                onCreateCollectionClick = {},
                 onSettingsClick = {},
                 onToggleRevert = {},
                 onSelectDefaultClick = {},

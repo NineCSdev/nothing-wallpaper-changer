@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.ui.collectionscreen.components
+package com.ninecsdev.wallpaperchanger.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
@@ -20,7 +20,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /**
- * The black, thin-bordered dialog card shared by the create/edit collection modals. Lays out
+ * The black, thin-bordered dialog card shared by the app's modals. Lays out
  * [content] in a padded [Column] and, when [isProcessing] is true, blocks it behind a
  * [ProcessingOverlay] showing [processingMessage].
  *

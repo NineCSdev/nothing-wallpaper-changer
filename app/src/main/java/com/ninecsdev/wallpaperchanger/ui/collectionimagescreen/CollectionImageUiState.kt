@@ -49,7 +49,8 @@ data class CollectionImageUiState(
     /** The transfer being configured (target picker open); null when no transfer is in progress. */
     val transferMode: TransferMode? = null,
     /** Destination candidates for the open target picker (all collections except this one). */
-    val transferTargets: List<TransferTarget> = emptyList()
+    val transferTargets: List<TransferTarget> = emptyList(),
+    val isNamingNewTarget: Boolean = false
 ) {
     /** The wallpaper the edit action targets: the single selection, or null when edit doesn't apply. */
     val selectedWallpaper: WallpaperImage?

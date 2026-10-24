@@ -97,6 +97,10 @@ fun AppNavigation(
                 MainRoute(
                     viewModel = mainViewModel,
                     onOpenCollections = { navController.navigate(Route.COLLECTIONS) },
+                    onCreateCollection = {
+                        collectionViewModel.requestCreateOnArrival()
+                        navController.navigate(Route.COLLECTIONS)
+                    },
                     onOpenSettings = { navController.navigate(Route.SETTINGS) },
                     onStartService = onStartClick,
                     onStopService = onStopService,

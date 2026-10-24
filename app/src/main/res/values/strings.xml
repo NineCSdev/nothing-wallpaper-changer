@@ -208,7 +208,7 @@
     <string name="collections_empty_hint">TAP + TO INITIALIZE</string>
 
     <!-- Collection picker sheet -->
-    <string name="picker_empty_create">CREATE COLLECTION</string>
+    <string name="picker_new_collection">NEW COLLECTION</string>
     <string name="cd_active_collection">Active collection</string>
 
     <!-- Create collection card -->
@@ -354,7 +354,6 @@
     <string name="selection_menu_collection_default">SET DEFAULT</string>
     <string name="transfer_dialog_title_copy">COPY TO</string>
     <string name="transfer_dialog_title_move">MOVE TO</string>
-    <string name="transfer_dialog_empty">NO OTHER COLLECTIONS</string>
     <string name="transfer_summary_copied">%1$d COPIED TO %2$s</string>
     <string name="transfer_summary_moved">%1$d MOVED TO %2$s</string>
     <string name="transfer_summary_already_present">%1$d ALREADY THERE</string>

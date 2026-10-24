@@ -23,6 +23,8 @@ interface CollectionImageActions {
     // Copy/move to another collection
     fun requestTransfer(mode: TransferMode)
     fun transferToCollection(target: TransferTarget)
+    fun requestNewTransferTarget()
+    fun transferToNewCollection(name: String)
     fun cancelTransfer()
 
     // Favourites

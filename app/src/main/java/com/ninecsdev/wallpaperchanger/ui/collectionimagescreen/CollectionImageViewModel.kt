@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninecsdev.wallpaperchanger.data.RelinkResult
+import com.ninecsdev.wallpaperchanger.data.TransferResult
 import com.ninecsdev.wallpaperchanger.data.local.CollectionPreview
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
@@ -227,9 +228,35 @@ class CollectionImageViewModel @Inject constructor(
         }
     }
 
-    /** Closes the transfer target picker without transferring. */
+    /** Closes the transfer target picker or the new-collection name prompt without transferring. */
     override fun cancelTransfer() {
-        _uiState.update { it.copy(transferMode = null, transferTargets = emptyList()) }
+        _uiState.update { it.copy(transferMode = null, transferTargets = emptyList(), isNamingNewTarget = false) }
+    }
+
+    /** Swaps the target picker for the name prompt of a collection to create as the target. */
+    override fun requestNewTransferTarget() {
+        if (_uiState.value.transferMode == null) return
+        _uiState.update { it.copy(isNamingNewTarget = true) }
+    }
+
+    /** Creates a collection named [name] and runs the pending copy/move of the selection into it. */
+    override fun transferToNewCollection(name: String) {
+        val state = _uiState.value
+        val mode = state.transferMode ?: return
+        val images = state.wallpapers.filter { it.id in state.selectedIds }
+        if (images.isEmpty() || name.isBlank()) {
+            cancelTransfer()
+            return
+        }
+        viewModelScope.launch {
+            val result = repository.createCollectionWithImages(
+                name = name,
+                images = images,
+                sourceCollectionId = collectionId,
+                removeFromSource = mode == TransferMode.MOVE
+            )
+            finishTransfer(mode, result, name)
+        }
     }
 
     /** Runs the pending copy/move of the selected wallpapers into [target], then exits selection. */
@@ -246,25 +273,31 @@ class CollectionImageViewModel @Inject constructor(
                 TransferMode.COPY -> repository.copyImagesToCollection(images, target.collectionId)
                 TransferMode.MOVE -> repository.moveImagesToCollection(images, target.collectionId)
             }
-            _uiState.update {
-                it.copy(
-                    transferMode = null,
-                    transferTargets = emptyList(),
-                    isSelectionMode = false,
-                    selectedIds = emptySet()
-                )
-            }
-            _notices.tryEmit(
-                CollectionImageNotice.Transfer(
-                    TransferSummary(
-                        mode = mode,
-                        transferred = result.transferred,
-                        alreadyPresent = result.alreadyPresent,
-                        targetName = target.name
-                    )
-                )
+            finishTransfer(mode, result, target.name)
+        }
+    }
+
+    /** Closes the transfer UI, exits selection and reports [result]. */
+    private fun finishTransfer(mode: TransferMode, result: TransferResult, targetName: String) {
+        _uiState.update {
+            it.copy(
+                transferMode = null,
+                transferTargets = emptyList(),
+                isNamingNewTarget = false,
+                isSelectionMode = false,
+                selectedIds = emptySet()
             )
         }
+        _notices.tryEmit(
+            CollectionImageNotice.Transfer(
+                TransferSummary(
+                    mode = mode,
+                    transferred = result.transferred,
+                    alreadyPresent = result.alreadyPresent,
+                    targetName = targetName
+                )
+            )
+        )
     }
 
     // Favourite actions

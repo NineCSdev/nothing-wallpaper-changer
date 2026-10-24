@@ -38,6 +38,7 @@ import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButton
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButtonVariant
+import com.ninecsdev.wallpaperchanger.ui.components.NothingDialogCard
 import com.ninecsdev.wallpaperchanger.ui.components.NothingTextField
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingDarkGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingDarkGraySelected

@@ -64,6 +64,9 @@ class CollectionViewModel @Inject constructor(
     private var pendingFolderUri: Uri? = null
     private var pendingPhotosUris: List<Uri> = emptyList()
 
+    private var activateOnCreate = false
+    private var createOnArrival = false
+
     /** Current sort order for the collection list. */
     private val _sortOrder = MutableStateFlow(CollectionSortOrder.LAST_USED)
 
@@ -206,7 +209,7 @@ class CollectionViewModel @Inject constructor(
             operation = "Create folder collection",
             onFailure = { _screenState.update { it.copy(createError = true) } }
         ) {
-            val shouldStartService = repository.createFolderCollection(name, uri.toString(), rule)
+            val shouldStartService = repository.createFolderCollection(name, uri.toString(), rule, activateOnCreate)
             pendingFolderUri = null
             onCollectionCreated(shouldStartService)
         }
@@ -218,7 +221,7 @@ class CollectionViewModel @Inject constructor(
             operation = "Create manual collection",
             onFailure = { _screenState.update { it.copy(createError = true) } }
         ) {
-            val (shouldStartService, importResult) = repository.createManualCollection(name, pendingPhotosUris.map { it.toString() }, rule)
+            val (shouldStartService, importResult) = repository.createManualCollection(name, pendingPhotosUris.map { it.toString() }, rule, activateOnCreate)
             pendingPhotosUris = emptyList()
             _notices.tryEmit(importResult)
             onCollectionCreated(shouldStartService)
@@ -326,8 +329,25 @@ class CollectionViewModel @Inject constructor(
 
     // Modal/navigation helpers
 
+    /** Asks the collections screen to open the activating create modal once it has arrived. */
+    fun requestCreateOnArrival() {
+        createOnArrival = true
+    }
+
+    /** Returns whether a creation was requested on arrival, clearing the request. */
+    fun takeCreateOnArrival(): Boolean = createOnArrival.also { createOnArrival = false }
+
+    /** Opens the create modal so the collection it creates also becomes the active one. */
+    fun openCreateModalActivating() {
+        activateOnCreate = true
+        toggleCreateModal(true)
+    }
+
     override fun toggleCreateModal(show: Boolean) {
-        if (!show) pendingFolderUri = null
+        if (!show) {
+            pendingFolderUri = null
+            activateOnCreate = false
+        }
         _screenState.update {
             if (show) it.copy(isShowingCreateModal = true, createError = false)
             else it.copy(

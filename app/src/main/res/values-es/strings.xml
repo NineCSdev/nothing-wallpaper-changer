@@ -202,7 +202,7 @@
     <string name="collections_empty_hint">PULSA + PARA EMPEZAR</string>
 
     <!-- Collection picker sheet -->
-    <string name="picker_empty_create">CREAR COLECCIÓN</string>
+    <string name="picker_new_collection">NUEVA COLECCIÓN</string>
     <string name="cd_active_collection">Colección activa</string>
 
     <!-- Create collection card -->
@@ -355,7 +355,6 @@
     <string name="selection_menu_collection_default">PREDEFINIR</string>
     <string name="transfer_dialog_title_copy">COPIAR A</string>
     <string name="transfer_dialog_title_move">MOVER A</string>
-    <string name="transfer_dialog_empty">NO HAY OTRAS COLECCIONES</string>
     <string name="transfer_summary_copied">%1$d COPIADAS A %2$s</string>
     <string name="transfer_summary_moved">%1$d MOVIDAS A %2$s</string>
     <string name="transfer_summary_already_present">%1$d YA ESTABAN</string>
