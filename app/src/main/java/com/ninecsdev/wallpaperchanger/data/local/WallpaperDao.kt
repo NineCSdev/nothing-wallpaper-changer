@@ -233,7 +233,7 @@ abstract class WallpaperDao {
     abstract fun observeImagesForCollection(collectionId: Long): Flow<List<WallpaperImage>>
 
     /**
-     * Every collection's newest [limit] files, keyed by collection.
+     * Every collection's oldest [limit] files, keyed by collection.
      *
      * `ROW_NUMBER()` numbers each collection's rows independently, so the outer `rn <= :limit`
      * takes a per-collection top-N without a query per collection. The outer `ORDER BY` puts each
@@ -247,7 +247,7 @@ abstract class WallpaperDao {
         SELECT collectionId, fileId, uri, sourceType FROM (
             SELECT w.collectionId AS collectionId, f.id AS fileId, f.uri AS uri, f.sourceType AS sourceType,
                    ROW_NUMBER() OVER (
-                       PARTITION BY w.collectionId ORDER BY w.addedAt DESC, w.id ASC
+                       PARTITION BY w.collectionId ORDER BY w.addedAt ASC, w.id ASC
                    ) AS rn
             FROM wallpapers w JOIN wallpaper_files f ON w.fileId = f.id
             WHERE w.isDefault = 0
