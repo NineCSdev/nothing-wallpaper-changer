@@ -35,7 +35,7 @@
     <string name="cd_fit_height">Fit height</string>
     <string name="cd_hide_controls">Hide controls</string>
     <string name="cd_show_controls">Show controls</string>
-    <string name="cd_undo_changes">Undo changes</string>
+    <string name="cd_undo_changes">Undo last change</string>
     <string name="cd_reset_edit">Reset edit</string>
     <string name="cd_collapse">Collapse</string>
     <string name="cd_expand">Expand</string>

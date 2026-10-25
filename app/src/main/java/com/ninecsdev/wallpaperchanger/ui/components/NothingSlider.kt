@@ -41,7 +41,8 @@ fun NothingSlider(
     onValueChange: (Float) -> Unit,
     valueRange: ClosedFloatingPointRange<Float>,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    onValueChangeFinished: (() -> Unit)? = null
 ) {
     val activeColor = NothingWhite.copy(alpha = if (enabled) 1f else 0.35f)
     val inactiveColor = NothingWhite.copy(alpha = if (enabled) 0.18f else 0.1f)
@@ -51,6 +52,7 @@ fun NothingSlider(
         Slider(
             value = value,
             onValueChange = onValueChange,
+            onValueChangeFinished = onValueChangeFinished,
             valueRange = valueRange,
             enabled = enabled,
             modifier = modifier.height(SliderHeight),

@@ -49,6 +49,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.ControlsPanel
+import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.EditHistory
 import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.EditTopBar
 import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.FloatingSaveButton
 import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.GestureTransform
@@ -68,7 +69,8 @@ import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.matchesEditPa
  * the gesture math lives in [applyEditGesture][com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.applyEditGesture] (EditMath.kt).
  *
  * A collapsible bottom panel provides precision sliders whose value readouts are editable
- * (type an exact zoom or offset), plus save/cancel actions.
+ * (type an exact zoom or offset), plus save/cancel actions. Undo steps back one input at a time
+ * through [EditHistory].
  *
  * Zoom = 1.0 means the image fits the screen completely (letterboxed/pillarboxed if needed).
  * Zoom > 1.0 scales the image up (to cover and beyond).
@@ -88,8 +90,9 @@ fun WallpaperEditScreen(
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
 
-    // Saved params the current values are compared against (undo target / dirty check)
+    // Saved params the current values are compared against (dirty check) and the undo floor
     var baseline by remember { mutableStateOf(EditParams(zoom = 1f, offsetX = 0f, offsetY = 0f)) }
+    val history = remember { EditHistory() }
 
     // Controls panel visibility
     var showControls by remember { mutableStateOf(false) }
@@ -106,6 +109,7 @@ fun WallpaperEditScreen(
             offsetX = coerceOffset(saved.offsetX)
             offsetY = coerceOffset(saved.offsetY)
             baseline = saved.copy(zoom = zoom, offsetX = offsetX, offsetY = offsetY)
+            history.reset(baseline)
         }
     }
 
@@ -124,10 +128,16 @@ fun WallpaperEditScreen(
     val hasUnsavedChanges = wallpaper != null &&
         !matchesEditParams(baseline, zoom, offsetX, offsetY)
     val isSaveEnabled = hasUnsavedChanges && !uiState.isSaving
-    val undoChanges = {
-        zoom = baseline.zoom
-        offsetX = baseline.offsetX
-        offsetY = baseline.offsetY
+
+    val currentParams = { EditParams(zoom = zoom, offsetX = offsetX, offsetY = offsetY) }
+    val canUndo = wallpaper != null && history.canUndo(currentParams())
+    val commitEdit = { history.commit(currentParams()) }
+    val undoEdit: () -> Unit = {
+        history.undo(currentParams())?.let {
+            zoom = it.zoom
+            offsetX = it.offsetX
+            offsetY = it.offsetY
+        }
     }
 
     val guardedBack: () -> Unit = {
@@ -148,15 +158,17 @@ fun WallpaperEditScreen(
             offsetX = offsetX,
             offsetY = offsetY,
             hasUnsavedChanges = hasUnsavedChanges,
+            canUndo = canUndo,
             isSaveEnabled = isSaveEnabled,
             showControls = showControls,
             onZoomChange = setZoom,
             onOffsetXChange = setOffsetX,
             onOffsetYChange = setOffsetY,
             onGestureTransform = onGestureTransform,
+            onCommitEdit = commitEdit,
             onToggleControls = { showControls = !showControls },
             onSave = { onSave(zoom, offsetX, offsetY) },
-            onUndo = undoChanges,
+            onUndo = undoEdit,
             onReset = onReset,
             onBack = guardedBack
         )
@@ -200,6 +212,7 @@ private fun WallpaperCanvas(
     onImageAspectRatioChange: (Float) -> Unit,
     onCanvasSizeChange: (width: Float, height: Float) -> Unit,
     onGestureTransform: (GestureTransform) -> Unit,
+    onGestureEnd: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // The gesture detector is created once (keyed on Unit), so it must read the *latest* edit
@@ -209,6 +222,7 @@ private fun WallpaperCanvas(
     val currentOffsetY by rememberUpdatedState(offsetY)
     val currentAspect by rememberUpdatedState(imageAspectRatio)
     val currentOnGesture by rememberUpdatedState(onGestureTransform)
+    val currentOnGestureEnd by rememberUpdatedState(onGestureEnd)
 
     // The photo is framed against the wallpaper canvas
     val context = LocalContext.current
@@ -250,7 +264,8 @@ private fun WallpaperCanvas(
                     },
                     currentZoom = { currentZoom },
                     currentOffset = { Offset(currentOffsetX, currentOffsetY) },
-                    onSettleAtRest = { currentOnGesture(GestureTransform(MinZoom, 0f, 0f)) }
+                    onSettleAtRest = { currentOnGesture(GestureTransform(MinZoom, 0f, 0f)) },
+                    onGestureEnd = { currentOnGestureEnd() }
                 )
             }
             .onSizeChanged { size ->
@@ -303,12 +318,14 @@ private fun WallpaperEditContent(
     offsetX: Float,
     offsetY: Float,
     hasUnsavedChanges: Boolean,
+    canUndo: Boolean,
     isSaveEnabled: Boolean,
     showControls: Boolean,
     onZoomChange: (Float) -> Unit,
     onOffsetXChange: (Float) -> Unit,
     onOffsetYChange: (Float) -> Unit,
     onGestureTransform: (GestureTransform) -> Unit,
+    onCommitEdit: () -> Unit,
     onToggleControls: () -> Unit,
     onSave: () -> Unit,
     onUndo: () -> Unit,
@@ -349,6 +366,7 @@ private fun WallpaperEditContent(
         onZoomChange(coerceZoom(targetZoom))
         onOffsetXChange(0f)
         onOffsetYChange(0f)
+        onCommitEdit()
     }
 
     Box(modifier = Modifier.fillMaxSize().background(NothingBlack).clipToBounds()) {
@@ -367,13 +385,14 @@ private fun WallpaperEditContent(
                 focusManager.clearFocus()
                 onGestureTransform(gesture)
             },
+            onGestureEnd = onCommitEdit,
             modifier = Modifier.fillMaxSize()
         )
 
         EditTopBar(
             isDefaultWallpaper = wallpaper.isDefault,
             hasSavedEdits = wallpaper.editParams != null,
-            hasUnsavedChanges = hasUnsavedChanges,
+            canUndo = canUndo,
             showControls = showControls,
             onBack = onBack,
             onUndo = {
@@ -381,7 +400,11 @@ private fun WallpaperEditContent(
                 onUndo()
             },
             onResetSaved = onReset,
-            onToggleControls = onToggleControls,
+            onToggleControls = {
+                // Hiding the panel removes a focused field without a focus-loss event, so close it first
+                focusManager.clearFocus()
+                onToggleControls()
+            },
             onFitHeight = onFitHeight,
             modifier = Modifier.align(Alignment.TopCenter)
         )
@@ -396,6 +419,7 @@ private fun WallpaperEditContent(
             onZoomChange = onZoomChange,
             onOffsetXChange = onOffsetXChange,
             onOffsetYChange = onOffsetYChange,
+            onCommit = onCommitEdit,
             isSaveEnabled = isSaveEnabled,
             onSave = onSave,
             onCancel = onBack,
@@ -467,6 +491,7 @@ private fun WallpaperEditControlsPanel(
     onZoomChange: (Float) -> Unit,
     onOffsetXChange: (Float) -> Unit,
     onOffsetYChange: (Float) -> Unit,
+    onCommit: () -> Unit,
     isSaveEnabled: Boolean,
     onSave: () -> Unit,
     onCancel: () -> Unit,
@@ -487,6 +512,7 @@ private fun WallpaperEditControlsPanel(
             onZoomChange = onZoomChange,
             onOffsetXChange = onOffsetXChange,
             onOffsetYChange = onOffsetYChange,
+            onCommit = onCommit,
             isSaveEnabled = isSaveEnabled,
             onSave = onSave,
             onCancel = onCancel

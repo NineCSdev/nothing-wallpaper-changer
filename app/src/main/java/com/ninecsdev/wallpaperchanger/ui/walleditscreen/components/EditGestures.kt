@@ -32,10 +32,11 @@ import kotlinx.coroutines.launch
  * delta per frame, and only after touch slop.
  *
  * [onDown] fires for every touch, before anything is known about it, so a coasting throw can be
- * caught the instant a finger lands.
+ * caught the instant a finger lands. [onUp] fires when that touch lifts, after any [onFling].
  */
 private suspend fun PointerInputScope.detectEditGestures(
     onDown: () -> Unit,
+    onUp: () -> Unit,
     onTransform: (centroid: Offset, pan: Offset, zoomDelta: Float) -> Unit,
     onFling: (velocity: Offset) -> Unit,
     onDoubleTap: (position: Offset) -> Unit
@@ -43,7 +44,7 @@ private suspend fun PointerInputScope.detectEditGestures(
     detectTapAwareGestures(
         readGesture = { down ->
             onDown()
-            readEditGesture(down, onTransform, onFling)
+            readEditGesture(down, onTransform, onFling).also { onUp() }
         },
         onTap = { /* The single tap has no meaning on this screen */ },
         onDoubleTap = onDoubleTap
@@ -102,12 +103,16 @@ private suspend fun AwaitPointerEventScope.readEditGesture(
  *
  * Only one animation runs at a time and any touch cancels it, so a finger landing on a coasting
  * image stops it dead.
+ *
+ * [onGestureEnd] marks where one undo step ends: a touch lifting with nothing left to coast, or an
+ * animation stopping, finished or interrupted.
  */
 internal suspend fun PointerInputScope.runEditGestures(
     onGesture: (centroid: Offset, pan: Offset, zoomDelta: Float) -> Unit,
     currentZoom: () -> Float,
     currentOffset: () -> Offset,
-    onSettleAtRest: () -> Unit
+    onSettleAtRest: () -> Unit,
+    onGestureEnd: () -> Unit
 ) {
     // The platform's own scroll deceleration
     val decay = splineBasedDecay<Offset>(this)
@@ -118,41 +123,50 @@ internal suspend fun PointerInputScope.runEditGestures(
         var running: Job? = null
         detectEditGestures(
             onDown = { running?.cancel() },
+            onUp = { if (running?.isActive != true) onGestureEnd() },
             onTransform = onGesture,
             onFling = { velocity ->
                 running = launch {
-                    // Coasted as pan deltas through the same mapping a drag uses
-                    var travelled = Offset.Zero
-                    var previous: Offset? = null
-                    AnimationState(
-                        typeConverter = Offset.VectorConverter,
-                        initialValue = Offset.Zero,
-                        initialVelocityVector = AnimationVector2D(velocity.x, velocity.y)
-                    ).animateDecay(decay) {
-                        // The offsets only reach here a frame late, so "did it move?" is asked of the frame before
-                        val landed = currentOffset()
-                        if (previous == landed) cancelAnimation()
-                        previous = landed
-                        onGesture(center(), value - travelled, 1f)
-                        travelled = value
+                    try {
+                        // Coasted as pan deltas through the same mapping a drag uses
+                        var travelled = Offset.Zero
+                        var previous: Offset? = null
+                        AnimationState(
+                            typeConverter = Offset.VectorConverter,
+                            initialValue = Offset.Zero,
+                            initialVelocityVector = AnimationVector2D(velocity.x, velocity.y)
+                        ).animateDecay(decay) {
+                            // The offsets only reach here a frame late, so "did it move?" is asked of the frame before
+                            val landed = currentOffset()
+                            if (previous == landed) cancelAnimation()
+                            previous = landed
+                            onGesture(center(), value - travelled, 1f)
+                            travelled = value
+                        }
+                    } finally {
+                        onGestureEnd()
                     }
                 }
             },
             onDoubleTap = { position ->
                 running = launch {
-                    val from = currentZoom()
-                    val target = if (isCloseEnough(from, MinZoom)) DoubleTapZoom else MinZoom
-                    // Stepped as ratios about the tapped point, so the point under the finger stays put
-                    animate(
-                        initialValue = from,
-                        targetValue = target,
-                        animationSpec = spring(stiffness = Spring.StiffnessMedium)
-                    ) { value, _ ->
-                        onGesture(position, Offset.Zero, value / currentZoom())
+                    try {
+                        val from = currentZoom()
+                        val target = if (isCloseEnough(from, MinZoom)) DoubleTapZoom else MinZoom
+                        // Stepped as ratios about the tapped point, so the point under the finger stays put
+                        animate(
+                            initialValue = from,
+                            targetValue = target,
+                            animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                        ) { value, _ ->
+                            onGesture(position, Offset.Zero, value / currentZoom())
+                        }
+                        // At MinZoom nothing overflows, so the offsets no longer move the image and
+                        // the mapping leaves them where they were
+                        if (target == MinZoom) onSettleAtRest()
+                    } finally {
+                        onGestureEnd()
                     }
-                    // At MinZoom nothing overflows, so the offsets no longer move the image and
-                    // the mapping leaves them where they were
-                    if (target == MinZoom) onSettleAtRest()
                 }
             }
         )

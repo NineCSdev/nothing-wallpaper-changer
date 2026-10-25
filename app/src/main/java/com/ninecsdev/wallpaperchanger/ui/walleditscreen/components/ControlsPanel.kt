@@ -76,6 +76,7 @@ internal fun ControlsPanel(
     onZoomChange: (Float) -> Unit,
     onOffsetXChange: (Float) -> Unit,
     onOffsetYChange: (Float) -> Unit,
+    onCommit: () -> Unit,
     isSaveEnabled: Boolean,
     onSave: () -> Unit,
     onCancel: () -> Unit,
@@ -105,7 +106,8 @@ internal fun ControlsPanel(
             text = formatZoom(zoom),
             decimals = ZoomDecimals,
             onValueChange = onZoomChange,
-            onTextChange = { parseZoomInput(it)?.let(onZoomChange) }
+            onTextChange = { parseZoomInput(it)?.let(onZoomChange) },
+            onCommit = onCommit
         )
         SliderRow(
             label = "X",
@@ -115,7 +117,8 @@ internal fun ControlsPanel(
             decimals = OffsetPercentDecimals,
             enabled = canPanX,
             onValueChange = { onOffsetXChange(percentToOffset(it)) },
-            onTextChange = { parseOffsetPercentInput(it)?.let(onOffsetXChange) }
+            onTextChange = { parseOffsetPercentInput(it)?.let(onOffsetXChange) },
+            onCommit = onCommit
         )
         SliderRow(
             label = "Y",
@@ -125,7 +128,8 @@ internal fun ControlsPanel(
             decimals = OffsetPercentDecimals,
             enabled = canPanY,
             onValueChange = { onOffsetYChange(percentToOffset(it)) },
-            onTextChange = { parseOffsetPercentInput(it)?.let(onOffsetYChange) }
+            onTextChange = { parseOffsetPercentInput(it)?.let(onOffsetYChange) },
+            onCommit = onCommit
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -161,9 +165,13 @@ private fun SliderRow(
     decimals: Int,
     onValueChange: (Float) -> Unit,
     onTextChange: (String) -> Unit,
+    onCommit: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
+    // A drag is its own undo step, so a value still being typed is committed before it starts
+    var isSliding by remember { mutableStateOf(false) }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.fillMaxWidth()
@@ -178,7 +186,17 @@ private fun SliderRow(
 
         NothingSlider(
             value = value,
-            onValueChange = onValueChange,
+            onValueChange = {
+                if (!isSliding) {
+                    isSliding = true
+                    onCommit()
+                }
+                onValueChange(it)
+            },
+            onValueChangeFinished = {
+                isSliding = false
+                onCommit()
+            },
             valueRange = valueRange,
             enabled = enabled,
             modifier = Modifier
@@ -190,7 +208,8 @@ private fun SliderRow(
             text = text,
             decimals = decimals,
             enabled = enabled,
-            onTextChange = onTextChange
+            onTextChange = onTextChange,
+            onCommit = onCommit
         )
     }
 }
@@ -199,7 +218,8 @@ private fun SliderRow(
  * The row's value, readable and editable in the same place. Tapping it opens a numeric keyboard,
  * and every accepted keystroke lands on the preview immediately.
  *
- * The field owns its string only while focused. On focus loss it snaps back to the real value.
+ * The field owns its string only while focused. On focus loss it snaps back to the real value
+ * and the typing becomes one undo step through [onCommit].
  */
 @Composable
 private fun ValueField(
@@ -207,6 +227,7 @@ private fun ValueField(
     decimals: Int,
     enabled: Boolean,
     onTextChange: (String) -> Unit,
+    onCommit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
@@ -250,7 +271,10 @@ private fun ValueField(
             keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
             modifier = Modifier
                 .fillMaxWidth()
-                .onFocusChanged { isFocused = it.isFocused }
+                .onFocusChanged {
+                    if (isFocused && !it.isFocused) onCommit()
+                    isFocused = it.isFocused
+                }
         )
     }
 }
@@ -268,6 +292,7 @@ private fun ControlsPanelPreview() {
             onZoomChange = {},
             onOffsetXChange = {},
             onOffsetYChange = {},
+            onCommit = {},
             isSaveEnabled = true,
             onSave = {},
             onCancel = {}
@@ -288,6 +313,7 @@ private fun ControlsPanelInertAxisPreview() {
             onZoomChange = {},
             onOffsetXChange = {},
             onOffsetYChange = {},
+            onCommit = {},
             isSaveEnabled = false,
             onSave = {},
             onCancel = {}

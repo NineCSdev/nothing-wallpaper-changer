@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -48,7 +47,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -502,12 +500,6 @@ private fun Modifier.previewFraming(state: PreviewZoomState, active: Boolean): M
 private enum class PageFraming { WHOLE_PHOTO, CROP_RULE, EDIT }
 
 private val ChipColor = NothingBlack.copy(alpha = 0.5f)
-private val StatusBarScrim = Brush.verticalGradient(
-    0f to NothingBlack.copy(alpha = 0.45f),
-    0.5f to NothingBlack.copy(alpha = 0.45f),
-    1f to Color.Transparent
-)
-private val STATUS_BAR_SCRIM_FADE = 24.dp
 private const val NOT_APPLICABLE_ALPHA = 0.4f
 
 @Composable
@@ -520,13 +512,6 @@ private fun PreviewTopBar(
     onToggleFramedByRule: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(StatusBarScrim)
-                .statusBarsPadding()
-                .height(STATUS_BAR_SCRIM_FADE)
-        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()

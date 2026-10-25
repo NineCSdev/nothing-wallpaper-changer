@@ -32,14 +32,15 @@ import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
  * Top app-bar overlay for the wallpaper editor.
  *
  * Displays the back button, screen title, and contextual action buttons:
- * an undo/reset button (visible only when relevant), a fit-height button,
+ * an undo button that steps back one edit and, with nothing left to undo, resets the saved edit
+ * (visible only when either applies), a fit-height button,
  * and a settings toggle for the controls panel.
  */
 @Composable
 internal fun EditTopBar(
     isDefaultWallpaper: Boolean,
     hasSavedEdits: Boolean,
-    hasUnsavedChanges: Boolean,
+    canUndo: Boolean,
     showControls: Boolean,
     onBack: () -> Unit,
     onUndo: () -> Unit,
@@ -48,8 +49,8 @@ internal fun EditTopBar(
     onFitHeight: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val canResetSaved = !hasUnsavedChanges && hasSavedEdits
-    val resetEnabled = hasUnsavedChanges || canResetSaved
+    val canResetSaved = !canUndo && hasSavedEdits
+    val resetEnabled = canUndo || canResetSaved
 
     Box(
         modifier = modifier
@@ -89,7 +90,7 @@ internal fun EditTopBar(
                 IconButton(
                     onClick = {
                         when {
-                            hasUnsavedChanges -> onUndo()
+                            canUndo -> onUndo()
                             canResetSaved -> onResetSaved()
                         }
                     }
@@ -97,7 +98,7 @@ internal fun EditTopBar(
                     Icon(
                         painter = painterResource(R.drawable.icon_undo),
                         contentDescription = when {
-                            hasUnsavedChanges -> stringResource(R.string.cd_undo_changes)
+                            canUndo -> stringResource(R.string.cd_undo_changes)
                             canResetSaved -> stringResource(R.string.cd_reset_edit)
                             else -> stringResource(R.string.cd_reset_edit)
                         },
@@ -135,7 +136,7 @@ private fun EditTopBarDefaultPreview() {
         EditTopBar(
             isDefaultWallpaper = false,
             hasSavedEdits = false,
-            hasUnsavedChanges = false,
+            canUndo = false,
             showControls = false,
             onBack = {},
             onUndo = {},
@@ -153,7 +154,7 @@ private fun EditTopBarUnsavedPreview() {
         EditTopBar(
             isDefaultWallpaper = false,
             hasSavedEdits = false,
-            hasUnsavedChanges = true,
+            canUndo = true,
             showControls = false,
             onBack = {},
             onUndo = {},
@@ -171,7 +172,7 @@ private fun EditTopBarResetPreview() {
         EditTopBar(
             isDefaultWallpaper = false,
             hasSavedEdits = true,
-            hasUnsavedChanges = false,
+            canUndo = false,
             showControls = false,
             onBack = {},
             onUndo = {},
@@ -189,7 +190,7 @@ private fun EditTopBarControlsOpenPreview() {
         EditTopBar(
             isDefaultWallpaper = false,
             hasSavedEdits = false,
-            hasUnsavedChanges = false,
+            canUndo = false,
             showControls = true,
             onBack = {},
             onUndo = {},

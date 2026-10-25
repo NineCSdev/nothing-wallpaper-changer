@@ -33,7 +33,7 @@
     <string name="cd_fit_height">Ajustar altura</string>
     <string name="cd_hide_controls">Ocultar controles</string>
     <string name="cd_show_controls">Mostrar controles</string>
-    <string name="cd_undo_changes">Deshacer cambios</string>
+    <string name="cd_undo_changes">Deshacer último cambio</string>
     <string name="cd_reset_edit">Restablecer edición</string>
     <string name="cd_collapse">Contraer</string>
     <string name="cd_expand">Expandir</string>
