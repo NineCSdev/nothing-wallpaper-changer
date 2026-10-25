@@ -3,6 +3,8 @@ package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen
 import com.ninecsdev.wallpaperchanger.data.TransferResult
 import com.ninecsdev.wallpaperchanger.data.local.PreviewFile
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
+import com.ninecsdev.wallpaperchanger.model.enums.CropRule
+import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 
 /** Whether a cross-collection transfer copies or moves the selection. */
@@ -37,6 +39,7 @@ data class CollectionImageUiState(
     val collectionName: String = "",
     val collectionType: CollectionType? = null,
     val isFavoritesCollection: Boolean = false,
+    val collectionCropRule: CropRule = WallpaperCollection.DEFAULT_CROP_RULE,
     val wallpapers: List<WallpaperImage> = emptyList(),
     val favoriteFileIds: Set<Long> = emptySet(),
     val defaultWallpaperId: Long? = null,

@@ -4,12 +4,14 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.BoundsTransform
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -58,6 +60,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -75,9 +78,11 @@ import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.logic.CropPlacement
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.resolveCollectionDisplayName
+import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.CropRuleAlignment
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.NewCollectionNameDialog
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.SelectionActionBar
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.WallpaperPreviewOverlay
@@ -133,10 +138,12 @@ internal fun AsyncImagePainter.State.Success.intrinsicAspectRatio(): Float? {
 internal val PreviewFlightBoundsTransform = BoundsTransform { _, _ ->
     spring(
         dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = 1000f, // how fast the flight plays
+        stiffness = PREVIEW_FLIGHT_STIFFNESS,
         visibilityThreshold = Rect.VisibilityThreshold
     )
 }
+
+private const val PREVIEW_FLIGHT_STIFFNESS = 1000f // how fast the flight plays
 
 /**
  * Fade for a thumbnail's corner chrome. Short enough that the badges are gone before the
@@ -197,6 +204,8 @@ fun CollectionImageScreen(
         // Prevents falling back to fullscreen until the full-res image decodes.
         val knownAspectRatios = remember { mutableStateMapOf<Long, Float>() }
 
+        var previewFramedByRule by rememberSaveable { mutableStateOf(false) }
+
         val currentPreview by rememberUpdatedState(uiState.previewWallpaper)
         val currentActions by rememberUpdatedState(actions)
         val currentWallpapers by rememberUpdatedState(uiState.wallpapers)
@@ -213,6 +222,7 @@ fun CollectionImageScreen(
             val wallpaper = uiState.previewWallpaper
             if (wallpaper != null && !previewVisibleState.targetState) {
                 pagerStartIndex = wallpaperIndex(wallpaper.id)
+                previewFramedByRule = false
                 previewVisibleState.targetState = true
             } else if (wallpaper == null && previewVisibleState.targetState) {
                 // If the previewed wallpaper vanishes underneath us (e.g. deleted by a sync), close with a plain fade.
@@ -341,6 +351,8 @@ fun CollectionImageScreen(
                                         sharedScope.isTransitionActive
                                     ),
                                 hiddenForPreview = isCurrentPreview && previewVisibleState.targetState,
+                                previewHorizontalBias = if (isCurrentPreview && previewFramedByRule) CropPlacement.horizontalBias(uiState.collectionCropRule)
+                                                        else 0f,
                                 onAspectRatioResolved = { ratio ->
                                     if (wallpaper.id !in knownAspectRatios) {
                                         knownAspectRatios[wallpaper.id] = ratio
@@ -426,6 +438,9 @@ fun CollectionImageScreen(
                 knownAspectRatios = knownAspectRatios,
                 favoriteFileIds = uiState.favoriteFileIds,
                 defaultWallpaperId = uiState.defaultWallpaperId,
+                cropRule = uiState.collectionCropRule,
+                framedByRule = previewFramedByRule,
+                onToggleFramedByRule = { previewFramedByRule = !previewFramedByRule },
                 onToggleFavorite = actions::toggleFavorite,
                 onToggleDefault = actions::toggleCollectionDefault,
                 onDismiss = dismissPreview,
@@ -548,6 +563,7 @@ private fun SharedTransitionScope.WallpaperThumbnail(
     isFavorite: Boolean,
     sharesPreviewBounds: Boolean,
     hiddenForPreview: Boolean,
+    previewHorizontalBias: Float,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onAspectRatioResolved: (Float) -> Unit,
@@ -571,6 +587,14 @@ private fun SharedTransitionScope.WallpaperThumbnail(
                 key = wallpaper.id,
                 animatedVisibilityScope = this@AnimatedVisibility
             )
+            // A close from a crop-rule-framed page departs at that page's alignment and settles centred as it lands
+            val horizontalBias by transition.animateFloat(
+                transitionSpec = {
+                    spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = PREVIEW_FLIGHT_STIFFNESS)
+                },
+                label = "previewHorizontalBias"
+            ) { state -> if (state == EnterExitState.Visible) 0f else previewHorizontalBias }
+            val alignment = remember { CropRuleAlignment { horizontalBias } }
             Box(modifier = flightModifier.fillMaxSize()) {
                 val imageModifier = Modifier
                     .fillMaxSize()
@@ -590,6 +614,7 @@ private fun SharedTransitionScope.WallpaperThumbnail(
                             .build(),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
+                        alignment = alignment,
                         onSuccess = { state ->
                             state.intrinsicAspectRatio()?.let(onAspectRatioResolved)
                         },

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -43,9 +44,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -62,15 +66,19 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.logic.CropPlacement
 import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
 import com.ninecsdev.wallpaperchanger.model.EditParams
+import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.intrinsicAspectRatio
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.previewFlightModifier
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.wallpaperEditThumbCacheKey
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.wallpaperThumbCacheKey
 import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.EditedBadge
+import com.ninecsdev.wallpaperchanger.ui.components.cropRuleIconRes
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
@@ -112,7 +120,8 @@ private val ChromeExitFade = fadeOut(animationSpec = tween(durationMillis = 100)
  * Full-screen wallpaper preview overlay, browsed like a gallery: pinch to zoom, drag a zoomed
  * image around, swipe between wallpapers, and tap to hide or show the chrome.
  * Shows an edited badge if applicable, an edit button that navigates to the wallpaper editor,
- * and a star that makes the shown image its collection's default wallpaper.
+ * and a star that makes the shown image its collection's default wallpaper. Unedited pages show
+ * the whole photo, or with [framedByRule] the screen [cropRule] frames it to.
  *
  * **Leaving** is the close button, system back, a pinch-in released below the exit threshold, or
  * a downward drag.
@@ -135,6 +144,9 @@ internal fun WallpaperPreviewOverlay(
     knownAspectRatios: MutableMap<Long, Float> = mutableMapOf(),
     favoriteFileIds: Set<Long> = emptySet(),
     defaultWallpaperId: Long? = null,
+    cropRule: CropRule = WallpaperCollection.DEFAULT_CROP_RULE,
+    framedByRule: Boolean = false,
+    onToggleFramedByRule: () -> Unit = {},
     onToggleFavorite: (WallpaperImage) -> Unit = {},
     onToggleDefault: (WallpaperImage) -> Unit = {},
     onDismiss: () -> Unit,
@@ -224,6 +236,14 @@ internal fun WallpaperPreviewOverlay(
         }
 
         val currentWallpaper = wallpapers.getOrNull(pagerState.currentPage)
+
+        // FIT already shows the whole photo, so framing by it changes nothing on screen
+        val framesUneditedPages = framedByRule && cropRule != CropRule.FIT
+        val ruleContentScale = remember(cropRule) { CropRuleContentScale(cropRule) }
+        val ruleAlignment = remember(cropRule) {
+            val bias = CropPlacement.horizontalBias(cropRule)
+            CropRuleAlignment { bias }
+        }
 
         Box(
             modifier = Modifier
@@ -317,7 +337,12 @@ internal fun WallpaperPreviewOverlay(
                                 .placeholderMemoryCacheKey(wallpaperThumbCacheKey(wallpaper.uriString))
                                 .build(),
                             contentDescription = stringResource(R.string.cd_wallpaper_preview),
-                            contentScale = if (aspect == null) ContentScale.Fit else ContentScale.Crop,
+                            contentScale = when {
+                                framesUneditedPages -> ruleContentScale
+                                aspect == null -> ContentScale.Fit
+                                else -> ContentScale.Crop
+                            },
+                            alignment = if (framesUneditedPages) ruleAlignment else Alignment.Center,
                             onSuccess = { state ->
                                 val resolved = state.intrinsicAspectRatio()
                                 if (resolved != null) {
@@ -329,8 +354,10 @@ internal fun WallpaperPreviewOverlay(
                                     }
                                 }
                             },
-                            // Sizing sets the flight's target bounds and inside them the image just crop-fills
-                            modifier = if (aspect == null) Modifier.fillMaxSize().then(pageContent)
+                            // Sizing sets the flight's target bounds and inside them the image just crop-fills.
+                            // Framed by the rule it fills the screen like an edited page, so zoom and pan
+                            // clamp against the screen and the close departs from what is shown
+                            modifier = if (aspect == null || framesUneditedPages) Modifier.fillMaxSize().then(pageContent)
                                        else Modifier.aspectRatio(aspect).then(pageContent)
                         )
                     } else {
@@ -365,7 +392,14 @@ internal fun WallpaperPreviewOverlay(
                     PreviewTopBar(
                         page = pagerState.currentPage + 1,
                         pageCount = wallpapers.size,
-                        onClose = { zoomState.requestLeave() }
+                        cropRule = cropRule,
+                        framing = when {
+                            currentWallpaper?.editParams != null -> PageFraming.EDIT
+                            framedByRule -> PageFraming.CROP_RULE
+                            else -> PageFraming.WHOLE_PHOTO
+                        },
+                        onClose = { zoomState.requestLeave() },
+                        onToggleFramedByRule = onToggleFramedByRule
                     )
                 }
 
@@ -464,39 +498,93 @@ private fun Modifier.previewFraming(state: PreviewZoomState, active: Boolean): M
         }
     }
 
+/** What the shown page is framed by, which is what the top-right toggle reports. */
+private enum class PageFraming { WHOLE_PHOTO, CROP_RULE, EDIT }
+
+private val ChipColor = NothingBlack.copy(alpha = 0.5f)
+private val StatusBarScrim = Brush.verticalGradient(
+    0f to NothingBlack.copy(alpha = 0.45f),
+    0.5f to NothingBlack.copy(alpha = 0.45f),
+    1f to Color.Transparent
+)
+private val STATUS_BAR_SCRIM_FADE = 24.dp
+private const val NOT_APPLICABLE_ALPHA = 0.4f
+
 @Composable
 private fun PreviewTopBar(
     page: Int,
     pageCount: Int,
-    onClose: () -> Unit
+    cropRule: CropRule,
+    framing: PageFraming,
+    onClose: () -> Unit,
+    onToggleFramedByRule: () -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(NothingBlack)
-            .statusBarsPadding()
-            .padding(bottom = 6.dp)
-    ) {
-        IconButton(
-            onClick = onClose,
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Box(
             modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 8.dp)
-                .size(48.dp)
-                .clip(CircleShape)
+                .fillMaxWidth()
+                .background(StatusBarScrim)
+                .statusBarsPadding()
+                .height(STATUS_BAR_SCRIM_FADE)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = stringResource(R.string.cd_close),
-                tint = NothingWhite,
-                modifier = Modifier.size(20.dp)
+            PreviewActionButton(onClick = onClose, enabled = true) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(R.string.cd_close),
+                    tint = NothingWhite,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Text(
+                text = stringResource(R.string.preview_page_indicator, page, pageCount),
+                style = NothingType.titleCaps,
+                color = NothingWhite,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(ChipColor)
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
             )
+            FramingToggle(cropRule = cropRule, framing = framing, onToggle = onToggleFramedByRule)
         }
-        Text(
-            text = stringResource(R.string.preview_page_indicator, page, pageCount),
-            style = NothingType.titleCaps,
-            color = NothingWhite,
-            modifier = Modifier.align(Alignment.Center)
+    }
+}
+
+/**
+ * Off it shows the whole-photo icon; on it shows the rule's own icon, white, so it names the rule
+ * it frames by. On an edited page it shows off but dimmed, since the edit already frames it.
+ */
+@Composable
+private fun FramingToggle(
+    cropRule: CropRule,
+    framing: PageFraming,
+    onToggle: () -> Unit
+) {
+    val on = framing == PageFraming.CROP_RULE
+    PreviewActionButton(
+        onClick = onToggle,
+        enabled = framing != PageFraming.EDIT,
+        containerColor = if (on) NothingWhite else ChipColor,
+        modifier = Modifier.alpha(if (framing == PageFraming.EDIT) NOT_APPLICABLE_ALPHA else 1f)
+    ) {
+        Icon(
+            painter = painterResource(if (on) cropRuleIconRes(cropRule) else R.drawable.icon_fit_screen),
+            contentDescription = stringResource(
+                when (framing) {
+                    PageFraming.WHOLE_PHOTO -> R.string.cd_preview_frame_by_crop_rule
+                    PageFraming.CROP_RULE -> R.string.cd_preview_show_whole_photo
+                    PageFraming.EDIT -> R.string.cd_preview_framed_by_edit
+                }
+            ),
+            tint = if (on) NothingBlack else NothingWhite,
+            modifier = Modifier.size(20.dp)
         )
     }
 }
@@ -567,15 +655,17 @@ private fun PreviewActionBar(
 private fun PreviewActionButton(
     onClick: () -> Unit,
     enabled: Boolean,
+    modifier: Modifier = Modifier,
+    containerColor: Color = ChipColor,
     content: @Composable () -> Unit
 ) {
     IconButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier
+        modifier = modifier
             .size(48.dp)
             .clip(CircleShape)
-            .background(NothingBlack.copy(alpha = 0.5f))
+            .background(containerColor)
     ) {
         content()
     }

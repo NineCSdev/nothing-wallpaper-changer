@@ -474,27 +474,11 @@ class BufferManager @Inject constructor(
         targetSize: TargetSize,
         rule: CropRule
     ): BitmapPlacement {
-        val scale = when (rule) {
-            CropRule.FIT -> minOf(
-                targetSize.width.toFloat() / sourceWidth,
-                targetSize.height.toFloat() / sourceHeight
-            )
-            CropRule.CENTER,
-            CropRule.LEFT,
-            CropRule.RIGHT -> maxOf(
-                targetSize.width.toFloat() / sourceWidth,
-                targetSize.height.toFloat() / sourceHeight
-            )
-        }
-        val scaledWidth = sourceWidth * scale
-        val scaledHeight = sourceHeight * scale
-        val xOffset = when (rule) {
-            CropRule.LEFT -> 0f
-            CropRule.RIGHT -> targetSize.width - scaledWidth
-            CropRule.CENTER,
-            CropRule.FIT -> (targetSize.width - scaledWidth) / 2f
-        }
-        val yOffset = (targetSize.height - scaledHeight) / 2f
+        val targetWidth = targetSize.width.toFloat()
+        val targetHeight = targetSize.height.toFloat()
+        val scale = CropPlacement.scale(rule, sourceWidth.toFloat(), sourceHeight.toFloat(), targetWidth, targetHeight)
+        val xOffset = CropPlacement.offset(targetWidth, sourceWidth * scale, CropPlacement.horizontalBias(rule))
+        val yOffset = CropPlacement.offset(targetHeight, sourceHeight * scale, 0f)
 
         return BitmapPlacement(scale, xOffset, yOffset)
     }

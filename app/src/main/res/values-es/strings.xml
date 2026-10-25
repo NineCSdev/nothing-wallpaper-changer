@@ -387,6 +387,9 @@
 
     <!-- Wallpaper preview overlay -->
     <string name="preview_page_indicator">%1$d / %2$d</string>
+    <string name="cd_preview_frame_by_crop_rule">Mostrar como lo encuadra el recorte de esta colección</string>
+    <string name="cd_preview_show_whole_photo">Mostrar la foto completa</string>
+    <string name="cd_preview_framed_by_edit">Encuadrado por su edición</string>
 
     <!-- Wallpaper edit screen -->
     <string name="edit_screen_title">EDITAR FONDO DE PANTALLA</string>

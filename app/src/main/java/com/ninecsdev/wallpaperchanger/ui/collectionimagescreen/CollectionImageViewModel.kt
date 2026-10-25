@@ -8,6 +8,7 @@ import com.ninecsdev.wallpaperchanger.data.RelinkResult
 import com.ninecsdev.wallpaperchanger.data.TransferResult
 import com.ninecsdev.wallpaperchanger.data.local.CollectionPreview
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
+import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.pinnedFirst
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -65,7 +66,8 @@ class CollectionImageViewModel @Inject constructor(
                 it.copy(
                     collectionName = collection?.name ?: "",
                     collectionType = collection?.type,
-                    isFavoritesCollection = collection?.isFavorites == true
+                    isFavoritesCollection = collection?.isFavorites == true,
+                    collectionCropRule = collection?.defaultCropRule ?: WallpaperCollection.DEFAULT_CROP_RULE
                 )
             }
         }
