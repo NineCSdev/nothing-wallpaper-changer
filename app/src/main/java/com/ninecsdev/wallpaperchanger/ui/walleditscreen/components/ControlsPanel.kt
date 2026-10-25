@@ -19,8 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,6 +43,7 @@ import androidx.compose.ui.res.stringResource
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButton
 import com.ninecsdev.wallpaperchanger.ui.components.NothingButtonVariant
+import com.ninecsdev.wallpaperchanger.ui.components.NothingSlider
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
@@ -89,8 +88,8 @@ internal fun ControlsPanel(
                 brush = Brush.verticalGradient(
                     colors = listOf(
                         Color.Transparent,
-                        NothingBlack.copy(alpha = 0.85f),
-                        NothingBlack.copy(alpha = 0.95f)
+                        NothingBlack.copy(alpha = 0.5f),
+                        NothingBlack.copy(alpha = 0.75f)
                     )
                 )
             )
@@ -171,25 +170,20 @@ private fun SliderRow(
     ) {
         Text(
             text = label,
+            textAlign = TextAlign.Center,
             style = NothingType.overline,
             color = NothingWhite.copy(alpha = if (enabled) 0.6f else InertAlpha),
             modifier = Modifier.width(48.dp)
         )
 
-        Slider(
+        NothingSlider(
             value = value,
             onValueChange = onValueChange,
             valueRange = valueRange,
             enabled = enabled,
-            modifier = Modifier.weight(1f),
-            colors = SliderDefaults.colors(
-                thumbColor = NothingWhite,
-                activeTrackColor = NothingWhite,
-                inactiveTrackColor = NothingWhite.copy(alpha = 0.15f),
-                disabledThumbColor = NothingWhite.copy(alpha = InertAlpha),
-                disabledActiveTrackColor = NothingWhite.copy(alpha = InertAlpha),
-                disabledInactiveTrackColor = NothingWhite.copy(alpha = 0.1f)
-            )
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 10.dp)
         )
 
         ValueField(
