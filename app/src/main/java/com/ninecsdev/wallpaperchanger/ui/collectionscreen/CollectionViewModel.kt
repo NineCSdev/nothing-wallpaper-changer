@@ -18,6 +18,7 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.pinnedFirst
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 import com.ninecsdev.wallpaperchanger.ui.ServiceCommand
+import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.CollectionGridWarmer
 import com.ninecsdev.wallpaperchanger.ui.components.asPreviewStates
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -51,6 +52,7 @@ import javax.inject.Inject
 class CollectionViewModel @Inject constructor(
     private val repository: WallpaperRepository,
     private val wallpaperSources: WallpaperSources,
+    private val gridWarmer: CollectionGridWarmer,
     appDataStore: AppDataStore,
     serviceLifecycle: ServiceLifecycle
 ) : ViewModel(), CollectionListActions {
@@ -359,6 +361,9 @@ class CollectionViewModel @Inject constructor(
             )
         }
     }
+
+    /** Starts loading the first screen of [collectionId]'s grid ahead of navigating to it. */
+    fun prepareToOpen(collectionId: Long) = gridWarmer.warm(collectionId)
 
     /** Opens the edit modal for the collection with [collectionId]; renders once the id resolves. */
     fun openEditModal(collectionId: Long) {

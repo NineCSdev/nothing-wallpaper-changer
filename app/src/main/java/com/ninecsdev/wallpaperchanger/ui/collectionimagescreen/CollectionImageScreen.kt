@@ -103,7 +103,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import kotlinx.coroutines.flow.first
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-private const val GRID_COLUMNS = 3
+internal const val GRID_COLUMNS = 3
 
 /**
  * Room the floating selection pill needs at the bottom of the screen:

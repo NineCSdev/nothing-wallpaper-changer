@@ -56,7 +56,10 @@ fun CollectionListRoute(
         uiState = loadedUiState,
         actions = viewModel,
         snackbarHostState = snackbarHostState,
-        onCollectionClick = onViewImages,
+        onCollectionClick = { id ->
+            viewModel.prepareToOpen(id)
+            onViewImages(id)
+        },
         onEditCollection = viewModel::openEditModal,
         onBackClick = onBack,
         onFolderSelect = onLaunchFolderPicker,
