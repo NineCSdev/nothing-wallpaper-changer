@@ -13,7 +13,8 @@ import kotlin.math.abs
  * itself lives in computeEditTransform.
  */
 
-private const val EditValueEpsilon = 0.001f
+// Below the finest typeable step (0.01% offset = 0.0002), so a typed edit is never a no-op
+private const val EditValueEpsilon = 0.0001f
 
 internal const val MinZoom = 1f
 
@@ -40,17 +41,17 @@ internal fun percentToOffset(percent: Float): Float = coerceOffset(MinOffset + p
  */
 
 /** Fraction digits the zoom field accepts and displays. */
-internal const val ZoomDecimals = 2
+internal const val ZoomDecimals = 3
 
 /** Fraction digits the offset-percentage fields accept and display. */
-internal const val OffsetPercentDecimals = 1
+internal const val OffsetPercentDecimals = 2
 
 /** Integer digits a field accepts. */
 private const val MaxIntegerDigits = 3
 
-internal fun formatZoom(zoom: Float): String = "%.2f".format(zoom)
+internal fun formatZoom(zoom: Float): String = "%.${ZoomDecimals}f".format(zoom)
 
-internal fun formatOffsetPercent(offset: Float): String = "%.1f".format(offsetToPercent(offset))
+internal fun formatOffsetPercent(offset: Float): String = "%.${OffsetPercentDecimals}f".format(offsetToPercent(offset))
 
 /**
  * Trims [text] down to a typeable decimal: digits only, at most one separator, at most [decimals]

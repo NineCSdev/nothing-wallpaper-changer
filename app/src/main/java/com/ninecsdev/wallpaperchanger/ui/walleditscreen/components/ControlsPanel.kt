@@ -51,8 +51,8 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-// Wide enough for "100.0" and "5.00" at caption size
-private val ValueFieldWidth = 48.dp
+// Wide enough for "100.00" and "5.000" at caption size
+private val ValueFieldWidth = 56.dp
 private val ValueFieldHeight = 24.dp
 
 /** Alpha for a row whose axis has nowhere to pan, so it reads as present but inert. */
