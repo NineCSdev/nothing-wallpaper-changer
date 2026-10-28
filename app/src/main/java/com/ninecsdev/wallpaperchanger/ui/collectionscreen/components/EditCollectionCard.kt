@@ -71,6 +71,7 @@ import com.ninecsdev.wallpaperchanger.ui.components.NothingDialogCard
 import com.ninecsdev.wallpaperchanger.ui.components.RotationPickerContent
 import com.ninecsdev.wallpaperchanger.ui.components.SettingsRowHeader
 import com.ninecsdev.wallpaperchanger.ui.components.WallpaperThumbnail
+import com.ninecsdev.wallpaperchanger.ui.components.cropRuleLabelRes
 import com.ninecsdev.wallpaperchanger.ui.components.rotationSummary
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
@@ -409,13 +410,6 @@ private fun CollectionMetadataLine(
             )
         }
     }
-}
-
-private fun cropRuleLabelRes(rule: CropRule): Int = when (rule) {
-    CropRule.CENTER -> R.string.crop_rule_center
-    CropRule.LEFT -> R.string.crop_rule_left
-    CropRule.RIGHT -> R.string.crop_rule_right
-    CropRule.FIT -> R.string.crop_rule_fit
 }
 
 @Composable

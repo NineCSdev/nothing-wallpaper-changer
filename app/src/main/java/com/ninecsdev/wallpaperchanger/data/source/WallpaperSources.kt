@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.Cursor
+import android.graphics.ImageDecoder
 import android.net.Uri
 import androidx.core.net.toUri
 import android.os.Build
@@ -13,6 +14,7 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.Log
+import android.util.Size
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
@@ -74,6 +76,8 @@ class WallpaperSources @Inject constructor(
         /** Grants held on purpose by something other than a collection root. See [pinnedGrantUris]. */
         val KEY_PINNED_GRANTS = stringSetPreferencesKey("pinned_grant_uris")
         const val MILLIS_PER_SECOND = 1000L
+
+        const val INTERNALIZED_MIME_TYPE = "image/webp"
 
         /** What [fingerprint] reads from a MediaStore row. */
         val MEDIA_FINGERPRINT_COLUMNS = arrayOf(
@@ -201,6 +205,55 @@ class WallpaperSources @Inject constructor(
         val file = File(path)
         if (!file.exists()) return SourceFingerprint()
         return SourceFingerprint(file.name, file.length(), file.lastModified())
+    }
+
+    /**
+     * Reads [uri]'s [SourceDetails]: one catalogue query for name and size, the provider's mime
+     * type, and the image header for its size in pixels.
+     */
+    suspend fun details(uri: String, sourceType: SourceType): SourceDetails {
+        val folderName = if (sourceType == SourceType.FOLDER_DOC) folderDisplayName(uri) else null
+
+        return withContext(Dispatchers.IO) {
+            val catalogue = fingerprint(uri, sourceType)
+            val mimeType = try {
+                if (sourceType == SourceType.INTERNALIZED) INTERNALIZED_MIME_TYPE
+                else appContext.contentResolver.getType(uri.toUri())
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not read the type of $uri", e)
+                null
+            }
+            val dimensions = readDimensions(uri)
+            SourceDetails(
+                displayName = catalogue.displayName,
+                sizeBytes = catalogue.sizeBytes,
+                mimeType = mimeType,
+                width = dimensions?.width,
+                height = dimensions?.height,
+                folderName = folderName
+            )
+        }
+    }
+
+    /** Stops a decode once the header has been read, before any pixels are. */
+    private class HeaderRead : RuntimeException() {
+        override fun fillInStackTrace(): Throwable = this
+    }
+
+    /** The image's size, orientation-corrected, from its header alone. Null if unreadable. */
+    private fun readDimensions(uri: String): Size? {
+        var size: Size? = null
+        try {
+            ImageDecoder.decodeBitmap(ImageDecoder.createSource(appContext.contentResolver, uri.toUri())) { _, info, _ ->
+                size = info.size
+                throw HeaderRead()
+            }
+        } catch (_: HeaderRead) {
+            // The expected way out
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not read the header of $uri", e)
+        }
+        return size
     }
 
     private fun Cursor.stringOrNull(column: String): String? = stringAt(getColumnIndex(column))

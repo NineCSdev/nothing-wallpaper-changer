@@ -78,6 +78,7 @@ import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.data.source.SourceDetails
 import com.ninecsdev.wallpaperchanger.logic.CropPlacement
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
@@ -445,7 +446,8 @@ fun CollectionImageScreen(
                 onToggleDefault = actions::toggleCollectionDefault,
                 onDismiss = dismissPreview,
                 onEdit = onEditWallpaper,
-                onPageChanged = actions::openPreview
+                onPageChanged = actions::openPreview,
+                loadSourceDetails = actions::sourceDetails
             )
         }
     }
@@ -784,6 +786,7 @@ fun CollectionImageScreenEmptyPreview() {
 private object PreviewCollectionImageActions : CollectionImageActions {
     override fun openPreview(wallpaper: WallpaperImage) {}
     override fun closePreview() {}
+    override suspend fun sourceDetails(wallpaper: WallpaperImage) = SourceDetails()
     override fun enterSelectionMode(id: Long) {}
     override fun toggleSelection(id: Long) {}
     override fun exitSelectionMode() {}

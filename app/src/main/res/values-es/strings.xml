@@ -390,6 +390,17 @@
     <string name="cd_preview_frame_by_crop_rule">Mostrar como lo encuadra el recorte de esta colección</string>
     <string name="cd_preview_show_whole_photo">Mostrar la foto completa</string>
     <string name="cd_preview_framed_by_edit">Encuadrado por su edición</string>
+    <string name="preview_details_unavailable">No disponible</string>
+    <string name="preview_details_source_local_copy">Copia local</string>
+    <string name="preview_details_source_photo">Referencia a foto</string>
+    <string name="preview_details_source_folder">Referencia a carpeta</string>
+    <string name="preview_details_source_folder_named">Referencia a carpeta · %1$s</string>
+    <string name="preview_details_file">ARCHIVO</string>
+    <string name="preview_details_resolution">RESOLUCIÓN</string>
+    <string name="preview_details_resolution_value">%1$d × %2$d</string>
+    <string name="preview_details_framing">ENCUADRE</string>
+    <string name="preview_details_framing_edit">%1$s× · X %2$s · Y %3$s</string>
+    <string name="preview_details_added">AÑADIDO</string>
 
     <!-- Wallpaper edit screen -->
     <string name="edit_screen_title">EDITAR FONDO DE PANTALLA</string>

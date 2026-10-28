@@ -9,6 +9,7 @@ import com.ninecsdev.wallpaperchanger.data.local.WallpaperDao
 import com.ninecsdev.wallpaperchanger.data.source.FolderScanner
 import com.ninecsdev.wallpaperchanger.data.source.GridThumbnailCache
 import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
+import com.ninecsdev.wallpaperchanger.data.source.SourceDetails
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.data.source.computeFolderSyncDiff
 import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle
@@ -609,6 +610,9 @@ class WallpaperRepository @Inject constructor(
 
     /** Uris of files held only by defaults, the storage readout subtracts them. */
     suspend fun getDefaultOnlyFileUris(): List<String> = dao.getDefaultOnlyFileUris()
+
+    /** Reads [image]'s file details live from its source, for the preview's details sheet. */
+    suspend fun sourceDetails(image: WallpaperImage): SourceDetails = wallpaperSources.details(image.uriString, image.sourceType)
 
     /** Marks a file unavailable (rotation self-heal after a definitive read failure). */
     suspend fun markFileUnavailable(fileId: Long) = dao.setFileAvailability(fileId, false)

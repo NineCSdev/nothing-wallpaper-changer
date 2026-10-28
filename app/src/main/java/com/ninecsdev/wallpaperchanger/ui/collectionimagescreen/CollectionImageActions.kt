@@ -1,5 +1,6 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen
 
+import com.ninecsdev.wallpaperchanger.data.source.SourceDetails
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 
 /**
@@ -13,6 +14,7 @@ interface CollectionImageActions {
     // Full-screen preview
     fun openPreview(wallpaper: WallpaperImage)
     fun closePreview()
+    suspend fun sourceDetails(wallpaper: WallpaperImage): SourceDetails
 
     // Selection mode
     fun enterSelectionMode(id: Long)

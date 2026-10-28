@@ -8,6 +8,7 @@ import com.ninecsdev.wallpaperchanger.data.RelinkResult
 import com.ninecsdev.wallpaperchanger.data.TransferResult
 import com.ninecsdev.wallpaperchanger.data.local.CollectionPreview
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
+import com.ninecsdev.wallpaperchanger.data.source.SourceDetails
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.pinnedFirst
@@ -366,4 +367,13 @@ class CollectionImageViewModel @Inject constructor(
     override fun closePreview() {
         _uiState.update { it.copy(previewWallpaper = null) }
     }
+
+    // Read once per source, so reopening the sheet on a page does not reopen its file
+    private val sourceDetailsCache = mutableMapOf<String, SourceDetails>()
+
+    override suspend fun sourceDetails(wallpaper: WallpaperImage): SourceDetails =
+        sourceDetailsCache[wallpaper.uriString] ?: repository.sourceDetails(wallpaper).also {
+            // A failed read is not kept, so it is retried next time
+            if (!it.isEmpty) sourceDetailsCache[wallpaper.uriString] = it
+        }
 }

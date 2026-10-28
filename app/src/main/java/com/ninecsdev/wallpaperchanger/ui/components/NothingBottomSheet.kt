@@ -21,6 +21,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -35,6 +36,21 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import kotlinx.coroutines.launch
 
 private val SheetCornerRadius = 28.dp
+private val SheetShape = RoundedCornerShape(topStart = SheetCornerRadius, topEnd = SheetCornerRadius)
+
+/** The traced top edge every sheet carries. */
+private fun Modifier.sheetBorder(): Modifier = topRoundedBorder(
+    strokeWidth = 2.dp,
+    color = NothingWhite.copy(alpha = 0.3f),
+    cornerRadius = SheetCornerRadius
+)
+
+/** [NothingBottomSheet]'s look for a sheet laid out in the caller's own window. Pair it with [NothingSheetHandle]. */
+internal fun Modifier.nothingSheetSurface(): Modifier = clip(SheetShape).background(NothingBlack).sheetBorder()
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun NothingSheetHandle() { BottomSheetDefaults.DragHandle(color = NothingWhite.copy(alpha = 0.4f)) }
 
 /**
  * The app's bottom-sheet chrome: black surface, 28dp top corners, a traced top border and the
@@ -52,7 +68,6 @@ internal fun NothingBottomSheet(
     sheetState: SheetState = rememberModalBottomSheetState(),
     content: @Composable ColumnScope.(hideThen: (() -> Unit) -> Unit) -> Unit
 ) {
-    val sheetShape = RoundedCornerShape(topStart = SheetCornerRadius, topEnd = SheetCornerRadius)
     val scope = rememberCoroutineScope()
     val isPreview = LocalInspectionMode.current
 
@@ -70,11 +85,7 @@ internal fun NothingBottomSheet(
     // The border is drawn inside the sheet's own content because that outer modifier attaches to
     // the anchored/swipeable layout node before it's offset into position, which made the border
     // render up at the top of the screen instead of tracing the visible sheet
-    val topBorderModifier = Modifier.topRoundedBorder(
-        strokeWidth = 2.dp,
-        color = NothingWhite.copy(alpha = 0.3f),
-        cornerRadius = SheetCornerRadius
-    )
+    val topBorderModifier = Modifier.sheetBorder()
 
     if (isPreview) {
         // In Preview, we wrap the content in a simulated BottomSheet because ModalBottomSheet fails to render in the IDE
@@ -85,13 +96,13 @@ internal fun NothingBottomSheet(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = NothingBlack,
-                shape = sheetShape
+                shape = SheetShape
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = topBorderModifier
                 ) {
-                    BottomSheetDefaults.DragHandle(color = NothingWhite.copy(alpha = 0.4f))
+                    NothingSheetHandle()
                     content(hideThen)
                 }
             }
@@ -101,7 +112,7 @@ internal fun NothingBottomSheet(
             onDismissRequest = onDismiss,
             sheetState = sheetState,
             containerColor = NothingBlack,
-            shape = sheetShape,
+            shape = SheetShape,
             dragHandle = null,
             modifier = modifier
         ) {
@@ -109,7 +120,7 @@ internal fun NothingBottomSheet(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = topBorderModifier
             ) {
-                BottomSheetDefaults.DragHandle(color = NothingWhite.copy(alpha = 0.4f))
+                NothingSheetHandle()
                 content(hideThen)
             }
         }

@@ -298,10 +298,11 @@ internal fun rememberPreviewZoomState(initialPage: Int): PreviewZoomState {
 }
 
 /** What a touch turned out to be, decided once per gesture and then held. */
-private enum class PreviewGesture { Undecided, Transform, Dismiss, Paging }
+private enum class PreviewGesture { Undecided, Transform, Dismiss, Details, Blocked, Paging }
 
 /**
- * The preview's single gesture detector: tap, double tap, pinch/pan, and the drag that dismisses.
+ * The preview's single gesture detector: tap, double tap, pinch/pan, the drag down that dismisses
+ * and the drag up that pulls up the [details] sheet.
  *
  * Rolled into one loop because the readings of a touch are mutually exclusive.
  *
@@ -314,7 +315,8 @@ internal suspend fun PointerInputScope.detectPreviewGestures(
     state: PreviewZoomState,
     onTap: () -> Unit,
     onDoubleTap: (Offset) -> Unit,
-    onGestureStart: () -> Unit
+    onGestureStart: () -> Unit,
+    details: PreviewDetailsSheetState
 ) {
     // A tap that caught a coasting pan was for stopping the image, so it does not toggle the chrome.
     // It still counts as the first half of a double tap.
@@ -322,7 +324,7 @@ internal suspend fun PointerInputScope.detectPreviewGestures(
     detectTapAwareGestures(
         readGesture = { down ->
             caughtThrow = state.onTouchDown()
-            readPreviewGesture(state, down, onGestureStart)
+            readPreviewGesture(state, down, onGestureStart, details)
         },
         onTap = { if (!caughtThrow) onTap() },
         onDoubleTap = onDoubleTap
@@ -337,7 +339,8 @@ internal suspend fun PointerInputScope.detectPreviewGestures(
 private suspend fun AwaitPointerEventScope.readPreviewGesture(
     state: PreviewZoomState,
     down: PointerInputChange,
-    onGestureStart: () -> Unit
+    onGestureStart: () -> Unit,
+    details: PreviewDetailsSheetState
 ): Offset? {
     val startedAtRest = state.isAtRest
     val velocity = VelocityTracker()
@@ -360,6 +363,7 @@ private suspend fun AwaitPointerEventScope.readPreviewGesture(
         // The pager took the swipe on a later pass; stop competing for this gesture.
         if (mode != PreviewGesture.Transform && event.changes.any { it.isConsumed }) {
             if (mode == PreviewGesture.Dismiss) state.onGestureCancel()
+            if (mode == PreviewGesture.Details) details.onDragEnd(0f)
             mode = PreviewGesture.Paging
             break
         }
@@ -370,15 +374,22 @@ private suspend fun AwaitPointerEventScope.readPreviewGesture(
         pressed.first().let { velocity.addPosition(it.uptimeMillis, it.position) }
 
         if (mode == PreviewGesture.Undecided) {
+            val sheetShown = details.isShown
             mode = when {
+                pressed.size > 1 && sheetShown -> PreviewGesture.Blocked
                 pressed.size > 1 || !state.isAtRest -> PreviewGesture.Transform
                 travel.getDistance() <= slop -> PreviewGesture.Undecided
-                abs(travel.y) > abs(travel.x) -> PreviewGesture.Dismiss
-                else -> PreviewGesture.Paging
+                abs(travel.y) <= abs(travel.x) -> PreviewGesture.Paging
+                sheetShown || travel.y < 0f -> PreviewGesture.Details
+                else -> PreviewGesture.Dismiss
             }
             when (mode) {
-                PreviewGesture.Undecided -> Unit
+                PreviewGesture.Undecided, PreviewGesture.Blocked -> Unit
                 PreviewGesture.Paging -> break
+                PreviewGesture.Details -> {
+                    details.onDragStart()
+                    details.onDrag(travel.y - drag.y)
+                }
                 else -> {
                     state.onGestureStart(startedAtRest)
                     onGestureStart()
@@ -410,6 +421,7 @@ private suspend fun AwaitPointerEventScope.readPreviewGesture(
                 )
             }
             PreviewGesture.Dismiss -> state.onDismissDrag(drag.y)
+            PreviewGesture.Details -> details.onDrag(drag.y)
             else -> Unit
         }
         if (mode != PreviewGesture.Undecided) event.changes.forEach { it.consume() }
@@ -428,6 +440,10 @@ private suspend fun AwaitPointerEventScope.readPreviewGesture(
             state.onGestureEnd(velocity.calculateVelocity().y)
             null
         }
-        PreviewGesture.Paging -> null
+        PreviewGesture.Details -> {
+            details.onDragEnd(velocity.calculateVelocity().y)
+            null
+        }
+        PreviewGesture.Blocked, PreviewGesture.Paging -> null
     }
 }

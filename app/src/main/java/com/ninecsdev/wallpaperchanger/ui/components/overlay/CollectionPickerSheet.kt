@@ -2,7 +2,6 @@ package com.ninecsdev.wallpaperchanger.ui.components.overlay
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -47,7 +46,7 @@ data class CollectionPickerItem(
  *
  * Shared by the main screen's active-collection picker and the copy/move transfer target picker.
  * With [onCreateNew] set, a "new collection" tile leads the grid and also stands in for the empty
- * state; otherwise [emptyContent] is the zero-items treatment. Both actions run after the slide-out.
+ * state. Both actions run after the slide-out.
  */
 // TODO tests: see vault note tests/Collection Picker Tests.md
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,8 +58,7 @@ fun CollectionPickerSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     sheetState: SheetState = rememberModalBottomSheetState(),
-    onCreateNew: (() -> Unit)? = null,
-    emptyContent: @Composable ColumnScope.() -> Unit = {}
+    onCreateNew: (() -> Unit)? = null
 ) {
     NothingBottomSheet(
         onDismiss = onDismiss,
@@ -72,8 +70,7 @@ fun CollectionPickerSheet(
             title = title,
             items = items,
             onItemClick = { item -> hideThen { onItemClick(item) } },
-            onCreateNew = onCreateNew?.let { create -> { hideThen(create) } },
-            emptyContent = emptyContent
+            onCreateNew = onCreateNew?.let { create -> { hideThen(create) } }
         )
     }
 }
@@ -83,8 +80,7 @@ private fun CollectionPickerContent(
     title: String,
     items: List<CollectionPickerItem>,
     onItemClick: (CollectionPickerItem) -> Unit,
-    onCreateNew: (() -> Unit)?,
-    emptyContent: @Composable ColumnScope.() -> Unit
+    onCreateNew: (() -> Unit)?
 ) {
     Column(
         modifier = Modifier
@@ -100,28 +96,24 @@ private fun CollectionPickerContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (items.isEmpty() && onCreateNew == null) {
-            emptyContent()
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (onCreateNew != null) {
-                    item(key = "new") { NewCollectionGridItem(onClick = onCreateNew) }
-                }
-                items(items, key = { it.id }) { item ->
-                    CollectionGridItem(
-                        name = item.name,
-                        state = item.previewState,
-                        onClick = { onItemClick(item) },
-                        isPinned = item.isPinned,
-                        isActive = item.isActive
-                    )
-                }
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (onCreateNew != null) {
+                item(key = "new") { NewCollectionGridItem(onClick = onCreateNew) }
+            }
+            items(items, key = { it.id }) { item ->
+                CollectionGridItem(
+                    name = item.name,
+                    state = item.previewState,
+                    onClick = { onItemClick(item) },
+                    isPinned = item.isPinned,
+                    isActive = item.isActive
+                )
             }
         }
     }
@@ -144,30 +136,6 @@ private fun CollectionPickerSheetPopulatedPreview() {
             onItemClick = {},
             onDismiss = {},
             onCreateNew = {}
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(name = "Empty Sheet", backgroundColor = 0xFF000000)
-@Composable
-private fun CollectionPickerSheetEmptyPreview() {
-    WallpaperChangerTheme {
-        CollectionPickerSheet(
-            title = "TRANSFER TO",
-            items = emptyList(),
-            onItemClick = {},
-            onDismiss = {},
-            emptyContent = {
-                Text(
-                    text = "No other collections available",
-                    style = NothingType.metaLabel,
-                    color = NothingWhite.copy(alpha = 0.7f),
-                    modifier = Modifier
-                        .padding(32.dp)
-                        .align(Alignment.CenterHorizontally)
-                )
-            }
         )
     }
 }
