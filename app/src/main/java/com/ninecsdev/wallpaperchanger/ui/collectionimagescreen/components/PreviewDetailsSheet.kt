@@ -2,6 +2,7 @@ package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components
 
 import android.text.format.Formatter
 import android.webkit.MimeTypeMap
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animate
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -27,6 +29,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
@@ -57,6 +60,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /** Shown while a value is still being read */
@@ -87,8 +91,20 @@ internal class PreviewDetailsSheetState(private val scope: CoroutineScope) {
     /** The current page's sheet height. Zero until it has been laid out once. */
     internal var height by mutableFloatStateOf(0f)
 
+    private val easedHeight = Animatable(0f)
+
     /** Whether any of the sheet is on screen, or a drag is bringing it there. */
     val isShown: Boolean get() = dragging || fraction > 0f
+
+    /** How much of the sheet is on screen, in px. Eased, so a swipe between sheets of different heights doesn't jump. */
+    val shownHeight: Float get() = easedHeight.value * fraction
+
+    /** Keeps [shownHeight] following [height] for as long as it runs. */
+    internal suspend fun easeHeight() {
+        snapshotFlow { height }.collectLatest { target ->
+            if (easedHeight.value == 0f) easedHeight.snapTo(target) else easedHeight.animateTo(target)
+        }
+    }
 
     fun onDragStart() {
         settleJob?.cancel()
@@ -137,7 +153,9 @@ internal class PreviewDetailsSheetState(private val scope: CoroutineScope) {
 @Composable
 internal fun rememberPreviewDetailsSheetState(): PreviewDetailsSheetState {
     val scope = rememberCoroutineScope()
-    return remember(scope) { PreviewDetailsSheetState(scope) }
+    val state = remember(scope) { PreviewDetailsSheetState(scope) }
+    LaunchedEffect(state) { state.easeHeight() }
+    return state
 }
 
 /**

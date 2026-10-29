@@ -6,33 +6,12 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,23 +23,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import coil.compose.AsyncImage
@@ -79,19 +50,10 @@ import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.previewFlightModi
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.wallpaperEditThumbCacheKey
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.wallpaperThumbCacheKey
 import com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage
-import com.ninecsdev.wallpaperchanger.ui.components.EditedBadge
-import com.ninecsdev.wallpaperchanger.ui.components.cropRuleIconRes
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
-import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
-import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
-import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
@@ -108,24 +70,8 @@ private val PAGE_SPACING = 16.dp
 /** How far the backdrop and the chrome fade at the far end of a way out. Image keeps full opacity */
 private const val DISMISS_SCRIM_FADE = 0.7f
 
-/** How much the image shrinks as a dismiss drag is pulled, so it reads as being taken away */
-private const val DISMISS_DRAG_SHRINK = 0.2f
-
 /** Longest the close waits for its departure bounds before going anyway. A few frames, not a feel. */
 private const val LEAVE_FRAMING_TIMEOUT_MILLIS = 100L
-
-/** Largest side, in px, `Constraints.fixed` holds on both axes at once (the true limit is 2^15 - 2) */
-private const val MAX_FRAMED_SIDE_PX = 32_000f
-
-/** Shared by all three pieces of chrome, so they leave together */
-private val ChromeExitFade = fadeOut(animationSpec = tween(durationMillis = 100))
-
-/** How far above the details sheet's top edge the bottom chrome rides. */
-private val SHEET_RIDE_GAP = 16.dp
-
-private val ACTION_BAR_BOTTOM_PADDING = 48.dp
-
-private val EDITED_BADGE_PADDING = 24.dp
 
 /**
  * Full-screen wallpaper preview overlay, browsed like a gallery: pinch to zoom, drag a zoomed
@@ -143,7 +89,10 @@ private val EDITED_BADGE_PADDING = 24.dp
  * preview is open: while settled it does nothing (the grid cell only registers
  * during open/close), but the close flight can start from it instantly.
  *
- * **Chrome visibility is one boolean driven by three events**
+ * **Chrome** shows once the open flight is underway and hides as the close starts. In between, a
+ * tap toggles it, a gesture hides it, a double tap hides it zooming in and shows it zooming out,
+ * and the image crossing back into rest restores it. While the details sheet is up, taps and the
+ * close button close the sheet instead.
  */
 @Composable
 internal fun WallpaperPreviewOverlay(
@@ -169,8 +118,6 @@ internal fun WallpaperPreviewOverlay(
 
     val safeInitialIndex = initialIndex.coerceIn(0, wallpapers.lastIndex)
     val dismiss by rememberUpdatedState(onDismiss)
-    val context = LocalContext.current
-    val (decodeWidth, decodeHeight) = remember { ImageProcessingUtils.getWallpaperCanvasSize(context) }
 
     val transition = animatedVisibilityScope.transition
 
@@ -185,7 +132,7 @@ internal fun WallpaperPreviewOverlay(
     LaunchedEffect(transition.targetState) {
         if (transition.targetState == EnterExitState.Visible) {
             if (transition.currentState != EnterExitState.Visible) {
-                delay(CHROME_ENTER_DELAY_MILLIS)
+                delay(CHROME_ENTER_DELAY_MILLIS.milliseconds)
             }
             chromeVisible = true
         } else {
@@ -202,6 +149,8 @@ internal fun WallpaperPreviewOverlay(
         )
         val zoomState = rememberPreviewZoomState(initialPage = safeInitialIndex)
         val detailsSheet = rememberPreviewDetailsSheetState()
+
+        fun closeSheetOr(action: () -> Unit) = if (detailsSheet.isShown) detailsSheet.close() else action()
 
         // Nothing is taken until the overlay has finished arriving
         val acceptsGestures = rememberUpdatedState(
@@ -246,14 +195,6 @@ internal fun WallpaperPreviewOverlay(
 
         BackHandler(enabled = detailsSheet.isShown && acceptsGestures.value) { detailsSheet.close() }
 
-        // Eased, so a swipe between sheets of different heights doesn't jump the chrome riding them
-        val sheetHeight = remember { Animatable(0f) }
-        LaunchedEffect(detailsSheet) {
-            snapshotFlow { detailsSheet.height }.collectLatest { height ->
-                if (sheetHeight.value == 0f) sheetHeight.snapTo(height) else sheetHeight.animateTo(height)
-            }
-        }
-
         // The restore half of the chrome rule: the crossing back into rest, not the resting state
         LaunchedEffect(zoomState) {
             snapshotFlow { zoomState.isAtRest }
@@ -264,12 +205,7 @@ internal fun WallpaperPreviewOverlay(
         val currentWallpaper = wallpapers.getOrNull(pagerState.currentPage)
 
         // FIT already shows the whole photo, so framing by it changes nothing on screen
-        val framesUneditedPages = framedByRule && cropRule != CropRule.FIT
-        val ruleContentScale = remember(cropRule) { CropRuleContentScale(cropRule) }
-        val ruleAlignment = remember(cropRule) {
-            val bias = CropPlacement.horizontalBias(cropRule)
-            CropRuleAlignment { bias }
-        }
+        val uneditedFraming = cropRule.takeIf { framedByRule && it != CropRule.FIT }
 
         Box(
             modifier = Modifier
@@ -290,480 +226,234 @@ internal fun WallpaperPreviewOverlay(
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 val wallpaper = wallpapers[page]
-                val isCurrent = zoomState.owns(page)
-                val imageModifier = when {
-                    wallpaper.id != sharedWallpaperId -> Modifier
-                    else -> with(sharedTransitionScope) {
-                        previewFlightModifier(
-                            key = wallpaper.id,
-                            animatedVisibilityScope = animatedVisibilityScope
-                        )
-                    }
+                val flightModifier = if (wallpaper.id != sharedWallpaperId) Modifier
+                else with(sharedTransitionScope) {
+                    previewFlightModifier(key = wallpaper.id, animatedVisibilityScope = animatedVisibilityScope)
                 }
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // The detector sits on this untransformed Box and the transform goes on the image below.
-                    // A detector inside the zoomed layer reads each drag divided by the zoom
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            // A zoomed page is larger than its slot, without this it draws over the page
-                            // sliding in. Lifted while leaving (the close flies to a grid cell outside these bounds).
-                            .then(
-                                if (isCurrent && !zoomState.leaveRequested) Modifier.clipToBounds()
-                                else Modifier
-                            )
-                            .then(
-                                if (!acceptsGestures.value || !isCurrent) Modifier else Modifier.pointerInput(zoomState) {
-                                    detectPreviewGestures(
-                                        state = zoomState,
-                                        onTap = {
-                                            if (detailsSheet.isShown) detailsSheet.close()
-                                            else chromeVisible = !chromeVisible
-                                        },
-                                        onDoubleTap = { focus ->
-                                            if (detailsSheet.isShown) {
-                                                detailsSheet.close()
-                                            } else {
-                                                zoomState.onDoubleTap(focus)
-                                                chromeVisible = !zoomState.isAtRest
-                                            }
-                                        },
-                                        onGestureStart = { chromeVisible = false },
-                                        details = detailsSheet
-                                    )
-                                }
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        // Pan is clamped against the image's laid-out rect
-                        val measureContent = Modifier.onSizeChanged {
-                            if (isCurrent) zoomState.onContentSize(it.toSize())
+                PreviewPage(
+                    wallpaper = wallpaper,
+                    isCurrent = zoomState.owns(page),
+                    acceptsGestures = acceptsGestures.value,
+                    zoomState = zoomState,
+                    detailsSheet = detailsSheet,
+                    flightModifier = flightModifier,
+                    knownAspectRatios = knownAspectRatios,
+                    uneditedFraming = uneditedFraming,
+                    cropRule = cropRule,
+                    loadSourceDetails = loadSourceDetails,
+                    onTap = { closeSheetOr { chromeVisible = !chromeVisible } },
+                    onDoubleTap = { focus ->
+                        closeSheetOr {
+                            zoomState.onDoubleTap(focus)
+                            chromeVisible = !zoomState.isAtRest
                         }
-                        // One state serves the pager, so only the page it belongs to reads it, they are mutually exclusive
-                        val framing = Modifier.previewFraming(
-                            zoomState,
-                            active = isCurrent && !zoomState.gestureActive
-                        )
-                        val transform = Modifier.previewGestureTransform(
-                            zoomState,
-                            active = isCurrent && zoomState.gestureActive
-                        )
-                        // Order intencional "framing" must come before the flight modifier
-                        // because it is what sets the laid-out bounds the close departs from, and
-                        // "transform" after it because it is draw-only.
-                        val pageContent = measureContent.then(framing).then(imageModifier).then(transform)
-                        if (wallpaper.editParams == null) {
-                            // The shared element is sized to the image's fit rect (not the full screen)
-                            // and both flight ends use Crop. The aspect is seeded from the grid thumbnail
-                            // so the flight targets the right rect from frame one, falls back to Fit
-                            var imageAspect by remember(wallpaper.uriString) {
-                                mutableStateOf(knownAspectRatios[wallpaper.id])
-                            }
-                            val aspect = imageAspect
-                            // The flight renders only this content, so the grid thumbnail's cached bitmap
-                            // stands in until the full-res decode lands (without it the flight starts blank)
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(wallpaper.uriString)
-                                    .size(decodeWidth, decodeHeight)
-                                    // Covering the canvas is the resolution a cropped wallpaper is applied at,
-                                    // so zooming in never looks softer than the real wallpaper
-                                    .scale(Scale.FILL)
-                                    .placeholderMemoryCacheKey(wallpaperThumbCacheKey(wallpaper.uriString))
-                                    .build(),
-                                contentDescription = stringResource(R.string.cd_wallpaper_preview),
-                                contentScale = when {
-                                    framesUneditedPages -> ruleContentScale
-                                    aspect == null -> ContentScale.Fit
-                                    else -> ContentScale.Crop
-                                },
-                                alignment = if (framesUneditedPages) ruleAlignment else Alignment.Center,
-                                onSuccess = { state ->
-                                    val resolved = state.intrinsicAspectRatio()
-                                    if (resolved != null) {
-                                        val current = imageAspect
-                                        // The seeded ratio can be a rounding pixel off; don't retarget an in-flight morph over <1%
-                                        if (current == null || abs(resolved - current) > current * 0.01f) {
-                                            imageAspect = resolved
-                                            knownAspectRatios[wallpaper.id] = resolved
-                                        }
-                                    }
-                                },
-                                // Sizing sets the flight's target bounds and inside them the image just crop-fills.
-                                // Framed by the rule it fills the screen like an edited page, so zoom and pan
-                                // clamp against the screen and the close departs from what is shown
-                                modifier = if (aspect == null || framesUneditedPages) Modifier.fillMaxSize().then(pageContent)
-                                           else Modifier.aspectRatio(aspect).then(pageContent)
-                            )
-                        } else {
-                            // Same crop-rect morph, placeholder, and sizing-before-element
-                            // but self-crops at any bounds, so this end is simply the full screen.
-                            EditableWallpaperImage(
-                                wallpaper = wallpaper,
-                                contentDescription = stringResource(R.string.cd_wallpaper_preview),
-                                placeholderMemoryCacheKey = wallpaperEditThumbCacheKey(wallpaper.uriString),
-                                modifier = Modifier.fillMaxSize().then(pageContent)
-                            )
-                        }
-                    }
-
-                    if (detailsSheet.isShown) {
-                        PreviewDetailsSheet(
-                            state = detailsSheet,
-                            wallpaper = wallpaper,
-                            cropRule = cropRule,
-                            loadSourceDetails = loadSourceDetails,
-                            reportsHeight = isCurrent
-                        )
-                    }
-                }
-            }
-
-            // renderInSharedTransitionScopeOverlay lifts the chrome above the image so its fade stay visible
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .then(with(sharedTransitionScope) {
-                        Modifier.renderInSharedTransitionScopeOverlay(zIndexInOverlay = 1f)
-                    })
-                    // Inside the overlay hand-off as the chrome fades out with the backdrop on the way out
-                    .graphicsLayer { alpha = 1f - zoomState.fadeProgress }
-            ) {
-                AnimatedVisibility(
-                    visible = chromeVisible,
-                    enter = slideInVertically { -it } + fadeIn(),
-                    exit = slideOutVertically { -it } + ChromeExitFade,
-                    modifier = Modifier.align(Alignment.TopCenter)
-                ) {
-                    PreviewTopBar(
-                        page = pagerState.currentPage + 1,
-                        pageCount = wallpapers.size,
-                        cropRule = cropRule,
-                        framing = when {
-                            currentWallpaper?.editParams != null -> PageFraming.EDIT
-                            framedByRule -> PageFraming.CROP_RULE
-                            else -> PageFraming.WHOLE_PHOTO
-                        },
-                        onClose = { if (detailsSheet.isShown) detailsSheet.close() else zoomState.requestLeave() },
-                        onToggleFramedByRule = onToggleFramedByRule
-                    )
-                }
-
-                AnimatedVisibility(
-                    visible = chromeVisible,
-                    enter = slideInVertically { it } + fadeIn(),
-                    exit = slideOutVertically { it } + ChromeExitFade,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .ridesDetailsSheet(detailsSheet, { sheetHeight.value }, ACTION_BAR_BOTTOM_PADDING)
-                ) {
-                    PreviewActionBar(
-                        wallpaper = currentWallpaper,
-                        isFavorited = currentWallpaper?.fileId in favoriteFileIds,
-                        isCollectionDefault = currentWallpaper != null &&
-                            currentWallpaper.id == defaultWallpaperId,
-                        onToggleFavorite = onToggleFavorite,
-                        onEdit = onEdit,
-                        onToggleDefault = onToggleDefault
-                    )
-                }
-
-                AnimatedVisibility(
-                    visible = chromeVisible &&
-                        !sharedTransitionScope.isTransitionActive &&
-                        currentWallpaper?.editParams != null,
-                    enter = fadeIn(),
-                    exit = ChromeExitFade,
-                    modifier = Modifier.align(Alignment.BottomEnd)
-                ) {
-                    EditedBadge(size = 28, modifier = Modifier.padding(EDITED_BADGE_PADDING))
-                }
-
-            }
-        }
-    }
-}
-
-/** Lifts bottom action bar [restGap] once the details sheet reaches it. A layer offset, so taps follow it. */
-private fun Modifier.ridesDetailsSheet(
-    sheet: PreviewDetailsSheetState,
-    sheetHeight: () -> Float,
-    restGap: Dp
-): Modifier = graphicsLayer {
-    val shown = sheetHeight() * sheet.fraction
-    translationY = -(shown - (restGap - SHEET_RIDE_GAP).toPx()).coerceAtLeast(0f)
-}
-
-/**
- * The pan/zoom of a gesture in progress, as a draw-time transform to stay cheap. Invisible to layout,
- * which is why it hands straight over to [previewFraming] the moment the fingers leave.
- */
-private fun Modifier.previewGestureTransform(state: PreviewZoomState, active: Boolean): Modifier =
-    if (!active) this else this.graphicsLayer {
-        val scale = state.shownScale
-        scaleX = scale
-        scaleY = scale
-        translationX = state.pan.x
-        translationY = state.pan.y + state.dismissTranslation
-    }
-
-/**
- * The scale the image is actually drawn at: the pinch's own zoom, pulled in as a dismiss drag
- * carries it away. Read by both halves of the transform, which have to agree exactly
- */
-private val PreviewZoomState.shownScale: Float
-    get() = zoom * (1f - DISMISS_DRAG_SHRINK * dismissProgress)
-
-/**
- * The same pan/zoom, in *layout*: the image is measured and placed at the size and position it is
- * being shown at, while still reporting its full rect outward so nothing around it moves.
- *
- * This is the half the close needs. A shared element flies from the bounds its content was **laid out** at,
- * and it draws only the end that is arriving: on the way out that is the grid cell, which has no pan or zoom
- * of its own. So a draw-time transform on the preview side is not merely mistimed on the way out, it is never
- * consulted, and the flight departs from the untransformed full-screen rect however carefully
- * that transform is animated. **Only reaches the screen while no flight is in the air.**
- */
-private fun Modifier.previewFraming(state: PreviewZoomState, active: Boolean): Modifier =
-    if (!active) this else this.layout { measurable, constraints ->
-        val scale = state.shownScale
-        // Transparent unless there is something to say
-        val idle = scale == 1f && state.pan == Offset.Zero && state.dismissTranslation == 0f
-        if (idle || !constraints.hasBoundedWidth || !constraints.hasBoundedHeight) {
-            val asIs = measurable.measure(constraints)
-            return@layout layout(asIs.width, asIs.height) {
-                asIs.place(0, 0)
-                state.onFramed()
-            }
-        }
-        val width = constraints.maxWidth
-        val height = constraints.maxHeight
-        // Deep over-zoom outgrows what Constraints can hold, so layout stops there and a layer draws the rest
-        val layoutScale = min(scale, MAX_FRAMED_SIDE_PX / max(width, height))
-        val drawScale = scale / layoutScale
-        val placeable = measurable.measure(
-            Constraints.fixed((width * layoutScale).roundToInt(), (height * layoutScale).roundToInt())
-        )
-        layout(width, height) {
-            // Both scale about the same center, so the rect is placed as if laid out at full scale
-            val x = ((width - placeable.width) / 2f + state.pan.x).roundToInt()
-            val y = ((height - placeable.height) / 2f + state.pan.y + state.dismissTranslation).roundToInt()
-            if (drawScale == 1f) placeable.place(x, y)
-            else placeable.placeWithLayer(x, y) {
-                scaleX = drawScale
-                scaleY = drawScale
-            }
-            state.onFramed()
-        }
-    }
-
-/** What the shown page is framed by, which is what the top-right toggle reports. */
-private enum class PageFraming { WHOLE_PHOTO, CROP_RULE, EDIT }
-
-private val ChipColor = NothingBlack.copy(alpha = 0.5f)
-private const val NOT_APPLICABLE_ALPHA = 0.4f
-
-@Composable
-private fun PreviewTopBar(
-    page: Int,
-    pageCount: Int,
-    cropRule: CropRule,
-    framing: PageFraming,
-    onClose: () -> Unit,
-    onToggleFramedByRule: () -> Unit
-) {
-    Box(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            PreviewActionButton(onClick = onClose, enabled = true) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = stringResource(R.string.cd_close),
-                    tint = NothingWhite,
-                    modifier = Modifier.size(20.dp)
+                    },
+                    onGestureStart = { chromeVisible = false }
                 )
             }
-            Text(
-                text = stringResource(R.string.preview_page_indicator, page, pageCount),
-                style = NothingType.titleCaps,
-                color = NothingWhite,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(ChipColor)
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+
+            PreviewChrome(
+                visible = chromeVisible,
+                sharedTransitionScope = sharedTransitionScope,
+                fadeProgress = { zoomState.fadeProgress },
+                detailsSheet = detailsSheet,
+                wallpaper = currentWallpaper,
+                page = pagerState.currentPage + 1,
+                pageCount = wallpapers.size,
+                cropRule = cropRule,
+                framedByRule = framedByRule,
+                isFavorited = currentWallpaper?.fileId in favoriteFileIds,
+                isCollectionDefault = currentWallpaper != null && currentWallpaper.id == defaultWallpaperId,
+                onClose = { closeSheetOr { zoomState.requestLeave() } },
+                onToggleFramedByRule = onToggleFramedByRule,
+                onToggleFavorite = onToggleFavorite,
+                onEdit = onEdit,
+                onToggleDefault = onToggleDefault,
+                modifier = Modifier.matchParentSize()
             )
-            FramingToggle(cropRule = cropRule, framing = framing, onToggle = onToggleFramedByRule)
         }
     }
 }
 
 /**
- * Off it shows the whole-photo icon; on it shows the rule's own icon, white, so it names the rule
- * it frames by. On an edited page it shows off but dimmed, since the edit already frames it.
+ * One page of the pager: the image, the gestures that zoom it, and its details sheet.
+ * One [zoomState] serves the whole pager, so only the [current][isCurrent] page reads it.
  */
+@Suppress("ModifierParameter") // flightModifier goes on the image, not on the page's root
 @Composable
-private fun FramingToggle(
+private fun PreviewPage(
+    wallpaper: WallpaperImage,
+    isCurrent: Boolean,
+    acceptsGestures: Boolean,
+    zoomState: PreviewZoomState,
+    detailsSheet: PreviewDetailsSheetState,
+    flightModifier: Modifier,
+    knownAspectRatios: MutableMap<Long, Float>,
+    uneditedFraming: CropRule?,
     cropRule: CropRule,
-    framing: PageFraming,
-    onToggle: () -> Unit
+    loadSourceDetails: suspend (WallpaperImage) -> SourceDetails,
+    onTap: () -> Unit,
+    onDoubleTap: (Offset) -> Unit,
+    onGestureStart: () -> Unit
 ) {
-    val on = framing == PageFraming.CROP_RULE
-    PreviewActionButton(
-        onClick = onToggle,
-        enabled = framing != PageFraming.EDIT,
-        containerColor = if (on) NothingWhite else ChipColor,
-        modifier = Modifier.alpha(if (framing == PageFraming.EDIT) NOT_APPLICABLE_ALPHA else 1f)
-    ) {
-        Icon(
-            painter = painterResource(if (on) cropRuleIconRes(cropRule) else R.drawable.icon_fit_screen),
-            contentDescription = stringResource(
-                when (framing) {
-                    PageFraming.WHOLE_PHOTO -> R.string.cd_preview_frame_by_crop_rule
-                    PageFraming.CROP_RULE -> R.string.cd_preview_show_whole_photo
-                    PageFraming.EDIT -> R.string.cd_preview_framed_by_edit
-                }
-            ),
-            tint = if (on) NothingBlack else NothingWhite,
-            modifier = Modifier.size(20.dp)
-        )
-    }
-}
-
-@Composable
-private fun PreviewActionBar(
-    wallpaper: WallpaperImage?,
-    isFavorited: Boolean,
-    isCollectionDefault: Boolean,
-    onToggleFavorite: (WallpaperImage) -> Unit,
-    onEdit: (WallpaperImage) -> Unit,
-    onToggleDefault: (WallpaperImage) -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = ACTION_BAR_BOTTOM_PADDING, top = 32.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-            verticalAlignment = Alignment.CenterVertically
+    Box(modifier = Modifier.fillMaxSize()) {
+        // The detector sits on this untransformed Box and the transform goes on the image below.
+        // A detector inside the zoomed layer reads each drag divided by the zoom
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                // A zoomed page is larger than its slot, without this it draws over the page
+                // sliding in. Lifted while leaving (the close flies to a grid cell outside these bounds).
+                .then(if (isCurrent && !zoomState.leaveRequested) Modifier.clipToBounds() else Modifier)
+                .then(
+                    if (!acceptsGestures || !isCurrent) Modifier else Modifier.pointerInput(zoomState) {
+                        detectPreviewGestures(
+                            state = zoomState,
+                            onTap = onTap,
+                            onDoubleTap = onDoubleTap,
+                            onGestureStart = onGestureStart,
+                            details = detailsSheet
+                        )
+                    }
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            // Favourite toggle.
-            PreviewActionButton(
-                onClick = { wallpaper?.let(onToggleFavorite) },
-                enabled = wallpaper != null
-            ) {
-                Icon(
-                    imageVector = if (isFavorited) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = stringResource(R.string.cd_favorite_wallpapers),
-                    tint = if (isFavorited) NothingRed else NothingWhite,
-                    modifier = Modifier.size(20.dp)
+            // Pan is clamped against the image's laid-out rect
+            val measureContent = Modifier.onSizeChanged {
+                if (isCurrent) zoomState.onContentSize(it.toSize())
+            }
+            val framing = Modifier.previewFraming(zoomState, active = isCurrent && !zoomState.gestureActive)
+            val transform = Modifier.previewGestureTransform(zoomState, active = isCurrent && zoomState.gestureActive)
+            // Order is load-bearing: framing sets the laid-out bounds the close flight departs from,
+            // so it comes before the flight modifier, and transform is draw-only, so it comes after
+            val pageContent = measureContent.then(framing).then(flightModifier).then(transform)
+            if (wallpaper.editParams == null) {
+                UneditedPreviewImage(
+                    wallpaper = wallpaper,
+                    knownAspectRatios = knownAspectRatios,
+                    framing = uneditedFraming,
+                    modifier = pageContent
+                )
+            } else {
+                // Same crop-rect morph, placeholder, and sizing-before-element
+                // but self-crops at any bounds, so this end is simply the full screen.
+                EditableWallpaperImage(
+                    wallpaper = wallpaper,
+                    contentDescription = stringResource(R.string.cd_wallpaper_preview),
+                    placeholderMemoryCacheKey = wallpaperEditThumbCacheKey(wallpaper.uriString),
+                    modifier = Modifier.fillMaxSize().then(pageContent)
                 )
             }
+        }
 
-            PreviewActionButton(
-                onClick = { wallpaper?.let(onEdit) },
-                enabled = wallpaper != null
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.icon_edit),
-                    contentDescription = stringResource(R.string.cd_edit_wallpaper),
-                    tint = NothingWhite,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            // Collection default toggle
-            PreviewActionButton(
-                onClick = { wallpaper?.let(onToggleDefault) },
-                enabled = wallpaper != null
-            ) {
-                Icon(
-                    painter = painterResource(
-                        if (isCollectionDefault) R.drawable.icon_star else R.drawable.icon_star_outline
-                    ),
-                    contentDescription = stringResource(R.string.cd_collection_default),
-                    tint = NothingWhite,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+        if (detailsSheet.isShown) {
+            PreviewDetailsSheet(
+                state = detailsSheet,
+                wallpaper = wallpaper,
+                cropRule = cropRule,
+                loadSourceDetails = loadSourceDetails,
+                reportsHeight = isCurrent
+            )
         }
     }
 }
 
+/**
+ * An unedited page: the whole photo, or the screen [framing] crops it to when set.
+ *
+ * The shared element is sized to the image's fit rect (not the full screen) and both flight ends
+ * use Crop. The aspect is seeded from the grid thumbnail so the flight targets the right rect from
+ * frame one, and falls back to Fit until the image reports its own.
+ */
 @Composable
-private fun PreviewActionButton(
-    onClick: () -> Unit,
-    enabled: Boolean,
-    modifier: Modifier = Modifier,
-    containerColor: Color = ChipColor,
-    content: @Composable () -> Unit
+private fun UneditedPreviewImage(
+    wallpaper: WallpaperImage,
+    knownAspectRatios: MutableMap<Long, Float>,
+    framing: CropRule?,
+    modifier: Modifier
 ) {
-    IconButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier
-            .size(48.dp)
-            .clip(CircleShape)
-            .background(containerColor)
-    ) {
-        content()
+    val context = LocalContext.current
+    val (decodeWidth, decodeHeight) = remember { ImageProcessingUtils.getWallpaperCanvasSize(context) }
+    val framingScale = remember(framing) { framing?.let(::CropRuleContentScale) }
+    val framingAlignment = remember(framing) {
+        framing?.let { rule ->
+            val bias = CropPlacement.horizontalBias(rule)
+            CropRuleAlignment { bias }
+        }
+    }
+    var imageAspect by remember(wallpaper.uriString) { mutableStateOf(knownAspectRatios[wallpaper.id]) }
+    val aspect = imageAspect
+
+    // The flight renders only this content, so the grid thumbnail's cached bitmap
+    // stands in until the full-res decode lands (without it the flight starts blank)
+    AsyncImage(
+        model = ImageRequest.Builder(context)
+            .data(wallpaper.uriString)
+            .size(decodeWidth, decodeHeight)
+            // Covering the canvas is the resolution a cropped wallpaper is applied at,
+            // so zooming in never looks softer than the real wallpaper
+            .scale(Scale.FILL)
+            .placeholderMemoryCacheKey(wallpaperThumbCacheKey(wallpaper.uriString))
+            .build(),
+        contentDescription = stringResource(R.string.cd_wallpaper_preview),
+        contentScale = when {
+            framingScale != null -> framingScale
+            aspect == null -> ContentScale.Fit
+            else -> ContentScale.Crop
+        },
+        alignment = framingAlignment ?: Alignment.Center,
+        onSuccess = { state ->
+            val resolved = state.intrinsicAspectRatio()
+            if (resolved != null) {
+                val current = imageAspect
+                // The seeded ratio can be a rounding pixel off; don't retarget an in-flight morph over <1%
+                if (current == null || abs(resolved - current) > current * 0.01f) {
+                    imageAspect = resolved
+                    knownAspectRatios[wallpaper.id] = resolved
+                }
+            }
+        },
+        // Sizing sets the flight's target bounds and inside them the image just crop-fills.
+        // Framed by the rule it fills the screen like an edited page, so zoom and pan
+        // clamp against the screen and the close departs from what is shown
+        modifier = if (aspect == null || framing != null) Modifier.fillMaxSize().then(modifier)
+                   else Modifier.aspectRatio(aspect).then(modifier)
+    )
+}
+
+@Composable
+private fun OverlayPreviewHost(wallpaper: WallpaperImage) {
+    WallpaperChangerTheme {
+        SharedTransitionLayout {
+            AnimatedVisibility(visibleState = remember { MutableTransitionState(true) }) {
+                WallpaperPreviewOverlay(
+                    wallpapers = listOf(wallpaper),
+                    initialIndex = 0,
+                    sharedTransitionScope = this@SharedTransitionLayout,
+                    animatedVisibilityScope = this,
+                    sharedWallpaperId = null,
+                    onDismiss = {}
+                )
+            }
+        }
     }
 }
 
 @Preview(showSystemUi = true, name = "Wallpaper Preview Overlay")
 @Composable
 fun WallpaperPreviewOverlayPreview() {
-    val sampleWallpaper = WallpaperImage(
-        id = 1L,
-        collectionId = 101,
-        uriString = ""
-    )
-
-    WallpaperChangerTheme {
-        SharedTransitionLayout {
-            AnimatedVisibility(visibleState = remember { MutableTransitionState(true) }) {
-                WallpaperPreviewOverlay(
-                    wallpapers = listOf(sampleWallpaper),
-                    initialIndex = 0,
-                    sharedTransitionScope = this@SharedTransitionLayout,
-                    animatedVisibilityScope = this,
-                    sharedWallpaperId = null,
-                    onDismiss = {}
-                )
-            }
-        }
-    }
+    OverlayPreviewHost(WallpaperImage(id = 1L, collectionId = 101, uriString = ""))
 }
 
 @Preview(showSystemUi = true, name = "Wallpaper Preview Overlay (Edited)")
 @Composable
 fun WallpaperPreviewOverlayEditedPreview() {
-    val sampleWallpaper = WallpaperImage(
-        id = 2L,
-        collectionId = 101,
-        uriString = "",
-        editParams = EditParams(zoom = 1.5f, offsetX = 0f, offsetY = 0f)
+    OverlayPreviewHost(
+        WallpaperImage(
+            id = 2L,
+            collectionId = 101,
+            uriString = "",
+            editParams = EditParams(zoom = 1.5f, offsetX = 0f, offsetY = 0f)
+        )
     )
-
-    WallpaperChangerTheme {
-        SharedTransitionLayout {
-            AnimatedVisibility(visibleState = remember { MutableTransitionState(true) }) {
-                WallpaperPreviewOverlay(
-                    wallpapers = listOf(sampleWallpaper),
-                    initialIndex = 0,
-                    sharedTransitionScope = this@SharedTransitionLayout,
-                    animatedVisibilityScope = this,
-                    sharedWallpaperId = null,
-                    onDismiss = {}
-                )
-            }
-        }
-    }
 }
