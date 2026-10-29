@@ -126,7 +126,7 @@ class SettingsViewModel @Inject constructor(
     /** Words owed to the user, each delivered once to whoever is showing the screen. */
     val notices: SharedFlow<AtmosphereNotice> = _notices.asSharedFlow()
 
-    // Held back because entry hands straight off to the system picker. Raised on the resume instead
+    // Held back because entry hands straight off to the system picker. Raised on the return instead
     private var lockRemovalPending = false
 
     private val atmosphereFlow = combine(
@@ -316,7 +316,7 @@ class SettingsViewModel @Inject constructor(
     /**
      * Re-checks whether the engine is live and brings the world into line with it.
      *
-     * Engine liveness has no system callback so the Route calls this on every resume (as with media access)
+     * Engine liveness has no system callback so the Route calls this on every start
      */
     override fun refreshAtmosphereEngineActive() {
         viewModelScope.launch {

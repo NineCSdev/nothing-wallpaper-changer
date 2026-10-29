@@ -24,6 +24,7 @@ import com.ninecsdev.wallpaperchanger.ui.components.openAppSettings
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService
 import kotlinx.coroutines.launch
@@ -43,12 +44,16 @@ fun SettingsRoute(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // Media-access and atmosphere-engine states have no system callback, re-check on every resume
-    // (the user may grant/revoke a permission, or set/replace the live wallpaper on the system picker).
+    // Neither state has a system callback. Media access is re-checked on resume, since a permission
+    // dialog only pauses us. The engine is re-checked on start: the live-wallpaper picker covers us
+    // fully, and an entering destination is started at its first frame but resumed only after the transition.
     LifecycleResumeEffect(Unit) {
         viewModel.refreshMediaAccess()
-        viewModel.refreshAtmosphereEngineActive()
         onPauseOrDispose { }
+    }
+    LifecycleStartEffect(Unit) {
+        viewModel.refreshAtmosphereEngineActive()
+        onStopOrDispose { }
     }
 
     // The snackbar host is owned here, because this is where notices arrive.

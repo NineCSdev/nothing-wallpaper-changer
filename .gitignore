@@ -17,5 +17,6 @@ keystore
 /context.md
 /.artifacts/*
 /CLAUDE.md
+/AGENTS.md
 keystore.properties
 /tools/*
