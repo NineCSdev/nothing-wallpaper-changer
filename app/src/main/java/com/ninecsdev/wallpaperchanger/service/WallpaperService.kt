@@ -35,10 +35,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-/**
- * Foreground Service responsible for keeping the [ScreenStateReceiver] alive,
- * coordinating the whole app and creating and managing the notification.
- */
+/** Foreground service that keeps the rotation triggers ([ScreenStateReceiver], the scheduler) and the notification alive. */
 @AndroidEntryPoint
 class WallpaperService : Service() {
 
@@ -56,7 +53,6 @@ class WallpaperService : Service() {
     private var screenStateReceiver: BroadcastReceiver? = null
     private var atmosphereDisplayedReceiver: BroadcastReceiver? = null
     private var notificationJob: Job? = null
-    // SupervisorJob ensures one failing task doesn't kill the whole service scope
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     companion object {
@@ -72,19 +68,17 @@ class WallpaperService : Service() {
         registerAtmosphereDisplayedReceiver()
     }
 
-    /** Obeys the lifecycle authority for as long as the service lives */
     private fun startLifecycleActionCollector() {
         serviceScope.launch { serviceLifecycle.lifecycleActions.collect(::applyLifecycleAction) }
     }
 
-    /** Runs the side effects one verdict calls for. This only touches the rotation triggers and teardown. */
     private fun applyLifecycleAction(action: LifecycleVerdict) {
         when (action) {
             is LifecycleVerdict.RunActive -> {
                 Log.i(tag, "Engine active")
                 startRotationTriggers()
             }
-            // A pause suspends rotation and leaves the screen as it is
+            // A pause suspends rotation and leaves the screen as it is.
             is LifecycleVerdict.RunPaused -> {
                 Log.i(tag, "Engine paused")
                 stopRotationTriggers()
@@ -122,14 +116,13 @@ class WallpaperService : Service() {
         serviceScope.launch {
             val startup = serviceLifecycle.onIntent(
                 ServiceIntent.ServiceStarting(
-                    // Both facts are read fresh
                     hasActiveCollection = repository.getActiveCollectionOnce() != null,
                     policy = appDataStore.getBatterySaverPolicy()
                 )
             )
 
             when (startup) {
-                // Still tearing down
+                // Still tearing down.
                 is LifecycleVerdict.Rejected -> {
                     Log.w(tag, "Start refused: ${startup.reason}")
                     stopSelf()
@@ -143,23 +136,18 @@ class WallpaperService : Service() {
                 else -> Unit
             }
 
-            // Subscribes the engine to the active collection's images and blocks until the first
-            // buffer is prepared, so we only report Running once a wallpaper is ready to apply
+            // Blocks until the first buffer is prepared, so Running is only reported once a wallpaper is ready to apply.
             rotationEngine.start(serviceScope)
 
             startNotificationCollector()
 
-            // Re-asks as the engine took seconds to come up and Battery Saver may have arrived during them
+            // Re-asks: the engine took seconds to come up and Battery Saver may have arrived meanwhile.
             applyLifecycleAction(serviceLifecycle.onIntent(ServiceIntent.EngineReady))
         }
 
         return START_STICKY
     }
 
-    /**
-     * Renders the foreground notification as a function of the service's own state and the active
-     * collection, so a collection switch or rename shows up without waiting for a restart.
-     */
     // TODO tests: see vault note tests/Notification Rendering Tests.md
     private fun startNotificationCollector() {
         notificationJob?.cancel()
@@ -177,8 +165,8 @@ class WallpaperService : Service() {
     private fun handleStopCommand() {
         if (serviceLifecycle.onIntent(ServiceIntent.TeardownBegan) is LifecycleVerdict.NoChange) return
         Log.i(tag, "Stopping service via command.")
-        // No notify() can arrive once teardown starts, which would otherwise outlive
-        // stopForeground(STOP_FOREGROUND_REMOVE) as an undismissable notification with no service behind it
+        // Stops a late notify() from outliving stopForeground(STOP_FOREGROUND_REMOVE) as an
+        // undismissable notification with no service behind it.
         notificationJob?.cancel()
 
         serviceScope.launch {
@@ -187,10 +175,7 @@ class WallpaperService : Service() {
         }
     }
 
-    /**
-     * Puts the user's chosen wallpaper back when rotation gives up the screen. Non-cancellable so a
-     * scope teardown cannot leave the last rotated image standing.
-     */
+    /** Non-cancellable so a scope teardown cannot leave the last rotated image standing. */
     private suspend fun revertToDefaultIfRequested() {
         withContext(NonCancellable) {
             if (appDataStore.shouldRevertToDefault()) {
@@ -207,7 +192,7 @@ class WallpaperService : Service() {
         stopRotationTriggers()
         atmosphereDisplayedReceiver?.let { unregisterReceiver(it) }
 
-        // Cancel the scope first so the engine's reactive collector stops before we clear its state.
+        // Cancel the scope first so the engine's collector stops before its state is cleared.
         serviceScope.cancel()
         rotationEngine.clearMagazine()
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -215,7 +200,6 @@ class WallpaperService : Service() {
         serviceLifecycle.onIntent(ServiceIntent.TeardownFinished)
     }
 
-    /** Starts both rotation triggers: the screen-state receiver and the interval scheduler. */
     private fun startRotationTriggers() {
         if (screenStateReceiver != null) return
 
@@ -232,10 +216,8 @@ class WallpaperService : Service() {
     }
 
     /**
-     * Listens for the atmosphere engine's "I actually showed the delivered image" signal and hands
-     * it to [RotationCoordinator], which owns the deferred second half of that rotation. In
-     * atmosphere mode display is asynchronous and may never happen (a fast toggle holds the image),
-     * so advancement can't ride along with delivery; it waits for this confirmation instead.
+     * Hands the engine's "delivered image was shown" signal to [RotationCoordinator]. Display is
+     * asynchronous and may never happen, so advancement waits for this confirmation.
      */
     private fun registerAtmosphereDisplayedReceiver() {
         if (atmosphereDisplayedReceiver != null) return

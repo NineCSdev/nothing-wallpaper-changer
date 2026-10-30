@@ -106,36 +106,21 @@ import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 internal const val GRID_COLUMNS = 3
 
-/**
- * Room the floating selection pill needs at the bottom of the screen:
- * its 16dp inset, its 64dp height, and a little breathing room.
- */
+// The selection pill's 16dp inset, 64dp height and some breathing room
 private val SelectionPillClearance = 88.dp
 
-/**
- * Explicit Coil memory-cache key for a wallpaper's grid thumbnail. Used while the full-res decode
- * Keyed by uri (not id): two wallpapers sharing a backing file share the thumbnail too.
- */
+/** Memory-cache key of a grid thumbnail, reused as the preview's placeholder. Keyed by uri, not id: wallpapers sharing a file share the thumbnail. */
 internal fun wallpaperThumbCacheKey(uri: String) = "wallpaper-thumb-$uri"
 
-/**
- * Same placeholder trick for *edited* wallpapers, under a separate key: their
- * grid request is sized to the screen-aspect virtual frame (see [EditableWallpaperImage][com.ninecsdev.wallpaperchanger.ui.components.EditableWallpaperImage])
- * so the bitmaps aren't interchangeable with the non-edited thumbnail's.
- */
+// Separate key: edited tiles are sized to the screen-aspect frame, so their bitmaps differ
 internal fun wallpaperEditThumbCacheKey(uri: String) = "wallpaper-edit-thumb-$uri"
 
-/** Width/height of the loaded image, or null if the size is degenerate. */
 internal fun AsyncImagePainter.State.Success.intrinsicAspectRatio(): Float? {
     val size = painter.intrinsicSize
     return if (size.width > 0f && size.height > 0f) size.width / size.height else null
 }
 
-/**
- * Bounds spring for the grid ↔ preview zoom. The library default felt
- * near-instant on device; no-bouncy keeps the landing clean and springs
- * redirect gracefully when a flight is interrupted mid-way.
- */
+// The library default is near-instant on device; no-bounce keeps the landing clean
 internal val PreviewFlightBoundsTransform = BoundsTransform { _, _ ->
     spring(
         dampingRatio = Spring.DampingRatioNoBouncy,
@@ -146,17 +131,10 @@ internal val PreviewFlightBoundsTransform = BoundsTransform { _, _ ->
 
 private const val PREVIEW_FLIGHT_STIFFNESS = 1000f // how fast the flight plays
 
-/**
- * Fade for a thumbnail's corner chrome. Short enough that the badges are gone before the
- * flight has traveled, and that on the way back they land rather than drift in.
- */
+// Short enough that badges are gone before the flight has traveled, and land rather than drift in on return
 private val CellChromeFade = tween<Float>(durationMillis = 120)
 
-/**
- * Flight modifier for the grid ↔ preview shared-element zoom.
- * Both the grid cell and the overlay page must call this with the same [key] for
- * the transition to run; extracting the construction here keeps them in sync.
- */
+/** The grid cell and the overlay page must use the same [key] for the shared-element flight to run. */
 @Suppress("ModifierFactoryExtensionFunction") // Receiver is SharedTransitionScope, not Modifier, intentional.
 @Composable
 internal fun SharedTransitionScope.previewFlightModifier(
@@ -168,14 +146,6 @@ internal fun SharedTransitionScope.previewFlightModifier(
     boundsTransform = PreviewFlightBoundsTransform
 )
 
-/**
- * Screen displaying all wallpapers inside a specific collection
- * as a 3-column grid of image thumbnails.
- *
- * Supports selection mode (long press), full-screen preview (tap, opened and
- * closed with a shared-element zoom between the grid cell and the preview),
- * adding wallpapers (FAB), and edit/delete actions (top bar).
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectionImageScreen(
@@ -194,15 +164,14 @@ fun CollectionImageScreen(
 
         fun wallpaperIndex(id: Long?) = uiState.wallpapers.indexOfFirst { it.id == id }.coerceAtLeast(0)
 
-        // The preview overlay's enter/exit is driven locally
-        // so the close can play its shared-element flight *before* previewWallpaper
+        // Driven locally so the close can play its shared-element flight before previewWallpaper clears
         val previewVisibleState = remember { MutableTransitionState(uiState.previewWallpaper != null) }
 
-        // Pager start page, pinned at open so page swipes never yank the pager back to the tapped page.
+        // Pinned at open so page swipes never yank the pager back to the tapped page
         var pagerStartIndex by remember { mutableIntStateOf(wallpaperIndex(uiState.previewWallpaper?.id)) }
         val gridState = rememberLazyGridState()
 
-        // Prevents falling back to fullscreen until the full-res image decodes.
+        // Stops the preview falling back to fullscreen framing until the full-res image decodes
         val knownAspectRatios = remember { mutableStateMapOf<Long, Float>() }
 
         var previewFramedByRule by rememberSaveable { mutableStateOf(false) }
@@ -211,14 +180,13 @@ fun CollectionImageScreen(
         val currentActions by rememberUpdatedState(actions)
         val currentWallpapers by rememberUpdatedState(uiState.wallpapers)
 
-        // This flip fires the reverse flight: the currently viewed wallpaper's cell enters exactly as the overlay exits
+        // The flip fires the reverse flight: the viewed wallpaper's cell enters as the overlay exits
         val dismissPreview = {
             if (previewVisibleState.targetState) {
                 previewVisibleState.targetState = false
             }
         }
 
-        // Open the preview with a flight from the tapped cell.
         LaunchedEffect(uiState.previewWallpaper?.id) {
             val wallpaper = uiState.previewWallpaper
             if (wallpaper != null && !previewVisibleState.targetState) {
@@ -226,12 +194,12 @@ fun CollectionImageScreen(
                 previewFramedByRule = false
                 previewVisibleState.targetState = true
             } else if (wallpaper == null && previewVisibleState.targetState) {
-                // If the previewed wallpaper vanishes underneath us (e.g. deleted by a sync), close with a plain fade.
+                // Previewed wallpaper vanished (e.g. deleted by a sync): close with a plain fade
                 previewVisibleState.targetState = false
             }
         }
 
-        // Once both the fade and the shared-element flight have settled after a close, commit the close to the ViewModel
+        // Commit the close to the ViewModel only once the fade and the flight have both settled
         LaunchedEffect(Unit) {
             snapshotFlow { previewVisibleState.isIdle && !sharedScope.isTransitionActive }
                 .collect { settled ->
@@ -241,7 +209,7 @@ fun CollectionImageScreen(
                 }
         }
 
-        // Handle back press: exit selection mode first, then close preview, then navigate back
+        // Back order: selection mode, then preview, then navigate back
         // TODO: Do a better handling of this
         BackHandler(enabled = uiState.isSelectionMode) {
             actions.exitSelectionMode()
@@ -344,9 +312,8 @@ fun CollectionImageScreen(
                                 wallpaper = wallpaper,
                                 isSelected = isSelected,
                                 isSelectionMode = uiState.isSelectionMode,
-                                // Passive heart badge on every favourite file.
                                 isFavorite = wallpaper.fileId in uiState.favoriteFileIds,
-                                // Attach flight modifier only while the preview is NOT fully settled open (i.e. during open/close flights).
+                                // Only during open/close flights, never while the preview is settled open
                                 sharesPreviewBounds = isCurrentPreview && (
                                     !(previewVisibleState.currentState && previewVisibleState.targetState) ||
                                         sharedScope.isTransitionActive
@@ -377,8 +344,7 @@ fun CollectionImageScreen(
                         }
                     }
 
-                    // Keep the currently viewed wallpaper's thumbnail composed so dismissing always
-                    // has a live flight target that isn't covered by the top bar.
+                    // Keeps the viewed wallpaper's thumbnail composed so dismissing has a flight target not covered by the top bar
                     LaunchedEffect(uiState.previewWallpaper?.id) {
                         val wallpaper = uiState.previewWallpaper ?: return@LaunchedEffect
                         // Wait for the open to settle: scrolling mid-flight would move its origin
@@ -393,14 +359,12 @@ fun CollectionImageScreen(
                             info.offset.y >= 0 &&
                             info.offset.y + info.size.height <= gridState.layoutInfo.viewportEndOffset
                         if (!safelyVisible) {
-                            // scrollToItem aligns the item to the start of the content area,
-                            // which the grid's contentPadding already keeps clear of the top bar.
+                            // scrollToItem aligns to the content area start, which contentPadding keeps below the top bar
                             gridState.scrollToItem(index)
                         }
                     }
                 }
 
-                // Floating selection-actions pill (Nothing-gallery style), overlaying the grid.
                 AnimatedVisibility(
                     visible = uiState.isSelectionMode,
                     enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
@@ -424,7 +388,6 @@ fun CollectionImageScreen(
             }
         }
 
-        // Full-screen preview overlay, opened/closed with a zoom.
         AnimatedVisibility(
             visibleState = previewVisibleState,
             enter = fadeIn(animationSpec = tween(durationMillis = 200)),
@@ -452,7 +415,6 @@ fun CollectionImageScreen(
         }
     }
 
-    // Delete confirmation
     if (showDeleteConfirmation) {
         val selectedCount = uiState.selectedIds.size
         ConfirmationOverlay(
@@ -468,7 +430,6 @@ fun CollectionImageScreen(
         )
     }
 
-    // Copy/move destination picker, or the name prompt once a new collection was chosen
     if (uiState.isNamingNewTarget) {
         NewCollectionNameDialog(
             onConfirm = actions::transferToNewCollection,
@@ -498,7 +459,6 @@ fun CollectionImageScreen(
         )
     }
 
-    // Re-link confirmation for a tapped unavailable image.
     if (uiState.relinkTarget != null) {
         ConfirmationOverlay(
             title = stringResource(R.string.relink_dialog_title),
@@ -512,10 +472,6 @@ fun CollectionImageScreen(
     }
 }
 
-/**
- * Shown when a collection has no wallpapers yet.
- * Nudges the user to tap the FAB to add images.
- */
 @Composable
 private fun EmptyCollectionState(
     topPadding: Dp,
@@ -544,18 +500,10 @@ private fun EmptyCollectionState(
 
 
 /**
- * A single wallpaper cell inside the image grid.
- * Shows the edited version if available.
- * Supports tap (preview/toggle) and long-press (enter selection mode).
- *
- * Participates in the preview's shared-element zoom: the cell content hides while
- * its image is showing in the preview ([hiddenForPreview]), and carries the
- * flight modifier (via [previewFlightModifier]) only while the preview is opening
- * or closing ([sharesPreviewBounds]). On open the cell's modifier is registered a
- * frame before it hides (flights need a pre-registered origin); on close the cell
- * re-enters as the overlay exits, so the image flies back into it. While the
- * preview is settled no cell is shared, so pager swipes cannot re-match a cell
- * and fire stray flights.
+ * The cell carries the flight modifier only while the preview opens or closes
+ * ([sharesPreviewBounds]), so pager swipes in a settled preview cannot re-match a cell and fire
+ * stray flights. On open the modifier is registered a frame before the cell hides
+ * ([hiddenForPreview]), since flights need a pre-registered origin.
  */
 @Composable
 private fun SharedTransitionScope.WallpaperThumbnail(
@@ -603,11 +551,8 @@ private fun SharedTransitionScope.WallpaperThumbnail(
                     .padding(1.dp)
                     .clip(RoundedCornerShape(if (isSelectionMode && isSelected) 8.dp else 0.dp))
                     .then(if (sharesPreviewBounds) Modifier else Modifier.background(NothingGray))
-                // Both branches render a centered crop of their final image at any
-                // bounds, so the shared-element bounds animation (square cell →
-                // overlay rect) is itself the crop-rect morph. The explicit memory
-                // cache keys let the overlay reuse these bitmaps as instant
-                // placeholders.
+                // Both branches render a centered crop at any bounds, so the shared-element
+                // bounds animation (square cell to overlay rect) is itself the crop-rect morph
                 if (wallpaper.editParams == null) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
@@ -643,7 +588,6 @@ private fun SharedTransitionScope.WallpaperThumbnail(
             modifier = Modifier.matchParentSize()
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-                // Edited params badge (bottom-right of thumbnail)
                 if (wallpaper.editParams != null) {
                     EditedBadge(
                         modifier = Modifier
@@ -652,7 +596,6 @@ private fun SharedTransitionScope.WallpaperThumbnail(
                     )
                 }
 
-                // Unavailable badge (bottom-left of thumbnail)
                 if (!wallpaper.isAvailable) {
                     UnavailableBadge(
                         modifier = Modifier
@@ -661,7 +604,6 @@ private fun SharedTransitionScope.WallpaperThumbnail(
                     )
                 }
 
-                // Favourite badge (top-left of thumbnail; free of the edited/unavailable/selection corners)
                 if (isFavorite) {
                     FavoriteBadge(
                         modifier = Modifier
@@ -670,7 +612,6 @@ private fun SharedTransitionScope.WallpaperThumbnail(
                     )
                 }
 
-                // Selection indicator
                 if (isSelectionMode && isSelected) {
                     Box(
                         modifier = Modifier
@@ -700,8 +641,6 @@ private fun SharedTransitionScope.WallpaperThumbnail(
         }
     }
 }
-
-// Previews
 
 @Preview(showSystemUi = true, name = "Collection Images", backgroundColor = 0xFF000000)
 @Composable
@@ -782,7 +721,6 @@ fun CollectionImageScreenEmptyPreview() {
     }
 }
 
-/** No-op actions for previews. */
 private object PreviewCollectionImageActions : CollectionImageActions {
     override fun openPreview(wallpaper: WallpaperImage) {}
     override fun closePreview() {}

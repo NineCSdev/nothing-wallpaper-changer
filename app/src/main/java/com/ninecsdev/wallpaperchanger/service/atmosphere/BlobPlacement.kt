@@ -3,20 +3,13 @@ package com.ninecsdev.wallpaperchanger.service.atmosphere
 import java.util.Random
 
 /**
- * Picks where the blobs drift *to*.
- *
- * Poisson-disc-ish rejection sampling over the surface: candidates land uniformly, and any
- * candidate closer than [AtmosphereConstants.MIN_TARGET_SEPARATION] to an already-placed point is
- * thrown away. After [AtmosphereConstants.PLACEMENT_MAX_ATTEMPTS] rejections the candidate is
- * taken anyway.
+ * Picks where the blobs drift to: rejection sampling that discards candidates closer than
+ * [AtmosphereConstants.MIN_TARGET_SEPARATION] to a placed point, accepting one anyway after
+ * [AtmosphereConstants.PLACEMENT_MAX_ATTEMPTS] rejections.
  */
 internal object BlobPlacement {
 
-    /**
-     * Fills [out] with `count` (x, y) pairs in surface pixels.
-     *
-     * @param random re-seeded per call by the caller, so the layout is new on every lock.
-     */
+    /** Fills [out] with `count` (x, y) pairs in surface pixels. [random] is re-seeded per call, so each lock gets a new layout. */
     fun generate(width: Int, height: Int, count: Int, random: Random, out: FloatArray) {
         var placed = 0
         while (placed < count) {

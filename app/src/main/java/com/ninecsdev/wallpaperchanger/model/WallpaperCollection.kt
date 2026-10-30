@@ -14,11 +14,10 @@ import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 /**
  * Represents a logical list of wallpapers created by the user.
  *
- * [com.ninecsdev.wallpaperchanger.model.enums.CollectionType.FOLDER] types are synced with a physical directory on the device.
- * [com.ninecsdev.wallpaperchanger.model.enums.CollectionType.MANUAL] types have images handpicked by the user and are not synced.
+ * [CollectionType.FOLDER] types are synced with a physical directory on the device.
+ * [CollectionType.MANUAL] types have images handpicked by the user and are not synced.
  *
- * [appRole] marks an app-owned collection and says which one; null is a collection the user made.
- * [isPinned] is the user-set "sort first"
+ * [appRole] marks an app-owned collection; null is one the user made.
  * [defaultWallpaperId] is this collection's default-wallpaper override; null follows the global one.
  */
 @Entity(
@@ -58,20 +57,11 @@ data class WallpaperCollection(
     }
 }
 
-/**
- * The central "pinned collections sort first" rule, applied on top of an already-sorted list.
- * [sortedByDescending] is stable, so the incoming order is preserved within the pinned and non-pinned groups.
- */
-fun List<WallpaperCollection>.pinnedFirst(): List<WallpaperCollection> =
-    sortedByDescending { it.isPinned }
+/** Pinned collections first; the sort is stable, so incoming order holds within each group. */
+fun List<WallpaperCollection>.pinnedFirst(): List<WallpaperCollection> = sortedByDescending { it.isPinned }
 
-/**
- * The name to show the user. The Favourites collection ignores the stored [WallpaperCollection.name] fallback and
- * resolves a localized string resource (rename is blocked), so it reads "Favourites"/"Favoritos"
- * regardless of the app language.
- */
-fun WallpaperCollection.resolveDisplayName(context: Context): String =
-    resolveCollectionDisplayName(context, name, isFavorites)
+/** Favourites ignores the stored name and resolves a localized string, so it follows the app language. */
+fun WallpaperCollection.resolveDisplayName(context: Context): String = resolveCollectionDisplayName(context, name, isFavorites)
 
 fun resolveCollectionDisplayName(context: Context, name: String, isFavorites: Boolean): String =
     if (isFavorites) context.getString(R.string.favorites_collection_name) else name

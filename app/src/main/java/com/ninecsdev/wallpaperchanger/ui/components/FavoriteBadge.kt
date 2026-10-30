@@ -16,11 +16,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
-/**
- * Small rounded white box with a filled red heart.
- * Passive indicator that a wallpaper's file is favourited (a member of the Favourites collection).
- * Shown on every copy of a favourited file across collections, suppressed inside Favourites itself.
- */
+/** Shown on every copy of a favourited file across collections, suppressed inside Favourites itself. */
 @Composable
 internal fun FavoriteBadge(modifier: Modifier = Modifier, size: Int = 14) {
     StatusBadge(

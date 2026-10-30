@@ -29,15 +29,9 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/** Space above and below every row, either side of the rule between two rows. */
 private val RowPadding = 14.dp
 
-/**
- * A labeled group of settings rows on its own panel, with a rule between each pair of rows.
- *
- * Every top-level composable in [content] is one row, and the panel draws the rules itself so the
- * screen body cannot forget one.
- */
+/** Every top-level composable in [content] is one row; the panel draws the rules itself so the screen body cannot forget one. */
 @Composable
 internal fun SettingsPanel(
     label: String,
@@ -65,10 +59,6 @@ internal fun SettingsPanel(
     }
 }
 
-/**
- * A labeled run of rows inside a [SettingsPanel], for settings that belong to one subject within
- * the panel's. Ruled the same way, so it reads as part of the panel.
- */
 @Composable
 internal fun SettingsPanelGroup(
     label: String,
@@ -91,10 +81,7 @@ internal fun SettingsPanelGroup(
     }
 }
 
-/**
- * Stacks its children with [RowPadding] either side of a hairline between each pair, and around
- * the outer edges too unless [padEdges] is false. Empty children get neither.
- */
+/** [RowPadding] either side of a hairline between each pair, and around the outer edges unless [padEdges] is false. Empty children get neither. */
 @Composable
 private fun RuledColumn(
     modifier: Modifier = Modifier,

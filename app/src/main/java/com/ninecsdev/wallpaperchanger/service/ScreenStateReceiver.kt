@@ -16,24 +16,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
- * Both screen transitions, in one receiver.
- *
- * Screen-off is itself a rotation trigger: it waits out the lock animation, gives up if the user
- * woke the device during that wait, and asks [RotationCoordinator] for one rotation. Screen-on only
- * feeds [RotationScheduler], which arms its timer while the screen is on.
- *
- * One receiver rather than two so both signals share a single registration — the alternative is an
- * invariant kept by four call sites in [WallpaperService] remembering to move them together.
+ * Both screen transitions, in one receiver so they share a single registration. Screen-off is a
+ * rotation trigger (after the lock-animation delay, unless the user woke the device); screen-on
+ * only feeds [RotationScheduler].
  */
 @AndroidEntryPoint
 class ScreenStateReceiver(
-    /**
-     * Structured scope provided by the owning [WallpaperService].
-     * Using the service's scope ensures coroutines are canceled when the
-     * service is destroyed, preventing leaked work.
-     */
+    /** The owning [WallpaperService]'s scope, so coroutines are canceled with the service. */
     private val serviceScope: CoroutineScope
 ) : BroadcastReceiver() {
 
@@ -44,10 +36,7 @@ class ScreenStateReceiver(
     @Inject lateinit var rotationScheduler: RotationScheduler
 
     companion object {
-        /**
-         * Set at broadcast receipt and held across the settle delay, so mashing the power button
-         * queues one swap rather than several.
-         */
+        /** Held across the settle delay, so mashing the power button queues one swap. */
         private val isSwapPending = AtomicBoolean(false)
     }
 
@@ -79,8 +68,7 @@ class ScreenStateReceiver(
 
         serviceScope.launch(Dispatchers.IO, start = CoroutineStart.ATOMIC) {
             try {
-                // Configurable delay (default 250ms for Nothing Phone animation)
-                delay(appDataStore.getScreenOffDelay())
+                delay(appDataStore.getScreenOffDelay().milliseconds)
 
                 // Safety check: if the user woke the screen during the delay abort
                 if (powerManager.isInteractive) {
@@ -88,7 +76,7 @@ class ScreenStateReceiver(
                     return@launch
                 }
 
-                // Releases the broadcast as soon as the image is applied or delivered
+                // Releases the broadcast as soon as the image is applied or delivered.
                 rotationCoordinator.rotateOnce(tag, onApplied = ::finishBroadcast)
             } finally {
                 isSwapPending.set(false)

@@ -57,13 +57,6 @@ import com.ninecsdev.wallpaperchanger.ui.collectionscreen.components.CreateColle
 import com.ninecsdev.wallpaperchanger.ui.collectionscreen.components.EditCollectionCard
 import com.ninecsdev.wallpaperchanger.ui.collectionscreen.components.SortDropdown
 
-/**
- * Screen for displaying all the user's collections in a
- * 2-column grid with a collection creation button at the bottom.
- * Tapping a tile opens its images ([onCollectionClick]); long-pressing opens the
- * context menu (Pin/Unpin · Set active · Edit, the latter via [onEditCollection]).
- * Owns and renders the CreateCollectionCard and EditCollectionCard modals.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectionListScreen(
@@ -154,7 +147,6 @@ fun CollectionListScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(uiState.allCollections, key = { it.id }) { collection ->
-                            // Tap opens the collection's images; long-press opens the context menu.
                             CollectionTileContextMenu(
                                 isPinned = collection.isPinned,
                                 isActive = collection.isActive,
@@ -177,7 +169,6 @@ fun CollectionListScreen(
             }
         }
 
-        // Cards that appear on top of the screen
         if (uiState.isShowingCreateModal) {
             CreateCollectionCard(
                 isProcessing = uiState.isProcessing,
@@ -294,7 +285,6 @@ fun CollectionListScreenEmptyPreview() {
     }
 }
 
-/** No-op actions for previews. */
 private object PreviewCollectionListActions : CollectionListActions {
     override fun setSortOrder(order: CollectionSortOrder) {}
     override fun toggleCreateModal(show: Boolean) {}

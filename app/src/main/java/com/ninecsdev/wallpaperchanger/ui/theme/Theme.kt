@@ -8,7 +8,6 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 
-/** The app is a fixed dark, monochrome-plus-red surface. */
 private val NothingColorScheme = darkColorScheme(
     primary = NothingWhite,
     onPrimary = NothingBlack,
@@ -22,17 +21,11 @@ private val NothingColorScheme = darkColorScheme(
     onError = NothingWhite,
 )
 
-/** Shape tokens. */
 private val NothingShapes = Shapes(
     small = RoundedCornerShape(SmallCornerRadius),
     large = RoundedCornerShape(CardCornerRadius),
 )
 
-/**
- * App theme: the Nothing black/white/red palette, the default Material type scale (the
- * Nothing text styles live in [NothingType]), and [NothingShapes]. Content color defaults
- * to white so every `Text` renders on-brand without repeating the color per call site.
- */
 @Composable
 fun WallpaperChangerTheme(content: @Composable () -> Unit) {
     MaterialTheme(

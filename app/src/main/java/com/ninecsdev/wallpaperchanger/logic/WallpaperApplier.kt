@@ -18,32 +18,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Outcome of [WallpaperApplier.applyBufferWallpaper]. The distinction the caller acts on is
- * *when the image becomes visible*:
- *
- * - [SHOWN]: on screen as of this call (the static path's setStream returned) — the caller
- *   advances the rotation now.
- * - [DEFERRED]: accepted but shown later, or held and never shown — the caller must NOT advance
- *   now and waits for the delivery channel's own confirmation. As of writing that is the atmosphere engine
- *   reporting back via [AtmosphereProtocol.ACTION_DISPLAYED][com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol].
- * - [ALREADY_LIVE]: the buffered image is the one already on screen, so nothing was applied and
- *   the caller must NOT advance — advancing would re-show it and burn the image being prepared.
- * - [FAILED]: nothing was applied or delivered.
- *
- * Named for *when the image lands*, not for which mode produced it, so a caller deciding whether
- * to advance the rotation never has to know the modes exist.
+ * Named for when the image lands, so callers never need to know the modes. [SHOWN]: on screen now,
+ * advance the rotation. [DEFERRED]: shown later or held, do NOT advance until the delivery channel
+ * confirms. [ALREADY_LIVE]: that image is already on screen; advancing would burn the image being prepared.
  */
 enum class WallpaperApplyOutcome { SHOWN, DEFERRED, ALREADY_LIVE, FAILED }
 
 /**
- * Applies prepared images to the Android screen wallpaper.
- *
- * Mode-aware router: in static mode it writes the bitmap/stream straight to [WallpaperManager]; in
- * effective atmosphere mode it instead publishes into the live engine's on-disk source
- * ([AtmosphereDelivery]) and **never** calls setBitmap/setStream — doing so would replace the live
- * wallpaper and kick the user out of atmosphere mode. Effective mode (not just the desired setting)
- * is resolved via [WallpaperModeResolver] at every call, so a stale ATMOSPHERE desire with the
- * engine no longer set still routes through the normal static path.
+ * Mode-aware router. In effective atmosphere mode it must never call setBitmap/setStream: that would
+ * replace the live wallpaper and end the mode. Effective mode is resolved on every call, so a stale
+ * ATMOSPHERE desire with the engine unset still takes the static path.
  */
 @Singleton
 class WallpaperApplier @Inject constructor(
@@ -60,13 +44,9 @@ class WallpaperApplier @Inject constructor(
     }
 
     /**
-     * Warns when a static write is about to happen while the user still wants atmosphere.
-     *
-     * That combination is legitimate, it is the documented mismatch state, where the mode was
-     * chosen but never confirmed on the system picker — but it is also what a *stale or failed*
-     * engine-liveness read looks like, and in that case the write below replaces our own live
-     * wallpaper and silently drops the user out of the mode. The two are indistinguishable from
-     * inside, so the least this path can do is say so.
+     * The desired-but-not-effective mismatch is legitimate, but it is also what a stale or failed
+     * liveness read looks like, in which case the static write silently evicts our live wallpaper.
+     * The two are indistinguishable from inside, so this logs.
      */
     private suspend fun warnIfDesiringAtmosphere(path: String) {
         if (appDataStore.getWallpaperMode() != WallpaperMode.ATMOSPHERE) return
@@ -79,10 +59,7 @@ class WallpaperApplier @Inject constructor(
         )
     }
 
-    /**
-     * @param useCollectionOverride lets the active collection's default wallpaper win over the
-     * global. For the service stop/pause.
-     */
+    /** [useCollectionOverride] lets the active collection's default win over the global (service stop/pause). */
     // TODO tests: see vault note tests/Atmosphere Delivery Tests.md
     suspend fun applyDefaultWallpaper(useCollectionOverride: Boolean = false): Boolean = withContext(Dispatchers.IO) {
         val defaultWallpaper = (if (useCollectionOverride) repository.getCollectionDefaultOrGlobal() else repository.getDefaultWallpaper()) ?: return@withContext false
@@ -91,8 +68,7 @@ class WallpaperApplier @Inject constructor(
         val cropRule = repository.cropRuleFor(defaultWallpaper)
 
         if (wallpaperModeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE) {
-            // Revert-to-default flows through the atmosphere path: render the default and hand it
-            // to the engine instead of setBitmap, which would evict the engine and end the mode.
+            // Goes through the engine: setBitmap would evict it and end the mode
             val render = bufferManager.renderForAtmosphere(defaultWallpaper, cropRule) ?: return@withContext false
 
             return@withContext try {
@@ -129,10 +105,7 @@ class WallpaperApplier @Inject constructor(
         }
     }
 
-    /**
-     * @param rotatingCollectionId the collection the buffered image was drawn from, when this apply
-     * is a rotation.
-     */
+    /** [rotatingCollectionId] is the collection the buffered image was drawn from, when this apply is a rotation. */
     // TODO tests: see vault note tests/Atmosphere Delivery Tests.md
     suspend fun applyBufferWallpaper(
         rotatingCollectionId: Long? = null
@@ -147,10 +120,8 @@ class WallpaperApplier @Inject constructor(
                 return@withContext WallpaperApplyOutcome.ALREADY_LIVE
             }
 
-            // Delivery is a cheap copy of the already-rendered buffer into the engine's source file
-            // plus a reload broadcast — no setStream, which would replace the live wallpaper. The
-            // image is shown later (or held), so the caller defers the rotation advance until the
-            // engine confirms display; hence DEFERRED rather than SHOWN.
+            // A copy plus a reload broadcast, never setStream (that would replace the live wallpaper).
+            // Shown later or held, hence DEFERRED
             val delivered = atmosphereDelivery.deliverPrepared(rotatingCollectionId)
             return@withContext if (delivered) {
                 WallpaperApplyOutcome.DEFERRED
@@ -176,7 +147,6 @@ class WallpaperApplier @Inject constructor(
                     )
                 }
 
-                // Records what the user is now looking at
                 wallpaperRecordStore.setAppliedWallpaperId(bufferedId)
             }
 
@@ -188,14 +158,10 @@ class WallpaperApplier @Inject constructor(
         }
     }
 
-    /**
-     * Extension helper to translate [WallpaperDestination] to [WallpaperManager.FLAG_LOCK] or
-     * [WallpaperManager.FLAG_SYSTEM]
-     */
     private fun WallpaperDestination.toFlags(): Int = when (this) {
         WallpaperDestination.LOCK -> WallpaperManager.FLAG_LOCK
         WallpaperDestination.HOME -> WallpaperManager.FLAG_SYSTEM
-        // As WallpaperManager checks the bits we do an or to activate both (01 or 10 = 11)
+        // As WallpaperManager checks the bits we do an OR to activate both (01 or 10 = 11)
         WallpaperDestination.BOTH -> WallpaperManager.FLAG_LOCK or WallpaperManager.FLAG_SYSTEM
     }
 }

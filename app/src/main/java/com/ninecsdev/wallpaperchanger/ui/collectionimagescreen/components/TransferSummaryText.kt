@@ -5,12 +5,6 @@ import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.TransferMode
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.TransferSummary
 
-/**
- * Builds the post-transfer snackbar message for a [TransferSummary].
- *
- * Mirrors its counting rule: "N COPIED/MOVED TO X" counts operations that took effect;
- * a nothing-changed duplicate shows as "N ALREADY THERE".
- */
 fun transferSummaryText(context: Context, summary: TransferSummary): String {
     val transferredText = when (summary.mode) {
         TransferMode.COPY -> context.getString(R.string.transfer_summary_copied, summary.transferred, summary.targetName.uppercase())

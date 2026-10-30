@@ -47,13 +47,8 @@ private val TileHeight = 108.dp
 /** Share of the screen width one tile occupies; feeds Coil's decode sizing. */
 private const val TILE_DECODE_FRACTION = 0.2f
 
-/** Empty tiles standing in for a collection with no images, and for none selected at all. */
 private const val PLACEHOLDER_TILE_COUNT = 4
 
-/**
- * Component for choosing the active collection.
- * Scrolls through every wallpaper in it.
- */
 @Composable
 internal fun WallpaperSelectionCard(
     activeCollection: WallpaperCollection?,
@@ -121,9 +116,6 @@ internal fun WallpaperSelectionCard(
     }
 }
 
-/**
- * One tile of the row: the wallpaper framed the way it will be applied.
- */
 @Composable
 private fun WallpaperTile(image: WallpaperImage) {
     Box(modifier = Modifier.size(width = TileWidth, height = TileHeight)) {
@@ -146,7 +138,6 @@ private fun WallpaperTile(image: WallpaperImage) {
     }
 }
 
-/** Empty slot shown when the collection has no images, or none is selected. */
 @Composable
 private fun PlaceholderTile() {
     Box(

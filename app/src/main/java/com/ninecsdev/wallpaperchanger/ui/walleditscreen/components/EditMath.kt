@@ -7,12 +7,6 @@ import com.ninecsdev.wallpaperchanger.ui.components.MaxZoom
 import com.ninecsdev.wallpaperchanger.ui.components.focalPan
 import kotlin.math.abs
 
-/*
- * Edit-value policy for the wallpaper editor: comparison tolerance, zoom/offset bounds,
- * the fit-height zoom rule, and the pinch/drag gesture mapping. The transform geometry
- * itself lives in computeEditTransform.
- */
-
 // Below the finest typeable step (0.01% offset = 0.0002), so a typed edit is never a no-op
 private const val EditValueEpsilon = 0.0001f
 
@@ -24,39 +18,24 @@ private const val MaxOffset = 1f
 internal fun coerceZoom(value: Float): Float = value.coerceIn(MinZoom, MaxZoom)
 internal fun coerceOffset(value: Float): Float = value.coerceIn(MinOffset, MaxOffset)
 
-/**
- * Offset display mapping: the persisted offset is -1..1, but the editor sliders present it to the
- * user as 0..100 (0 = -1, 50 = 0 / centered, 100 = 1). Conversion is confined to the UI layer;
- * everything below the slider keeps the -1..1 range.
- */
+// Sliders show the persisted -1..1 offset as 0..100 (50 = centered); conversion stays in the UI layer
 internal fun offsetToPercent(offset: Float): Float = (offset - MinOffset) / (MaxOffset - MinOffset) * 100f
 internal fun percentToOffset(percent: Float): Float = coerceOffset(MinOffset + percent / 100f * (MaxOffset - MinOffset))
 
 // TODO: Add tests for the format/parse round trip (see "EditTransform Tests" in the notes, typed value entry section)
 
-/*
- * Text form of the edit values, shared by the controls panel's and the field that edits it in place,
- * Formatting follows the device locale; the parsers accept either decimal separator, so a comma
- * keyboard round-trips.
- */
-
-/** Fraction digits the zoom field accepts and displays. */
 internal const val ZoomDecimals = 3
 
-/** Fraction digits the offset-percentage fields accept and display. */
 internal const val OffsetPercentDecimals = 2
 
-/** Integer digits a field accepts. */
 private const val MaxIntegerDigits = 3
 
+// Formatting follows the device locale; the parsers accept either decimal separator, so a comma keyboard round-trips
 internal fun formatZoom(zoom: Float): String = "%.${ZoomDecimals}f".format(zoom)
 
 internal fun formatOffsetPercent(offset: Float): String = "%.${OffsetPercentDecimals}f".format(offsetToPercent(offset))
 
-/**
- * Trims [text] down to a typeable decimal: digits only, at most one separator, at most [decimals]
- * fraction digits and [MaxIntegerDigits] integer digits.
- */
+/** Digits only, at most one separator, [decimals] fraction digits and [MaxIntegerDigits] integer digits. */
 internal fun sanitizeDecimalInput(text: String, decimals: Int): String {
     val out = StringBuilder()
     var separatorSeen = false
@@ -94,11 +73,7 @@ internal fun parseOffsetPercentInput(text: String): Float? = text.toEditFloatOrN
 internal fun isCloseEnough(left: Float, right: Float): Boolean =
     abs(left - right) <= EditValueEpsilon
 
-/**
- * True when (zoom, offsetX, offsetY) equals [params] within [EditValueEpsilon]; null [params]
- * means the defaults (zoom 1, no offset). The single dirty-check shared by the editor screen
- * (unsaved-changes guard) and [com.ninecsdev.wallpaperchanger.ui.walleditscreen.WallpaperEditViewModel] (no-op save detection).
- */
+/** Null [params] means the defaults (zoom 1, no offset). Shared by the unsaved-changes guard and the ViewModel's no-op save detection. */
 internal fun matchesEditParams(
     params: EditParams?,
     zoom: Float,
@@ -119,20 +94,9 @@ internal data class GestureTransform(
 )
 
 /**
- * Maps one pinch/drag frame onto the editor's normalized (zoom, offset) state with
- * **focal-point zoom** and **1:1 (direct-manipulation) pan**:
- *
- * - The content point under [centroidX]/[centroidY] stays put as the image scales, so pinching
- *   zooms into wherever the fingers are — not the image center.
- * - A [panX]/[panY] drag moves the image by exactly that many pixels (X and Y each mapped through
- *   their own real pan range), so the image tracks the finger instead of a tuned sensitivity.
- *
- * All pixel inputs are in the editor container's coordinate space (origin top-left, [centroidX] in
- * `0..containerWidth`). Pan is computed in container pixels via [computeEditTransform],
- * then converted back to the persisted -1..1 offset. An axis with no room to pan (image not
- * overflowing it) keeps the offset it came in with.
- *
- * Falls back to a zoom-only update while the container/image geometry isn't known yet.
+ * Focal-point zoom (the content point under the centroid stays put) and 1:1 pan (X and Y each mapped
+ * through their own real pan range). Pixel inputs are in the container's space, origin top-left.
+ * An axis with no room to pan keeps its incoming offset; falls back to a zoom-only update while geometry is unknown.
  */
 internal fun applyEditGesture(
     zoom: Float,
@@ -178,7 +142,6 @@ internal fun applyEditGesture(
     val focalX = centroidX - containerWidth / 2f
     val focalY = centroidY - containerHeight / 2f
 
-    // Keep the focal content point fixed under the fingers, then apply the finger drag.
     val newPan = focalPan(
         drag = Offset(panX, panY),
         centroid = Offset(focalX, focalY),

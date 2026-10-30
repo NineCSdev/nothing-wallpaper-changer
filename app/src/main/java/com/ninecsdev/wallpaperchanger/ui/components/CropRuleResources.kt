@@ -5,7 +5,6 @@ import androidx.annotation.StringRes
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 
-/** The icon that stands for [rule] wherever a crop rule is picked or shown. */
 @DrawableRes
 internal fun cropRuleIconRes(rule: CropRule): Int = when (rule) {
     CropRule.CENTER -> R.drawable.icon_crop_center
@@ -14,7 +13,6 @@ internal fun cropRuleIconRes(rule: CropRule): Int = when (rule) {
     CropRule.FIT -> R.drawable.icon_fit_screen
 }
 
-/** [rule]'s name, as shown beside it. */
 @StringRes
 internal fun cropRuleLabelRes(rule: CropRule): Int = when (rule) {
     CropRule.CENTER -> R.string.crop_rule_center

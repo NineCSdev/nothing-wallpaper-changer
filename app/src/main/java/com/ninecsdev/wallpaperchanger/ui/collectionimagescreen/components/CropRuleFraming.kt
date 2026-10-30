@@ -20,9 +20,8 @@ internal data class CropRuleContentScale(val rule: CropRule) : ContentScale {
 }
 
 /**
- * Places an image the way [CropPlacement] does, on screen axes whatever the layout direction: a
- * wallpaper's left is never mirrored. The bias is read at placement, so an animated one redraws
- * without recomposing.
+ * Screen axes whatever the layout direction: a wallpaper's left is never mirrored. The bias is
+ * read at placement, so an animated one redraws without recomposing.
  */
 internal class CropRuleAlignment(private val horizontalBias: () -> Float) : Alignment {
     override fun align(size: IntSize, space: IntSize, layoutDirection: LayoutDirection) = IntOffset(

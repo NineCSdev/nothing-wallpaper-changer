@@ -16,11 +16,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
-/**
- * Snackbar host with the app's inverted white-on-black styling.
- * Drop-in replacement for the stock [SnackbarHost] in a Scaffold's snackbarHost slot.
- * Raised above the default position so it clears the screens' FAB.
- */
+/** Raised above the default position so it clears the screens' FAB. */
 @Composable
 fun NothingSnackbarHost(
     hostState: SnackbarHostState,

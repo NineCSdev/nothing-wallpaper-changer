@@ -7,10 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.util.Locale
 
-/**
- * Shape of the `.nwcbak` archive: a zip holding one manifest and, for the images whose bytes
- * travel, one entry each.
- */
+/** The `.nwcbak` archive: a zip holding one manifest and one entry per image whose bytes travel. */
 object BackupFormat {
     const val EXTENSION = "nwcbak"
 
@@ -21,37 +18,32 @@ object BackupFormat {
     const val MANIFEST_MAX_BYTES = 16 * 1024 * 1024
     const val IMAGE_DIR = "images/"
 
-    /**
-     * The last entry an export writes. Absence means the export didn't finalize correctly, and we
-     * shouldn't use it; its contents are a [BackupCompletion] naming the payloads that went wrong.
-     */
+    /** The last entry an export writes; absence means the export did not finalize and the archive must not be used. Holds a [BackupCompletion]. */
     const val COMPLETE_ENTRY = "complete"
 
     /** Matches the names [imageEntry] produces, and nothing else. Archive entry names are hostile input. */
     private val IMAGE_ENTRY_PATTERN = Regex("""images/\d{4,}\.[A-Za-z0-9]{1,5}""")
 
-    /** True when [entryName] is an image entry this format could have written */
     fun isValidImageEntry(entryName: String): Boolean = IMAGE_ENTRY_PATTERN.matches(entryName)
 
-    /** The manifest's own version, independent of the app's and of the Room schema's */
+    /** Independent of the app's version and the Room schema's. */
     const val CURRENT_VERSION = 1
 
-    /** Entry name for the bundled bytes of the file at [fileIndex] in the manifest. Formatted in [Locale.ROOT] */
+    /** [Locale.ROOT] so digits are never localized. */
     fun imageEntry(fileIndex: Int, extension: String): String = String.format(Locale.ROOT, "$IMAGE_DIR%04d.%s", fileIndex, extension)
 }
 
-/** Which bytes an archive carries */
 enum class BackupMode {
     DEVICE,
     PORTABLE
 }
 
-/** The archive's logical content: what the install *is*. Flat arrays with integer refs. */
+/** Flat arrays cross-referenced by index. */
 @Serializable
 data class BackupManifest(
     val formatVersion: Int = BackupFormat.CURRENT_VERSION,
     val appVersionCode: Long = 0,
-    /** Diagnostic only. Nothing reads it to decide anything, here for a bad-restore report. */
+    /** Diagnostic only; nothing reads it to decide anything. */
     val roomSchemaVersion: Int = 0,
     val exportedAt: Long = 0,
     val mode: BackupMode = BackupMode.DEVICE,
@@ -62,7 +54,6 @@ data class BackupManifest(
     val settings: BackupSettings = BackupSettings()
 )
 
-/** A [collection][com.ninecsdev.wallpaperchanger.model.WallpaperCollection]. [defaultMembership] indexes [BackupManifest.memberships] */
 @Serializable
 data class BackupCollection(
     val name: String,
@@ -79,10 +70,8 @@ data class BackupCollection(
 )
 
 /**
- * One [physical image][com.ninecsdev.wallpaperchanger.model.WallpaperFile] in the file registry.
- *
- * [payload] names this file's zip entry when its bytes travel, absent means reference-only. The
- * fingerprint ([displayName], [sizeBytes], [modifiedAt]) stops a reference resolving to the wrong picture.
+ * [payload] names this file's zip entry when its bytes travel; absent means reference-only. The fingerprint
+ * ([displayName], [sizeBytes], [modifiedAt]) stops a reference resolving to the wrong picture.
  */
 @Serializable
 data class BackupFile(
@@ -96,7 +85,6 @@ data class BackupFile(
     val payload: String? = null
 )
 
-/** A [membership][com.ninecsdev.wallpaperchanger.model.Wallpaper]: one file's place in one collection, carrying that collection's edit of it. */
 @Serializable
 data class BackupMembership(
     val collection: Int,
@@ -109,11 +97,7 @@ data class BackupMembership(
     val addedAt: Long = 0
 )
 
-/**
- * A [tombstone][com.ninecsdev.wallpaperchanger.model.FolderExclusion].
- *
- * [displayName] is the only thing that can re-key these onto a folder picked at a new location.
- */
+/** [displayName] is the only thing that can re-key a tombstone onto a folder picked at a new location. */
 @Serializable
 data class BackupExclusion(
     val collection: Int,
@@ -126,9 +110,7 @@ data class BackupExclusion(
 )
 
 /**
- * The user's settings. All nullable: absent means "this archive predates the setting", and the
- * importer leaves the local value alone.
- *
+ * All nullable: absent means the archive predates the setting, and the importer leaves the local value alone.
  * [screenOffDelayDeviceDefault] travels beside [screenOffDelayMs] to tell a tuned value from an untouched default.
  */
 @Serializable
@@ -157,20 +139,11 @@ internal fun BackupManifest.countImages(inCollections: Set<Int>): Int =
         .distinctBy { it.file }
         .size
 
-/**
- * The archive's closing record, written as the contents of [BackupFormat.COMPLETE_ENTRY].
- *
- * [unreadable] names the image entries whose source died part-way through being copied.
- */
+/** The contents of [BackupFormat.COMPLETE_ENTRY]; [unreadable] names image entries whose source died part-way through the copy. */
 @Serializable
 data class BackupCompletion(val unreadable: List<String> = emptyList())
 
-/**
- * Reads and writes the completion record.
- *
- * Decoding never fails: the record only ever *narrows* what an archive claims, so losing it reads as
- * an archive with nothing to disown.
- */
+/** Decoding never fails: the record only narrows what an archive claims, so losing it reads as nothing to disown. */
 object BackupCompletionCodec {
     private const val TAG = "BackupCompletionCodec"
 
@@ -187,15 +160,12 @@ object BackupCompletionCodec {
     }
 }
 
-/** Just enough of a manifest to learn whether we can read the rest of it. */
 @Serializable
 private data class FormatProbe(val formatVersion: Int = 0)
 
 /**
- * Reads and writes `manifest.json`.
- *
- * A version newer than [BackupFormat.CURRENT_VERSION] is refused rather than guessed at. An older
- * one is read directly, which holds while every past version is a prefix of the current shape.
+ * A newer version is refused rather than guessed at. An older one is read directly, which holds while
+ * every past version is a prefix of the current shape.
  */
 // TODO tests: see vault note tests/Backup Archive Tests.md (round-trip and version refusal)
 object BackupManifestCodec {
@@ -209,9 +179,9 @@ object BackupManifestCodec {
 
     fun encode(manifest: BackupManifest): String = json.encodeToString(BackupManifest.serializer(), manifest)
 
-    /** Fails with an [ImportRefused] carrying why the archive cannot be read. */
+    /** Failure is an [ImportRefused] carrying why the archive cannot be read. */
     fun decode(raw: String): Result<BackupManifest> {
-        // Probed rather than parsed whole first: a manifest runs to megabytes, and this skips it
+        // Probed first so an unsupported manifest, which can run to megabytes, is never fully parsed
         val version = try {
             json.decodeFromString(FormatProbe.serializer(), raw).formatVersion
         } catch (e: SerializationException) {

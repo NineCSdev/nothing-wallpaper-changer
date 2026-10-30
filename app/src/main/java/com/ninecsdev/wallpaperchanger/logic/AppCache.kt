@@ -18,10 +18,7 @@ data class DeviceStorage(
     val freeBytes: Long
 )
 
-/**
- * The app's disposable files: everything under `cacheDir` except the prepared wallpaper, which
- * the next screen-off is counting on. Mostly grid thumbnails.
- */
+/** Everything under `cacheDir` except the prepared wallpaper, which the next screen-off needs. */
 @Singleton
 class AppCache @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
@@ -39,7 +36,7 @@ class AppCache @Inject constructor(
         clearable().forEach { it.deleteRecursively() }
     }
 
-    /** The device's size and free space, or null if the platform will not say. */
+    /** Null if the platform will not say. */
     suspend fun deviceStorage(): DeviceStorage? = withContext(Dispatchers.IO) {
         try {
             val stats = appContext.getSystemService(StorageStatsManager::class.java)
@@ -53,7 +50,6 @@ class AppCache @Inject constructor(
         }
     }
 
-    /** Top-level entries of `cacheDir` that are ours to delete */
     private fun clearable(): List<File> {
         val kept = bufferManager.bufferFiles()
         return appContext.cacheDir.listFiles()?.filter { it !in kept }.orEmpty()

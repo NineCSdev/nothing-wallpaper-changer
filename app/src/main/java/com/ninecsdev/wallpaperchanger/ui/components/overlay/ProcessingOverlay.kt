@@ -23,9 +23,6 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * Loading overlay for giving feedback while app does heavy work.
- */
 @Composable
 fun ProcessingOverlay(
     modifier: Modifier = Modifier,

@@ -39,16 +39,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * Floating pill of bulk actions shown while selection mode is active
- * (Nothing-gallery style). Direct slots: favourite / edit / delete; copy, move
- * and the collection-default toggle live behind the ⋮ overflow menu, which
- * opens upward above the pill.
- *
- * Selection mode guarantees ≥ 1 selection, so every action is always
- * applicable except edit and the default toggle, which need [hasSingleSelection]
- * and are shown dimmed otherwise.
- */
+/** Edit and the default toggle need [hasSingleSelection] and are shown dimmed otherwise. */
 @Composable
 internal fun SelectionActionBar(
     isAllFavorites: Boolean,
@@ -111,8 +102,7 @@ internal fun SelectionActionBar(
                 )
             }
 
-            // Anchored to the ⋮; flips above the pill automatically since
-            // there's never room below. Styled to match SortDropdown's menu.
+            // Opens upward: there is never room below the pill
             DropdownMenu(
                 expanded = menuExpanded,
                 onDismissRequest = { menuExpanded = false },
@@ -193,8 +183,6 @@ internal fun SelectionActionBar(
         }
     }
 }
-
-// Previews
 
 @Preview(name = "All enabled", showBackground = true, backgroundColor = 0xFF000000)
 @Composable

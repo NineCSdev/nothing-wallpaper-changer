@@ -5,22 +5,17 @@ import androidx.compose.ui.geometry.Size
 import com.ninecsdev.wallpaperchanger.ui.components.MaxZoom
 
 /*
- * Pan/zoom policy for the full-screen preview: resistance past the zoom ceiling and the clamp
- * that keeps the image edge pinned to the viewport edge. The limits both screens share, and the
+ * Pan/zoom policy for the full-screen preview. The limits both screens share, and the
  * focal-point pan they both apply, are in ui/components/ZoomPolicy.kt.
- *
- * Separate from the editor's EditMath, which maps gestures onto persisted, screen-frame-relative edit params
  */
 
 // TODO tests: see vault note tests/Preview Zoom Math.md
 
 /** Resting zoom. Not a floor: a pinch-to-leave shrinks below it, down to [PreviewShrinkFloor]. */
 internal const val PreviewMinZoom = 1f
-// The band around 1x that counts as at rest
 private const val RestZoomMin = 0.92f
 private const val RestZoomMax = 1.03f
 
-/** Smallest the image is ever drawn (floor of the pinch-to-leave shrink) */
 private const val PreviewShrinkFloor = 0.5f
 
 /** Pure overflow guard on the accumulator. The visible ceiling is [OverzoomCeiling] */
@@ -41,12 +36,7 @@ internal const val PreviewDismissVelocity = 1000f
 /** Slack (in pixels) for calling the pan "against its limit". Absorbs the clamp's own rounding. */
 private const val PanEdgeTolerance = 0.5f
 
-/**
- * Zoom as displayed for a raw accumulated [raw]. Below 1x the image tracks the pinch **exactly**.
- *
- * Above [MaxZoom] the excess is rubber-banded: the first of the overshoot comes through nearly
- * intact and the rest asymptotes onto [OverzoomCeiling].
- */
+/** Below 1x the image tracks the pinch exactly; above [MaxZoom] the excess is rubber-banded onto [OverzoomCeiling]. */
 internal fun softClampZoom(raw: Float): Float = when {
     raw > MaxZoom -> {
         val headroom = OverzoomCeiling - MaxZoom
@@ -56,11 +46,7 @@ internal fun softClampZoom(raw: Float): Float = when {
     else -> raw.coerceAtLeast(PreviewShrinkFloor)
 }
 
-/**
- * [softClampZoom] inverted: the raw pinch that would display [zoom].
- *
- * Picking a gesture up while the image overshot has to resume from the pinch that overshoot.
- */
+/** Inverse of [softClampZoom]: picking a gesture up while overshot must resume from the pinch that produced the overshoot. */
 internal fun unclampZoom(zoom: Float): Float = when {
     zoom > MaxZoom -> {
         val headroom = OverzoomCeiling - MaxZoom

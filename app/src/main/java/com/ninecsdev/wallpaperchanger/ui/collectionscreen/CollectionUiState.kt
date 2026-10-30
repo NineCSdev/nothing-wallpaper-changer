@@ -7,10 +7,6 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 
-/**
- * Snapshot of the Collection List screen state.
- * Owned entirely by [CollectionViewModel].
- */
 data class CollectionUiState(
     val allCollections: List<WallpaperCollection> = emptyList(),
     val previewStates: Map<Long, CollectionPreviewState> = emptyMap(),

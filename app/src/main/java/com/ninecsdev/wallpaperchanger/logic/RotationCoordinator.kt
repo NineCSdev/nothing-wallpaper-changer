@@ -11,6 +11,7 @@ import kotlinx.coroutines.withTimeout
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 
 /** What one [RotationCoordinator.rotateOnce] attempt did. */
 enum class RotationOutcome {
@@ -23,19 +24,13 @@ enum class RotationOutcome {
      */
     HANDED_OFF,
 
-    /** Nothing rotated. */
     NOT_DONE,
 
     /** Refused: another rotation held the guard.*/
     ALREADY_RUNNING
 }
 
-/**
- * The single entry point for "rotate the wallpaper once", owning the whole sequence: the
- * concurrency guard, the policy gate, the apply, the timestamp write and the buffer refill.
- *
- * Trigger-agnostic. Callers contribute their own preconditions. `logTag` is only a label for the log line.
- */
+/** The single entry point for rotating once; callers contribute their own preconditions. */
 @Singleton
 class RotationCoordinator @Inject constructor(
     private val repository: WallpaperRepository,
@@ -51,17 +46,12 @@ class RotationCoordinator @Inject constructor(
         const val WORK_TIMEOUT_MS = 30_000L
     }
 
-    /**
-     * Held across the apply and the refill of a single rotation.
-     *
-     * Static rotations are covered end to end. The atmosphere path releases it at *delivery*.
-     */
+    /** Held across the apply and refill. Static rotations are covered end to end; the atmosphere path releases it at delivery. */
     private val isWorkInProgress = AtomicBoolean(false)
 
     /**
-     * Runs at most one rotation. [onApplied] fires as soon as the image has been applied or
-     * delivered, before the buffer refill ([ScreenStateReceiver][com.ninecsdev.wallpaperchanger.service.ScreenStateReceiver] uses it to release its
-     * broadcast early).
+     * Runs at most one rotation. [onApplied] fires as soon as the image is applied or delivered, before
+     * the buffer refill, so the screen-state receiver can release its broadcast early.
      */
     // TODO tests: see vault note tests/Global Rotation Policy Tests.md
     suspend fun rotateOnce(
@@ -74,7 +64,7 @@ class RotationCoordinator @Inject constructor(
         }
 
         return try {
-            withTimeout(WORK_TIMEOUT_MS) { rotateGuarded(logTag, onApplied) }
+            withTimeout(WORK_TIMEOUT_MS.milliseconds) { rotateGuarded(logTag, onApplied) }
         } catch (_: TimeoutCancellationException) {
             Log.w(TAG, "$logTag: rotation timed out after ${WORK_TIMEOUT_MS}ms. Cancelled.")
             RotationOutcome.NOT_DONE
@@ -118,7 +108,6 @@ class RotationCoordinator @Inject constructor(
 
         return when (applied) {
             WallpaperApplyOutcome.SHOWN -> {
-                // On screen as of now, so advance the rotation now.
                 repository.markWallpaperChanged(activeCollection.id)
                 onApplied()
                 rotationEngine.refillDiskBuffer()
@@ -136,12 +125,8 @@ class RotationCoordinator @Inject constructor(
     }
 
     /**
-     * The deferred second half of an atmosphere rotation: called when the engine reports that it has
-     * actually *shown* the image it was handed. A delivery that is never displayed must never burn a
-     * rotation.
-     *
-     * Nothing enforces the pairing with [RotationOutcome.HANDED_OFF] as "the engine never showed it"
-     * is a legitimate ending, not a leak.
+     * The deferred second half of an atmosphere rotation: the engine reports it has shown the image.
+     * A [RotationOutcome.HANDED_OFF] without a call here is legitimate; a never-shown delivery must not burn a rotation.
      */
     // TODO tests: see vault note tests/Collection Switch Rotation Gate Tests.md
     suspend fun confirmDeferredDisplay() {

@@ -16,10 +16,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Asks the quick settings tile to redraw whenever [ServiceLifecycle.serviceState] changes.
- *
- * The tile is declared *active*, so the system never binds it when the panel opens and nothing else
- * would ask it to repaint.
+ * Asks the quick settings tile to redraw whenever [ServiceLifecycle.serviceState] changes. The
+ * tile is declared active, so the system never binds it on panel open and nothing else would.
  */
 @Singleton
 class TilePublisher @Inject constructor(
@@ -31,7 +29,6 @@ class TilePublisher @Inject constructor(
         const val TAG = "TilePublisher"
     }
 
-    /** Called once, from the application's `onCreate`. */
     fun start() {
         serviceLifecycle.serviceState
             .filterNotNull()

@@ -63,19 +63,13 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-/** Shown while a value is still being read */
 private const val READING = "…"
 
-/** Shown for a value the source could not give */
 private const val UNKNOWN = "—"
 
-/** Fling speed (px/s) that settles the sheet the way it was thrown. */
-private const val DetailsFlingVelocity = 1000f
+private const val DetailsFlingVelocity = 1000f // px/s
 
-/**
- * How far the details sheet is open, driven by drags on the image and on the sheet itself. Every
- * page carries its own sheet, and they all share this one position.
- */
+/** Every page carries its own sheet, and they all share this one position. */
 @Stable
 internal class PreviewDetailsSheetState(private val scope: CoroutineScope) {
 
@@ -93,13 +87,11 @@ internal class PreviewDetailsSheetState(private val scope: CoroutineScope) {
 
     private val easedHeight = Animatable(0f)
 
-    /** Whether any of the sheet is on screen, or a drag is bringing it there. */
     val isShown: Boolean get() = dragging || fraction > 0f
 
     /** How much of the sheet is on screen, in px. Eased, so a swipe between sheets of different heights doesn't jump. */
     val shownHeight: Float get() = easedHeight.value * fraction
 
-    /** Keeps [shownHeight] following [height] for as long as it runs. */
     internal suspend fun easeHeight() {
         snapshotFlow { height }.collectLatest { target ->
             if (easedHeight.value == 0f) easedHeight.snapTo(target) else easedHeight.animateTo(target)
@@ -158,15 +150,7 @@ internal fun rememberPreviewDetailsSheetState(): PreviewDetailsSheetState {
     return state
 }
 
-/**
- * What the preview knows about [wallpaper]: its name and where its bytes live, the file itself,
- * how it is framed and when it joined this collection.
- *
- * Name, format, size and resolution are read live through [loadSourceDetails].
- *
- * Sits at the bottom of its page and slides up by [state]'s fraction. Only the current page's
- * sheet [reports its height][reportsHeight], which is what drags are scaled by.
- */
+/** Only the current page's sheet [reports its height][reportsHeight], which is what drags are scaled by. */
 @Composable
 internal fun PreviewDetailsSheet(
     state: PreviewDetailsSheetState,
@@ -359,7 +343,6 @@ private fun withoutImageExtension(name: String): String {
     return if (isImage) name.substringBeforeLast('.').ifEmpty { name } else name
 }
 
-/** "image/jpeg" reads as "JPEG". */
 private fun formatLabel(mimeType: String): String = mimeType.substringAfter('/').uppercase()
 
 private fun formatDate(epochMillis: Long): String =

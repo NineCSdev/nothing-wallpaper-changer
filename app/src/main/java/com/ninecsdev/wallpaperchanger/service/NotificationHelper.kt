@@ -17,13 +17,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * What the foreground notification should say, as a closed set.
- *
- * Deliberately not [ServiceState]: the notification speaks for the service that posts it, so it has
- * no case for the states that mean "no live service" ([ServiceState.DisabledPowerSave],
- * [ServiceState.DisabledNoCollection]).
- *
- * [Cycling] carries the raw name and Favourites flag rather than a resolved string
+ * What the foreground notification should say. Deliberately not [ServiceState]: the notification
+ * speaks for the service that posts it, so it has no case for "no live service" states.
+ * [Cycling] carries the raw name and Favourites flag, not a resolved string.
  */
 sealed interface NotificationContent {
     data object Initializing : NotificationContent
@@ -33,7 +29,6 @@ sealed interface NotificationContent {
     data object Hidden : NotificationContent
 }
 
-/** The total [ServiceState] → [NotificationContent] mapping. */
 // TODO tests: see vault note tests/Notification Rendering Tests.md
 fun notificationContentFor(
     state: ServiceState,
@@ -53,14 +48,6 @@ fun notificationContentFor(
     is ServiceState.DisabledNoCollection -> NotificationContent.Hidden
 }
 
-/**
- * Centralizes all notification-related logic for the foreground [WallpaperService].
- *
- * Responsibilities:
- * - Creating the notification channel
- * - Turning a [NotificationContent] into its user-visible text
- * - Building the notification
- */
 @Singleton
 class NotificationHelper @Inject constructor(
     @param:ApplicationContext private val context: Context
@@ -74,7 +61,6 @@ class NotificationHelper @Inject constructor(
     private val manager: NotificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-    /** Creates the minimum-importance notification channel. Safe to call repeatedly */
     fun createChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
@@ -90,16 +76,13 @@ class NotificationHelper @Inject constructor(
     }
 
     /**
-     * The user-visible text for [content], or `null` for [NotificationContent.Hidden].
-     *
-     * Exposed separately from [build] so the collector can drop repeat renders by comparing the
-     * *text* rather than the inputs that produced it.
+     * The text for [content], or `null` for [NotificationContent.Hidden]. Separate from [build] so
+     * the collector can drop repeat renders by comparing text rather than inputs.
      */
     fun textFor(content: NotificationContent): String? = when (content) {
         is NotificationContent.Initializing -> context.getString(R.string.notification_initializing)
         is NotificationContent.Cycling -> {
-            // Blank is unreachable in practice (startup aborts without an active collection); the
-            // fallback keeps the mapping total rather than describing a state we design for.
+            // Blank is unreachable in practice (startup aborts without an active collection); the fallback keeps the mapping total.
             val name = content.collectionName
                 ?.let { resolveCollectionDisplayName(context, it, content.isFavorites) }
                 ?.takeIf { it.isNotBlank() }
@@ -111,7 +94,6 @@ class NotificationHelper @Inject constructor(
         is NotificationContent.Hidden -> null
     }
 
-    /** Builds a notification showing [text]. The single construction path for every state. */
     fun build(text: String): Notification =
         NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentText(text)
@@ -126,12 +108,10 @@ class NotificationHelper @Inject constructor(
             .setContentIntent(openAppPendingIntent())
             .build()
 
-    /** Posts (or updates) the foreground notification with [text]. */
     fun post(text: String) {
         manager.notify(NOTIFICATION_ID, build(text))
     }
 
-    /** Opens the app when the notification body is tapped */
     private fun openAppPendingIntent(): PendingIntent =
         PendingIntent.getActivity(
             context,

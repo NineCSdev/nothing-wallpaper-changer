@@ -42,11 +42,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
- * Pan/zoom of the image on the preview's current page, plus how far a dismiss drag has been
- * pulled. One instance serves the whole pager and a page change resets it ([reset]).
- *
- * Every value here is in **viewport pixels**: the gesture detector must sit outside the layer these
- * values transform, or the image trails the finger.
+ * One instance serves the whole pager; a page change resets it ([reset]). Every value is in viewport
+ * pixels, and the gesture detector must sit outside the layer they transform, or the image trails the finger.
  */
 @Stable
 internal class PreviewZoomState(
@@ -55,10 +52,7 @@ internal class PreviewZoomState(
     initialPage: Int
 ) {
 
-    /**
-     * The pager page these values belong to. Keying this off the pager's *current* page pops the
-     * outgoing image back to 1x mid-swipe, because current flips at the halfway point.
-     */
+    /** Keying this off the pager's current page would pop the outgoing image back to 1x mid-swipe, since current flips at the halfway point. */
     var ownerPage by mutableIntStateOf(initialPage)
         private set
 
@@ -68,31 +62,25 @@ internal class PreviewZoomState(
     var pan by mutableStateOf(Offset.Zero)
         private set
 
-    /** How far a dismiss drag has pulled the image down */
     var dismissTranslation by mutableFloatStateOf(0f)
         private set
 
-    /**
-     * Whether fingers are on the image right now. Decides which of the two ways of applying
-     * [zoom]/[pan] is live: a gesture gets the draw-time one, anything else gets the layout one.
-     */
+    /** Decides how [zoom]/[pan] are applied: a gesture gets the draw-time transform, anything else the layout one. */
     var gestureActive by mutableStateOf(false)
         private set
 
-    /** Set once the preview has been asked to leave, and never cleared except by [reset]. */
+    /** Never cleared except by [reset]. */
     var leaveRequested by mutableStateOf(false)
         private set
 
-    /** Set once the frozen leave values have actually been through a layout pass, close waits for it */
+    /** Set once the frozen leave values have been through a layout pass; the close waits for it. */
     var framedForLeave by mutableStateOf(false)
         private set
 
-    /** Reported by the framing modifier from its placement, once per layout pass. */
     fun onFramed() {
         if (leaveRequested && !framedForLeave) framedForLeave = true
     }
 
-    // The platform's own scroll deceleration
     private val panDecay: DecayAnimationSpec<Offset> = splineBasedDecay(density)
 
     private var rawZoom = PreviewMinZoom
@@ -115,11 +103,7 @@ internal class PreviewZoomState(
             return if (threshold > 0f) (dismissTranslation / threshold).coerceIn(0f, 1f) else 0f
         }
 
-    /**
-     * How far the user is towards leaving, by either route.
-     *
-     * Shrinking only counts when the pinch [started at rest][shrinkCanLeave], because only then can it leave.
-     */
+    /** Shrinking only counts when the pinch [started at rest][shrinkCanLeave], because only then can it leave. */
     val fadeProgress: Float
         get() = max(dismissProgress, if (shrinkCanLeave) zoomOutProgress(zoom) else 0f)
 
@@ -146,11 +130,9 @@ internal class PreviewZoomState(
     }
 
     /**
-     * Interrupting a settle adopts what is on screen: the spring moves the accumulator to its
-     * target up front. Adopting it through [unclampZoom] so a gesture picked up mid-overshoot is not re-banded.
-     *
-     * [startedAtRest] is remembered because it decides whether a release below [PreviewExitZoom] leaves
-     * and whether shrinking fades the backdrop.
+     * Interrupting a settle adopts what is on screen: the spring moves the accumulator to its target
+     * up front, so it is re-derived through [unclampZoom] and a gesture picked up mid-overshoot is not re-banded.
+     * [startedAtRest] decides whether a release below [PreviewExitZoom] leaves and whether shrinking fades the backdrop.
      */
     fun onGestureStart(startedAtRest: Boolean) {
         stopAnimation()
@@ -178,10 +160,7 @@ internal class PreviewZoomState(
         dismissTranslation = (dismissTranslation + deltaY).coerceAtLeast(0f)
     }
 
-    /**
-     * Settles the gesture, and leaves the preview if: a pinch [started at rest][shrinkCanLeave] and
-     * was released below [PreviewExitZoom], or a drag pulled past the dismiss threshold (or flung down past [PreviewDismissVelocity]).
-     */
+    /** Leaves if a pinch [started at rest][shrinkCanLeave] and released below [PreviewExitZoom], or a drag passed the dismiss threshold or [PreviewDismissVelocity]. */
     fun onGestureEnd(dismissVelocity: Float, panVelocity: Offset = Offset.Zero) {
         val leaving = (shrinkCanLeave && rawZoom < PreviewExitZoom) ||
             dismissProgress >= 1f ||
@@ -194,10 +173,7 @@ internal class PreviewZoomState(
         }
     }
 
-    /**
-     * Leaves zoom, pan and the dismiss pull exactly where the fingers left them, for the close to unwind
-     * on its own clock. Keeps the zoom out of the rest band stopping the chrome's from restore to fire.
-     */
+    /** Leaves zoom, pan and the dismiss pull where the fingers left them for the close to unwind; settling would put the zoom in the rest band and restore the chrome. */
     private fun freeze() {
         stopAnimation()
         gestureActive = false
@@ -213,7 +189,6 @@ internal class PreviewZoomState(
         leaveRequested = true
     }
 
-    /** Carries the pan on after the fingers leave, decelerating, stopping it dead at the edge */
     private fun flingPan(velocity: Offset) {
         throwing = true
         settleJob = scope.launch {
@@ -237,7 +212,6 @@ internal class PreviewZoomState(
         settle()
     }
 
-    /** Zooms to [DoubleTapZoom] about [focus], or back to rest if the image is already zoomed. */
     fun onDoubleTap(focus: Offset) {
         stopAnimation()
         val toZoom = if (isAtRest) DoubleTapZoom else PreviewMinZoom
@@ -258,11 +232,7 @@ internal class PreviewZoomState(
         dismissTranslation = 0f
     }
 
-    /** Springs the resisted overshoot back into range and the dismiss pull back to nothing.
-     *
-     * The pan is scaled by the same ratio as the zoom, because that is what holds the content
-     * point at the center of the screen still.
-     */
+    /** The pan scales by the same ratio as the zoom, which holds the content point at the screen center still. */
     private fun settle() {
         val toZoom = settledZoom()
         rawZoom = toZoom
@@ -297,19 +267,11 @@ internal fun rememberPreviewZoomState(initialPage: Int): PreviewZoomState {
     return remember(scope, density) { PreviewZoomState(scope, density, initialPage) }
 }
 
-/** What a touch turned out to be, decided once per gesture and then held. */
 private enum class PreviewGesture { Undecided, Transform, Dismiss, Details, Blocked, Paging }
 
 /**
- * The preview's single gesture detector: tap, double tap, pinch/pan, the drag down that dismisses
- * and the drag up that pulls up the [details] sheet.
- *
- * Rolled into one loop because the readings of a touch are mutually exclusive.
- *
- * The single/double tap split, and the lag it costs the chrome toggle, is
- * [detectTapAwareGestures]'; everything below is what one touch means *here*.
- *
- * Must be attached *above* the layer that renders the zoom, never inside it.
+ * One loop because the readings of a touch (tap, pinch/pan, dismiss drag, details drag) are mutually exclusive.
+ * Must be attached above the layer that renders the zoom, never inside it.
  */
 internal suspend fun PointerInputScope.detectPreviewGestures(
     state: PreviewZoomState,
@@ -332,9 +294,8 @@ internal suspend fun PointerInputScope.detectPreviewGestures(
 }
 
 /**
- * Reads one touch to its end and returns where it was tapped, relative to the viewport center, or
- * null if it wasn't a tap. Anything but a tap is applied to [state] and settled here; tap is left
- * for the caller, which alone has to wait to find out whether it was one of a pair.
+ * Returns the tap position relative to the viewport center, or null if the touch wasn't a tap. Anything
+ * else is applied to [state] and settled here; a tap is left to the caller, which has to wait to see if it's a double.
  */
 private suspend fun AwaitPointerEventScope.readPreviewGesture(
     state: PreviewZoomState,

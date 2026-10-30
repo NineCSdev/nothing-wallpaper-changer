@@ -1,10 +1,6 @@
 package com.ninecsdev.wallpaperchanger.data.source
 
-/**
- * What the preview's details sheet shows about a file's source.
- *
- * Null is "could not be read".
- */
+/** What the preview's details sheet shows about a file's source; null is "could not be read". */
 data class SourceDetails(
     val displayName: String? = null,
     val sizeBytes: Long? = null,

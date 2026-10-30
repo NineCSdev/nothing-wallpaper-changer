@@ -37,14 +37,6 @@ import org.xmlpull.v1.XmlPullParser
 import java.util.Locale
 import javax.inject.Inject
 
-/**
- * ViewModel for the Settings screen.
- * Reads the app version from PackageInfo and combines all
- * settings flows into a single [SettingsUiState].
- *
- * Reads and writes settings directly through [AppDataStore]
- * Note: maybe in the future add a repository for this.
- */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val appDataStore: AppDataStore,
@@ -64,17 +56,12 @@ class SettingsViewModel @Inject constructor(
             .versionName ?: ""
     } catch (_: Exception) { "" }
 
-    // App locale lives in the system per-app locale store (not AppDataStore). The list of
-    // supported languages is fixed (read once from locales_config); only the selected tag varies.
+    // App locale lives in the system per-app locale store, not AppDataStore.
     private val localeManager = context.getSystemService(Context.LOCALE_SERVICE) as? LocaleManager
     private val availableLanguages: List<LanguageOption> = buildLanguageList(context)
     private val selectedLanguageTag = MutableStateFlow(currentLanguageTag())
 
-    /**
-     * Named intermediate groups. `combine` takes at most 5 flows, so the settings are folded in two
-     * stages; carrying the partials as small data classes instead of nested `Pair`/`Triple` keeps
-     * the fold one level deep and the fields readable at the point of use.
-     */
+    // `combine` takes at most 5 flows, so the settings are folded in two stages through small data classes.
     private data class LockscreenSettings(
         val batterySaverPolicy: BatterySaverPolicy,
         val wallpaperZoomFix: WallpaperZoomFix,
@@ -107,26 +94,22 @@ class SettingsViewModel @Inject constructor(
         ::LockscreenSettings
     )
 
-    // Permission state has no system callback, so it's snapshot here (full to partial) and
-    // refreshed by the Route on every resume (the user may grant/revoke in system settings
-    // and come back).
+    // Permission state has no system callback: snapshot here, refreshed by the Route on every resume.
     private val mediaAccess = MutableStateFlow(snapshotMediaAccess())
 
     private fun snapshotMediaAccess(): Pair<Boolean, Boolean> =
         wallpaperSources.hasMediaAccess() to wallpaperSources.hasPartialMediaAccess()
 
-    // What the last mode change did that the user needs telling about. No replay, so a notice
-    // raised while the screen is off-view is dropped; the buffer only covers showing the previous one.
+    // No replay: a notice raised while the screen is off-view is dropped.
     // TODO tests: see vault note tests/One-Shot Event Delivery Tests
     private val _notices = MutableSharedFlow<AtmosphereNotice>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
-    /** Words owed to the user, each delivered once to whoever is showing the screen. */
     val notices: SharedFlow<AtmosphereNotice> = _notices.asSharedFlow()
 
-    // Held back because entry hands straight off to the system picker. Raised on the return instead
+    // Held back because entry hands off to the system picker; raised on return instead.
     private var lockRemovalPending = false
 
     private val atmosphereFlow = combine(
@@ -153,8 +136,7 @@ class SettingsViewModel @Inject constructor(
         )
     }
 
-    // Null until every settings flow has emitted; the UI renders nothing until then so no
-    // fabricated default can flash or animate to the real persisted value.
+    // Null until every settings flow has emitted, so no default flashes or animates to the persisted value.
     // TODO tests: see vault note tests/ui-state-loading.md
     private val settingsState: Flow<SettingsUiState> = combine(
         appDataStore.screenOffDelayFlow(),
@@ -218,8 +200,6 @@ class SettingsViewModel @Inject constructor(
                 initialValue = null
             )
 
-    // Actions
-
     override fun setScreenOffDelay(delayMs: Long) {
         viewModelScope.launch { appDataStore.setScreenOffDelay(delayMs) }
     }
@@ -255,19 +235,13 @@ class SettingsViewModel @Inject constructor(
     override fun setWallpaperZoomFix(zoomFix: WallpaperZoomFix) {
         viewModelScope.launch {
             appDataStore.setWallpaperZoomFix(zoomFix)
-            // Reconcile notices the delivered source no longer matches the settings
             atmosphereTransition.reconcile()
         }
     }
 
     /**
-     * Persists the desired [mode], delegating the transition itself to [AtmosphereTransition].
-     *
-     * Switching ATMOSPHERE -> STATIC while the live engine is set is the deliberate exit path, it
-     * is a compensating transaction that rolls the write back when the live wallpaper cannot be replaced.
-     *
-     * Entering only records a desire. The engine is not live until the user confirms on the system
-     * picker, the set-atmosphere button drives [enterAtmosphere].
+     * Entering only records a desire; the engine is live once the user confirms in the system picker.
+     * Leaving a live engine rolls the write back if the live wallpaper cannot be replaced.
      */
     override fun setWallpaperMode(mode: WallpaperMode) {
         viewModelScope.launch {
@@ -285,7 +259,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /** Which exit outcomes are worth a snackbar. This is a presentation judgment */
     private fun AtmosphereExitOutcome.toNotice(): AtmosphereNotice? = when (this) {
         AtmosphereExitOutcome.REPLACED -> null // User asked for this outcome so we don't notice anything
         AtmosphereExitOutcome.CLEARED -> AtmosphereNotice.EXIT_CLEARED
@@ -313,11 +286,7 @@ class SettingsViewModel @Inject constructor(
         mediaAccess.value = snapshotMediaAccess()
     }
 
-    /**
-     * Re-checks whether the engine is live and brings the world into line with it.
-     *
-     * Engine liveness has no system callback so the Route calls this on every start
-     */
+    /** The engine has no liveness callback, so the Route calls this on every start. */
     override fun refreshAtmosphereEngineActive() {
         viewModelScope.launch {
             atmosphereTransition.reconcile()
@@ -329,10 +298,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Stages the atmosphere source and takes both screens
-     * @return True if there is a source for the live-wallpaper picker
-     */
+    /** Stages the atmosphere source; returns whether the live-wallpaper picker has one. */
     suspend fun enterAtmosphere(): Boolean {
         val entry = atmosphereTransition.enterAtmosphere()
         if (entry.lockWallpaperRemoved) lockRemovalPending = true
@@ -340,9 +306,8 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
-     * Applies [tag] as the app locale (empty tag → follow the system locale). Updates the UI
-     * optimistically, then hands the change to the system, which recreates the Activity; the
-     * next VM instance re-seeds [selectedLanguageTag] from [currentLanguageTag].
+     * Applies [tag] (empty = follow the system) optimistically; the system recreates the Activity,
+     * and the next instance re-seeds [selectedLanguageTag] from [currentLanguageTag].
      */
     override fun setAppLanguage(tag: String) {
         selectedLanguageTag.value = tag
@@ -354,16 +319,11 @@ class SettingsViewModel @Inject constructor(
         localeManager?.applicationLocales = localeList
     }
 
-    /** Current app-locale tag from the system store, or "" when following the system default. */
     private fun currentLanguageTag(): String {
         val locales = localeManager?.applicationLocales
         return if (locales == null || locales.isEmpty) "" else locales.get(0)?.toLanguageTag() ?: ""
     }
 
-    /**
-     * Reads locales_config, builds a [LanguageOption] for each declared locale, and prepends a
-     * "System default" entry (empty tag).
-     */
     private fun buildLanguageList(context: Context): List<LanguageOption> {
         val result = mutableListOf<LanguageOption>()
 

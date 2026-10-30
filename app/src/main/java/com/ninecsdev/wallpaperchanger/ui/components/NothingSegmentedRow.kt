@@ -29,14 +29,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 import androidx.compose.foundation.layout.size
 
-/**
- * The shared segmented single-choice row: equal-width tiles where the selected one fills
- * white with black content and the rest sit as dark tiles with a faint border. Used by the
- * crop-rule and rotation-frequency selectors so every instant-apply choice row reads the same.
- *
- * [optionContent] draws each tile's content (icon or text) and receives the tile's selected
- * state so it can flip its tint/color to [NothingBlack] on the white fill.
- */
+/** [optionContent] receives each tile's selected state so it can flip its tint to [NothingBlack] on the white fill. */
 @Composable
 internal fun <T> NothingSegmentedRow(
     options: List<T>,

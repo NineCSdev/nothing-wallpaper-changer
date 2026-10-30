@@ -30,12 +30,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * Warning card shown when photo access (`READ_MEDIA_IMAGES`) is missing while referenced images
- * exist — they can't load until it's re-granted (they stay badged unavailable, nothing is deleted).
- * [onGrantClick] fires the system permission request; a grant self-heals every reference
- * (see [com.ninecsdev.wallpaperchanger.ui.mainscreen.MainViewModel.refreshMediaAccess]).
- */
+/** Referenced images can't load without `READ_MEDIA_IMAGES`; they stay badged unavailable, nothing is deleted, and a grant self-heals them. */
 @Composable
 internal fun MediaAccessBanner(
     lostCount: Int,

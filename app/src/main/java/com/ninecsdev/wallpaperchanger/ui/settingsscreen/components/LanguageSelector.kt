@@ -39,12 +39,6 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
-/**
- * Stateless language-selection dropdown for the Settings screen.
- *
- * The supported [languages], the [selectedTag], and locale application are all owned by
- * [com.ninecsdev.wallpaperchanger.ui.settingsscreen.SettingsViewModel].
- */
 @Composable
 internal fun LanguageSelector(
     languages: List<LanguageOption>,

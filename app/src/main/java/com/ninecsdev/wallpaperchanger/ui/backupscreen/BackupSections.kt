@@ -31,16 +31,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * The export half: what an archive is, whether every image goes into it, and the button that asks
- * the user where to put it.
- *
- * The option sits directly above the button it changes, and the button is the primary one on the
- * screen: writing a backup is what the user came here to do.
- *
- * While an export is running the button is replaced by its progress, as the work outlives this
- * screen leaving and coming back finds it still going.
- */
+/** While an export runs the button is replaced by its progress, as the work outlives this screen leaving and coming back. */
 @Composable
 internal fun BackupExportSection(
     portable: Boolean,
@@ -150,10 +141,7 @@ private fun ExportFailure(onAcknowledge: () -> Unit) {
     }
 }
 
-/**
- * Shown on the run *after* an export died with the app: the user has a file they believe is a
- * backup, and this is the only chance to say otherwise before they act on that belief.
- */
+/** Shown on the run after an export died with the app: the user may believe they have a backup, and this is the only chance to say otherwise. */
 @Composable
 private fun ExportInterrupted(archiveName: String?, onExport: () -> Unit, onAcknowledge: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -190,7 +178,6 @@ private fun ExportInterrupted(archiveName: String?, onExport: () -> Unit, onAckn
     }
 }
 
-/** The restore half: one button that hands the user over to the wizard, which owns every decision. */
 @Composable
 internal fun BackupRestoreSection(
     enabled: Boolean,

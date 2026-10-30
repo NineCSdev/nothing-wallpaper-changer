@@ -28,11 +28,8 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /**
- * Wraps a collection tile with the long-press context menu (Pin/Unpin · Set active · Edit).
- *
- * The menu opens as a floating [DropdownMenu] at the finger's position: the last pointer-down
- * offset is observed on the [PointerEventPass.Initial] pass (so the tile's own click handling is
- * untouched), and the tile passes the provided `onLongClick` to its long-press gesture.
+ * The menu opens at the finger: the last pointer-down offset is observed on the Initial pass, so the
+ * tile's own click handling is untouched.
  */
 // TODO tests: see vault note tests/Pinned Collections Tests
 @Composable

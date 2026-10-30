@@ -10,16 +10,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.importSummaryText
 import com.ninecsdev.wallpaperchanger.ui.components.rememberMediaAccessGatedAction
+import kotlin.time.Duration.Companion.milliseconds
 
-/**
- * Stateful entry point for the Collection List screen: collects state and notices, and wires
- * the ViewModel into the stateless [CollectionListScreen], composing the callbacks that pair a
- * ViewModel call with a launcher or navigation side effect.
- *
- * [viewModel] is passed in (not resolved here) because it must be the activity-scoped
- * instance: MainActivity's picker-result launchers push the picked folder/photos and
- * reopen the create modal on it.
- */
+/** [viewModel] is passed in because it must be the activity-scoped instance MainActivity's picker-result launchers push into. */
 @Composable
 fun CollectionListRoute(
     viewModel: CollectionViewModel,
@@ -38,7 +31,7 @@ fun CollectionListRoute(
     // A creation requested from the main screen's picker waits out the slide-in
     LaunchedEffect(Unit) {
         if (!viewModel.takeCreateOnArrival()) return@LaunchedEffect
-        delay(750L)
+        delay(750L.milliseconds)
         viewModel.openCreateModalActivating()
     }
 
@@ -49,7 +42,7 @@ fun CollectionListRoute(
         }
     }
 
-    // Render nothing until the real state has loaded (see CollectionViewModel.uiState).
+    // Render nothing until the real state has loaded.
     val loadedUiState = uiState ?: return
 
     CollectionListScreen(

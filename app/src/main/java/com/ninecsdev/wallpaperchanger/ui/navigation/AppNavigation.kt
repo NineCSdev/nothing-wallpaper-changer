@@ -32,12 +32,6 @@ import com.ninecsdev.wallpaperchanger.ui.backupscreen.BackupRoute
 import com.ninecsdev.wallpaperchanger.ui.settingsscreen.SettingsRoute
 import com.ninecsdev.wallpaperchanger.ui.walleditscreen.WallpaperEditRoute
 
-/**
- * Top-level navigation host for the application: routes, transitions, and edge-swipe
- * gestures only. Each destination is a single call into that screen's Route
- * composable, which owns the screen's ViewModel wiring (see e.g. [MainRoute]).
- * Has a slide over transition between the main screen and the rest.
- */
 @Composable
 fun AppNavigation(
     navController: NavHostController,
@@ -179,9 +173,6 @@ fun AppNavigation(
     }
 }
 
-/**
- * Extension modifier to detect horizontal edge swipes.
- */
 private fun Modifier.edgeSwipe(
     edgePredicate: (Offset, IntSize) -> Boolean,
     swipePredicate: (Float) -> Boolean,
@@ -204,9 +195,6 @@ private fun Modifier.edgeSwipe(
     )
 }
 
-/**
- * Encapsulates navigation transition logic for clarity.
- */
 private object NavigationTransitions {
     private const val ANIM_DURATION = 1000
     private const val FADE_DURATION = 500
@@ -240,7 +228,6 @@ private object NavigationTransitions {
         if (initialRoute in slideRoutes) popExitMain_Collections else exitDefault
 }
 
-/** Route constants for the app's navigation graph. */
 object Route {
     const val MAIN = "main"
     const val COLLECTIONS = "collections"

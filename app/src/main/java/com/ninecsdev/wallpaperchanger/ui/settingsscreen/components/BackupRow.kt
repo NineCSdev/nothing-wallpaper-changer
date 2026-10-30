@@ -26,12 +26,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * The way into the Backup screen, and the only place either half of backup shows up in Settings.
- *
- * An export that is still running, and an export from a previous run that didn't finish is shown
- * here as they are very essential information for the user.
- */
+/** The only place either half of backup shows in Settings; a running or unfinished export is surfaced here because the user needs to know. */
 @Composable
 internal fun BackupRow(
     exportState: BackupExportState,

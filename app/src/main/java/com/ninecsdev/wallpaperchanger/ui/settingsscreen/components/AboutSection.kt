@@ -34,7 +34,6 @@ private const val REPO_URL = "https://github.com/NineCSdev/nothing-wallpaper-cha
 private const val ISSUES_URL = "$REPO_URL/issues"
 private const val PROFILE_URL = "https://github.com/NineCSdev"
 
-/** The rows of the ABOUT section: the store listing, the repository and its issue tracker. */
 @Composable
 internal fun AboutSection() {
     val context = LocalContext.current

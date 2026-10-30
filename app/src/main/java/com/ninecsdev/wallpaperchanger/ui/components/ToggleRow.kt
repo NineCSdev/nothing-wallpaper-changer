@@ -20,10 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
-/**
- * A title/subtitle row with a trailing Nothing-styled [Switch]. Shared by the settings screen
- * and the main-screen default-wallpaper card. A disabled row keeps rendering its checked state.
- */
+/** A disabled row keeps rendering its checked state. */
 @Composable
 internal fun SettingsToggleRow(
     title: String,

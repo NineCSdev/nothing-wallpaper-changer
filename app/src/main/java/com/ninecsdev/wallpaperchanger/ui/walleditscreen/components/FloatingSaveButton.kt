@@ -23,10 +23,6 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * Floating circular save button anchored to the bottom-center of the editor.
- * Visible only when the controls panel is hidden and there are unsaved changes.
- */
 @Composable
 internal fun FloatingSaveButton(
     onSave: () -> Unit,

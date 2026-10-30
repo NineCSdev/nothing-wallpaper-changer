@@ -6,10 +6,8 @@ out vec4 FragColor;
 uniform sampler2D uSampler;
 uniform float uNoiseGrowth;
 
-// Compensates for the platform zooming the wallpaper surface for parallax. 1.0 is
-// a no-op; above 1.0 samples wider so the effect survives the crop. Deliberately
-// applied here, on the last pass, so nothing upstream -- least of all the palette --
-// ever sees a padded image.
+// Compensates for the platform zooming the surface for parallax; 1.0 is a no-op, above samples
+// wider. Applied on the last pass so nothing upstream ever sees a padded image.
 uniform float uCounterScale;
 
 // Safe for continuous UVs; coordinate quantization can amplify sin-hash artifacts.

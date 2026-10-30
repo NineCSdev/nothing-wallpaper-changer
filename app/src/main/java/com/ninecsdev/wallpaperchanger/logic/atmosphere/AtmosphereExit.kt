@@ -16,28 +16,14 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Outcome of [AtmosphereExit.leave], in the order the chain produces them:
- *
- * - [REPLACED]: a wallpaper of the user's own took the engine's place.
- * - [CLEARED]: nothing of the user's was available, so the device's built-in wallpaper did.
- * - [FAILED]: even clearing threw. The mode switch did not happen.
- */
+/** [FAILED] means even clearing threw: the mode switch did not happen. */
 enum class AtmosphereExitOutcome { REPLACED, CLEARED, FAILED }
 
 /**
- * Leaves the atmosphere live wallpaper.
- *
- * Android has no "unset live wallpaper" so leaving is a fallback chain, ordered by how close each
- * step is to what the user is looking at:
- *
- * 1. **The image the engine is showing**, re-rendered with static framing. Which one that is comes
- *    from [WallpaperRecord.liveAtmosphereWallpaperId]
- * 2. **The user's default wallpaper** Applied regardless of the revert-to-default preference.
- * 3. **[WallpaperManager.clear]**, the device's built-in as final fallback.
- *
- * **Every step writes both screens, ignoring the wallpaper-destination preference.** The engine
- * took both on entry so we hand back both on exit.
+ * Android has no "unset live wallpaper", so leaving is a fallback chain: the image the engine is
+ * showing ([WallpaperRecord.liveAtmosphereWallpaperId]) re-rendered with static framing, then the
+ * default wallpaper (regardless of the revert-to-default preference), then [WallpaperManager.clear].
+ * Every step writes both screens, ignoring the destination preference, since the engine took both.
  */
 // TODO tests: see vault note tests/Atmosphere Delivery Tests.md (exit chain)
 @Singleton
@@ -50,7 +36,6 @@ class AtmosphereExit @Inject constructor(
     private companion object {
         const val TAG = "AtmosphereExit"
 
-        /** Both screens at once. The engine owns both, so the replacement has to take both. */
         const val BOTH_SCREENS = WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK
     }
 
@@ -66,11 +51,6 @@ class AtmosphereExit @Inject constructor(
         }
     }
 
-    /**
-     * Re-renders and applies the wallpaper the engine is currently showing.
-     *
-     * Returns false whenever that image cannot be named or produced.
-     */
     private suspend fun applyLiveImage(): Boolean {
         val wallpaperId = wallpaperRecordStore.snapshot().liveAtmosphereWallpaperId ?: return false
         val wallpaper = repository.getWallpaperById(wallpaperId)

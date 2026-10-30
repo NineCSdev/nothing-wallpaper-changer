@@ -15,16 +15,12 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Disk footprint of the internalized collection images ("local copies" in the UI). */
 data class StorageUsage(
     val totalBytes: Long,
     val fileCount: Int
 )
 
-/**
- * Handles copying external images into the app's private storage.
- * Used for manual collections to not get limited by android persistence file access.
- */
+/** Copies external images into private storage to ensure access to them. Only if user chose `Keep local copies` or as fallback for photo references. */
 @Singleton
 class ImageInternalizer @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
@@ -40,17 +36,10 @@ class ImageInternalizer @Inject constructor(
         /** Skip files younger than this so a scan never races a file mid-registration. */
         private const val ORPHAN_GRACE_PERIOD_MS = 10 * 60 * 1000L // 10 minutes
 
-        /** Max decodes in flight at once, bounds peak bitmap memory */
-        // on Phone 1 both 4 and 10 take the same time, but it stays high for use in better hardware
+        // Bounds peak bitmap memory; 4 and 10 took the same time on Phone 1
         private const val INTERNALIZE_CONCURRENCY = 10
     }
 
-    /**
-     * Copies a list of URIs into internal storage as WebP files.
-     * Uses subsampled decoding to avoid loading full-res bitmaps and
-     * processes all images concurrently.
-     * @return List of internal file URIs.
-     */
     suspend fun internalizeImages(uris: List<Uri>): List<Uri> {
         return withContext(Dispatchers.IO) {
             val internalDir = File(appContext.filesDir, INTERNAL_FOLDER)
@@ -58,8 +47,7 @@ class ImageInternalizer @Inject constructor(
 
             val (screenW, screenH) = ImageProcessingUtils.getWallpaperCanvasSize(appContext)
 
-            // Ideally we would check this using the repository but to avoid circular dependency
-            // I used the datastore directly
+            // Read from the datastore: going through the repository would be a circular dependency
             val qualityHigh = appDataStore.getCompressionQualityHigh()
             val qualityLow = appDataStore.getCompressionQualityLow()
 
@@ -87,15 +75,12 @@ class ImageInternalizer @Inject constructor(
             val fileName = "img_${UUID.randomUUID()}.webp"
             val outputFile = File(internalDir, fileName)
 
-            // Decode at reduced resolution via two-pass helper
             val sampled = ImageProcessingUtils.decodeSampledBitmap(appContext, uri, screenW, screenH) ?: return null
 
-            // Fine-resize to exact screen dimensions
             val processedBitmap = resizeToFitScreen(sampled, screenW, screenH)
 
             ImageProcessingUtils.compressToFile(processedBitmap, outputFile, quality = quality)
 
-            // Clean up
             ImageProcessingUtils.recycleSafely(sampled, processedBitmap)
 
             Uri.fromFile(outputFile)
@@ -104,8 +89,6 @@ class ImageInternalizer @Inject constructor(
             null
         }
     }
-
-
 
     private fun resizeToFitScreen(src: Bitmap, targetW: Int, targetH: Int): Bitmap {
         val width = src.width
@@ -118,10 +101,6 @@ class ImageInternalizer @Inject constructor(
         return src.scale((width * scale).toInt(), (height * scale).toInt())
     }
 
-    /**
-     * Sums the current disk usage of [INTERNAL_FOLDER], skipping the files [excludeUris] name.
-     * Computed from the filesystem on every call.
-     */
     // TODO tests: see vault note tests/Storage Usage Tests
     suspend fun getStorageUsage(
         excludeUris: List<String> = emptyList()
@@ -136,14 +115,11 @@ class ImageInternalizer @Inject constructor(
         )
     }
 
-    /**
-     * Safely deletes internal wallpaper files. Non-internal files won't be deleted.
-     */
     fun deleteInternalFile(path: String?) {
         if (path == null) return
         try {
             val file = File(path)
-            // Safety rail: never delete anything that isn't one of our internalized files.
+            // Never delete anything that isn't one of our internalized files
             if (file.parentFile?.name != INTERNAL_FOLDER) {
                 Log.w(TAG, "Refusing to delete non-internal file: $path")
                 return
@@ -155,11 +131,8 @@ class ImageInternalizer @Inject constructor(
     }
 
     /**
-     * Deletes any file under [INTERNAL_FOLDER] that none of [keepUris] names, reclaiming orphans.
-     * Files younger than [ORPHAN_GRACE_PERIOD_MS] are skipped so an in-progress import is never
-     * caught mid-write. **A uri that yields no filename aborts the sweep.**
-     *
-     * @return the number of files deleted, or 0 if the sweep was skipped.
+     * Files younger than [ORPHAN_GRACE_PERIOD_MS] are skipped so an in-progress import is never caught
+     * mid-write. A uri that yields no filename aborts the sweep (returns 0).
      */
     fun deleteOrphanInternalFiles(keepUris: List<String>): Int {
         val keepFileNames = keepUris.mapNotNull { it.toUri().lastPathSegment }.toSet()

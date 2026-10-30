@@ -50,28 +50,15 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * Data state for the Grid Item for performance
- **/
 data class CollectionPreviewState(
     val previewFiles: List<PreviewFile> = emptyList(),
     val totalCount: Int = 0
 )
 
-/**
- * The data layer's preview projection as grid-item state.
- *
- * A collection the data layer had no row for (it holds no images) keeps no entry here either
- * every call site already reads a missing key as [CollectionPreviewState]'s default.
- */
+/** A collection with no images has no entry; call sites read a missing key as [CollectionPreviewState]'s default. */
 fun Map<Long, CollectionPreview>.asPreviewStates(): Map<Long, CollectionPreviewState> =
     mapValues { (_, preview) -> CollectionPreviewState(preview.previewFiles, preview.imageCount) }
 
-/**
- * A square grid item representing a wallpaper collection.
- * Shows the first 4 wallpapers in a 2x2 with the 4th blurred out.
- * Shared between the collections screen and the collection picker sheet.
- */
 @Composable
 fun CollectionGridItem(
     name: String,
@@ -94,7 +81,6 @@ fun CollectionGridItem(
             ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Container for the 2x2 grid
         Box(
             modifier = Modifier
                 .aspectRatio(1f)
@@ -107,7 +93,6 @@ fun CollectionGridItem(
         ) {
             GridContent(state.previewFiles, state.totalCount)
 
-            // Pinned marker, top-left over the preview.
             if (isPinned) {
                 Box(
                     modifier = Modifier
@@ -150,7 +135,6 @@ fun CollectionGridItem(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Name of the collection
         Text(
             text = name.uppercase(),
             style = NothingType.metaLabel,
@@ -161,10 +145,7 @@ fun CollectionGridItem(
     }
 }
 
-/**
- * The "new collection" slot, sized and labeled like a [CollectionGridItem]. A dotted outline
- * around a plus with no fill.
- */
+/** The "new collection" slot, sized and labeled like a [CollectionGridItem]. */
 @Composable
 fun NewCollectionGridItem(
     onClick: () -> Unit,
@@ -219,9 +200,6 @@ fun NewCollectionGridItem(
     }
 }
 
-/**
- * Internal grid logic to separate layout from data handling.
- */
 @Composable
 private fun GridContent(files: List<PreviewFile>, totalCount: Int) {
     val cornerRadius = 16.dp
@@ -246,7 +224,6 @@ private fun GridContent(files: List<PreviewFile>, totalCount: Int) {
                 modifier = Modifier.weight(1f)
             )
 
-            // The count/blurred wallpaper slot
             Box(
                 modifier = Modifier
                     .weight(1f)

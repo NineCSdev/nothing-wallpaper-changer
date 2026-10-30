@@ -25,14 +25,9 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 /**
- * The editor canvas's gesture reader: pinch/drag, a throw when a one-finger drag is released, and
- * a double tap.
- *
- * [onTransform] receives the centroid (in this node's pixel space, origin top-left), pan and zoom
- * delta per frame, and only after touch slop.
- *
- * [onDown] fires for every touch, before anything is known about it, so a coasting throw can be
- * caught the instant a finger lands. [onUp] fires when that touch lifts, after any [onFling].
+ * [onTransform] receives the centroid (this node's pixels, origin top-left), pan and zoom delta per
+ * frame, only after touch slop. [onDown] fires for every touch so a coasting throw is caught the
+ * instant a finger lands; [onUp] fires when it lifts, after any [onFling].
  */
 private suspend fun PointerInputScope.detectEditGestures(
     onDown: () -> Unit,
@@ -51,10 +46,7 @@ private suspend fun PointerInputScope.detectEditGestures(
     )
 }
 
-/**
- * Reads one touch to its end and returns where it was tapped or null if it moved. A pinch and a drag
- * released below [FlingMinVelocity] reports no release velocity.
- */
+/** Returns the tap position, or null if the touch moved. A pinch, or a drag released below [FlingMinVelocity], reports no release velocity. */
 private suspend fun AwaitPointerEventScope.readEditGesture(
     down: PointerInputChange,
     onTransform: (centroid: Offset, pan: Offset, zoomDelta: Float) -> Unit,
@@ -94,18 +86,9 @@ private suspend fun AwaitPointerEventScope.readEditGesture(
 }
 
 /**
- * The editor canvas's gesture behavior: pinch/drag applied straight through [onGesture], a
- * throw that coasts to a stop, and a double tap that springs between rest and [DoubleTapZoom].
- *
- * [onGesture] receives one frame of transform at a time for the caller to map onto its own edit values.
- * Every animation here feeds through that same call rather than writing zoom or offset itself, so
- * a coast and a double tap land inside the bounds a drag does and cannot drift outside them.
- *
- * Only one animation runs at a time and any touch cancels it, so a finger landing on a coasting
- * image stops it dead.
- *
- * [onGestureEnd] marks where one undo step ends: a touch lifting with nothing left to coast, or an
- * animation stopping, finished or interrupted.
+ * Every animation feeds through [onGesture] rather than writing zoom or offset itself, so a coast
+ * and a double tap land inside the bounds a drag does. One animation runs at a time and any touch cancels it.
+ * [onGestureEnd] marks where one undo step ends: a touch lifting with nothing left to coast, or an animation stopping.
  */
 internal suspend fun PointerInputScope.runEditGestures(
     onGesture: (centroid: Offset, pan: Offset, zoomDelta: Float) -> Unit,
@@ -114,7 +97,6 @@ internal suspend fun PointerInputScope.runEditGestures(
     onSettleAtRest: () -> Unit,
     onGestureEnd: () -> Unit
 ) {
-    // The platform's own scroll deceleration
     val decay = splineBasedDecay<Offset>(this)
     // Read per frame rather than captured as `size` is still zero when this block is first entered.
     fun center() = Offset(size.width / 2f, size.height / 2f)

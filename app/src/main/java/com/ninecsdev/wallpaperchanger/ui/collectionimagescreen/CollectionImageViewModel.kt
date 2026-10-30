@@ -25,10 +25,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * ViewModel for the Collection Image screen.
- * Owns [CollectionImageUiState] and loads wallpapers for the given collection.
- */
 @HiltViewModel
 class CollectionImageViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -47,7 +43,6 @@ class CollectionImageViewModel @Inject constructor(
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
-    /** Words owed to the user, each delivered once to whoever is showing the screen. */
     val notices: SharedFlow<CollectionImageNotice> = _notices.asSharedFlow()
 
     init {
@@ -55,8 +50,7 @@ class CollectionImageViewModel @Inject constructor(
         observeImages()
         observeFavorites()
         observeCollectionDefault()
-        // Silent re-probe: files marked unavailable may be readable again (source restored,
-        // permission re-granted, connectivity back), clear the flag if so.
+        // Files marked unavailable may be readable again; clear the flag if so
         viewModelScope.launch { repository.reprobeUnavailableFiles(collectionId) }
     }
 
@@ -95,7 +89,7 @@ class CollectionImageViewModel @Inject constructor(
             repository.getImagesForCollection(collectionId)
                 .collect { images ->
                     _uiState.update { state ->
-                        // Update preview as after saving an edit we go back to the preview
+                        // After saving an edit we return to the preview, so refresh it
                         val previewId = state.previewWallpaper?.id
                         val updatedPreview = previewId?.let { id ->
                             images.find { it.id == id }
@@ -110,13 +104,6 @@ class CollectionImageViewModel @Inject constructor(
         }
     }
 
-    // Add wallpapers
-
-    /**
-     * Adds wallpapers from the photo picker to this collection. Each image is kept as an external
-     * reference or internalized depending on the "keep local copies" setting and probe success;
-     * the resulting counts are surfaced as a one-shot summary.
-     */
     fun addWallpapers(uris: List<Uri>) {
         viewModelScope.launch {
             val result = repository.addImagesToCollection(collectionId, uris.map { it.toString() })
@@ -124,9 +111,6 @@ class CollectionImageViewModel @Inject constructor(
         }
     }
 
-    // Re-link unavailable image
-
-    /** Marks [wallpaper] as the re-link target, opening the confirm dialog. */
     override fun requestRelink(wallpaper: WallpaperImage) {
         _uiState.update { it.copy(relinkTarget = wallpaper) }
     }
@@ -135,11 +119,6 @@ class CollectionImageViewModel @Inject constructor(
         _uiState.update { it.copy(relinkTarget = null) }
     }
 
-    /**
-     * Handles the photo-picker result for a re-link. A null [uri] (picker canceled) just closes the
-     * flow; otherwise the picked source is rebound onto the target's file row.
-     * A failure is owed the user a word.
-     */
     fun onRelinkPicked(uri: Uri?) {
         val target = _uiState.value.relinkTarget
         if (uri == null || target == null) {
@@ -155,16 +134,13 @@ class CollectionImageViewModel @Inject constructor(
         }
     }
 
-    // Selection mode
-
-    /** Enters selection mode with [id] as the first selected wallpaper. */
     override fun enterSelectionMode(id: Long) {
         _uiState.update {
             it.copy(isSelectionMode = true, selectedIds = setOf(id))
         }
     }
 
-    /** Toggles a wallpaper's selection. If nothing remains selected, exits selection mode. */
+    /** Exits selection mode when the last selection is cleared. */
     override fun toggleSelection(id: Long) {
         _uiState.update { state ->
             val updated = if (id in state.selectedIds) {
@@ -180,14 +156,12 @@ class CollectionImageViewModel @Inject constructor(
         }
     }
 
-    /** Exits selection mode and clears all selections. */
     override fun exitSelectionMode() {
         _uiState.update {
             it.copy(isSelectionMode = false, selectedIds = emptySet())
         }
     }
 
-    /** Deletes all currently selected wallpapers from the collection. */
     override fun deleteSelectedWallpapers() {
         val state = _uiState.value
         if (state.selectedIds.isEmpty()) return
@@ -199,25 +173,17 @@ class CollectionImageViewModel @Inject constructor(
         }
     }
 
-    // Copy/move actions
-
-    /**
-     * Opens the transfer target picker for the current selection. Destinations are a one-shot
-     * snapshot of every other collection with a few preview thumbnails (the dialog is static;
-     * no need to keep observing while it is open), taken off the same preview flow the grids
-     * observe.
-     */
+    /** Destinations are a one-shot snapshot: the picker is static, so nothing observes while it is open. */
     override fun requestTransfer(mode: TransferMode) {
         if (_uiState.value.selectedIds.isEmpty()) return
         viewModelScope.launch {
             val previews = repository.observeCollectionPreviews().first()
             val targets = repository.getAllCollections().first()
-                // Favourites collection is excluded as a transfer target
                 .filter { it.id != collectionId && !it.isFavorites }
                 .sortedByDescending { it.lastUsedAt }
                 .pinnedFirst()
                 .map { collection ->
-                    // An empty collection has no preview row; it is still a valid target.
+                    // An empty collection has no preview row but is still a valid target
                     val preview = previews[collection.id] ?: CollectionPreview()
                     TransferTarget(
                         collectionId = collection.id,
@@ -231,18 +197,15 @@ class CollectionImageViewModel @Inject constructor(
         }
     }
 
-    /** Closes the transfer target picker or the new-collection name prompt without transferring. */
     override fun cancelTransfer() {
         _uiState.update { it.copy(transferMode = null, transferTargets = emptyList(), isNamingNewTarget = false) }
     }
 
-    /** Swaps the target picker for the name prompt of a collection to create as the target. */
     override fun requestNewTransferTarget() {
         if (_uiState.value.transferMode == null) return
         _uiState.update { it.copy(isNamingNewTarget = true) }
     }
 
-    /** Creates a collection named [name] and runs the pending copy/move of the selection into it. */
     override fun transferToNewCollection(name: String) {
         val state = _uiState.value
         val mode = state.transferMode ?: return
@@ -262,7 +225,6 @@ class CollectionImageViewModel @Inject constructor(
         }
     }
 
-    /** Runs the pending copy/move of the selected wallpapers into [target], then exits selection. */
     override fun transferToCollection(target: TransferTarget) {
         val state = _uiState.value
         val mode = state.transferMode ?: return
@@ -280,7 +242,6 @@ class CollectionImageViewModel @Inject constructor(
         }
     }
 
-    /** Closes the transfer UI, exits selection and reports [result]. */
     private fun finishTransfer(mode: TransferMode, result: TransferResult, targetName: String) {
         _uiState.update {
             it.copy(
@@ -303,13 +264,6 @@ class CollectionImageViewModel @Inject constructor(
         )
     }
 
-    // Favourite actions
-
-    /**
-     * Bulk favourite toggle for the current selection: if every selected wallpaper is already
-     * favourite, un-favourites them all; otherwise favourites the ones that aren't yet. Exits
-     * selection mode afterward.
-     */
     override fun toggleFavoriteSelected() {
         val state = _uiState.value
         val selected = state.wallpapers.filter { it.id in state.selectedIds }
@@ -325,7 +279,6 @@ class CollectionImageViewModel @Inject constructor(
         }
     }
 
-    /** Toggles a single wallpaper's favourite state. */
     override fun toggleFavorite(wallpaper: WallpaperImage) {
         val isFavorite = wallpaper.fileId in _uiState.value.favoriteFileIds
         viewModelScope.launch {
@@ -337,9 +290,6 @@ class CollectionImageViewModel @Inject constructor(
         }
     }
 
-    // Collection default wallpaper
-
-    /** Makes the single selection this collection's default wallpaper, or clears the override when it already is. Exits selection after */
     override fun toggleCollectionDefaultSelected() {
         val wallpaper = _uiState.value.selectedWallpaper ?: return
         viewModelScope.launch {
@@ -348,7 +298,6 @@ class CollectionImageViewModel @Inject constructor(
         }
     }
 
-    /** Same toggle from the full-screen preview */
     override fun toggleCollectionDefault(wallpaper: WallpaperImage) {
         viewModelScope.launch { setCollectionDefault(wallpaper) }
     }
@@ -357,8 +306,6 @@ class CollectionImageViewModel @Inject constructor(
         val alreadyDefault = wallpaper.id == _uiState.value.defaultWallpaperId
         repository.setCollectionDefaultWallpaper(collectionId, wallpaper.id.takeUnless { alreadyDefault })
     }
-
-    // Full-screen preview
 
     override fun openPreview(wallpaper: WallpaperImage) {
         _uiState.update { it.copy(previewWallpaper = wallpaper) }

@@ -9,16 +9,10 @@ import androidx.room.PrimaryKey
 import com.ninecsdev.wallpaperchanger.model.enums.SourceType
 
 /**
- * Join row linking a [WallpaperFile] to a [WallpaperCollection] (the app's M:N model).
- *
- * The same file can be a member of many collections; each membership is one [Wallpaper] and carries
- * its own [editParams] (edits are per-collection, not per-file). `UNIQUE(collectionId, fileId)`
- * makes re-adding the same file to a collection a no-op.
- *
- * [isDefault] marks the hidden membership that is the app's global default wallpaper
- *
- * Cascades: deleting either the parent collection or the referenced file removes the join row.
- * Consumers read the denormalized [WallpaperImage] (file uri joined in), not this entity directly.
+ * Join row linking a [WallpaperFile] to a [WallpaperCollection] (this file also holds the
+ * [WallpaperImage] read model). Each membership carries its own [editParams]; re-adding the same
+ * file to a collection is a no-op. [isDefault] marks the hidden membership that is the global
+ * default wallpaper.
  */
 @Entity(
     tableName = "wallpapers",
@@ -54,12 +48,8 @@ data class Wallpaper(
 )
 
 /**
- * Denormalized read model handed to the rest of the app: a [Wallpaper] join row with the referenced
- * [WallpaperFile]'s [uri]/[sourceType]/[isAvailable] folded in. Produced by the DAO's JOIN queries;
- * never inserted directly (writes go through [Wallpaper] + [WallpaperFile]).
- *
- * [id] is the join-row id (used for edits, deletion, selection); [fileId] identifies the shared file.
- * The file-derived fields default so `@Preview`/test construction stays terse.
+ * Read model: a [Wallpaper] join row with its [WallpaperFile]'s uri, source type and availability
+ * folded in; never inserted. [id] is the join-row id, [fileId] the shared file.
  */
 data class WallpaperImage(
     val id: Long = 0,
@@ -75,12 +65,8 @@ data class WallpaperImage(
 )
 
 /**
- * Per-image edit transform (zoom + normalized pan offsets), embedded into [Wallpaper] and applied
- * on-the-fly by [BufferManager][com.ninecsdev.wallpaperchanger.logic.BufferManager] when rendering the
- * next wallpaper.
- *
- * Embedded as a nullable unit: either all three values are present (the image has an edit) or the
- * whole thing is null (no edit).
+ * Per-membership zoom and normalized pan offsets, applied at render time. Embedded as a nullable
+ * unit: all three values are present, or the whole thing is null (no edit).
  */
 data class EditParams(
     @ColumnInfo(name = "editZoom") val zoom: Float,

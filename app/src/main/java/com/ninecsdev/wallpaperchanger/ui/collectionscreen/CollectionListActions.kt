@@ -4,19 +4,12 @@ import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
 
-/**
- * ViewModel-owned intents of the Collection List screen, implemented by
- * [CollectionViewModel]. Navigation, launcher, and service-lifecycle composites
- * (collection click, folder/photos pickers, create/delete with their service
- * side effects) are deliberately not part of this contract; they stay as plain
- * parameters on [CollectionListScreen] / [CollectionListRoute].
- */
+/** ViewModel-owned intents only; navigation, launcher and service-lifecycle composites stay as parameters on the screen and route. */
 // TODO tests: see vault note tests/screen-actions-routes.md
 interface CollectionListActions {
     fun setSortOrder(order: CollectionSortOrder)
     fun toggleCreateModal(show: Boolean)
     fun closeEditModal()
-    // Edit-card instant-apply intents
     fun renameEditingCollection(newName: String)
     fun setEditingCropRule(rule: CropRule)
     fun setEditingRotationPolicy(setting: CollectionRotationSetting)
@@ -24,7 +17,6 @@ interface CollectionListActions {
     fun syncEditingCollection()
     fun restoreRemovedImages()
 
-    // Long-press context menu intents
     fun togglePinned(collectionId: Long)
     fun setActiveCollection(collectionId: Long)
 }

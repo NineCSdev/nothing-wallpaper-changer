@@ -7,15 +7,9 @@ import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 
 /**
- * Replaces [destination] with [tempFile] in place, atomically when the filesystem supports it and
- * with a plain replace as fallback.
- *
- * Every file a background reader may open at any moment — the rotation buffer and the atmosphere
- * source — is written to a temp file and swapped in through here, so a crash mid-write can never
- * leave a half-written file behind for the next reader to decode.
- *
- * [tempFile] must live on the same filesystem as [destination], or the move degrades to a copy and
- * loses atomicity.
+ * Files a background reader may open at any moment go through here, so a crash mid-write never
+ * leaves a half-written file. [tempFile] must be on the same filesystem as [destination], or the
+ * move degrades to a non-atomic copy.
  */
 fun replaceAtomically(tempFile: File, destination: File) {
     try {
@@ -25,16 +19,13 @@ fun replaceAtomically(tempFile: File, destination: File) {
     }
 }
 
-/**
- * Runs [write] against [tempFile] and swaps the result onto [destination] through
- * [replaceAtomically], deleting the temp file on any failure.
- */
+/** Runs [write] against [tempFile], swaps it onto [destination], and deletes the temp file on failure. */
 inline fun writeAtomically(tempFile: File, destination: File, write: (File) -> Unit) {
     try {
         write(tempFile)
         replaceAtomically(tempFile, destination)
     } finally {
-        // Only has an effect when one of the steps above threw, on success delete() is NOOP as tempFile doesn't exist
+        // No-op on success: the move already consumed tempFile
         tempFile.delete()
     }
 }

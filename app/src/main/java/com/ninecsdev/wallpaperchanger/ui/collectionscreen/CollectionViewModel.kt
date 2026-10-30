@@ -44,10 +44,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * ViewModel for the Collection List screen.
- * Owns [CollectionUiState] and handles imports, edits, and reactive preview loading.
- */
 @HiltViewModel
 class CollectionViewModel @Inject constructor(
     private val repository: WallpaperRepository,
@@ -61,15 +57,12 @@ class CollectionViewModel @Inject constructor(
         const val TAG = "CollectionViewModel"
     }
 
-    // Internal mutable state
-
     private var pendingFolderUri: Uri? = null
     private var pendingPhotosUris: List<Uri> = emptyList()
 
     private var activateOnCreate = false
     private var createOnArrival = false
 
-    /** Current sort order for the collection list. */
     private val _sortOrder = MutableStateFlow(CollectionSortOrder.LAST_USED)
 
     // No replay, so a notice raised while the screen is off-view is dropped rather than shown late
@@ -79,7 +72,6 @@ class CollectionViewModel @Inject constructor(
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
-    /** Import counts owed to the user, delivered once to whoever is showing the screen. */
     val notices: SharedFlow<PickImportResult> = _notices.asSharedFlow()
 
     // Buffered, unlike the notices above: a start the user asked for is still wanted once
@@ -87,17 +79,13 @@ class CollectionViewModel @Inject constructor(
     // TODO tests: see vault note tests/One-Shot Event Delivery Tests
     private val _serviceCommands = Channel<ServiceCommand>(Channel.BUFFERED)
 
-    /** Start/stop requests for the activity to carry out. */
     val serviceCommands: Flow<ServiceCommand> = _serviceCommands.receiveAsFlow()
 
-    /** Modal/processing state managed by this screen. */
     private val _screenState = MutableStateFlow(ScreenModalState())
 
-    /** Grid previews, derived reactively from the DB (see [WallpaperRepository.observeCollectionPreviews]). */
     private val previewsFlow: Flow<Map<Long, CollectionPreviewState>> =
         repository.observeCollectionPreviews().map { it.asPreviewStates() }
 
-    /** Everything the edit modal needs beyond the collection row itself. */
     private data class ModalInputs(
         val modal: ScreenModalState,
         val exclusionCount: Int,
@@ -105,13 +93,7 @@ class CollectionViewModel @Inject constructor(
         val defaultWallpaper: WallpaperImage?
     )
 
-    /**
-     * Modal state plus its reactive companions: the exclusion-tombstone count of the folder
-     * collection open in the edit modal (0 otherwise), which lets the "Restore removed images (N)"
-     * row hide itself; the global rotation policy the card seeds a fresh override from; and the
-     * collection's default-wallpaper override, whose row collapses when there is none.
-     * Bundled here because [combine] below is already at its five-flow limit.
-     */
+    // Folded into one flow because the combine below is at its five-flow limit.
     @OptIn(ExperimentalCoroutinesApi::class)
     private val modalInputs: Flow<ModalInputs> = combine(
         _screenState,
@@ -127,11 +109,7 @@ class CollectionViewModel @Inject constructor(
             .flatMapLatest { id -> if (id == null) flowOf(null) else repository.collectionDefaultWallpaperFlow(id) }
     ) { modal, count, globalPolicy, default -> ModalInputs(modal, count, globalPolicy, default) }
 
-    /**
-     * Combined public state built reactively.
-     * Null until every source flow has emitted; the UI renders nothing until then so no
-     * fabricated default (e.g. an empty collection list) can flash before the real data.
-     */
+    // Null until every source flow has emitted, so no fabricated default flashes before the real data.
     // TODO tests: see vault note tests/ui-state-loading.md
     val uiState: StateFlow<CollectionUiState?> = combine(
         repository.getAllCollections(),
@@ -168,8 +146,6 @@ class CollectionViewModel @Inject constructor(
         initialValue = null
     )
 
-    // Pending source selection
-
     fun setPendingFolderUri(uri: Uri) {
         pendingFolderUri = uri
         pendingPhotosUris = emptyList()
@@ -191,11 +167,6 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    // Collection CRUD
-
-    /**
-     * Creates the pending collection, folder or manual, whichever source is currently pending.
-     */
     fun finalizeCollection(name: String, rule: CropRule) {
         _screenState.update { it.copy(createError = false) }
         if (pendingFolderUri != null) {
@@ -230,16 +201,11 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    /** Success tail both create paths share: the modal closes, and an idle service is asked to start. */
     private fun onCollectionCreated(shouldStartService: Boolean) {
         toggleCreateModal(false)
         if (shouldStartService) _serviceCommands.trySend(ServiceCommand.Start)
     }
 
-    /**
-     * Deletes the collection currently open in the edit modal, asking for the service to stop when
-     * it was the active one.
-     */
     fun deleteEditingCollection() {
         val collection = editingCollection() ?: return
         val wasActive = collection.isActive
@@ -250,11 +216,9 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    // Edit-card instant-apply intents: each field commits immediately decide if update the DAO to
-    // have separate updating func for each the name, crop rule and frequency.
+    // Instant-apply: each field commits as soon as it changes.
     // TODO tests: see vault note tests/Edit Collection Card Tests
 
-    /** Renames the collection currently open in the edit modal. */
     override fun renameEditingCollection(newName: String) {
         val collection = editingCollection() ?: return
         viewModelScope.launch {
@@ -262,7 +226,6 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    /** Sets the default crop rule of the collection currently open in the edit modal. */
     override fun setEditingCropRule(rule: CropRule) {
         val collection = editingCollection() ?: return
         viewModelScope.launch {
@@ -270,7 +233,6 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    /** Sets the rotation setting of the collection currently open in the edit modal. */
     override fun setEditingRotationPolicy(setting: CollectionRotationSetting) {
         val collection = editingCollection() ?: return
         viewModelScope.launch {
@@ -278,7 +240,6 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    /** Drops the editing collection's default-wallpaper override, returning it to the global one. */
     override fun clearEditingCollectionDefault() {
         val collection = editingCollection() ?: return
         viewModelScope.launch {
@@ -286,7 +247,6 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    /** Manually re-syncs the **folder** collection currently open in the edit modal. */
     override fun syncEditingCollection() {
         val collection = editingCollection() ?: return
         launchProcessing(operation = "Sync collection") {
@@ -294,11 +254,7 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    /**
-     * "Restore removed images" for the **folder** collection currently open in the edit modal:
-     * wipes its exclusion tombstones and re-syncs, bringing the in-app-deleted images back with
-     * their edits. The dialog stays open; its restore row hides itself once the count hits zero.
-     */
+    /** Wipes the exclusion tombstones and re-syncs, so in-app-deleted images return with their edits. */
     override fun restoreRemovedImages() {
         val collection = editingCollection() ?: return
         launchProcessing(operation = "Restore removed images") {
@@ -306,9 +262,6 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    // Long-press context menu intents
-
-    /** Flips the pin flag of the given collection; the list reorders reactively. */
     override fun togglePinned(collectionId: Long) {
         val collection = uiState.value?.allCollections?.find { it.id == collectionId } ?: return
         viewModelScope.launch {
@@ -316,27 +269,20 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    /** Makes the given collection the active one */
     override fun setActiveCollection(collectionId: Long) {
         viewModelScope.launch {
             repository.setActiveCollection(collectionId)
         }
     }
 
-    // Sort order
-
     override fun setSortOrder(order: CollectionSortOrder) {
         _sortOrder.value = order
     }
 
-    // Modal/navigation helpers
-
-    /** Asks the collections screen to open the activating create modal once it has arrived. */
     fun requestCreateOnArrival() {
         createOnArrival = true
     }
 
-    /** Returns whether a creation was requested on arrival, clearing the request. */
     fun takeCreateOnArrival(): Boolean = createOnArrival.also { createOnArrival = false }
 
     /** Opens the create modal so the collection it creates also becomes the active one. */
@@ -362,10 +308,8 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
-    /** Starts loading the first screen of [collectionId]'s grid ahead of navigating to it. */
     fun prepareToOpen(collectionId: Long) = gridWarmer.warm(collectionId)
 
-    /** Opens the edit modal for the collection with [collectionId]; renders once the id resolves. */
     fun openEditModal(collectionId: Long) {
         _screenState.update { it.copy(editingCollectionId = collectionId) }
     }
@@ -374,18 +318,13 @@ class CollectionViewModel @Inject constructor(
         _screenState.update { it.copy(editingCollectionId = null) }
     }
 
-    /** The live row of the collection open in the edit modal, resolved through [uiState]. */
     private fun editingCollection(): WallpaperCollection? = uiState.value?.editingCollection
 
     private fun setProcessing(loading: Boolean) {
         _screenState.update { it.copy(isProcessing = loading) }
     }
 
-    /**
-     * Runs [block] behind the screen's processing overlay, clearing it however [block] ends.
-     * Failures are logged against [operation] and surfaced through [onFailure]; cancellation
-     * propagates
-     */
+    /** Runs [block] behind the processing overlay, clearing it however it ends; failures go to [onFailure]. */
     // TODO tests: see vault note tests/Busy-Flag Guard Tests
     private fun launchProcessing(
         operation: String,
@@ -408,7 +347,6 @@ class CollectionViewModel @Inject constructor(
     }
 }
 
-/** Internal holder so modal flags can be combined as a single flow. */
 private data class ScreenModalState(
     val isShowingCreateModal: Boolean = false,
     val hasPendingFolder: Boolean = false,

@@ -38,7 +38,6 @@ import kotlinx.coroutines.launch
 private val SheetCornerRadius = 28.dp
 private val SheetShape = RoundedCornerShape(topStart = SheetCornerRadius, topEnd = SheetCornerRadius)
 
-/** The traced top edge every sheet carries. */
 private fun Modifier.sheetBorder(): Modifier = topRoundedBorder(
     strokeWidth = 2.dp,
     color = NothingWhite.copy(alpha = 0.3f),
@@ -53,12 +52,8 @@ internal fun Modifier.nothingSheetSurface(): Modifier = clip(SheetShape).backgro
 internal fun NothingSheetHandle() { BottomSheetDefaults.DragHandle(color = NothingWhite.copy(alpha = 0.4f)) }
 
 /**
- * The app's bottom-sheet chrome: black surface, 28dp top corners, a traced top border and the
- * dimmed drag handle. [content] is laid out in a center-aligned column below the handle.
- *
- * Scrim tap, swipe-down and system back all dismiss via [onDismiss], animated by the sheet itself.
- * A sheet closed from *inside* (tapping a choice) has to ask for that animation, which is what
- * the `hideThen` handed to [content] is for.
+ * The app's bottom-sheet chrome. Scrim tap, swipe-down and back dismiss via [onDismiss], animated by the sheet;
+ * a sheet closed from inside must ask for that animation through the `hideThen` handed to [content].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,11 +122,6 @@ internal fun NothingBottomSheet(
     }
 }
 
-/**
- * Traces a border along the top edge, rounded top corners, and both sides of a shape matching
- * [RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)], leaving only the bottom
- * undrawn.
- */
 private fun Modifier.topRoundedBorder(
     strokeWidth: Dp,
     color: Color,

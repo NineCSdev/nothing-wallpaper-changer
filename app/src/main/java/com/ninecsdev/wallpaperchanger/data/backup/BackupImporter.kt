@@ -49,7 +49,6 @@ import java.util.zip.ZipInputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** What the user is told an archive holds, before anything of theirs is touched. */
 data class BackupImportPlan(
     val manifest: BackupManifest,
     val archiveName: String?,
@@ -59,10 +58,8 @@ data class BackupImportPlan(
 )
 
 /**
- * One folder collection the archive carries, and what skipping it would cost.
- *
- * [bundledImages] are members whose bytes are inside the archive. Skipping the collection loses.
- * [folderKey] is for when 2 collections have the same rootUri we one [FolderDecision] for both.
+ * [bundledImages] are members whose bytes are inside the archive, so skipping the collection loses them.
+ * [folderKey] lets two collections with the same rootUri share one [FolderDecision].
  */
 data class FolderPrompt(
     val collectionIndex: Int,
@@ -78,15 +75,12 @@ sealed interface FolderDecision {
     data object Skipped : FolderDecision
 }
 
-/**
- * Why an import could not go ahead.
- * All but [Interrupted] are refusals taken before anything of the user's was touched.
- */
+/** All but [Interrupted] are refusals taken before anything of the user's was touched. */
 sealed interface BackupImportFailure {
     data object NotAnArchive : BackupImportFailure
     data class NewerFormat(val formatVersion: Int) : BackupImportFailure
     data class Malformed(val detail: String) : BackupImportFailure
-    /** The archive stops short of its completion marker: it was truncated as it was written. */
+    /** The archive stops short of its completion marker. */
     data object Incomplete : BackupImportFailure
     /** The restore had already started replacing, so the old install may have been modified. */
     data object Interrupted : BackupImportFailure
@@ -103,45 +97,32 @@ data class BackupImportSummary(
 
 data class BackupImportProgress(val done: Int, val total: Int)
 
-/**
- * Bytes this file still has to take out of the archive: which entry they are in, and the filename
- * they get under `internal_wallpapers`. One value, because there is never one without the other.
- */
+/** The archive entry a file's bytes come from and the filename they get under `internal_wallpapers`. */
 internal data class StagedPayload(val entryName: String, val stagedName: String)
 
-/** One file as the import has decided to restore it. */
 internal data class ResolvedFile(
     val uri: String,
     val sourceType: SourceType,
     val available: Boolean,
-    /** Whether [uri] names the picture the archive says it does. */
     val verified: Boolean,
     val addedAt: Long,
     val payload: StagedPayload? = null
 )
 
-/** Everything the import has decided, with nothing yet done waiting user confirmation */
 class ResolvedImport internal constructor(
     internal val archive: Uri,
     internal val manifest: BackupManifest,
     internal val files: List<ResolvedFile>,
     internal val exclusionUris: List<String>,
     internal val droppedCollections: Set<Int>,
-    /**
-     * Collection index -> the tree the user actually picked for it, which is **not** always the one
-     * the archive recorded.
-     */
+    /** Collection index to the tree the user picked, which is not always the one the archive recorded. */
     internal val pickedRoots: Map<Int, String>
 )
 
 /**
- * Restores a whole install from a `.nwcbak` archive, replacing the one on the device.
- *
- * **Every decision is taken before anything is destroyed.** Only after they are taken does
- * [commit] stop the service, stage bytes and swap the rows over in one transaction.
- *
- * **Best effort, nothing dropped.** An unverifiable reference, a declined permission and a genuinely
- * gone image all land *unavailable*.
+ * Every decision is taken before anything is destroyed; only then does [commit] stop the service,
+ * stage bytes and swap the rows in one transaction. Best effort, nothing dropped: an unverifiable
+ * reference, a declined permission and a gone image all land unavailable.
  */
 @Singleton
 class BackupImporter @Inject constructor(
@@ -160,7 +141,6 @@ class BackupImporter @Inject constructor(
         const val SPACE_MARGIN_BYTES = 16L * 1024 * 1024
     }
 
-    /** Reads `manifest.json` to tell the user what the archive holds. */
     suspend fun readPlan(archive: Uri): Result<BackupImportPlan> = withContext(Dispatchers.IO) {
         val raw = try {
             readManifestEntry(archive)
@@ -174,7 +154,6 @@ class BackupImporter @Inject constructor(
         }
     }
 
-    /** The archive as a file: its name for the review step, its length for the space check. */
     private suspend fun archiveFingerprint(archive: Uri): SourceFingerprint =
         wallpaperSources.fingerprint(archive.toString(), SourceType.FOLDER_DOC)
 
@@ -239,10 +218,6 @@ class BackupImporter @Inject constructor(
         )
     }
 
-    /**
-     * Turns the manifest plus the user's folder decisions into a plan for every file, and checks
-     * there is room for the bytes that have to be staged.
-     */
     // TODO tests: see vault note tests/Backup Archive Tests.md (folder and exclusion rebasing)
     suspend fun resolve(
         archive: Uri,
@@ -252,8 +227,7 @@ class BackupImporter @Inject constructor(
         try {
             val dropped = decisions.filterValues { it is FolderDecision.Skipped }.keys
 
-            // Folders are resolved by tree, so two collections sharing a root are scanned once concurrently
-            // just picked, and a restore can carry several.
+            // Resolved by tree so two collections sharing a root are scanned once; concurrent because a restore can carry several
             val trees = decisions.mapNotNull { (collectionIndex, decision) ->
                 val archivedTree = manifest.collections.getOrNull(collectionIndex)?.rootUri
                 if (decision !is FolderDecision.Picked || archivedTree == null) null
@@ -263,9 +237,9 @@ class BackupImporter @Inject constructor(
                     archivedTree to rebaseTree(archivedTree, pickedTree)
                 }.toMap()
 
-            // A file only a skipped collection referenced shouldn't be restored as it will just get swept
+            // A file only a skipped collection referenced would just get swept
             val reachable = manifest.reachableFiles(dropped)
-            // Asked once for the whole restore and without it every MediaStore reference is unverifiable anyway
+            // Asked once; without it every MediaStore reference is unverifiable anyway
             val mediaAccess = wallpaperSources.hasMediaAccess()
             val files = manifest.files.withIndex().mapConcurrently(FINGERPRINT_CONCURRENCY) { (index, file) ->
                 if (index in reachable) resolveFile(file, manifest.mode, trees, mediaAccess) else unreferenced(file)
@@ -303,11 +277,7 @@ class BackupImporter @Inject constructor(
         }
     }
 
-
-    /**
-     * How much room app storage can actually be given, which is more than is free right now: the
-     * platform will evict other apps' clearable caches to meet a request this size.
-     */
+    /** More than is free right now: the platform evicts other apps' clearable caches to meet a request this size. */
     private fun allocatableBytes(): Long = try {
         val storage = appContext.getSystemService(StorageManager::class.java)
         storage.getAllocatableBytes(storage.getUuidForPath(appContext.filesDir))
@@ -316,11 +286,7 @@ class BackupImporter @Inject constructor(
         appContext.filesDir.usableSpace
     }
 
-    /**
-     * One archived folder tree, as it exists at the location the user just picked.
-     *
-     * [isSameTree] is stated to differentiate a scan that failed from the fast path.
-     */
+    /** [isSameTree] is explicit so a failed scan (empty [candidates]) is not mistaken for the same-tree fast path. */
     private data class RebasedTree(
         val isSameTree: Boolean,
         val candidates: List<Pair<String, SourceFingerprint>> = emptyList()
@@ -339,7 +305,6 @@ class BackupImporter @Inject constructor(
         return RebasedTree(isSameTree = false, candidates = scanned.map { it.uri to it.fingerprint })
     }
 
-    /** The row for a file no kept collection references. Swept after the commit. */
     private fun unreferenced(file: BackupFile) = ResolvedFile(file.uri, sourceTypeOf(file), available = false, verified = false, addedAt = file.addedAt)
 
     private fun sourceTypeOf(file: BackupFile): SourceType =
@@ -354,7 +319,6 @@ class BackupImporter @Inject constructor(
         val sourceType = sourceTypeOf(file)
         val archived = SourceFingerprint(file.displayName, file.sizeBytes, file.modifiedAt)
 
-        // The reference is always preferred over bundled bytes
         val reference: String? = when {
             !file.available -> null
             sourceType == SourceType.INTERNALIZED -> null
@@ -370,7 +334,7 @@ class BackupImporter @Inject constructor(
             return ResolvedFile(
                 uri = Uri.fromFile(File(internalDir, staged)).toString(),
                 sourceType = SourceType.INTERNALIZED,
-                // Provisional: staging flips this off for a payload that turns out to be missing.
+                // Provisional: staging flips this off if the payload turns out missing
                 available = true,
                 verified = true,
                 addedAt = file.addedAt,
@@ -378,15 +342,14 @@ class BackupImporter @Inject constructor(
             )
         }
 
-        // Nothing resolved. The image is kept exactly as curated and marked unavailable
+        // Nothing resolved: kept as curated, marked unavailable
         if (mode == BackupMode.PORTABLE && file.available) {
             Log.w(TAG, "Portable archive carries no bytes for ${file.uri}; restoring it unavailable")
         }
-        // Carried on the archive's word: the uri names a row on a device that is not necessarily this one
+        // Unverified: the uri may name a row on another device
         return ResolvedFile(file.uri, sourceType, available = false, verified = false, addedAt = file.addedAt)
     }
 
-    /** The [uri] if it points at the same image the archive did, null otherwise. */
     private suspend fun verifyMediaReference(
         uri: String,
         archived: SourceFingerprint,
@@ -399,9 +362,8 @@ class BackupImporter @Inject constructor(
     }
 
     /**
-     * The archived document uri as it exists in the folder the user picked, or null when the folder
-     * was skipped or the file is not in it anymore. Fingerprint rematching is the only thing that gets
-     * a membership's **edit** onto the right image.
+     * Null when the folder was skipped or the file is gone from it. Fingerprint rematching is the only thing
+     * that gets a membership's edit onto the right image.
      */
     private fun rebaseDocument(
         uri: String,
@@ -413,7 +375,6 @@ class BackupImporter @Inject constructor(
         return tree.candidates.firstOrNull { (_, fingerprint) -> fingerprint.identifies(archived) }?.first
     }
 
-    /** Exclusions must be rebased too, by display name. */
     private fun rebaseExclusion(
         exclusion: BackupExclusion,
         manifest: BackupManifest,
@@ -427,12 +388,8 @@ class BackupImporter @Inject constructor(
     }
 
     /**
-     * Does the destroying: the archive's bytes are staged beside the old ones, the rotation is
-     * stopped and the wallpaper record cleared, the rows are swapped in a single transaction, and
-     * only then does the staging move into place.
-     *
-     * **Staging comes first because it is the half that can still refuse. Old internalized bytes
-     * are never deleted here.**
+     * Staging comes first because it is the half that can still refuse; the rows then swap in a single
+     * transaction and only afterwards do staged bytes move into place. Old internalized bytes are never deleted here.
      */
     suspend fun commit(
         resolved: ResolvedImport,
@@ -445,25 +402,22 @@ class BackupImporter @Inject constructor(
             staging.mkdirs()
 
             val staged = stage(resolved, staging, onProgress).getOrElse {
-                // Nothing else swept import_staging so we do it
                 staging.deleteRecursively()
                 return@withContext Result.failure(it)
             }
 
-            // Recorded before the first destructive step to tell apart success from process death
+            // Recorded before the first destructive step, to tell a restore interrupted by process death from a finished one
             begun = true
             importRecord.setCommitting(true)
 
-            // Stop rotation and clear the wallpaper record as we are gonna be rebuilding the install
             serviceLifecycle.requestStop()
             serviceLifecycle.onIntent(ServiceIntent.ActiveCollectionDeleted)
-            // The record describes an install that no longer exists; every field of it is now a lie.
+            // The record describes an install that no longer exists
             wallpaperRecordStore.clear()
 
             repository.replaceInstall(snapshotOf(resolved, staged))
 
-            // Past the point of no return: the restore has happened and
-            // Everything below is repairable so it is log loudly instead of throwing
+            // Past the point of no return: everything below is repairable, so log instead of throwing
             runCatching { applySettings(resolved.manifest.settings) }
                 .onFailure { Log.e(TAG, "Restored the rows but could not write the archive's settings", it) }
             runCatching { moveIntoPlace(staging) }
@@ -477,19 +431,13 @@ class BackupImporter @Inject constructor(
             Log.e(TAG, "Backup import failed", e)
             runCatching { staging.deleteRecursively() }.onFailure { Log.e(TAG, "Could not sweep the staging folder after a failed import", it) }
             runCatching { importRecord.setCommitting(false) }.onFailure { Log.e(TAG, "Could not clear the committing flag after a failed import", it) }
-            // Told apart because before the commit began, the user's install is provably untouched;
-            // after it, the rows may have rolled back but the rotation has been stopped.
+            // Before the commit began the install is provably untouched; after it, rotation has been stopped
             val failure = if (begun) BackupImportFailure.Interrupted else BackupImportFailure.Unexpected(e.message ?: e::class.java.simpleName)
             Result.failure(ImportRefused(failure))
         }
     }
 
-    /**
-     * Extracts the needed payloads into [staging], in one pass over the archive, and refuses an
-     * archive that stops before its completion marker.
-     *
-     * @return which resolved files actually got bytes.
-     */
+    /** One pass over the archive; refuses one that stops before its completion marker. Returns the indices of files that got bytes. */
     private fun stage(
         resolved: ResolvedImport,
         staging: File,
@@ -517,8 +465,7 @@ class BackupImporter @Inject constructor(
                         wanted[entry.name]?.let { (index, stagedName) ->
                             val target = File(staging, stagedName)
                             val bytes = FileOutputStream(target).use { out -> zip.copyTo(out, COPY_BUFFER_BYTES) }
-                            // An empty entry is how an export records an image it could not read. The
-                            // row still goes in, unavailable. But the file is deleted.
+                            // An empty entry is how an export records an unreadable image: the row still goes in, unavailable
                             if (bytes > 0) written += index else target.delete()
                             done++
                             onProgress(BackupImportProgress(done, wanted.size))
@@ -532,7 +479,7 @@ class BackupImporter @Inject constructor(
             return Result.failure(ImportRefused(BackupImportFailure.Incomplete))
         }
 
-        // The export disowning its own payloads so we delete those
+        // Payloads the export disowned
         val disowned = completion?.unreadable.orEmpty().toSet()
         if (disowned.isNotEmpty()) {
             wanted.filterKeys { it in disowned }.values.forEach { (index, stagedName) ->
@@ -545,7 +492,7 @@ class BackupImporter @Inject constructor(
         return if (completion != null) {
             Result.success(written)
         } else {
-            // The stream ended cleanly but the marker never came so it was truncated
+            // Ended cleanly without the marker: truncated
             Result.failure(ImportRefused(BackupImportFailure.Incomplete))
         }
     }
@@ -609,10 +556,7 @@ class BackupImporter @Inject constructor(
         )
     }
 
-    /**
-     * [pickedRoot] overrides the archive's own root: the collection belongs to the folder the user
-     * chose, and every one of its documents was just rebased into that folder.
-     */
+    /** [pickedRoot] overrides the archive's root: every document was just rebased into the folder the user chose. */
     private fun collectionOf(collection: BackupCollection, pickedRoot: String?) = WallpaperCollection(
         name = collection.name,
         type = collection.type.asEnum<CollectionType>() ?: CollectionType.MANUAL,
@@ -626,11 +570,10 @@ class BackupImporter @Inject constructor(
         appRole = collection.appRole.asEnum<AppCollectionRole>()
     )
 
-    /** An edit is all three values or none */
     private fun editParamsOf(zoom: Float?, offsetX: Float?, offsetY: Float?): EditParams? =
         if (zoom != null && offsetX != null && offsetY != null) EditParams(zoom, offsetX, offsetY) else null
 
-    /** Staged bytes only move once the rows that name them are committed. */
+    // Staged bytes only move once the rows that name them are committed
     private fun moveIntoPlace(staging: File) {
         if (!internalDir.exists()) internalDir.mkdirs()
         // Same filesystem, so the move is the atomic one rather than the copy fallback
@@ -640,11 +583,6 @@ class BackupImporter @Inject constructor(
 
     private val internalDir by lazy { File(appContext.filesDir, ImageInternalizer.INTERNAL_FOLDER) }
 
-
-    /**
-     * Writes the archive's settings. An absent value means the archive predates that setting, and
-     * the local one is left alone.
-     */
     private suspend fun applySettings(settings: BackupSettings) {
         settings.revertToDefault?.let { appDataStore.setRevertToDefault(it) }
         settings.startOnBoot?.let { appDataStore.setStartOnBoot(it) }
@@ -657,8 +595,7 @@ class BackupImporter @Inject constructor(
         settings.wallpaperDestination.asEnum<WallpaperDestination>()?.let { appDataStore.setWallpaperDestination(it) }
         settings.wallpaperMode.asEnum<WallpaperMode>()?.let { appDataStore.setWallpaperMode(it) }
         settings.rotationPolicy?.let { appDataStore.setRotationPolicy(RotationPolicy.decode(it)) }
-        // A delay that matched the exporting device's default was never chosen, so this device's own
-        // default stands in for it rather than the number that suited other hardware.
+        // A delay matching the exporting device's default was never chosen: use this device's default instead
         settings.screenOffDelayMs?.let { delay ->
             val tuned = delay != settings.screenOffDelayDeviceDefault
             appDataStore.setScreenOffDelay(if (tuned) delay else DeviceDefaults.forThisDevice())
@@ -670,7 +607,6 @@ class BackupImporter @Inject constructor(
         return BackupImportSummary(
             collections = kept.size,
             images = resolved.manifest.countImages(kept),
-            // Only files a kept collection references
             unavailable = resolved.manifest.reachableFiles(resolved.droppedCollections).count { index ->
                 val file = resolved.files.getOrNull(index) ?: return@count false
                 !file.available || (file.payload != null && index !in staged)
@@ -680,9 +616,8 @@ class BackupImporter @Inject constructor(
     }
 }
 
-/** Carries a [BackupImportFailure] out through the `Result`s the importer returns. */
 class ImportRefused(val failure: BackupImportFailure) : IOException(failure.toString())
 
-/** The enum this name stands for, or null when the archive names one this build does not have. */
+/** Null when the archive names a constant this build does not have. */
 internal inline fun <reified E : Enum<E>> String?.asEnum(): E? =
     this?.let { name -> enumValues<E>().firstOrNull { it.name == name } }

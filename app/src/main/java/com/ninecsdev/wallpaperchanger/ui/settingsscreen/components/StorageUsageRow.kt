@@ -52,11 +52,7 @@ private val FreeColor = Color(0xFF2A2A2A)
 
 private data class Slice(val bytes: Long, val color: Color)
 
-/**
- * The app's share of the device's storage, and the button that clears its cache.
- *
- * [storage] is null until the first count finishes; an empty bar and dashes show meanwhile.
- */
+/** [storage] is null until the first count finishes; an empty bar and dashes show meanwhile. */
 @Composable
 internal fun StorageUsageRow(
     storage: StorageBreakdown?,
@@ -149,10 +145,7 @@ internal fun StorageUsageRow(
     }
 }
 
-/**
- * One bar split proportionally between [slices], left to right. A slice that holds anything is
- * at least a sliver wide, which the app's own slices need next to a device's worth of others.
- */
+/** Bar split proportionally between [slices]; any non-empty slice is at least a sliver wide so the app's own share stays visible. */
 @Composable
 private fun StorageBar(slices: List<Slice>, modifier: Modifier = Modifier) {
     Canvas(

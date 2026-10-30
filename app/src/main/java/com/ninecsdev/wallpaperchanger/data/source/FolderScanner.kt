@@ -11,15 +11,11 @@ import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** One image found in a folder tree, with the metadata that identifies it */
 data class ScannedDocument(
     val uri: String,
     val fingerprint: SourceFingerprint
 )
 
-/**
- * Scans a user-granted folder tree for images via SAF ([DocumentsContract]).
- */
 @Singleton
 class FolderScanner @Inject constructor(
     @param:ApplicationContext private val appContext: Context
@@ -28,18 +24,9 @@ class FolderScanner @Inject constructor(
         const val TAG = "FolderScanner"
     }
 
-    /**
-     * Scans ONLY (no subfolders) the user-selected folder for images.
-     *
-     * **Throws on scan failure instead of returning an empty list to
-     * avoid giving the impression the folder is empty.**
-     *
-     * @param rootFolderUri The top-level folder URI granted by the user.
-     * @return The document URIs of the images found in the folder.
-     */
+    /** Top level only, no subfolders. Throws on failure rather than returning an empty list, which would read as an empty folder. */
     suspend fun scan(rootFolderUri: String): List<String> = scanDetailed(rootFolderUri).map { it.uri }
 
-    /** [scan] plus each document's [SourceFingerprint]. Used at import/export */
     suspend fun scanDetailed(rootFolderUri: String): List<ScannedDocument> {
         return withContext(Dispatchers.IO) {
             val rootUri = rootFolderUri.toUri()
@@ -67,7 +54,7 @@ class FolderScanner @Inject constructor(
                 cursor.use {
                     val idCol = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
                     val mimeTypeCol = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE)
-                    // Deliberately not OrThrow: a provider that omits display names must cost us the
+                    // Deliberately not OrThrow: a provider omitting display names must cost only the
                     // hidden-document filter, not the whole folder.
                     val displayNameCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
                     val sizeCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_SIZE)
@@ -101,7 +88,7 @@ class FolderScanner @Inject constructor(
                 Log.e(TAG, "Folder scan failed, aborting: $e")
                 throw e
             }
-            // The skipped count is the only diagnostic a user report will ever give us for this filter.
+            // The skipped count is the only diagnostic a user report gives for the hidden filter
             Log.d(TAG, "Folder scan found ${imageList.size} valid images, skipped $hiddenSkipped hidden.")
             imageList
         }

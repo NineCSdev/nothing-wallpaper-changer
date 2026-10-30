@@ -18,12 +18,8 @@ import com.ninecsdev.wallpaperchanger.ui.components.mediaAccessPermissions
 import java.time.LocalDate
 
 /**
- * Stateful entry point for the Backup screen: the export half, the restore wizard, and the four
- * system round-trips between them.
- *
- * The pickers live here rather than in the activity because every one of them answers a question
- * this screen is currently asking, and the wizard's own saved state is what carries the answer
- * across the recreation any of them can cause.
+ * The pickers live here because each answers a question this screen is asking; the wizard's saved
+ * state carries the answer across any recreation they cause.
  */
 @Composable
 fun BackupRoute(
@@ -36,7 +32,6 @@ fun BackupRoute(
     val portable by viewModel.portable.collectAsStateWithLifecycle()
     val importState by importViewModel.uiState.collectAsStateWithLifecycle()
 
-    // The user chooses where the archive goes, and the export starts once the document exists
     val exportLauncher = rememberLauncherForActivityResult(
         CreateDocumentInDownloads(BackupFormat.MIME_TYPE)
     ) { target -> target?.let { viewModel.export(it) } }
@@ -46,7 +41,6 @@ fun BackupRoute(
         LocalDate.now().toString()
     ) + ".${BackupFormat.EXTENSION}"
 
-    // Cancelling leaves the user wherever they already were
     val archiveLauncher = rememberLauncherForActivityResult(
         OpenDocumentInDownloads()
     ) { uri -> uri?.let { importViewModel.onArchivePicked(it.toString()) } }
@@ -106,14 +100,12 @@ private val DOWNLOADS_URI = DocumentsContract.buildDocumentUri(
     "primary:Download"
 )
 
-/** Opens the save picker at Downloads, as a starting point, instead of wherever it was last left */
 private class CreateDocumentInDownloads(mimeType: String) :
     ActivityResultContracts.CreateDocument(mimeType) {
     override fun createIntent(context: Context, input: String): Intent =
         super.createIntent(context, input).putExtra(DocumentsContract.EXTRA_INITIAL_URI, DOWNLOADS_URI)
 }
 
-/** Opens the archive picker at Downloads, where the export side puts archives by default */
 private class OpenDocumentInDownloads : ActivityResultContracts.OpenDocument() {
     override fun createIntent(context: Context, input: Array<String>): Intent =
         super.createIntent(context, input).putExtra(DocumentsContract.EXTRA_INITIAL_URI, DOWNLOADS_URI)

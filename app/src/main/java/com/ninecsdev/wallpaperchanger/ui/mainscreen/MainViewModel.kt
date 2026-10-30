@@ -31,11 +31,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * ViewModel for the Main screen.
- * Owns [MainUiState], combining settings, the active collection, its previews, and the
- * service state manager's derived state flow.
- */
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val repository: WallpaperRepository,
@@ -52,7 +47,6 @@ class MainViewModel @Inject constructor(
     }
 
     init {
-        // One-shot app-startup housekeeping (orphan file-registry GC + internal-file disk sweep).
         startupMaintenance.runOnce()
     }
 
@@ -120,8 +114,7 @@ class MainViewModel @Inject constructor(
         if (hasAccess) 0 else referenceCount
     }
 
-    // Null until every source flow has emitted; the UI renders nothing until then so no
-    // fabricated default (e.g. revertToDefaultOnStop) can flash or animate to the real value.
+    // Null until every source flow has emitted, so no fabricated default flashes or animates to the real value.
     // TODO tests: see vault note tests/ui-state-loading.md
     val uiState: StateFlow<MainUiState?> = combine(
         combine(
@@ -150,8 +143,6 @@ class MainViewModel @Inject constructor(
         initialValue = null
     )
 
-    // Actions
-
     fun setActiveCollection(collectionId: Long) {
         viewModelScope.launch {
             repository.setActiveCollection(collectionId)
@@ -163,9 +154,8 @@ class MainViewModel @Inject constructor(
     }
 
     /**
-     * Re-reads the `READ_MEDIA_IMAGES` state (on resume and after the banner's grant request).
-     * A missing→granted transition re-runs the MediaStore availability sweep immediately, so
-     * every reference badged unavailable by the revocation self-heals without an app restart.
+     * A missing->granted transition re-runs the MediaStore availability sweep, so references badged
+     * unavailable by the revocation self-heal without a restart.
      */
     fun refreshMediaAccess() {
         val granted = wallpaperSources.hasMediaAccess()

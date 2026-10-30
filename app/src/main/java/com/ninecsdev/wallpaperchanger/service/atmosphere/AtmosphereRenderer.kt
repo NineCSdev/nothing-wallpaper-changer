@@ -18,38 +18,23 @@ import kotlin.math.sqrt
 
 /**
  * The whole visual pipeline: photo -> blobs over it -> blur both together -> grain, magnified to
- * the panel.
+ * the panel. On the lock screen it renders the plain photo; the morph plays when the keyguard is
+ * dismissed.
  *
- * Two things about this are easy to mistake for bugs and are neither.
- *
- * From [AtmosphereConstants.FIRST_BLOB_FRAME] the entire effect is composited, rasterised and
- * blurred in a **72-pixel-wide** buffer, and the blobs appear with their one-off growth kick on
- * that same frame. The blur itself does *not* jump there: its offset is in surface pixels, so the
- * ramp is continuous across the resolution change and only the amount of detail in the buffer
- * changes.
- *
- * And on the lock screen this renders as the **plain photo**. The effect is a home-screen state;
- * the morph is what plays when the keyguard is dismissed.
+ * From [AtmosphereConstants.FIRST_BLOB_FRAME] the effect runs in a 72-pixel-wide buffer. The blur
+ * does not jump there: its offset is in surface pixels, so the ramp is continuous across the
+ * resolution change.
  */
 internal class AtmosphereRenderer(
     private val context: Context,
     private val requestRender: () -> Unit,
     /** Whether the panel is genuinely dark right now, so a swap cannot be seen happening. */
     private val isPanelDark: () -> Boolean = { true },
-    /**
-     * Fired on the **GL thread** the moment a queued source is committed to the screen, with the
-     * flag it was queued under. That instant is what the rotation advance keys off.
-     */
+    /** Fired on the GL thread when a queued source is committed to the screen; the rotation advance keys off it. */
     private val onSourceAdopted: (fromRotation: Boolean) -> Unit = {},
-    /**
-     * Fired on the **GL thread** on each edge of the morph which is what the frame-rate vote
-     * hanging off it needs: a missed falling edge leaves the panel pinned.
-     */
+    /** Fired on the GL thread on each edge of the morph; a missed falling edge leaves the frame-rate vote pinned. */
     private val onMorphActive: (active: Boolean) -> Unit = {},
-    /**
-     * Fired on the **GL thread** when there is no source on disk to load, which without an answer
-     * means a black panel for as long as the engine stays set. See [loadSourceFromDisk].
-     */
+    /** Fired on the GL thread when there is no source on disk; without an answer the panel stays black. */
     private val onSourceMissing: () -> Unit = {}
 ) : GLSurfaceView.Renderer {
 
@@ -58,13 +43,8 @@ internal class AtmosphereRenderer(
         const val SHADER_DIR = "shaders/atmosphere"
 
         /**
-         * Compensation for the platform zooming the wallpaper surface for parallax. 1.0 is a
-         * no-op.
-         *
-         * Whether this device does that to *live* wallpapers is the one open question in the
-         * design -- it is documented for static ones, and this constant is deliberately the only
-         * thing that would need to move if it turns out to apply here too. It lives on the final
-         * pass so that no padded pixels ever reach the palette.
+         * Compensation for the platform zooming the wallpaper surface for parallax; 1.0 is a no-op.
+         * Applied in the final pass so no padded pixels reach the palette.
          */
         const val SURFACE_COUNTER_SCALE = 1.0f
     }
@@ -91,10 +71,7 @@ internal class AtmosphereRenderer(
             forget()
         }
 
-        /**
-         * Drops the names without deleting them, for when the context that owned them is already
-         * gone. Deleting them would be addressing the *new* context's name space.
-         */
+        /** Drops the names without deleting them: their context is gone, and deleting would hit the new one's names. */
         fun forget() {
             texA = 0
             texB = 0
@@ -103,8 +80,6 @@ internal class AtmosphereRenderer(
         }
     }
 
-    // Hand-off from other threads
-
     /** A source waiting to be adopted, and whether showing it should advance the rotation. */
     private class PendingSource(
         val seeds: List<VertexInfo>,
@@ -112,26 +87,17 @@ internal class AtmosphereRenderer(
         val fromRotation: Boolean
     )
 
+    // Written off the GL thread, consumed in applyPendingWork.
     private val pendingSource = AtomicReference<PendingSource?>(null)
     private val locked = AtomicBoolean(true)
     private val lockStateDirty = AtomicBoolean(false)
-
-    /** Whether the pending unlock should play the morph or land on the settled frame directly. */
     private val animateUnlock = AtomicBoolean(true)
-
-    /** Set from off the GL thread to cut a morph short; consumed in [applyPendingWork]. */
     private val settleRequested = AtomicBoolean(false)
-
-    /** Whether the morph replays instead of ending; see [startMorphLoop]. */
     private val loopMorph = AtomicBoolean(false)
-
-    /** Set to rewind the replay to the photo; consumed in [applyPendingWork]. */
     private val loopRestart = AtomicBoolean(false)
 
     /** Debug frame scrub. Below zero means "run normally". */
     private val pinnedFrame = AtomicInteger(-1)
-
-    // GL objects
 
     private var compositeProgram = 0
     private var blurProgram = 0
@@ -158,15 +124,10 @@ internal class AtmosphereRenderer(
     private val effectTargets = Targets()
     private val shapes = ShapeCreator()
 
-    // Animation state
-
     private var surfaceWidth = 0
     private var surfaceHeight = 0
 
-    /**
-     * [AtmosphereConstants.renderRate] and its eased twin depend on the surface width alone, and
-     * the eased one costs a `PathInterpolator` lookup. Sampled on resize instead of every frame.
-     */
+    // Depend on the surface width alone, so they are sampled on resize rather than every frame.
     private var linearRenderRate = 1f
     private var easedRenderRate = 1f
     private var frame = AtmosphereConstants.SETTLED_FRAME
@@ -188,17 +149,10 @@ internal class AtmosphereRenderer(
     private val kernel = FloatArray(AtmosphereConstants.BLUR_RADIUS_LIMIT)
     private var uploadedKernelRadius = -1
 
-    // External control
-
     /**
-     * Hands over a new photo and its seeds.
-     *
-     * It is *not* applied here. A morph derives its blob anchors, its palette and its background
-     * from one image, so swapping mid-flight would leave blobs anchored to a photo that is gone.
-     *
-     * When it *is* applied depends on [fromRotation]. A rotation delivery is a reveal and waits for
-     * [isPanelDark], so the change is never seen happening. Anything else is a user-initiated action
-     * whose result should appear at once and is adopted on the next frame.
+     * Hands over a new photo and its seeds; applied on the GL thread, not here, because a morph
+     * derives its anchors, palette and background from one image. A rotation delivery
+     * ([fromRotation]) waits for [isPanelDark]; anything else is adopted on the next frame.
      */
     fun queueSource(newSeeds: List<VertexInfo>, bitmap: Bitmap, fromRotation: Boolean) {
         pendingSource
@@ -206,11 +160,7 @@ internal class AtmosphereRenderer(
             ?.bitmap?.recycle()
     }
 
-    /**
-     * @param isLocked true while the plain photo should be shown, false for the effect.
-     * @param animate whether a false edge plays the morph. Pass false to land on the settled frame
-     * with no transition — see [animateUnlock] for when that is the right answer.
-     */
+    /** [isLocked] shows the plain photo; unlocking plays the morph unless [animate] is false (lands settled). */
     fun setLocked(isLocked: Boolean, animate: Boolean = true) {
         if (locked.getAndSet(isLocked) != isLocked) {
             animateUnlock.set(animate)
@@ -219,33 +169,22 @@ internal class AtmosphereRenderer(
         }
     }
 
-    /**
-     * Abandons any morph in flight and jumps to the settled frame. For when unlock lands on an
-     * open app, and how a replay is cut short.
-     */
+    /** Abandons any morph in flight and jumps to the settled frame. */
     fun settleNow() {
         if (settleRequested.compareAndSet(false, true)) requestRender()
     }
 
-    /**
-     * Replays the morph for as long as it is on, holding
-     * [AtmosphereConstants.LOOP_DWELL_FRAMES] on the settled effect between passes. Calling it
-     * again rewinds the pass in flight.
-     */
+    /** Replays the morph until [stopMorphLoop]; calling it again rewinds the pass in flight. */
     fun startMorphLoop() {
         loopMorph.set(true)
         loopRestart.set(true)
         requestRender()
     }
 
-    /**
-     * Ends the replay. The pass in flight finishes rather than being cut mid-morph; [settleNow]
-     * is what abandons it.
-     */
+    /** Ends the replay; the pass in flight finishes ([settleNow] abandons it). */
     fun stopMorphLoop() {
         loopMorph.set(false)
-        // A restart that never reached a frame would otherwise still be waiting in
-        // [applyPendingWork], and would re-arm the morph the settle is about to end.
+        // A restart not yet consumed would otherwise re-arm the morph the settle is about to end.
         loopRestart.set(false)
     }
 
@@ -255,12 +194,8 @@ internal class AtmosphereRenderer(
         requestRender()
     }
 
-    // GLSurfaceView.Renderer
-
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-        // A surface can come back with a brand-new context, in which case every name we are
-        // holding belongs to a context that no longer exists. Drop them all before allocating,
-        // or the first frame binds textures that were never created here.
+        // A surface can come back with a brand-new context; drop every held GL name before allocating.
         forgetContextObjects()
 
         quad.create()
@@ -297,8 +232,7 @@ internal class AtmosphereRenderer(
         AtmosphereGl.bindSamplerToUnit0(blurProgram, "screenTexture")
         AtmosphereGl.bindSamplerToUnit0(grainProgram, "uSampler")
 
-        // A surface can be recreated without the source changing; reload so we never come back
-        // to a blank screen.
+        // The source may be unchanged across a surface recreation; reload so the screen is never blank.
         loadSourceFromDisk()
     }
 
@@ -335,8 +269,7 @@ internal class AtmosphereRenderer(
     override fun onDrawFrame(gl: GL10?) {
         applyPendingWork()
 
-        // Self-clocked, not display-driven: the loop sleeps to a fixed floor and re-arms itself,
-        // so the morph lasts the same ~2.96 s whatever the panel's refresh rate is.
+        // Self-clocked, not display-driven: the morph lasts ~2.96 s whatever the refresh rate.
         val elapsed = SystemClock.elapsedRealtime() - lastFrameAt
         if (elapsed < AtmosphereConstants.FRAME_INTERVAL_MS) {
             SystemClock.sleep(AtmosphereConstants.FRAME_INTERVAL_MS - elapsed)
@@ -349,21 +282,18 @@ internal class AtmosphereRenderer(
             return
         }
 
-        // Not animating means the settled frame, drawn as a seek; animating means step the frame
-        // we are already on.
+        // Not animating draws the settled frame as a seek.
         if (!animating) frame = AtmosphereConstants.SETTLED_FRAME
         drawFrame(frame, isInit = !animating)
 
         if (animating) {
             if (loopPhotoHold > 0) {
-                // Still on the photo; the morph has not started stepping yet.
                 loopPhotoHold--
                 requestRender()
             } else if (frame <= AtmosphereConstants.TOTAL_ANIM_FRAMES) {
                 frame++
                 requestRender()
             } else if (loopMorph.get()) {
-                // Past the end with the replay on: dwell on the settled effect, then rewind.
                 if (loopDwell < AtmosphereConstants.LOOP_DWELL_FRAMES) {
                     loopDwell++
                     requestRender()
@@ -376,8 +306,6 @@ internal class AtmosphereRenderer(
         }
     }
 
-    // Frame
-
     private fun drawFrame(frameNumber: Int, isInit: Boolean) {
         if (photoTexture == 0 || seeds.size != VertexInfo.SEED_COUNT) {
             GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
@@ -387,7 +315,7 @@ internal class AtmosphereRenderer(
             return
         }
 
-        // The replay's photo hold wants exactly what the lock screen wants: the sharp photo full resolution
+        // The replay's photo hold wants what the lock screen wants: the sharp full-resolution photo.
         if (locked.get() || loopPhotoHold > 0) {
             drawLockScreen()
             return
@@ -401,7 +329,6 @@ internal class AtmosphereRenderer(
         val w = targets.width
         val h = targets.height
 
-        // Pass 1+2 -- the photo, pulled toward the background color, with the blobs over it.
         AtmosphereGl.bindFramebuffer(fbo, targets.texA, w, h)
         GLES30.glClearColor(1f, 1f, 1f, 1f)
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
@@ -411,11 +338,8 @@ internal class AtmosphereRenderer(
         drawComposite(mixBlendAt(frameNumber))
         shapes.draw(frameNumber, isInit, surfaceWidth, surfaceHeight)
 
-        // Pass 3+4 -- one separable Gaussian over the composite. The blur runs over photo and
-        // blobs together, never over the blobs alone.
-        val blurRate = AtmosphereConstants.easedRamp(
-            frameNumber, to = AtmosphereConstants.BG_BLUR_GROWTH
-        )
+        // The blur runs over photo and blobs together, never the blobs alone.
+        val blurRate = AtmosphereConstants.easedRamp(frameNumber, to = AtmosphereConstants.BG_BLUR_GROWTH)
         val radius = (linearRenderRate * blurRate * AtmosphereConstants.MAX_BLUR_RADIUS).toInt()
         val offset = linearRenderRate * blurRate * AtmosphereConstants.MAX_BLUR_OFFSET
 
@@ -423,20 +347,14 @@ internal class AtmosphereRenderer(
         GLES30.glUseProgram(blurProgram)
         uploadKernel(radius)
 
-        // The offset is in 1080-panel pixels, like every other absolute constant here, so it is
-        // normalized by the **surface** -- not by the render target it happens to be sampling.
-        // That is not a detail: at full ramp, 14 surface pixels is 0.013 UV, which is 0.93 texels
-        // of the 72-wide raster, giving the sigma of ~9 texels the effect is built on. Dividing by
-        // the render target instead makes one tap 14 texels wide, puts the outermost tap 5.8
-        // texture-widths off the edge, and clamps the entire frame to a flat wash.
+        // The offset is in panel pixels, so normalize by the surface, not the render target:
+        // dividing by the target makes one tap 14 texels wide and clamps the frame to a flat wash.
         AtmosphereGl.bindFramebuffer(fbo, targets.texB, w, h)
         drawBlurPass(targets.texA, radius, offset / surfaceWidth, 0f)
 
         AtmosphereGl.bindFramebuffer(fbo, targets.texA, w, h)
         drawBlurPass(targets.texB, radius, 0f, offset / surfaceHeight)
 
-        // Pass 5 -- grain, and the magnify back to the panel that turns flat polygons into
-        // gradients.
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
         GLES30.glViewport(0, 0, surfaceWidth, surfaceHeight)
         GLES30.glUseProgram(grainProgram)
@@ -446,7 +364,7 @@ internal class AtmosphereRenderer(
         quad.draw()
     }
 
-    /** No blur, no grain, no background mix -- the untouched photo. */
+    /** The untouched photo: no blur, grain or background mix. */
     private fun drawLockScreen() {
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
         GLES30.glViewport(0, 0, surfaceWidth, surfaceHeight)
@@ -473,11 +391,8 @@ internal class AtmosphereRenderer(
     }
 
     /**
-     * Gaussian weights with **sigma = radius / 3**, normalized two-sided so the center tap plus
-     * twice the sum of the rest is 1.
-     *
-     * Re-sent only when the quantized radius moves, which is about thirty times across the ramp
-     * rather than every frame. The array is always uploaded at its full declared length.
+     * Gaussian weights with sigma = radius / 3, normalized two-sided (center tap plus twice the
+     * rest is 1). Re-sent only when the radius changes, always at the full declared length.
      */
     private fun uploadKernel(radius: Int) {
         if (radius == uploadedKernelRadius) return
@@ -509,15 +424,11 @@ internal class AtmosphereRenderer(
         to = AtmosphereConstants.BG_TEXTURE_TRANSITION
     )
 
-    /** The one window with a linear ramp; every other eases. */
     private fun noiseGrowthAt(frameNumber: Int): Float =
         easedRenderRate * AtmosphereConstants.MAX_NOISE *
         AtmosphereConstants.ramp(frameNumber, to = AtmosphereConstants.NOISE_GROWTH)
 
-    /**
-     * Center-crop factors for the composite's texture coordinates. They depend only on the photo
-     * and the surface, so this is sampled when either changes rather than on every frame.
-     */
+    /** Center-crop factors for the composite's texture coordinates; recomputed when photo or surface changes. */
     private fun updateCoverScale() {
         coverScale[0] = 1f
         coverScale[1] = 1f
@@ -531,8 +442,6 @@ internal class AtmosphereRenderer(
             coverScale[0] = surfaceAspect / photoAspect
         }
     }
-
-    // Source handling
 
     private fun applyPendingWork() {
         if (settleRequested.getAndSet(false)) {
@@ -558,27 +467,22 @@ internal class AtmosphereRenderer(
         if (loopRestart.getAndSet(false)) restartMorph()
 
         val pending = pendingSource.get() ?: return
-        // Evaluated only with a source in hand: isPanelDark crosses a binder for PowerManager, and
-        // that is not something to pay on every frame of a morph.
+        // Only with a source in hand: isPanelDark crosses a binder, too costly for every frame.
         if (pending.fromRotation && !isPanelDark()) return
         if (!pendingSource.compareAndSet(pending, null)) return
 
         val adopted = adoptSource(pending.seeds, pending.bitmap)
-        // A new photo rewinds the replay rather than ending it.
         if (loopMorph.get()) {
             restartMorph()
         } else {
             frame = 0
             setAnimating(false)
         }
-        // The image is committed to the screen as of this frame, but only if it was really taken.
+        // Report only a source that was really taken.
         if (adopted) onSourceAdopted(pending.fromRotation)
     }
 
-    /**
-     * Rewinds the replay to the photo and re-rolls the blob layout, so no two passes are the same.
-     * GL thread only, from both ends of [applyPendingWork] and from [onDrawFrame].
-     */
+    /** Rewinds the replay to the photo and re-rolls the blob layout. GL thread only. */
     private fun restartMorph() {
         frame = 0
         loopDwell = 0
@@ -596,14 +500,10 @@ internal class AtmosphereRenderer(
         onMorphActive(value)
     }
 
-    /**
-     * Binds [bitmap] and [newSeeds] as the photo being drawn, reporting whether it actually took.
-     *
-     * False means nothing changed and the previous photo is still the one on screen.
-     */
+    /** Binds [bitmap] and [newSeeds] as the photo drawn; false means the previous photo is still on screen. */
     private fun adoptSource(newSeeds: List<VertexInfo>, bitmap: Bitmap): Boolean {
         return try {
-            // Upload first, swap second in case upload throws so we keep a working wallpaper
+            // Upload first, swap second: if the upload throws, the previous wallpaper stays.
             val newTexture = AtmosphereGl.uploadPhoto(bitmap)
             AtmosphereGl.deleteTexture(photoTexture)
             photoTexture = newTexture
@@ -612,7 +512,6 @@ internal class AtmosphereRenderer(
             seeds = newSeeds
             updateCoverScale()
 
-            // Entry 0 is the background the whole composite is pulled toward, not a blob.
             AtmosphereGl.unpackRgb(newSeeds[0].pixelColor, bgColor)
 
             shapes.setSeeds(newSeeds)
@@ -627,12 +526,8 @@ internal class AtmosphereRenderer(
     }
 
     /**
-     * Reads whatever is on disk. Called on surface creation, which includes the very first start
-     * at boot with the app's own process absent.
-     *
-     * A failure here is never a reason to blank the screen - whatever is already loaded stays.
-     *
-     * Finding *nothing* is a different case, and the one this reports [onSourceMissing].
+     * Reads whatever is on disk (the app's own process may be absent at boot). A failure keeps
+     * what is already loaded; finding nothing reports [onSourceMissing].
      */
     private fun loadSourceFromDisk() {
         val decoded = AtmosphereSource.readDecoded(context.filesDir)

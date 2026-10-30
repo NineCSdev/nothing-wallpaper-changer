@@ -37,13 +37,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * Generic two-button confirmation dialog in the app's black-card styling.
- *
- * [accentColor] tints the border, title, and confirm button, it signals intent, so pass the
- * default [NothingRed] for destructive actions (delete, discard) and a neutral color like
- * [NothingWhite] for constructive/recovery ones (e.g. re-linking an unavailable image).
- */
+/** [accentColor] signals intent: [NothingRed] for destructive actions, a neutral color like [NothingWhite] for constructive or recovery ones. */
 @Composable
 fun ConfirmationOverlay(
     modifier: Modifier = Modifier,

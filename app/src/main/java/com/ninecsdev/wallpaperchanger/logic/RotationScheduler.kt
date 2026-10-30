@@ -21,14 +21,12 @@ import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
- * The time-driven rotation trigger: fires when a time-based policy comes due **while the screen is
- * on**, complementing the screen-off trigger. The anchor is wall-clock, so time spent with the screen
- * off still counts and no wakeup is ever scheduled.
- *
- * It never decides *whether* a rotation is allowed, only when to ask. [RotationCoordinator]
- * re-evaluates the same policy on arrival, so a stale wake is harmless.
+ * Fires when a time-based policy comes due while the screen is on, complementing the screen-off
+ * trigger. The anchor is wall-clock, so screen-off time counts and no wakeup is scheduled. It only
+ * decides when to ask: [RotationCoordinator] re-evaluates the policy, so a stale wake is harmless.
  */
 // TODO tests: see vault note tests/Global Rotation Policy Tests.md
 @Singleton
@@ -47,11 +45,10 @@ class RotationScheduler @Inject constructor(
         /** Backoff after an attempt that did not rotate, so a persistent failure cannot spin. */
         const val RETRY_DELAY_MS = 60 * 1000L
 
-        /** Backoff after being refused by the guard. Short, because the rotation holding it is expected to finish within seconds.*/
+        /** Short, because the rotation holding the guard is expected to finish within seconds. */
         const val ALREADY_RUNNING_RETRY_DELAY_MS = 5 * 1000L
     }
 
-    /** Fed by the owning service's screen-state receiver. */
     private val screenOn = MutableStateFlow(true)
 
     private var job: Job? = null
@@ -98,18 +95,19 @@ class RotationScheduler @Inject constructor(
         // With the lock-only the image matters at the next unlock, which the screen-off trigger already owns
         if (arm.destination == WallpaperDestination.LOCK) return
 
-        // Atmosphere holds its source until the panel is dark and morphs on unlock
+        // Atmosphere holds its source until the panel is dark and morphs on unlock. Also, load-bearing
+        // for concurrency: that path releases the busy guard at delivery, so a tick here could overlap it.
         if (wallpaperModeResolver.effectiveMode() != WallpaperMode.STATIC) return
 
         val policy = collection.rotationPolicy.policyOr(arm.globalPolicy)
 
         while (true) {
-            // Recomputed every pass (clock or timezone might have change)
+            // Recomputed every pass: the clock or timezone might have changed
             val dueAt = policy.nextDueAt(collection.lastWallpaperChangeAt) ?: return
             val remaining = dueAt - System.currentTimeMillis()
 
             if (remaining > 0) {
-                delay(remaining.coerceAtMost(MAX_SLEEP_MS))
+                delay(remaining.coerceAtMost(MAX_SLEEP_MS).milliseconds)
                 if (remaining > MAX_SLEEP_MS) continue
             }
 
@@ -122,12 +120,12 @@ class RotationScheduler @Inject constructor(
 
                 RotationOutcome.NOT_DONE -> {
                     Log.d(TAG, "Timed rotation did not happen ($outcome); retrying in ${RETRY_DELAY_MS}ms.")
-                    delay(RETRY_DELAY_MS)
+                    delay(RETRY_DELAY_MS.milliseconds)
                 }
 
                 // Looping re-reads the anchor: once the rotation holding the guard stamps it, the
                 // next pass simply sleeps until the new due time.
-                RotationOutcome.ALREADY_RUNNING -> delay(ALREADY_RUNNING_RETRY_DELAY_MS)
+                RotationOutcome.ALREADY_RUNNING -> delay(ALREADY_RUNNING_RETRY_DELAY_MS.milliseconds)
             }
         }
     }

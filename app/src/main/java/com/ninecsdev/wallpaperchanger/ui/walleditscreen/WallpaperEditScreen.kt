@@ -62,19 +62,8 @@ import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.coerceZoom
 import com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.matchesEditParams
 
 /**
- * Full-screen wallpaper editor.
- *
- * The wallpaper fills the entire screen as the editing canvas.
- * Pinch to zoom (into wherever the fingers are) and drag to move the image;
- * the gesture math lives in [applyEditGesture][com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.applyEditGesture] (EditMath.kt).
- *
- * A collapsible bottom panel provides precision sliders whose value readouts are editable
- * (type an exact zoom or offset), plus save/cancel actions. Undo steps back one input at a time
- * through [EditHistory].
- *
- * Zoom = 1.0 means the image fits the screen completely (letterboxed/pillarboxed if needed).
- * Zoom > 1.0 scales the image up (to cover and beyond).
- * Offset values are normalized to -1..1 representing the full available pan range.
+ * Zoom 1.0 fits the whole image on screen (letterboxed if needed); above 1.0 scales it up.
+ * Offsets are normalized to -1..1 across the full available pan range.
  */
 @Composable
 fun WallpaperEditScreen(
@@ -85,7 +74,6 @@ fun WallpaperEditScreen(
 ) {
     val wallpaper = uiState.wallpaper
 
-    // Edit state, owned here so gestures update directly
     var zoom by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
@@ -94,14 +82,11 @@ fun WallpaperEditScreen(
     var baseline by remember { mutableStateOf(EditParams(zoom = 1f, offsetX = 0f, offsetY = 0f)) }
     val history = remember { EditHistory() }
 
-    // Controls panel visibility
     var showControls by remember { mutableStateOf(false) }
 
-    // Discard confirmation dialog visibility
     var showDiscardDialog by remember { mutableStateOf(false) }
 
-    // Restore saved edit params when wallpaper loads, coercing into the editor's bounds so a
-    // legacy/corrupt persisted value can't produce a bad first frame (e.g. zoom 0 -> invisible).
+    // Coerced into the editor's bounds so a legacy/corrupt persisted value can't produce a bad first frame (e.g. zoom 0)
     LaunchedEffect(wallpaper) {
         wallpaper?.let { wp ->
             val saved = wp.editParams ?: EditParams(zoom = 1f, offsetX = 0f, offsetY = 0f)
@@ -118,7 +103,7 @@ fun WallpaperEditScreen(
     val setZoom: (Float) -> Unit = { zoom = coerceZoom(it) }
     val setOffsetX: (Float) -> Unit = { offsetX = coerceOffset(it) }
     val setOffsetY: (Float) -> Unit = { offsetY = coerceOffset(it) }
-    // Pinch/drag updates all three axes atomically (already coerced by applyEditGesture).
+    // Already coerced by applyEditGesture
     val onGestureTransform: (GestureTransform) -> Unit = { g ->
         zoom = g.zoom
         offsetX = g.offsetX
@@ -144,7 +129,6 @@ fun WallpaperEditScreen(
         if (hasUnsavedChanges) showDiscardDialog = true else onBack()
     }
 
-    // Intercept the system back gesture when there are unsaved changes
     BackHandler(enabled = hasUnsavedChanges) {
         showDiscardDialog = true
     }
@@ -177,7 +161,6 @@ fun WallpaperEditScreen(
     SavingOverlay(isSaving = uiState.isSaving)
     SaveErrorBanner(show = uiState.saveError)
 
-    // Discard confirmation dialog
     if (showDiscardDialog) {
         ConfirmationOverlay(
             title = stringResource(R.string.edit_discard_title),
@@ -224,7 +207,6 @@ private fun WallpaperCanvas(
     val currentOnGesture by rememberUpdatedState(onGestureTransform)
     val currentOnGestureEnd by rememberUpdatedState(onGestureEnd)
 
-    // The photo is framed against the wallpaper canvas
     val context = LocalContext.current
     val (wallpaperCanvasW, wallpaperCanvasH) = remember {
         val (w, h) = ImageProcessingUtils.getWallpaperCanvasSize(context)
@@ -244,7 +226,6 @@ private fun WallpaperCanvas(
         modifier = modifier
             .pointerInput(Unit) {
                 runEditGestures(
-                    // centroid/pan/zoom arrive in this node's pixel space, size is the container.
                     onGesture = { centroid, pan, zoomDelta ->
                         currentOnGesture(
                             applyEditGesture(
@@ -476,10 +457,6 @@ private fun SaveErrorBanner(show: Boolean) {
     }
 }
 
-/**
- * Animated wrapper that slides [ControlsPanel][com.ninecsdev.wallpaperchanger.ui.walleditscreen.components.ControlsPanel] in and out from the bottom
- * of the screen based on [visible].
- */
 @Composable
 private fun WallpaperEditControlsPanel(
     visible: Boolean,
@@ -519,8 +496,6 @@ private fun WallpaperEditControlsPanel(
         )
     }
 }
-
-// Previews
 
 @Preview(showSystemUi = true, name = "Wallpaper Editor", backgroundColor = 0xFF000000, showBackground = false)
 @Composable

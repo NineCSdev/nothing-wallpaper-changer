@@ -40,9 +40,7 @@ object AppModule {
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onOpen(db: SupportSQLiteDatabase) {
                     super.onOpen(db)
-                    // One-time cleanup: delete the legacy `edited_wallpapers/` directory that
-                    // was used before the dynamic processing pipeline (v3 → v4 migration).
-                    // Safe to call on every open as it is a no-op once the directory is gone.
+                    // Legacy directory from before edits were applied at render time; no-op once gone
                     val editedDir = File(context.filesDir, "edited_wallpapers")
                     if (editedDir.exists()) {
                         val deleted = editedDir.deleteRecursively()
@@ -56,7 +54,7 @@ object AppModule {
     @Provides
     fun provideWallpaperDao(database: AppDatabase): WallpaperDao = database.wallpaperDao()
 
-    /** A scope that outlives every screen. [SupervisorJob] so one failed operation cannot cancel the next one */
+    /** Outlives every screen; [SupervisorJob] so one failed operation cannot cancel the next. */
     @Provides
     @Singleton
     @ApplicationScope

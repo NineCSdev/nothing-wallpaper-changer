@@ -20,11 +20,7 @@ import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
-/**
- * The permission set every photo-access request launches: on Android 14+ both `READ_MEDIA_IMAGES`
- * and `READ_MEDIA_VISUAL_USER_SELECTED` (so a "select photos" choice lands as a proper partial
- * grant), on Android 13 just `READ_MEDIA_IMAGES`.
- */
+/** Android 14+ also asks for `READ_MEDIA_VISUAL_USER_SELECTED` so a "select photos" choice lands as a proper partial grant. */
 fun mediaAccessPermissions(): Array<String> =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
         arrayOf(
@@ -36,21 +32,16 @@ fun mediaAccessPermissions(): Array<String> =
     }
 
 /**
- * True while the app holds only the Android 14+ partial "selected photos" grant. UI-side twin of
- * [WallpaperSources.hasPartialMediaAccess][com.ninecsdev.wallpaperchanger.data.source.WallpaperSources.hasPartialMediaAccess]
- * for call sites that only have a [Context].
+ * True while only the Android 14+ partial "selected photos" grant is held; twin of
+ * `WallpaperSources.hasPartialMediaAccess` for callers that only have a [Context].
  */
 fun Context.hasPartialMediaAccess(): Boolean =
-    Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
         checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED &&
         checkSelfPermission(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) ==
         PackageManager.PERMISSION_GRANTED
 
-/**
- * Opens this app's system settings page — the only reliable route from the partial "selected
- * photos" grant to full photo access: re-requesting the permission from that state just re-opens
- * the manage-selection sheet (select more photos), with no dependable "allow all" option.
- */
+/** Re-requesting from the partial grant only re-opens the manage-selection sheet, so app settings is the reliable route to full access. */
 fun Context.openAppSettings() {
     startActivity(
         Intent(
@@ -60,23 +51,12 @@ fun Context.openAppSettings() {
     )
 }
 
-/** Which pre-prompt the gate is currently showing, if any. */
 private enum class MediaAccessPrompt { DENIED, PARTIAL }
 
 /**
- * Wraps a photo-pick [launchPicker] action with the in-context `READ_MEDIA_IMAGES` pre-prompt
- * the returned lambda launches the picker directly while the full permission is held,
- * and otherwise shows a dialog explaining why access is worth granting.
- * Has a distinct copy for the Android 14+ partial "selected photos" state, where confirming opens
- * the app's system settings page (see [openAppSettings] for why not a re-request) and the pick is
- * abandoned — the user re-taps after upgrading. Every other outcome still ends in the picker:
- * denied-state "allow" goes through the system permission request first, the cancel actions skip
- * straight to it, and the pick is internalized
- * [WallpaperSources.acquirePicked][com.ninecsdev.wallpaperchanger.data.source.WallpaperSources.acquirePicked]
- * falls back on the missing permission, so denial never blocks the feature.
- *
- * Shared by the create-collection photos pick and the add-images pick; the single-image relink
- * pick deliberately skips the gate (rare path, silent internalize is fine).
+ * Wraps [launchPicker] in the `READ_MEDIA_IMAGES` pre-prompt. Every outcome ends in the picker except
+ * the partial-grant prompt, which opens app settings and abandons the pick. Denial never blocks the
+ * feature: an ungranted pick is internalized instead of referenced. The relink pick skips the gate.
  */
 // TODO tests: check "MediaStore Transition Tests" vault note
 @Composable

@@ -59,40 +59,21 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration.Companion.milliseconds
 
-/**
- * How long after the open flight starts the chrome (overlay UI) begins fading in.
- */
 private const val CHROME_ENTER_DELAY_MILLIS = 100L
 
-/** Gap left between pages, visible mid-swipe */
 private val PAGE_SPACING = 16.dp
 
-/** How far the backdrop and the chrome fade at the far end of a way out. Image keeps full opacity */
+// How far the backdrop and chrome fade at the far end of a way out; the image stays opaque
 private const val DISMISS_SCRIM_FADE = 0.7f
 
 /** Longest the close waits for its departure bounds before going anyway. A few frames, not a feel. */
 private const val LEAVE_FRAMING_TIMEOUT_MILLIS = 100L
 
 /**
- * Full-screen wallpaper preview overlay, browsed like a gallery: pinch to zoom, drag a zoomed
- * image around, swipe between wallpapers, and tap to hide or show the chrome.
- * Shows an edited badge if applicable, an edit button that navigates to the wallpaper editor,
- * and a star that makes the shown image its collection's default wallpaper. Unedited pages show
- * the whole photo, or with [framedByRule] the screen [cropRule] frames it to.
- *
- * **Leaving** is the close button, system back, a pinch-in released below the exit threshold, or
- * a downward drag. An upward drag at rest pulls up [PreviewDetailsSheet] instead.
- *
- * Opened/closed with a shared-element zoom. A flight needs both ends registered
- * under the same key *before* it starts, so the page showing [sharedWallpaperId]
- * keeps its flight modifier (via [previewFlightModifier]) for the whole time the
- * preview is open: while settled it does nothing (the grid cell only registers
- * during open/close), but the close flight can start from it instantly.
- *
- * **Chrome** shows once the open flight is underway and hides as the close starts. In between, a
- * tap toggles it, a gesture hides it, a double tap hides it zooming in and shows it zooming out,
- * and the image crossing back into rest restores it. While the details sheet is up, taps and the
- * close button close the sheet instead.
+ * A flight needs both ends registered under the same key before it starts, so the page showing
+ * [sharedWallpaperId] keeps its flight modifier while open (inert while settled).
+ * Chrome: a tap toggles it, a gesture hides it, the image crossing back into rest restores it; while
+ * the details sheet is up, taps and the close button close the sheet instead.
  */
 @Composable
 internal fun WallpaperPreviewOverlay(
@@ -140,8 +121,7 @@ internal fun WallpaperPreviewOverlay(
         }
     }
 
-    // Recreate the pager when a new open pins a different start page (covers
-    // re-opening another wallpaper while the previous close is still fading out).
+    // Recreate the pager when a new open pins a different start page, e.g. reopening another wallpaper mid-fade-out
     key(safeInitialIndex) {
         val pagerState = rememberPagerState(
             initialPage = safeInitialIndex,
@@ -152,14 +132,13 @@ internal fun WallpaperPreviewOverlay(
 
         fun closeSheetOr(action: () -> Unit) = if (detailsSheet.isShown) detailsSheet.close() else action()
 
-        // Nothing is taken until the overlay has finished arriving
         val acceptsGestures = rememberUpdatedState(
             transition.currentState == EnterExitState.Visible &&
                 transition.targetState == EnterExitState.Visible &&
                 !zoomState.leaveRequested
         )
 
-        // Reported on the settled page, not current one to stay mid-swipe
+        // Settled page, not current, so nothing changes mid-swipe
         LaunchedEffect(pagerState, wallpapers) {
             snapshotFlow { pagerState.settledPage }
                 .collect { page ->
@@ -168,7 +147,7 @@ internal fun WallpaperPreviewOverlay(
                 }
         }
 
-        // Zoom belongs to the page you are on, not to the photo so leaving resets it
+        // Zoom belongs to the page you are on, not to the photo, so leaving resets it
         LaunchedEffect(pagerState, zoomState) {
             snapshotFlow { pagerState.settledPage }.collect { zoomState.handOverTo(it) }
         }
@@ -275,10 +254,7 @@ internal fun WallpaperPreviewOverlay(
     }
 }
 
-/**
- * One page of the pager: the image, the gestures that zoom it, and its details sheet.
- * One [zoomState] serves the whole pager, so only the [current][isCurrent] page reads it.
- */
+/** One [zoomState] serves the whole pager, so only the [current][isCurrent] page reads it. */
 @Suppress("ModifierParameter") // flightModifier goes on the image, not on the page's root
 @Composable
 private fun PreviewPage(
@@ -335,8 +311,7 @@ private fun PreviewPage(
                     modifier = pageContent
                 )
             } else {
-                // Same crop-rect morph, placeholder, and sizing-before-element
-                // but self-crops at any bounds, so this end is simply the full screen.
+                // Self-crops at any bounds, so this end is simply the full screen
                 EditableWallpaperImage(
                     wallpaper = wallpaper,
                     contentDescription = stringResource(R.string.cd_wallpaper_preview),
@@ -359,8 +334,6 @@ private fun PreviewPage(
 }
 
 /**
- * An unedited page: the whole photo, or the screen [framing] crops it to when set.
- *
  * The shared element is sized to the image's fit rect (not the full screen) and both flight ends
  * use Crop. The aspect is seeded from the grid thumbnail so the flight targets the right rect from
  * frame one, and falls back to Fit until the image reports its own.

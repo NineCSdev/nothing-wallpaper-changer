@@ -2,11 +2,7 @@ package com.ninecsdev.wallpaperchanger.data.local
 
 import android.os.Build
 
-/**
- * Screen-off delay defaults tuned per device, keyed by [Build.DEVICE] codename
- * (stable across OS updates/regions, unlike the human-readable [Build.MODEL]).
- * Devices not in the table fall back to the Phone (1) value.
- */
+/** Screen-off delay per [Build.DEVICE] codename (stable across OS updates and regions, unlike [Build.MODEL]); unknown devices get the Phone (1) value. */
 object DeviceDefaults {
     private val DELAYS_BY_CODENAME = mapOf(
         "Spacewar" to 250L, // Nothing Phone (1)

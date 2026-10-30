@@ -21,12 +21,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 /** The gap between two settings rows, and the only vertical number a caller gets to assume. */
 private val RowGap = 24.dp
 
-/**
- * A labeled group of settings rows, separated from the group above it by a rule.
- *
- * The section owns its own divider so the screen body cannot forget one: the first section on a
- * screen passes [showDivider] `false`, everything below leaves the default.
- */
+/** The section owns its divider so the screen body cannot forget one: the first section passes [showDivider] `false`. */
 @Composable
 internal fun SettingsSection(
     label: String,

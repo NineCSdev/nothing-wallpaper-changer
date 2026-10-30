@@ -13,7 +13,6 @@ import javax.inject.Inject
 
 
 
-/** The export half of the Backup screen. */
 @HiltViewModel
 class BackupViewModel @Inject constructor(
     private val backupExporter: BackupExporter
@@ -33,7 +32,6 @@ class BackupViewModel @Inject constructor(
 
     override fun acknowledgeExport() = backupExporter.acknowledge()
 
-    /** Starts writing the archive the user has just chosen a place for. */
     fun export(target: Uri) {
         backupExporter.start(
             target = target,

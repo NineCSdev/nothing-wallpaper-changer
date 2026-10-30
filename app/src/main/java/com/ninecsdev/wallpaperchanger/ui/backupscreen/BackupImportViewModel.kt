@@ -24,11 +24,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Drives the restore wizard: which step is showing, and what the user has decided so far.
- *
- * **The decisions survive the SAF round-trips.** The archive's uri and every folder answer live
- * in the [SavedStateHandle]. The commit runs on [ApplicationScope], because a restore that has
- * started destroying the old install must not be abandoned halfway by the user leaving the screen.
+ * The archive uri and every folder answer live in [SavedStateHandle], so decisions survive SAF round-trips.
+ * The commit runs on [ApplicationScope]: a restore that has started destroying the old install must not
+ * be abandoned when the user leaves the screen.
  */
 @HiltViewModel
 class BackupImportViewModel @Inject constructor(
@@ -44,9 +42,7 @@ class BackupImportViewModel @Inject constructor(
         const val KEY_ARCHIVE = "backup_archive_uri"
         const val KEY_DECISIONS = "backup_folder_decisions"
 
-        /** One decision, as `<collection index>|<answer>`. */
         const val DECISION_SEPARATOR = '|'
-        /** The answer that means "skip". */
         const val SKIPPED = ""
     }
 
@@ -133,7 +129,6 @@ class BackupImportViewModel @Inject constructor(
         plan?.let { advanceFromFolders(it) }
     }
 
-    /** Shows the next undecided folder, or starts the restore once every one has an answer. */
     private fun advanceFromFolders(parsed: BackupImportPlan) {
         val decisions = decisions()
         val next = parsed.folders.indexOfFirst { it.collectionIndex !in decisions }
@@ -180,7 +175,6 @@ class BackupImportViewModel @Inject constructor(
         _uiState.update { it.copy(step = BackupImportStep.Failed(failure), needsMediaAccess = false) }
     }
 
-    /** Closes the wizard and hands the screen back to the Backup screen's own body. */
     override fun onDismissed() {
         if (_uiState.value.step is BackupImportStep.Working) return
         _uiState.value = BackupImportUiState()
@@ -188,7 +182,6 @@ class BackupImportViewModel @Inject constructor(
         releaseArchive()
     }
 
-    /** Forgets the archive and hands its grant back.*/
     private fun releaseArchive() {
         val archive = savedState.get<String>(KEY_ARCHIVE) ?: return
         savedState.remove<String>(KEY_ARCHIVE)

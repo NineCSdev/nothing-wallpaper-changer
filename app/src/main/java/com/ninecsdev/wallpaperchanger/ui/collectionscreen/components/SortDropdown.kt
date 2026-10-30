@@ -36,9 +36,6 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * Dropdown for choosing the collection sort order.
- */
 @Composable
 internal fun SortDropdown(
     selected: CollectionSortOrder,

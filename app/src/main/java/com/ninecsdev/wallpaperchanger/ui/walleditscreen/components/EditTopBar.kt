@@ -28,14 +28,6 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * Top app-bar overlay for the wallpaper editor.
- *
- * Displays the back button, screen title, and contextual action buttons:
- * an undo button that steps back one edit and, with nothing left to undo, resets the saved edit
- * (visible only when either applies), a fit-height button,
- * and a settings toggle for the controls panel.
- */
 @Composable
 internal fun EditTopBar(
     isDefaultWallpaper: Boolean,
@@ -63,7 +55,7 @@ internal fun EditTopBar(
                     )
                 )
             )
-            // After the gradient so it paints behind the status bar.
+            // After the gradient so it paints behind the status bar
             .statusBarsPadding()
             .padding(top = 8.dp, bottom = 24.dp, start = 4.dp, end = 4.dp)
     ) {

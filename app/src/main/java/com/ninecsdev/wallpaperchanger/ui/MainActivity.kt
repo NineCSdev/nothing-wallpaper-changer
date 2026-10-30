@@ -36,9 +36,6 @@ class MainActivity : ComponentActivity() {
     private val collectionViewModel: CollectionViewModel by viewModels()
 
 
-    // Activity Result Launchers
-
-    // Notification permission
     private val notificationLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) {
@@ -46,7 +43,6 @@ class MainActivity : ComponentActivity() {
         startWallpaperServiceNow()
     }
 
-    // Folder picker
     private val folderLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
@@ -56,7 +52,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // Photos picker
     private val photosLauncher = registerForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia()
     ) { uris ->
@@ -66,7 +61,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // Default wallpaper picker
     private val defaultWallpaperLauncher = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->

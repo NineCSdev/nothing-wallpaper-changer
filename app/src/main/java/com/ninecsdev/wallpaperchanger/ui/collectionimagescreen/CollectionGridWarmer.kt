@@ -21,25 +21,19 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Decodes the first screen of a collection's grid into Coil's memory cache as the collection is
- * tapped, so the grid's own requests, issued once it has composed, find their tiles already
- * there instead of drawing placeholders while they load.
- */
+/** Decodes the first screen of a collection's grid into Coil's memory cache when the collection is tapped. */
 @Singleton
 class CollectionGridWarmer @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
     private val repository: WallpaperRepository,
     @param:ApplicationScope private val scope: CoroutineScope
 ) {
-    /** Warm-ups still loading, by memory cache key. */
     private val inFlight = ConcurrentHashMap<String, Deferred<ImageResult>>()
 
     fun warm(collectionId: Long) {
         scope.launch {
             val metrics = appContext.resources.displayMetrics
-            // The grid spans the screen width, so a cell is a column's share of it. Asking for the
-            // whole cell, padding included, keeps the bitmap at least as large as the tile's request
+            // Whole cell, padding included, keeps the bitmap at least as large as the tile's request
             val cellPx = metrics.widthPixels / GRID_COLUMNS
             val firstScreen = (metrics.heightPixels + cellPx - 1) / cellPx * GRID_COLUMNS
             val imageLoader = appContext.imageLoader
@@ -66,10 +60,7 @@ class CollectionGridWarmer @Inject constructor(
         }
     }
 
-    /**
-     * Holds a grid request back until the warm-up for the same tile lands, so it reads the
-     * result from memory instead of loading the same thumbnail a second time alongside it.
-     */
+    /** Holds a grid request until the warm-up for the same tile lands, so it isn't loaded twice. */
     val interceptor = Interceptor { chain ->
         val request = chain.request
         if (!request.getExtra(WARM_UP)) {

@@ -28,20 +28,13 @@ abstract class GLWallpaperService : WallpaperService() {
             super.onCreate(surfaceHolder)
             surfaceHolder.setFormat(PixelFormat.OPAQUE)
             glSurfaceView = WallpaperGLSurfaceView(this@GLWallpaperService)
-            // Offset notifications are deliberately NOT requested, and nothing here forwards
-            // them. No renderer pans, so every launcher page swipe would fire onOffsetsChanged ->
-            // requestRender and repaint a bit-identical frame — the whole atmosphere pipeline
-            // (blob field, its blur, and the composite) for nothing. Enable this together with a
-            // renderer that actually uses the offset.
+            // Offset notifications are deliberately not requested: no renderer pans, so every page
+            // swipe would repaint a bit-identical frame.
         }
 
         /**
-         * Attaches [renderer] and pins dirty-mode rendering.
-         *
-         * Dirty mode is not a caller's choice: a renderer here re-arms itself with
-         * [requestRender] while it animates and idles completely between morphs, so a continuous
-         * loop would redraw a bit-identical frame forever. Pinned here rather than left to each
-         * service, which is how it once got set twice.
+         * Attaches [renderer] and pins dirty-mode rendering: renderers re-arm themselves with
+         * [requestRender] while animating, so a continuous loop would redraw identical frames forever.
          */
         fun setRenderer(renderer: GLSurfaceView.Renderer) {
             glSurfaceView?.setRenderer(renderer)
@@ -49,12 +42,8 @@ abstract class GLWallpaperService : WallpaperService() {
         }
 
         /**
-         * Runs [action] on the GL thread, where a live context is required — releasing GL objects
-         * at teardown, principally.
-         *
-         * Best-effort: `GLSurfaceView`'s thread checks its exit flag *before* draining the event
-         * queue, so anything queued after the exit request may never run. That is survivable for
-         * releases, since the dying context takes its objects with it regardless.
+         * Runs [action] on the GL thread. Best-effort: the thread checks its exit flag before
+         * draining the queue, so anything queued after the exit request may never run.
          */
         protected fun queueGlEvent(action: Runnable) {
             glSurfaceView?.queueEvent(action)
@@ -65,14 +54,8 @@ abstract class GLWallpaperService : WallpaperService() {
         }
 
         /**
-         * Draws one frame even when the GL thread was already paused after going invisible, then
-         * re-arms the pause.
-         *
-         * Without this, work queued while the screen is off (a delivered wallpaper waiting to be
-         * uploaded) sits until [onVisibilityChanged] resumes the thread — so the whole upload
-         * lands on the *first visible frame* and stalls the wake. Rendering it here keeps that cost
-         * in the dark. Safe to call while paused: the engine's surface outlives visibility, and
-         * `preserveEGLContextOnPause` keeps the context across the pause/resume.
+         * Draws one frame even when the GL thread is paused, then re-arms the pause. Keeps work
+         * queued while the screen is off (a delivered wallpaper's upload) off the first visible frame.
          */
         fun renderPendingWork() {
             pauseHandler.removeCallbacks(pauseRunnable)
@@ -86,10 +69,8 @@ abstract class GLWallpaperService : WallpaperService() {
                 pauseHandler.removeCallbacks(pauseRunnable)
                 glSurfaceView?.onResume()
             } else {
-                // Draw one more frame in the renderer's current state, then pause a few
-                // frames later instead of immediately. Pausing the GL thread the instant
-                // we go invisible leaves a stale frame latched in the surface, which the
-                // compositor flashes on the next wake. Present a fresh frame first.
+                // Pausing the instant we go invisible leaves a stale frame latched in the surface
+                // that the compositor flashes on wake; present a fresh one first.
                 renderThenReArmPause()
             }
         }
@@ -104,33 +85,25 @@ abstract class GLWallpaperService : WallpaperService() {
         override fun onDestroy() {
             super.onDestroy()
             pauseHandler.removeCallbacks(pauseRunnable)
-            // `onPause()` alone parks the GL thread but never ends it. The picker opens and closes
-            // preview engines freely, so that accumulated.
+            // onPause() alone parks the GL thread but never ends it.
             glSurfaceView?.detach()
             glSurfaceView = null
         }
 
-        // No onSurfaceCreated/Changed/Destroyed overrides here, deliberately.
-        //
-        // GLSurfaceView's constructor registers itself as a callback on whatever getHolder()
-        // returns — which the subclass below points at the *engine's* holder. The engine already
-        // dispatches to every callback on that holder, so the view is notified without our help.
-        // Forwarding as well delivered each event twice, and a second surfaceChanged re-fires the
-        // renderer's onSurfaceChanged with the same dimensions.
+        // No onSurface* overrides, deliberately: the view registers itself on the engine's holder
+        // (see getHolder below), so forwarding would deliver every event twice.
 
         private inner class WallpaperGLSurfaceView(context: Context) : GLSurfaceView(context) {
             init {
                 setEGLConfigChooser(8, 8, 8, 0, 0, 0)
                 setEGLContextClientVersion(3)
-                // Survives the pause/resume of an app switch. Without it the context is destroyed
-                // and rebuilt on every return to the home screen, and the rebuild re-fires both
-                // onSurfaceCreated and onSurfaceChanged.
+                // Without it the context is rebuilt on every return to the home screen.
                 preserveEGLContextOnPause = true
             }
 
             override fun getHolder(): SurfaceHolder = this@GLEngine.surfaceHolder
 
-            /** There is no window to detach from, so the teardown has to be invoked directly. */
+            /** There is no window to detach from, so teardown is invoked directly. */
             fun detach() = onDetachedFromWindow()
         }
     }

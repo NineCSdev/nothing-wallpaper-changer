@@ -13,14 +13,7 @@ import com.ninecsdev.wallpaperchanger.ui.components.SettingsToggleRow
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * The "keep local copies" toggle.
- *
- * Without `READ_MEDIA_IMAGES` every pick is internalized, so the toggle shows the effective
- * (forced-on) value; the stored preference is untouched, and tapping the toggle requests the
- * permission instead of changing the setting. From the partial "selected photos" state that
- * request re-shows the system dialog (select more / allow all).
- */
+/** Without `READ_MEDIA_IMAGES` shows the effective (forced-on) value, and tapping requests the permission; the stored preference is untouched. */
 @Composable
 internal fun LocalCopiesRow(
     checked: Boolean,

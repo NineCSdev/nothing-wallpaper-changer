@@ -47,7 +47,6 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 /** Shared by all three pieces of chrome, so they leave together */
 private val ChromeExitFade = fadeOut(animationSpec = tween(durationMillis = 100))
 
-/** How far above the details sheet's top edge the bottom chrome rides. */
 private val SHEET_RIDE_GAP = 16.dp
 
 private val ACTION_BAR_BOTTOM_PADDING = 48.dp
@@ -57,10 +56,6 @@ private val EDITED_BADGE_PADDING = 24.dp
 private val ChipColor = NothingBlack.copy(alpha = 0.5f)
 private const val NOT_APPLICABLE_ALPHA = 0.4f
 
-/**
- * The preview's chrome: the top bar, the action bar riding the [detailsSheet], and the edited badge.
- * Fades with [fadeProgress] as a gesture carries the preview away.
- */
 @Composable
 internal fun PreviewChrome(
     visible: Boolean,
@@ -146,7 +141,6 @@ private fun Modifier.ridesDetailsSheet(sheet: PreviewDetailsSheetState, restGap:
     translationY = -(sheet.shownHeight - (restGap - SHEET_RIDE_GAP).toPx()).coerceAtLeast(0f)
 }
 
-/** What the shown page is framed by, which is what the top-right toggle reports. */
 private enum class PageFraming { WHOLE_PHOTO, CROP_RULE, EDIT }
 
 @Composable

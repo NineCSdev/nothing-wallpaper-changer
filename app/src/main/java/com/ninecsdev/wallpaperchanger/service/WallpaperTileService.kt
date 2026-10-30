@@ -24,12 +24,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
-/**
- * Quick settings tile for instant control of the app.
- *
- * The tile is an active tile, so the panel never binds it.
- */
+/** Quick settings tile. It is an active tile, so the panel never binds it; [TilePublisher] requests redraws. */
 @AndroidEntryPoint
 class WallpaperTileService : TileService() {
 
@@ -47,8 +44,6 @@ class WallpaperTileService : TileService() {
     override fun onStartListening() {
         super.onStartListening()
 
-        // Single source of truth: render the tile from the manager's derived state flow.
-        // This replaces the old serviceEvent collection + separate power-save BroadcastReceiver.
         stateJob = serviceScope.launch {
             serviceLifecycle.serviceState.filterNotNull().collectLatest { render(it) }
         }
@@ -64,11 +59,11 @@ class WallpaperTileService : TileService() {
         serviceScope.cancel()
     }
 
-    /** Handles the user tapping the tile. sA tap on a cold process arrives before the state has resolved. */
+    /** A tap on a cold process arrives before the state has resolved. */
     override fun onClick() {
         super.onClick()
 
-        // What the user actually tapped, read before anything repaints it
+        // What the user actually tapped, read before anything repaints it.
         val shown = qsTile?.takeIf { !it.subtitle.isNullOrBlank() }?.state
 
         val resolved = serviceLifecycle.serviceState.value
@@ -78,7 +73,7 @@ class WallpaperTileService : TileService() {
         }
 
         serviceScope.launch {
-            val state = withTimeoutOrNull(RESOLVE_TIMEOUT_MS) {
+            val state = withTimeoutOrNull(RESOLVE_TIMEOUT_MS.milliseconds) {
                 serviceLifecycle.serviceState.filterNotNull().first()
             }
             if (state == null) {
@@ -92,7 +87,7 @@ class WallpaperTileService : TileService() {
     /** Acts on [state], unless the tile was showing something [state] contradicts. */
     private fun act(state: ServiceState, shown: Int?) {
         if (shown != null && shown != tileStateFor(state)) {
-            // The copy on screen outlived the process that painted it. Correct it and let the user choose again
+            // The tile on screen outlived the process that painted it: correct it and let the user choose again.
             Log.d(tag, "Tap dropped: tile showed $shown, state is $state")
             render(state)
             return
@@ -106,8 +101,8 @@ class WallpaperTileService : TileService() {
             is ServiceState.Stopping -> Unit
             is ServiceState.Loading -> Unit
             is ServiceState.Stopped -> {
-                // Express the wish, the authority decides whether it is legal and shows the
-                // tap immediately as Loading, self-healing if the service never arrives
+                // The lifecycle authority decides whether the wish is legal and shows Loading at once,
+                // self-healing if the service never arrives.
                 if (serviceLifecycle.onIntent(ServiceIntent.StartRequested) is LifecycleVerdict.Accepted) {
                     startForegroundService(Intent(this, WallpaperService::class.java))
                 }
@@ -121,9 +116,6 @@ class WallpaperTileService : TileService() {
         }
     }
 
-    /**
-     * Renders the tile's visual state from a resolved [ServiceState].
-     */
     private fun render(state: ServiceState) {
         val tile = qsTile ?: return
 
@@ -135,9 +127,6 @@ class WallpaperTileService : TileService() {
         Log.d(tag, "Tile updated: state=${tile.state}")
     }
 
-    /**
-     * The `Tile.STATE_*` a [ServiceState] paints as.
-     */
     private fun tileStateFor(state: ServiceState): Int = when (state) {
         is ServiceState.Running, is ServiceState.Loading, is ServiceState.Paused, is ServiceState.PausedDnd -> Tile.STATE_ACTIVE
         is ServiceState.Stopping, is ServiceState.Stopped -> Tile.STATE_INACTIVE
@@ -156,12 +145,6 @@ class WallpaperTileService : TileService() {
         is ServiceState.PausedDnd -> R.string.tile_subtitle_paused_dnd
     }
 
-    /**
-     * Shows a system dialog originating from the tile.
-     * This is used to provide more detailed feedback or actions to the user, such as
-     * prompting them to open the app.
-     * @param message The string to display in the dialog's body.
-     */
     private fun showTileMessage(message: String) {
         showDialog(
             AlertDialog.Builder(this)

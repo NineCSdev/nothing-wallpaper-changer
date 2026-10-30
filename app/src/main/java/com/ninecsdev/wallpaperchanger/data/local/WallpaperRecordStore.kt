@@ -20,10 +20,7 @@ private val KEY_ATMOSPHERE_LIVE_WALLPAPER_ID = longPreferencesKey("atmosphere_li
 private val KEY_ATMOSPHERE_RENDER_KEY = stringPreferencesKey("atmosphere_render_key")
 private val KEY_APPLIED_WALLPAPER_ID = longPreferencesKey("applied_wallpaper_id")
 
-/**
- * What is on screen, and what is queued to be. All fields are absent on a fresh install and
- * after a revert to the default wallpaper.
- */
+/** What is on screen and what is queued. All fields are null on a fresh install and after a revert to the default wallpaper. */
 data class WallpaperRecord(
     /** The membership whose image is on screen as the static wallpaper. */
     val appliedWallpaperId: Long? = null,
@@ -37,19 +34,13 @@ data class WallpaperRecord(
     val bufferedCollectionId: Long? = null
 )
 
-/**
- * Persists the [WallpaperRecord]. Separate from [AppDataStore] because settings record what the user
- * chose and this records what happened; both sit on the same preferences file.
- *
- * Reads are whole-record only, by design. Writes stay per-concern.
- */
+/** Persists the [WallpaperRecord]. Reads are whole-record only; writes are per-concern. */
 @Singleton
 class WallpaperRecordStore @Inject constructor(
     @ApplicationContext context: Context
 ) {
     private val dataStore: DataStore<Preferences> = context.appPreferences
 
-    /** Re-emits only on a real change. */
     val record: Flow<WallpaperRecord> = dataStore.safeData()
         .map { prefs ->
             WallpaperRecord(
@@ -62,7 +53,6 @@ class WallpaperRecordStore @Inject constructor(
         }
         .distinctUntilChanged()
 
-    /** One consistent read of every field. */
     suspend fun snapshot(): WallpaperRecord = record.first()
 
     /** Written together so the buffer and the collection it came from cannot diverge. */
@@ -76,7 +66,6 @@ class WallpaperRecordStore @Inject constructor(
     suspend fun setLiveAtmosphereWallpaperId(wallpaperId: Long?) =
         edit(KEY_ATMOSPHERE_LIVE_WALLPAPER_ID, wallpaperId)
 
-    /** Null reads as "nothing delivered". */
     suspend fun setAtmosphereRenderKey(renderKey: String?) =
         edit(KEY_ATMOSPHERE_RENDER_KEY, renderKey)
 
@@ -84,7 +73,6 @@ class WallpaperRecordStore @Inject constructor(
     suspend fun setAppliedWallpaperId(wallpaperId: Long?) =
         edit(KEY_APPLIED_WALLPAPER_ID, wallpaperId)
 
-    /** Wipes every field. */
     suspend fun clear() {
         dataStore.edit { prefs ->
             prefs.remove(KEY_APPLIED_WALLPAPER_ID)

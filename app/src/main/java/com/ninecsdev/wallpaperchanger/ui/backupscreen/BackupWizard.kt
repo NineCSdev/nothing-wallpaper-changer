@@ -36,13 +36,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
-/**
- * The restore wizard, one step at a time, rendered in the body of the Backup screen.
- *
- * Every step before [BackupImportStep.Working] is a question, and backing out at any of them
- * doesn't do anything. Each of those steps says so, and says which of them it is, so the folder
- * loop has a visible end.
- */
+/** Every step before [BackupImportStep.Working] is a question: backing out changes nothing, and each says so. */
 @Composable
 internal fun BackupWizard(
     step: BackupImportStep,
@@ -65,7 +59,6 @@ internal fun BackupWizard(
     }
 }
 
-/** How many steps the restore has in total: reviewing, (then the folder prompts), then the restore */
 private fun totalSteps(plan: BackupImportPlan) = if (plan.folders.isEmpty()) 2 else 3
 
 @Composable
@@ -119,7 +112,6 @@ private fun FolderStep(
             pluralStringResource(R.plurals.backup_import_images, step.prompt.images, step.prompt.images)
         )
     )
-    // The cost of skipping, named
     if (step.prompt.bundledImages > 0) {
         Text(
             text = stringResource(R.string.backup_import_folder_bundled_warning, step.prompt.bundledImages),
@@ -209,7 +201,6 @@ private fun FailedStep(failure: BackupImportFailure, onFinish: () -> Unit) {
     )
 }
 
-/** True of every step that is still a question */
 @Composable
 private fun SafeToLeave() = Meta(stringResource(R.string.backup_import_safe_to_leave))
 
@@ -223,7 +214,6 @@ private fun Body(text: String) {
     Text(text = text, style = NothingType.caption, color = NothingWhite.copy(alpha = 0.75f))
 }
 
-/** Consecutive [Meta] lines, close enough to read as one block instead of separate statements */
 @Composable
 private fun MetaBlock(content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp), content = content)
@@ -243,14 +233,7 @@ private fun formatDate(epochMillis: Long): String =
     DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
         .format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()))
 
-// Previews
-
-/**
- * Preview fixtures, shared with [BackupScreen]'s previews so the two can't drift.
- *
- * A plan's manifest only has to answer for its date and its mode here: the counts the review step
- * shows are the plan's own, not the lists'.
- */
+/** Shared with [BackupScreen]'s previews so the two can't drift. */
 private val PreviewManifest = BackupManifest(
     exportedAt = 1_757_000_000_000,
     collections = emptyList(),
@@ -276,7 +259,6 @@ private val PreviewFolderPrompt = FolderPrompt(
     folderKey = "cyberpunk"
 )
 
-/** Portable, and with folder prompts waiting, so the review reads "step 1 of 3" */
 private val PreviewPortablePlan = PreviewImportPlan.copy(
     manifest = PreviewManifest.copy(mode = BackupMode.PORTABLE),
     folders = List(2) { PreviewFolderPrompt }
@@ -291,7 +273,6 @@ internal object PreviewImportActions : BackupImportActions {
     override fun onDismissed() {}
 }
 
-/** One step, spaced the way [BackupScreen] spaces it */
 @Composable
 private fun PreviewStep(step: BackupImportStep) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -306,7 +287,6 @@ private fun PreviewStep(step: BackupImportStep) {
     }
 }
 
-/** Several steps at once, far enough apart to tell where one ends */
 @Composable
 private fun PreviewStack(content: @Composable ColumnScope.() -> Unit) {
     WallpaperChangerTheme {
@@ -324,9 +304,7 @@ private fun PreviewStack(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun BackupWizardQuestionsPreview() = PreviewStack {
     PreviewStep(BackupImportStep.Reading)
-    // Device archive, no folders to ask about: the shortest restore there is, 2 steps.
     PreviewStep(BackupImportStep.Review(PreviewImportPlan))
-    // Portable, with folders: the same step now counts to 3.
     PreviewStep(BackupImportStep.Review(PreviewPortablePlan))
 }
 

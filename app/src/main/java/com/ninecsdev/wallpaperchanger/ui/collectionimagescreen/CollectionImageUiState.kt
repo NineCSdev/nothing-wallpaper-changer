@@ -7,10 +7,8 @@ import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 
-/** Whether a cross-collection transfer copies or moves the selection. */
 enum class TransferMode { COPY, MOVE }
 
-/** A candidate destination collection shown in the transfer target picker. */
 data class TransferTarget(
     val collectionId: Long,
     val name: String,
@@ -19,11 +17,7 @@ data class TransferTarget(
     val isPinned: Boolean = false
 )
 
-/**
- * Outcome of the last transfer, carried by [CollectionImageNotice.Transfer].
- * Counts follow [TransferResult]'s rule: [transferred] is operations that took effect
- * (insert or edit-adoption), [alreadyPresent] is nothing-changed duplicates.
- */
+/** [transferred] counts operations that took effect (insert or edit-adoption); [alreadyPresent] counts no-op duplicates. */
 data class TransferSummary(
     val mode: TransferMode,
     val transferred: Int,
@@ -31,10 +25,6 @@ data class TransferSummary(
     val targetName: String
 )
 
-/**
- * Snapshot of the Collection Image screen state.
- * Owned entirely by [CollectionImageViewModel].
- */
 data class CollectionImageUiState(
     val collectionName: String = "",
     val collectionType: CollectionType? = null,
@@ -47,11 +37,11 @@ data class CollectionImageUiState(
     val isSelectionMode: Boolean = false,
     val selectedIds: Set<Long> = emptySet(),
     val previewWallpaper: WallpaperImage? = null,
-    /** The unavailable image the user tapped to re-link; Null when no re-link is in progress. */
+    /** The unavailable image being re-linked. */
     val relinkTarget: WallpaperImage? = null,
-    /** The transfer being configured (target picker open); null when no transfer is in progress. */
+    /** Non-null while the target picker is open. */
     val transferMode: TransferMode? = null,
-    /** Destination candidates for the open target picker (all collections except this one). */
+    /** All collections except this one. */
     val transferTargets: List<TransferTarget> = emptyList(),
     val isNamingNewTarget: Boolean = false
 ) {
@@ -63,15 +53,12 @@ data class CollectionImageUiState(
             null
         }
 
-    /**
-     * Whether every selected wallpaper is already favourite — the bulk action then un-favourites
-     * them (and the toolbar heart shows filled); otherwise it favourites the ones that aren't yet.
-     */
+    /** When true the bulk favourite action un-favourites; otherwise it favourites the rest. */
     val isSelectionAllFavorites: Boolean
         get() = isSelectionMode && selectedIds.isNotEmpty() &&
             wallpapers.filter { it.id in selectedIds }.all { it.fileId in favoriteFileIds }
 
-    /** Whether the single selection is already this collection's default; the action then clears it. */
+    /** When true the default action clears the default instead of setting it. */
     val isSelectionTheDefault: Boolean
         get() = defaultWallpaperId != null && selectedWallpaper?.id == defaultWallpaperId
 }

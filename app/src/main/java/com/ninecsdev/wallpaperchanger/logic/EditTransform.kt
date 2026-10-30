@@ -1,41 +1,27 @@
 package com.ninecsdev.wallpaperchanger.logic
 
 
-/**
- * Result of the edit transform calculation. All values are in container units.
- *
- * Callers that draw the raw source through a `Matrix` read [scale] with [drawX]/[drawY]. Callers
- * whose framework already fitted the content go through [computeLayerTransform] instead.
- */
+/** Values in container units. Callers whose framework already fitted the content use [computeLayerTransform] instead. */
 data class EditTransform(
     /** Absolute content→container scale: fit scale × zoom. */
     val scale: Float,
-    /** Pixel pan from the centered position, X axis. */
+    /** Pixel pan from the centered position. */
     val panX: Float,
-    /** Pixel pan from the centered position, Y axis. */
     val panY: Float,
-    /** Top-left X of the scaled content: centering + pan. Ready for `Matrix.postTranslate`. */
+    /** Top-left of the scaled content (centering + pan), ready for `Matrix.postTranslate`. */
     val drawX: Float,
-    /** Top-left Y of the scaled content: centering + pan. Ready for `Matrix.postTranslate`. */
     val drawY: Float,
     // Only ever divided by, to convert a pixel pan back into a normalized offset
     private val maxPanX: Float,
     private val maxPanY: Float,
 ) {
-    /** Whether the scaled content overflows the X axis, and so has any pan to give. */
     val canPanX: Boolean get() = maxPanX > 0f
 
-    /** Whether the scaled content overflows the Y axis, and so has any pan to give. */
     val canPanY: Boolean get() = maxPanY > 0f
 
-    /**
-     * Converts a pixel pan back into the persisted -1..1 offset, clamped to that range.
-     *
-     * Returns [fallback] unchanged on an axis with no room to pan.
-     */
+    /** Converts a pixel pan back into the persisted -1..1 offset; returns [fallback] on an axis with no room to pan. */
     fun offsetXFor(pan: Float, fallback: Float): Float = if (maxPanX > 0f) (pan / maxPanX).coerceIn(-1f, 1f) else fallback
 
-    /** The Y-axis twin of [offsetXFor]. */
     fun offsetYFor(pan: Float, fallback: Float): Float = if (maxPanY > 0f) (pan / maxPanY).coerceIn(-1f, 1f) else fallback
 }
 
@@ -47,18 +33,10 @@ data class LayerTransform(
 )
 
 /**
- * The single source of truth for the edit transform math (fit + zoom + normalized pan),
- * shared by the editor preview, the thumbnails and [BufferManager]'s render path, so the
- * wallpaper that lands on screen matches exactly what the user saw in the editor.
- *
- * Semantics:
- * - zoom = 1.0 → the content fits the container exactly (letterboxed / pillarboxed as needed).
- * - zoom > 1.0 → the content is scaled up (can fill and overflow the container).
- * - [offsetX]/[offsetY] are normalized to -1..1 over the full available pan range; when the
- *   scaled content doesn't overflow an axis, the pan range on that axis is 0.
- *
- * Content dimensions only need to be in units consistent with each other.
- * Container dimensions are in output pixels, and both must be > 0.
+ * Single source of truth for fit + zoom + normalized pan, shared by the editor preview, thumbnails and
+ * [BufferManager], so the wallpaper matches what the editor showed. zoom 1.0 fits the container;
+ * [offsetX]/[offsetY] are -1..1 over the full pan range (zero when the axis doesn't overflow).
+ * Container dimensions must be > 0.
  */
 fun computeEditTransform(
     contentWidth: Float,
@@ -95,11 +73,8 @@ fun computeEditTransform(
 }
 
 /**
- * [computeEditTransform] framed against the wallpaper canvas, for a container of any shape that
- * shows a centered window onto that framing. [drawX][EditTransform.drawX]/[drawY][EditTransform.drawY]
- * are in container pixels, so a caller drawing the raw source needs nothing else.
- *
- * Container and canvas dimensions all > 0.
+ * [computeEditTransform] framed against the wallpaper canvas, for a container of any shape showing
+ * a centered window onto it. drawX/drawY are in container pixels. Dimensions must be > 0.
  */
 // TODO tests: see vault note tests/EditTransform Tests.md (computeCanvasEditTransform)
 fun computeCanvasEditTransform(
@@ -134,11 +109,9 @@ fun computeCanvasEditTransform(
 }
 
 /**
- * The same framing as [computeCanvasEditTransform], for a container that has **already fitted the
- * content itself** and can only transform it afterward.
- * [scale][LayerTransform.scale] divides out the fit the container already applied.
- *
- * All dimensions in container pixels, all > 0; [contentAspect] is width / height.
+ * The same framing as [computeCanvasEditTransform], for a container that has already fitted the
+ * content itself; [LayerTransform.scale] divides out that fit. Dimensions in container pixels, > 0;
+ * [contentAspect] is width / height.
  */
 fun computeLayerTransform(
     contentAspect: Float,

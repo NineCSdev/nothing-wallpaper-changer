@@ -15,15 +15,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * ViewModel for the Wallpaper Edit screen.
- *
- * Loads the wallpaper to edit, exposes save/reset actions,
- * and coordinates with the repository.
- *
- * The actual zoom/offset state lives in the composable (gesture-driven),
- * and is passed to [save] only when the user confirms.
- */
+// The zoom/offset state is gesture-driven and lives in the composable; it reaches save() only on confirm.
 @HiltViewModel
 class WallpaperEditViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -50,14 +42,7 @@ class WallpaperEditViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Persists the edit params (zoom + offset) for this wallpaper.
-     * If the params are unchanged (no-op edit), exits immediately without writing.
-     *
-     * @param zoom Zoom factor (1.0 = cover/fill).
-     * @param offsetX Normalized X offset (-1..1).
-     * @param offsetY Normalized Y offset (-1..1).
-     */
+    /** [zoom] 1.0 is cover/fill; offsets are normalized to -1..1. Exits without writing when nothing changed. */
     // TODO tests: see vault note tests/Busy-Flag Guard Tests
     fun save(zoom: Float, offsetX: Float, offsetY: Float) {
         val wp = _uiState.value.wallpaper ?: return
@@ -86,18 +71,11 @@ class WallpaperEditViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Resets the edit: clears all edit parameters.
-     * The wallpaper falls back to displaying the original URI.
-     *
-     * Note: not used due to new exit after undoing edit revise deletion
-     * keep in case decided to use it in the future
-     */
+    // Currently unused: the editor leaves through resetAndExit
     fun reset() {
         val wp = _uiState.value.wallpaper ?: return
         viewModelScope.launch {
             repository.resetWallpaperEdit(wp)
-            // Reload to get the fresh state with cleared edit params
             val refreshed = repository.getWallpaperById(wallpaperId)
             _uiState.update { it.copy(wallpaper = refreshed) }
         }

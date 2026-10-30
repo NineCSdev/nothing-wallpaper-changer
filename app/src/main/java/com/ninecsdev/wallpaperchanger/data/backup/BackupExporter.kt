@@ -37,17 +37,12 @@ import java.util.zip.ZipOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Where a backup export has got to */
 sealed interface BackupExportState {
     data object Idle : BackupExportState
-    /** [done] of [total] images written */
     data class Running(val done: Int, val total: Int) : BackupExportState
     data class Finished(val summary: BackupExportSummary) : BackupExportState
     data class Failed(val detail: String) : BackupExportState
-    /**
-     * An export from a previous run of the app never finished, and the archive it left behind cannot
-     * be trusted. [archiveName] is that file. Null when the name could no longer be read.
-     */
+    /** An export from a previous run never finished, so its archive cannot be trusted. [archiveName] is null when the name could no longer be read. */
     data class Interrupted(val archiveName: String?) : BackupExportState
 }
 
@@ -56,12 +51,7 @@ data class BackupExportSummary(
     val bytes: Long
 )
 
-/**
- * Writes the whole install to a `.nwcbak` archive at a location the user picked.
- *
- * Runs on [ApplicationScope] to continue even if the user navigates away. [state] is how a screen
- * watches one that is already running.
- */
+/** Runs on [ApplicationScope] so it continues if the user navigates away; [state] is how a screen watches it. */
 @Singleton
 class BackupExporter @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
@@ -81,7 +71,6 @@ class BackupExporter @Inject constructor(
     private var job: Job? = null
 
     init {
-        // If an export was left unfinished tell the user that backup is unusable
         applicationScope.launch {
             val abandoned = exportRecord.inFlightTarget()
             // An active job would have moved the state off Idle, so that check covers both
@@ -91,7 +80,7 @@ class BackupExporter @Inject constructor(
         }
     }
 
-    /** Starts writing an archive to [target], a document the caller has just created. A second call is ignored */
+    /** [target] is a document the caller has just created. A second call while running is ignored. */
     fun start(target: Uri, mode: BackupMode) {
         if (job?.isActive == true) return
 
@@ -121,10 +110,8 @@ class BackupExporter @Inject constructor(
         job?.cancel()
     }
 
-    /** Returns the readout to [BackupExportState.Idle] once a screen has shown the outcome. */
     fun acknowledge() {
         if (_state.value is BackupExportState.Running) return
-        // Only once it has been shown we return to Idle
         if (_state.value is BackupExportState.Interrupted) {
             applicationScope.launch { exportRecord.setInFlightTarget(null) }
         }
@@ -135,15 +122,14 @@ class BackupExporter @Inject constructor(
         val rows = repository.readInstallRows()
         val fingerprints = fingerprintAll(rows.files)
 
-        // Entry name for every file whose bytes travel, positional so the manifest can name it; null for the rest
+        // Positional entry name for every file whose bytes travel, null for the rest
         val payloads = rows.files.mapIndexed { index, file ->
             if (!bundles(file, mode)) null
             else BackupFormat.imageEntry(index, extensionOf(fingerprints[index].displayName ?: file.uriString))
         }
         val bundling = payloads.withIndex().mapNotNull { (index, entry) -> entry?.let { index to it } }
 
-        // Built before the output is opened: it reads the sources, and holding the user's chosen
-        // document open across that would be for nothing.
+        // Built before the output is opened, since it reads every source
         val encodedManifest = BackupManifestCodec.encode(buildManifest(rows, mode, fingerprints, payloads))
 
         var done = 0
@@ -158,7 +144,7 @@ class BackupExporter @Inject constructor(
             zip.write(encodedManifest.toByteArray())
             zip.closeEntry()
 
-            // Images are already WebP or JPEG so they are already pretty compressed, wouldn't win much
+            // Images are already compressed
             zip.setLevel(Deflater.NO_COMPRESSION)
             bundling.forEach { (index, entry) ->
                 // The copy itself is blocking, so nothing else in this loop would ever notice a cancel
@@ -169,7 +155,6 @@ class BackupExporter @Inject constructor(
                 _state.value = BackupExportState.Running(done = done, total = bundling.size)
             }
 
-            // The closing record, the chance to disown a payload
             zip.setLevel(Deflater.DEFAULT_COMPRESSION)
             zip.putNextEntry(ZipEntry(BackupFormat.COMPLETE_ENTRY))
             zip.write(BackupCompletionCodec.encode(BackupCompletion(unreadable)).toByteArray())
@@ -184,14 +169,10 @@ class BackupExporter @Inject constructor(
             wallpaperSources.fingerprint(it.uriString, it.sourceType)
         }
 
-    /** Whether this file's bytes travel. */
     private fun bundles(file: WallpaperFile, mode: BackupMode): Boolean =
         file.isAvailable && (file.sourceType == SourceType.INTERNALIZED || mode == BackupMode.PORTABLE)
 
-    /**
-     * Streams [uri] into the archive as [entryName]. Returns the bytes written, or null when the
-     * source could not be read to the end.
-     */
+    /** Null when the source could not be read to the end. */
     private fun copyInto(zip: ZipOutputStream, entryName: String, uri: String): Long? {
         zip.putNextEntry(ZipEntry(entryName))
         val written = try {
@@ -221,8 +202,7 @@ class BackupExporter @Inject constructor(
         val collectionIndex = rows.collections.withIndex().associate { (index, it) -> it.id to index }
         val fileIndex = rows.files.withIndex().associate { (index, it) -> it.id to index }
         val membershipIndex = rows.memberships.withIndex().associate { (index, it) -> it.id to index }
-        // Read up front, and concurrently: a tombstone's name is the only thing that can re-key it
-        // onto a folder picked at a new location, and there can be hundreds of them.
+        // Concurrent because there can be hundreds of tombstones
         val exclusionNames = rows.exclusions.mapConcurrently(FINGERPRINT_CONCURRENCY) {
             wallpaperSources.fingerprint(it.uriString, SourceType.FOLDER_DOC).displayName
         }
@@ -306,7 +286,6 @@ class BackupExporter @Inject constructor(
         skipOnDnd = appDataStore.getSkipOnDnd()
     )
 
-    /** Undoes a failed export: the half-written file goes, and so does the record that it existed. */
     private suspend fun discardPartial(target: Uri) {
         try {
             DocumentsContract.deleteDocument(appContext.contentResolver, target)

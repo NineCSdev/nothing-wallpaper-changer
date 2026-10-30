@@ -38,11 +38,6 @@ import com.ninecsdev.wallpaperchanger.ui.mainscreen.components.WallpaperSelectio
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
-/**
- * Stateless UI for the main screen.
- * Composed of the status header, collection selection card,
- * default wallpaper card, and service control buttons.
- */
 @Composable
 fun MainScreen(
     uiState: MainUiState,
@@ -157,7 +152,6 @@ fun MainScreen(
         }
     }
 
-    // Active-collection picker sheet, over everything else.
     if (uiState.pickerSheet.isOpen) {
         ActiveCollectionPickerSheet(
             state = uiState.pickerSheet,

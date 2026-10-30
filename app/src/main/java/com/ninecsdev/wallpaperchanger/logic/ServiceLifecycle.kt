@@ -40,20 +40,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
- * The single authority on the rotation service's lifecycle: what state it is in, and which
- * transitions are legal from there.
- *
- * Callers state a [ServiceIntent] and obey the [LifecycleVerdict].
- *
- * Responsibilities:
- * - Judging intents against the current state ([onIntent])
- * - Deriving the authoritative [serviceState]
- * - Emitting [lifecycleActions] when the battery-saver decision changes under a live service
- * - Persisting the running flag on transitions, and self-healing a stale-true `service_running`
- *   flag (after a crash/kill without onDestroy). `service_desired` flag is deliberately left
- *   untouched (records the user's last intent and drives [ServiceRestartReceiver][com.ninecsdev.wallpaperchanger.service.ServiceRestartReceiver]).
+ * The single authority on the rotation service's lifecycle: callers state a [ServiceIntent] and obey
+ * the [LifecycleVerdict]. Also persists the running flag and self-heals a stale-true `service_running`
+ * (crash/kill without onDestroy). `service_desired` is left untouched: it records the user's last
+ * intent and drives the restart receiver.
  */
 @Singleton
 class ServiceLifecycle @Inject constructor(
@@ -78,15 +71,11 @@ class ServiceLifecycle @Inject constructor(
 
     private val _lifecycleIntent = MutableStateFlow<ServiceState>(ServiceState.Stopped)
 
-    /**
-     * Raw lifecycle intent, unreconciled. Exposed for the foreground notification, which renders
-     * the service's own view of itself; every other consumer collects [serviceState].
-     */
+    /** Raw and unreconciled: only the foreground notification renders this; every other consumer collects [serviceState]. */
     val lifecycleIntent: StateFlow<ServiceState> = _lifecycleIntent.asStateFlow()
 
     private var startTimeoutJob: Job? = null
 
-    /** Reactive view of `PowerManager.isPowerSaveMode`, backed by the system broadcast. */
     private fun powerSaveModeFlow(): Flow<Boolean> = callbackFlow {
         val powerManager = appContext.getSystemService(Context.POWER_SERVICE) as? PowerManager
         val receiver = object : BroadcastReceiver() {
@@ -103,7 +92,6 @@ class ServiceLifecycle @Inject constructor(
         awaitClose { appContext.unregisterReceiver(receiver) }
     }.distinctUntilChanged()
 
-    /** Reactive view of the system Do Not Disturb state, backed by the [ZEN_MODE_SETTING] value. */
     private fun dndActiveFlow(): Flow<Boolean> = callbackFlow {
         val observer = object : ContentObserver(null) {
             override fun onChange(selfChange: Boolean) {
@@ -121,24 +109,15 @@ class ServiceLifecycle @Inject constructor(
 
     private fun isDndActive(): Boolean = Settings.Global.getInt(appContext.contentResolver, ZEN_MODE_SETTING, ZEN_MODE_OFF) != ZEN_MODE_OFF
 
-    /**
-     * Both pause rules, evaluated together but kept separable.
-     *
-     * [LifecycleRules.effective] is what a live service should do. [LifecycleRules.battery] is
-     * carried because only the power-save half can also block a *stopped* service from starting.
-     */
+    /** [battery] is kept separately because only the power-save half can also block a *stopped* service from starting. */
     private data class LifecycleRules(
         val battery: LifecycleVerdict,
         val effective: LifecycleVerdict
     )
 
     /**
-     * What the two pause rules currently say, as one hot value.
-     *
-     * This is the only subscription to the power-save broadcast and the only observer of the
-     * Do Not Disturb setting in the app, and the only place either rule is evaluated.
-     *
-     * `null` means "not resolved yet". Consumers that must not act on a guess filter it out.
+     * The only subscription to the power-save broadcast and the DND setting, and the only place either
+     * rule is evaluated. Null means "not resolved yet": consumers that must not act on a guess filter it out.
      */
     private val rules: StateFlow<LifecycleRules?> = combine(
         powerSaveModeFlow(),
@@ -152,11 +131,7 @@ class ServiceLifecycle @Inject constructor(
         )
     }.distinctUntilChanged().stateIn(scope, SharingStarted.Eagerly, null)
 
-    /**
-     * What a live service should do when either pause decision changes under it.
-     *
-     * Transitions only: the first value is dropped. Collected for as long as the service lives.
-     */
+    /** Transitions only (the first value is dropped), collected for as long as the service lives. */
     val lifecycleActions: Flow<LifecycleVerdict> =
         rules.filterNotNull()
             .map { it.effective }
@@ -164,17 +139,14 @@ class ServiceLifecycle @Inject constructor(
             .drop(1)
             .onEach(::recordAction)
 
-    /** Whether the battery-saver rule is currently blocking the service in any way. */
     private val powerSaveBlockingFlow: Flow<Boolean> =
         rules.filterNotNull()
             .map { it.battery != LifecycleVerdict.RunActive }
             .distinctUntilChanged()
 
     /**
-     * Single authoritative service state. Every UI and tile consumer collects this flow.
-     *
-     * `null` means "not resolved yet". Consumers that must not act on a guess filter it out.
-     * Kept hot for the process lifetime so [StateFlow.value] is current for the tile's reads.
+     * Null means "not resolved yet"; consumers that must not act on a guess filter it out.
+     * Hot for the process lifetime so [StateFlow.value] is current for the tile's reads.
      */
     val serviceState: StateFlow<ServiceState?> = combine(
         _lifecycleIntent,
@@ -187,8 +159,7 @@ class ServiceLifecycle @Inject constructor(
     }.stateIn(scope, SharingStarted.Eagerly, null)
 
     init {
-        // Self-heal the persisted running flag: if it says "running" but the service is not actually alive
-        // (e.g. after a crash/kill without onDestroy), clear it. Idempotent with the normal stop sequence.
+        // Clears a stale persisted "running" (crash/kill without onDestroy); idempotent with the normal stop
         combine(appDataStore.serviceRunningFlow(), lifecycleTracker.isAlive) { persisted, alive ->
             persisted && !alive
         }.distinctUntilChanged()
@@ -196,12 +167,7 @@ class ServiceLifecycle @Inject constructor(
             .launchIn(scope)
     }
 
-    /**
-     * Judges one intent and moves the state if it is legal.
-     *
-     * The two facts that must not come from a possibly-seed flow  are read
-     * fresh by the caller and passed in with [ServiceIntent.ServiceStarting].
-     */
+    /** The facts that must not come from a possibly stale flow are read fresh by the caller and passed in with [ServiceIntent.ServiceStarting]. */
     // TODO tests: see vault note tests/Service Lifecycle Intent Tests.md
     fun onIntent(intent: ServiceIntent): LifecycleVerdict {
         val verdict = judge(intent)
@@ -209,12 +175,7 @@ class ServiceLifecycle @Inject constructor(
         return verdict
     }
 
-    /**
-     * Commands the running service down and returns once it has been told.
-     *
-     * Distinct from [ServiceIntent.ActiveCollectionDeleted], which only clears the standing intent so
-     * the service is not brought back on the next boot. Needed for the backup import. No-op on dead service.
-     */
+    /** Unlike [ServiceIntent.ActiveCollectionDeleted] this actually stops the service (needed for the backup import). No-op if it is dead. */
     // TODO: Breaks this class contract but I need to think more about it
     fun requestStop() {
         if (!lifecycleTracker.isAlive.value) return
@@ -246,10 +207,7 @@ class ServiceLifecycle @Inject constructor(
         }
     }
 
-    /**
-     * A surface asked for the service. Shows `Loading` immediately so the tap registers visibly,
-     * and arms the timeout that clears it if the service never arrives.
-     */
+    /** Shows `Loading` immediately so the tap registers, and arms the timeout that clears it if the service never arrives. */
     private fun onStartRequested(): LifecycleVerdict {
         if (_lifecycleIntent.value is ServiceState.Stopping) return LifecycleVerdict.Rejected(REJECT_STILL_STOPPING)
         if (lifecycleTracker.isAlive.value) return LifecycleVerdict.NoChange
@@ -259,10 +217,7 @@ class ServiceLifecycle @Inject constructor(
         return LifecycleVerdict.Accepted
     }
 
-    /**
-     * The startup gate. Refuses a start that overlaps a teardown, and applies the battery-saver
-     * rule to a service that may be coming up while the saver is already on.
-     */
+    /** Refuses a start that overlaps a teardown, and applies the battery-saver rule to a service coming up while the saver is on. */
     private fun onServiceStarting(
         hasActiveCollection: Boolean,
         policy: BatterySaverPolicy
@@ -278,10 +233,7 @@ class ServiceLifecycle @Inject constructor(
         return action
     }
 
-    /**
-     * The engine settled into the mode it was told to run in. Re-reads the rule rather than
-     * trusting the startup verdict.
-     */
+    /** Re-reads the rule rather than trusting the startup verdict. */
     private fun onEngineReady(): LifecycleVerdict {
         // Falls back to RunActive only if the rule has still not resolved
         val action = rules.value?.effective ?: LifecycleVerdict.RunActive
@@ -289,7 +241,6 @@ class ServiceLifecycle @Inject constructor(
         return action
     }
 
-    /** Moves the state to whatever a running-or-starting verdict implies. */
     private fun recordAction(action: LifecycleVerdict) {
         when (action) {
             is LifecycleVerdict.RunPaused -> {
@@ -319,7 +270,7 @@ class ServiceLifecycle @Inject constructor(
     private fun armStartTimeout() {
         startTimeoutJob?.cancel()
         startTimeoutJob = scope.launch {
-            val started = withTimeoutOrNull(START_TIMEOUT_MS) {
+            val started = withTimeoutOrNull(START_TIMEOUT_MS.milliseconds) {
                 lifecycleTracker.isAlive.first { it }
             }
             if (started == null && _lifecycleIntent.value is ServiceState.Loading) {
@@ -335,11 +286,7 @@ class ServiceLifecycle @Inject constructor(
         Log.d(TAG, "Service state → $state")
     }
 
-    /**
-     * Persists both the running flag (used for UI-state resolution and self-heal) and the
-     * desired-intent flag (used by ServiceRestartReceiver). They diverge only when the
-     * self-heal above clears a stale `service_running`
-     */
+    /** Running and desired diverge only when the init self-heal clears a stale `service_running`. */
     private fun persistRunningState(isRunning: Boolean) {
         scope.launch {
             appDataStore.setServiceRunning(isRunning)
@@ -348,7 +295,6 @@ class ServiceLifecycle @Inject constructor(
     }
 }
 
-/** The battery-saver rule, in one place. */
 internal fun batterySaverAction(
     isPowerSave: Boolean,
     policy: BatterySaverPolicy
@@ -359,18 +305,12 @@ internal fun batterySaverAction(
     else -> LifecycleVerdict.Abort
 }
 
-/** The Do Not Disturb rule: it only applies to a user who asked for it. */
 internal fun quietHoursAction(
     isDnd: Boolean,
     skipOnDnd: Boolean
 ): LifecycleVerdict = if (isDnd && skipOnDnd) LifecycleVerdict.RunPausedQuiet else LifecycleVerdict.RunActive
 
-/**
- * The two pause rules folded into the one verdict a live service acts on.
- *
- * Precedence: a battery-saver verdict other than [LifecycleVerdict.RunActive] wins outright.
- * DND only decides when battery saver has nothing to say.
- */
+/** A battery-saver verdict other than [LifecycleVerdict.RunActive] wins outright; DND only decides when battery saver has nothing to say. */
 internal fun lifecycleAction(
     isPowerSave: Boolean,
     policy: BatterySaverPolicy,
@@ -381,11 +321,7 @@ internal fun lifecycleAction(
     return if (battery != LifecycleVerdict.RunActive) battery else quietHoursAction(isDnd, skipOnDnd)
 }
 
-/**
- * Pure resolution of the authoritative [ServiceState] from the lifecycle intent and the runtime
- * signals. The liveness signals only ever *demote*: they strip a running claim the service no
- * longer backs, and never raise a stopped one.
- */
+/** Liveness signals only ever demote: they strip a running claim the service no longer backs, never raise a stopped one. */
 internal fun resolve(
     raw: ServiceState,
     persistedRunning: Boolean,

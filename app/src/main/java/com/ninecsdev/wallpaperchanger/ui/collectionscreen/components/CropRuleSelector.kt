@@ -17,10 +17,6 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * Single-choice crop-rule row shared by the create and edit collection cards; a thin icon
- * wrapper over [NothingSegmentedRow].
- */
 @Composable
 internal fun CropRuleSelector(
     selectedRule: CropRule,

@@ -6,21 +6,19 @@ import java.time.ZoneId
 
 private const val TAG = "RotationPolicy"
 
-/** How the "may this rotation happen?" question is asked. [PER_DAY] is deliberately a **calendar** rule */
+/** [PER_DAY] is deliberately a calendar rule (a new local date), not 24 hours. */
 enum class RotationPolicyKind { PER_LOCK, INTERVAL, PER_DAY }
 
 /**
- * The rule deciding whether a rotation trigger actually rotates, and when the next time-driven one
- * is due.
- *
- * [intervalMinutes] is only meaningful for [RotationPolicyKind.INTERVAL], carried so the UI can keep
- * the user's chosen interval visible while they toggle between kinds.
+ * Decides whether a rotation trigger actually rotates, and when the next time-driven one is due.
+ * [intervalMinutes] only matters for [RotationPolicyKind.INTERVAL]; it is carried so the UI keeps
+ * the chosen interval while the user toggles between kinds.
  */
 data class RotationPolicy(
     val kind: RotationPolicyKind,
     val intervalMinutes: Int = DEFAULT_INTERVAL_MINUTES
 ) {
-    /**`lastChangeAt <= 0` is the "never changed / re-anchored" sentinel and always passes. */
+    /** `lastChangeAt <= 0` is the "never changed / re-anchored" sentinel and always passes. */
     fun shouldRotateAt(
         lastChangeAt: Long,
         nowMillis: Long = System.currentTimeMillis(),
@@ -51,7 +49,6 @@ data class RotationPolicy(
             if (lastChangeAt <= 0L) {
                 nowMillis
             } else {
-                // Start of the day after the last change
                 Instant.ofEpochMilli(lastChangeAt)
                     .atZone(zoneId)
                     .toLocalDate()
@@ -72,7 +69,7 @@ data class RotationPolicy(
     }
 
     companion object {
-        /** The domain floor. Used as the minimum for the custom interval, must be higher than [RETRY_DELAY_MS][com.ninecsdev.wallpaperchanger.logic.RotationScheduler.RETRY_DELAY_MS] */
+        /** The domain floor; must stay above [RETRY_DELAY_MS][com.ninecsdev.wallpaperchanger.logic.RotationScheduler.RETRY_DELAY_MS]. */
         const val MIN_INTERVAL_MINUTES = 5
 
         /** 30 days for input hygiene */
@@ -88,11 +85,7 @@ data class RotationPolicy(
             minutes.coerceIn(MIN_INTERVAL_MINUTES, MAX_INTERVAL_MINUTES)
         )
 
-        /**
-         * Parses [encode]'s output plus the legacy `HOURLY` (60-minute interval).
-         *
-         * Falls back to [PerLock] in case it can't decode to not wedge rotation.
-         */
+        /** Parses [encode]'s output plus the legacy `HOURLY`; falls back to [PerLock] so a bad value cannot wedge rotation. */
         fun decode(raw: String?): RotationPolicy = when {
             raw == "PER_LOCK" -> PerLock
             raw == "PER_DAY" -> PerDay
@@ -108,16 +101,14 @@ data class RotationPolicy(
 }
 
 /**
- * What a collection says about its own cadence: defer to the app-wide policy, or carry its own.
- *
- * A genuine either/or rather than a nullable policy, so "follow global" survives editing an override and switching back
+ * A collection's own cadence: defer to the app-wide policy, or carry its own. Not a nullable
+ * policy, so an override survives switching to "follow global" and back.
  */
 sealed interface CollectionRotationSetting {
 
-    /** Use the global policy. The default for every new collection. */
+    /** The default for every new collection. */
     data object FollowGlobal : CollectionRotationSetting
 
-    /** This collection rotates on its own [policy], ignoring the global one. */
     data class Override(val policy: RotationPolicy) : CollectionRotationSetting
 
     fun encode(): String = when (this) {
@@ -129,11 +120,7 @@ sealed interface CollectionRotationSetting {
         private const val GLOBAL = "GLOBAL"
         private const val OVERRIDE_PREFIX = "OVERRIDE:"
 
-        /**
-         * Parses [encode]'s output and the legacy `rotationFrequency` values.
-         *
-         * **Legacy values become an [Override].**
-         */
+        /** Parses [encode]'s output; legacy `rotationFrequency` values become an [Override]. */
         fun decode(raw: String?): CollectionRotationSetting = when {
             raw == GLOBAL -> FollowGlobal
             raw != null && raw.startsWith(OVERRIDE_PREFIX) -> Override(RotationPolicy.decode(raw.removePrefix(OVERRIDE_PREFIX)))
@@ -142,7 +129,6 @@ sealed interface CollectionRotationSetting {
     }
 }
 
-/** The cadence a setting resolves to against a given global policy */
 fun CollectionRotationSetting.policyOr(fallback: RotationPolicy): RotationPolicy = when (this) {
     CollectionRotationSetting.FollowGlobal -> fallback
     is CollectionRotationSetting.Override -> policy

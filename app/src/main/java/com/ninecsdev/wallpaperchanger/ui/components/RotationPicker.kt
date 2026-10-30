@@ -58,17 +58,12 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-// List <-> custom editor motion. Kept The size spec is the longest of the three because the sheet
-// re-anchors while it resolves.
+// List <-> custom editor slide; the size spec is the longest because the sheet re-anchors while it resolves.
 private const val SLIDE_MILLIS = 350
 private const val FADE_MILLIS = 250
 private const val SIZE_MILLIS = 400
 
-/**
- * The cadences offered as one tap. Everything else is reachable through the custom interval, so
- * this list is presentation only as the domain accepts any interval between
- * [RotationPolicy.MIN_INTERVAL_MINUTES] and [RotationPolicy.MAX_INTERVAL_MINUTES].
- */
+// One-tap cadences only; the domain accepts any interval between MIN_INTERVAL_MINUTES and MAX_INTERVAL_MINUTES.
 private val PRESETS = listOf(
     RotationPolicy.PerLock,
     RotationPolicy.interval(15),
@@ -85,7 +80,6 @@ private enum class IntervalUnit(val minutes: Int) {
     DAYS(24 * 60);
 
     companion object {
-        /** The largest unit [totalMinutes] divides into cleanly. Only ever used to seed. */
         fun seedFor(totalMinutes: Int): IntervalUnit = when {
             totalMinutes % DAYS.minutes == 0 -> DAYS
             totalMinutes % HOURS.minutes == 0 -> HOURS
@@ -94,7 +88,6 @@ private enum class IntervalUnit(val minutes: Int) {
     }
 }
 
-/** The cadence [policy] describes, as a sentence: "Every 30 minutes", "Once a day". */
 @Composable
 internal fun rotationSummary(policy: RotationPolicy): String = when (policy.kind) {
     RotationPolicyKind.PER_LOCK -> stringResource(R.string.rotation_summary_per_lock)
@@ -114,7 +107,6 @@ internal fun rotationSummary(policy: RotationPolicy): String = when (policy.kind
     }
 }
 
-/** The same interval in the picker's all-caps voice: "90 MINUTES". */
 @Composable
 private fun intervalAmountCaps(minutes: Int): String {
     val unit = IntervalUnit.seedFor(minutes)
@@ -131,11 +123,8 @@ private fun intervalAmountCaps(minutes: Int): String {
 }
 
 /**
- * The rotation cadence picker, shell-less so the global setting and the per-collection override
- * can each drop it into their own sheet and the two cannot offer different choices.
- *
- * Tapping a preset applies it and calls [onDone]; `CUSTOM…` swaps this
- * body in place for the interval editor, whose `SET` is the single commit point.
+ * Shell-less so the global setting and the per-collection override cannot offer different choices.
+ * `SET` in the custom editor is the single commit point.
  */
 // TODO tests: see vault note tests/Rotation Cadence Picker Tests.md
 @Composable
@@ -153,7 +142,6 @@ internal fun RotationPickerContent(
     AnimatedContent(
         targetState = isEditingCustom,
         modifier = modifier.fillMaxWidth(),
-        // A drill-in, in the direction the CUSTOM… chevron promises
         transitionSpec = {
             val slide = tween<IntOffset>(SLIDE_MILLIS)
             val fade = tween<Float>(FADE_MILLIS)
@@ -211,7 +199,6 @@ internal fun RotationPickerContent(
     }
 }
 
-/** Title centred like every other sheet's; the back arrow hangs off the leading edge. */
 @Composable
 private fun PickerTitle(title: String, onBack: (() -> Unit)?) {
     Box(
@@ -264,7 +251,6 @@ private fun CadenceList(
             },
             caption = null,
             isSelected = isCustom,
-            // The only row that leads somewhere rather than settling the choice, so it gets a chevron
             hasChevron = true,
             onClick = onCustomSelected
         )
@@ -286,7 +272,6 @@ private fun CadenceRow(
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .clip(shape)
-            // Unselected rows sit on the sheet's own black
             .background(if (isSelected) NothingWhite else Color.Transparent)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
@@ -414,10 +399,7 @@ private fun AmountTile(
     }
 }
 
-/**
- * Whether this policy *is* [preset]. Only [RotationPolicyKind.INTERVAL] compares the interval as
- * the other two carry a meaningless [RotationPolicy.intervalMinutes] that must not split them.
- */
+/** Only [RotationPolicyKind.INTERVAL] compares the interval; the other kinds carry a meaningless one that must not split them. */
 private fun RotationPolicy.matches(preset: RotationPolicy): Boolean = when (preset.kind) {
     RotationPolicyKind.INTERVAL -> kind == preset.kind && intervalMinutes == preset.intervalMinutes
     else -> kind == preset.kind

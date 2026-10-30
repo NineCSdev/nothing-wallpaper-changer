@@ -27,10 +27,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * One pickable collection in a [CollectionPickerSheet].
- * A neutral shape so each caller can map its own model (collections, transfer targets) into it.
- */
+/** A neutral shape so each caller can map its own model into it. */
 data class CollectionPickerItem(
     val id: Long,
     val name: String,
@@ -39,15 +36,7 @@ data class CollectionPickerItem(
     val isPinned: Boolean = false
 )
 
-/**
- * The app's "pick a collection" surface: a [NothingBottomSheet] with a title and a 2-column grid
- * of [CollectionGridItems][com.ninecsdev.wallpaperchanger.ui.components.CollectionGridItem].
- * Tapping an item acts immediately and scrim tap, swipe-down and system back all dismiss via [onDismiss].
- *
- * Shared by the main screen's active-collection picker and the copy/move transfer target picker.
- * With [onCreateNew] set, a "new collection" tile leads the grid and also stands in for the empty
- * state. Both actions run after the slide-out.
- */
+/** With [onCreateNew] set, a "new collection" tile leads the grid and stands in for the empty state. Both actions run after the slide-out. */
 // TODO tests: see vault note tests/Collection Picker Tests.md
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

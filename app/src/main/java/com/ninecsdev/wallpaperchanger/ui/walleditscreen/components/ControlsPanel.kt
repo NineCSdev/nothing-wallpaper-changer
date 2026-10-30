@@ -58,14 +58,7 @@ private val ValueFieldHeight = 24.dp
 /** Alpha for a row whose axis has nowhere to pan, so it reads as present but inert. */
 private const val InertAlpha = 0.35f
 
-/**
- * Bottom panel with precision sliders and action buttons.
- * Has a dark gradient background so it's readable over any wallpaper.
- *
- * Each row's value is a text field, so a value can be dragged or typed exactly.
- * [canPanX]/[canPanY] report whether the image overflows that axis at the current
- * zoom making the row go inert.
- */
+/** [canPanX]/[canPanY] report whether the image overflows that axis at the current zoom; otherwise its row goes inert. */
 @Composable
 internal fun ControlsPanel(
     zoom: Float,
@@ -215,11 +208,8 @@ private fun SliderRow(
 }
 
 /**
- * The row's value, readable and editable in the same place. Tapping it opens a numeric keyboard,
- * and every accepted keystroke lands on the preview immediately.
- *
- * The field owns its string only while focused. On focus loss it snaps back to the real value
- * and the typing becomes one undo step through [onCommit].
+ * Every accepted keystroke lands on the preview immediately. The field owns its string only while
+ * focused; on focus loss it snaps back to the real value and the typing becomes one undo step through [onCommit].
  */
 @Composable
 private fun ValueField(

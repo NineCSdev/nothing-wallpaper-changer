@@ -14,10 +14,6 @@ import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
-/**
- * Small rounded white box with a pencil icon.
- * Indicates that a wallpaper has a custom edited URI.
- */
 @Composable
 internal fun EditedBadge(modifier: Modifier = Modifier, size: Int = 14) {
     StatusBadge(

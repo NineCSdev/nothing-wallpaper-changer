@@ -24,24 +24,9 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import kotlin.math.roundToInt
 
 /**
- * Displays an edited wallpaper exactly as it will appear on the device screen.
- *
- * The Coil request is sized from [decodeFraction] × screen
- * (a stable resting size, NOT the measured container) so
- * shared-element flights that remeasure this composable every frame never spam
- * new image loads. The per-frame transform is draw-only.
- *
- * @param wallpaper The wallpaper to display. Must carry [editParams][WallpaperImage.editParams].
- * @param contentDescription Accessibility description.
- * @param modifier Modifier applied to the outer clipping Box.
- * @param decodeFraction Fraction of the screen this composable occupies at rest
- *   (1f full-screen overlay, 1/columns for a grid cell). Used for decode.
- * @param memoryCacheKey Optional explicit Coil memory-cache key for this request
- *   (set by the grid so the overlay can reuse the bitmap as a placeholder).
- * @param placeholderMemoryCacheKey Optional cache key of an already-loaded
- *   smaller rendition to draw while this request decodes (set by the overlay).
- * @param fromGridThumbnail Decode from the file's [GridThumbnail] instead of its original. For
- *   small renditions only: the full-screen preview and the editor keep the original's pixels.
+ * Draws a wallpaper as it will appear on the device. The Coil request is sized from [decodeFraction] x screen,
+ * not the measured container, so shared-element flights that remeasure every frame never spam new loads.
+ * [fromGridThumbnail] is for small renditions only: the full-screen preview and the editor keep the original's pixels.
  */
 @Composable
 internal fun EditableWallpaperImage(

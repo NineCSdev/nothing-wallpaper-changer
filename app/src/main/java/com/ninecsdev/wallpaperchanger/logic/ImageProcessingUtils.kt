@@ -15,19 +15,11 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 
-/**
- * Shared image processing utilities used by [BufferManager] and [ImageInternalizer].
- * Centralizes bitmap decoding, compression, rendering, and the
- * wallpaper-canvas lookup so the logic is not duplicated.
- */
 object ImageProcessingUtils {
 
     private const val TAG = "ImageProcessingUtils"
 
-    /**
-     * The wallpaper canvas as a `(width, height)` pair: the pixel size a prepared wallpaper has to be.
-     * Assumes a display whose natural orientation is portrait.
-     */
+    /** The pixel size a prepared wallpaper has to be. Assumes a display whose natural orientation is portrait. */
     fun getWallpaperCanvasSize(context: Context): Pair<Int, Int> {
         val bounds = context.getSystemService(WindowManager::class.java).maximumWindowMetrics.bounds
         if (bounds.width() > bounds.height()) {
@@ -36,10 +28,7 @@ object ImageProcessingUtils {
         return minOf(bounds.width(), bounds.height()) to maxOf(bounds.width(), bounds.height())
     }
 
-    /**
-     * The largest power-of-two sample size that keeps a [width] × [height] image at or just above
-     * [reqW] × [reqH], so decode never loads more pixels than the render needs.
-     */
+    /** Largest power-of-two sample size that keeps the image at or just above [reqW] x [reqH]. */
     private fun calculateSampleSize(width: Int, height: Int, reqW: Int, reqH: Int): Int {
         var sampleSize = 1
         if (height > reqH || width > reqW) {
@@ -53,10 +42,8 @@ object ImageProcessingUtils {
     }
 
     /**
-     * Decodes [uri] subsampled toward [targetW] × [targetH], with EXIF orientation applied.
-     * Software-backed, since callers draw it onto a software [Canvas].
-     *
-     * @return null if the data cannot be decoded; failures to open the source propagate.
+     * Decodes [uri] subsampled toward [targetW] x [targetH], EXIF orientation applied. Software-backed,
+     * since callers draw it onto a software [Canvas]. Null if undecodable; failures to open the source propagate.
      */
     fun decodeSampledBitmap(
         context: Context,
@@ -79,9 +66,6 @@ object ImageProcessingUtils {
         }
     }
 
-    /**
-     * Compresses [bitmap] into [file] using the given [format] and [quality].
-     */
     fun compressToFile(
         bitmap: Bitmap,
         file: File,
@@ -93,43 +77,25 @@ object ImageProcessingUtils {
         }
     }
 
-    /**
-     * [compressToFile]'s in-memory sibling, for the atmosphere source container, which carries the
-     * encoded bytes inline rather than as a file of their own.
-     */
     fun compressToBytes(
         bitmap: Bitmap,
         format: Bitmap.CompressFormat = Bitmap.CompressFormat.WEBP_LOSSY,
         quality: Int = 95
     ): ByteArray = ByteArrayOutputStream().also { bitmap.compress(format, quality, it) }.toByteArray()
 
-    /**
-     * Recycles both the [source] and [processed] bitmaps.
-     * If they are the same instance only one recycle call is made.
-     */
+    /** Safe even if [source] and [processed] are the same instance. */
     fun recycleSafely(source: Bitmap, processed: Bitmap) {
         if (processed != source) source.recycle()
         processed.recycle()
     }
 
-    /**
-     * Returns a [Paint] configured for high-quality bitmap rendering.
-     * Shared by all render paths to avoid constructing identical [Paint]
-     * objects in [BufferManager].
-     */
     fun createRenderPaint(): Paint = Paint().apply {
         isAntiAlias = true
         isFilterBitmap = true
         isDither = true
     }
 
-    /**
-     * Scales [source] and draws it onto a new [targetW] × [targetH] bitmap using
-     * the given [scale] and pixel translation ([translateX], [translateY]).
-     *
-     * The canvas is first filled with [Color.BLACK] so transparent or unfilled
-     * areas (e.g. from FIT crop mode) have a clean background.
-     */
+    /** The canvas is filled with [Color.BLACK] first so unfilled areas (e.g. FIT mode) have a clean background. */
     fun renderScaledBitmap(
         source: Bitmap,
         targetW: Int,

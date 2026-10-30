@@ -9,9 +9,7 @@ uniform float uKernel[124];
 uniform int   uBlurRadius;
 uniform vec2  uBlurOffset;
 
-// No coordinate clamp: every texture this samples is CLAMP_TO_EDGE (AtmosphereGl.createFboTexture),
-// so the sampler already smears the edge outward and clamping in ALU would repeat that on every tap
-// of the hottest shader in the pipeline.
+// No coordinate clamp: every source is CLAMP_TO_EDGE, so clamping here would only add per-tap ALU.
 void main() {
     vec4 sourceColor = texture(screenTexture, vTexCoord);
     if (uBlurRadius <= 1) { FragColor = sourceColor; return; }

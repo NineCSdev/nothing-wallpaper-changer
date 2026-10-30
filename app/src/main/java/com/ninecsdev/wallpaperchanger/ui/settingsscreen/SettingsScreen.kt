@@ -50,9 +50,6 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * Settings screen.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -247,8 +244,6 @@ fun SettingsScreen(
     }
 }
 
-// Previews
-
 @Preview(showSystemUi = true, name = "Settings", backgroundColor = 0xFF000000, device = "spec:width=411dp,height=1500dp,dpi=420")
 @Composable
 fun SettingsScreenPreview() {
@@ -286,7 +281,6 @@ fun SettingsScreenPreview() {
     }
 }
 
-/** No-op actions for previews. */
 private object PreviewSettingsActions : SettingsActions {
     override fun setScreenOffDelay(delayMs: Long) {}
     override fun setRotationPolicy(policy: RotationPolicy) {}

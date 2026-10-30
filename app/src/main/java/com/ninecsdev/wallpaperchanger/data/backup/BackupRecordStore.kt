@@ -21,11 +21,9 @@ private val KEY_EXPORT_IN_FLIGHT_NAME = stringPreferencesKey("backup_export_in_f
 private val KEY_IMPORT_COMMITTING = booleanPreferencesKey("backup_import_committing")
 
 /**
- * What a backup is part-way through doing, kept where it outlives the process that started it.
- *
- *  - [inFlightTarget] is the archive an export was writing to. Still set on the next run means the
- *    export died, and the left behind cannot be trusted.
- *  - [isCommitting] tells a restore that came back from process death apart from one that finished.
+ * What a backup is part-way through, persisted so it outlives the process.
+ * A still-set [inFlightTarget] on the next run means the export died and its partial archive is untrustworthy;
+ * [isCommitting] tells a restore interrupted by process death from one that finished.
  */
 @Singleton
 class BackupRecordStore @Inject constructor(
@@ -33,10 +31,10 @@ class BackupRecordStore @Inject constructor(
 ) {
     private val dataStore: DataStore<Preferences> = context.appPreferences
 
-    /** The archive an export was last writing to, or null when none was left unfinished. */
+    /** Null when no export was left unfinished. */
     suspend fun inFlightTarget(): Uri? = read(KEY_EXPORT_IN_FLIGHT)?.toUri()
 
-    /** That archive's file name, as it read while the export still had access to it. */
+    /** The archive's file name, captured while the export could still read it. */
     suspend fun inFlightName(): String? = read(KEY_EXPORT_IN_FLIGHT_NAME)
 
     /** Written together, so a target can never outlive its name or the other way round. */

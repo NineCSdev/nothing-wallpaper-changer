@@ -9,16 +9,12 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-/** How much the image shrinks as a dismiss drag is pulled, so it reads as being taken away */
 private const val DISMISS_DRAG_SHRINK = 0.2f
 
 /** Largest side, in px, `Constraints.fixed` holds on both axes at once (the true limit is 2^15 - 2) */
 private const val MAX_FRAMED_SIDE_PX = 32_000f
 
-/**
- * The pan/zoom of a gesture in progress, as a draw-time transform to stay cheap. Invisible to layout,
- * which is why it hands straight over to [previewFraming] the moment the fingers leave.
- */
+/** Draw-time transform, invisible to layout, so it hands over to [previewFraming] the moment the fingers leave. */
 internal fun Modifier.previewGestureTransform(state: PreviewZoomState, active: Boolean): Modifier =
     if (!active) this else this.graphicsLayer {
         val scale = state.shownScale
@@ -28,27 +24,19 @@ internal fun Modifier.previewGestureTransform(state: PreviewZoomState, active: B
         translationY = state.pan.y + state.dismissTranslation
     }
 
-/**
- * The scale the image is actually drawn at: the pinch's own zoom, pulled in as a dismiss drag
- * carries it away. Read by both halves of the transform, which have to agree exactly
- */
+// Read by both halves of the transform, which have to agree exactly
 private val PreviewZoomState.shownScale: Float
     get() = zoom * (1f - DISMISS_DRAG_SHRINK * dismissProgress)
 
 /**
- * The same pan/zoom, in *layout*: the image is measured and placed at the size and position it is
- * being shown at, while still reporting its full rect outward so nothing around it moves.
- *
- * This is the half the close needs. A shared element flies from the bounds its content was **laid out** at,
- * and it draws only the end that is arriving: on the way out that is the grid cell, which has no pan or zoom
- * of its own. So a draw-time transform on the preview side is not merely mistimed on the way out, it is never
- * consulted, and the flight departs from the untransformed full-screen rect however carefully
- * that transform is animated. **Only reaches the screen while no flight is in the air.**
+ * The same pan/zoom, in layout, while still reporting the full rect outward so nothing around it moves.
+ * A shared element flies from the bounds its content was laid out at, so a draw-time transform
+ * alone would leave the close departing from the untransformed full-screen rect.
+ * Only reaches the screen while no flight is in the air.
  */
 internal fun Modifier.previewFraming(state: PreviewZoomState, active: Boolean): Modifier =
     if (!active) this else this.layout { measurable, constraints ->
         val scale = state.shownScale
-        // Transparent unless there is something to say
         val idle = scale == 1f && state.pan == Offset.Zero && state.dismissTranslation == 0f
         if (idle || !constraints.hasBoundedWidth || !constraints.hasBoundedHeight) {
             val asIs = measurable.measure(constraints)

@@ -12,11 +12,6 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperFile
 
 const val DB_SCHEMA_VERSION = 6
 
-/**
- * Main Database for the app.
- * Using Room to persist collections and image metadata.
- * Includes [Migration] objects.
- */
 @Database(entities = [
     WallpaperCollection::class,
     WallpaperFile::class,
@@ -47,17 +42,7 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        /**
-         * v3 → v4: Drop the `editedUri` column from the wallpapers table.
-         *
-         * SQLite versions below API 35 do not support `ALTER TABLE ... DROP COLUMN`,
-         * so we use the standard 12-step table rebuild approach:
-         * create new table → copy data → drop old table → rename new table → recreate indexes.
-         *
-         * The edit params (editZoom, editOffsetX, editOffsetY) are preserved.
-         * The `editedUri` column is discarded. Files in `edited_wallpapers/` are deleted
-         * separately in the AppModule database callback.
-         */
+        /** v3 → v4: drops `editedUri`. Rebuilds the table because SQLite below API 35 has no `DROP COLUMN`. */
         val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("""
@@ -87,23 +72,12 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         /**
-         * v4 → v5: split the flat `wallpapers` table into an M:N model.
-         *
-         * The old table stored the image `uri` inline on every row. We extract a device-wide
-         * `wallpaper_files` registry (one row per distinct uri) and rewrite `wallpapers` into a join
-         * table that references a file by `fileId`. A photo shared across collections now maps to a
-         * single file row.
-         *
-         * `sourceType` is derived from the uri: anything under `internal_wallpapers/` is an app-owned
-         * copy (INTERNALIZED); everything else is a folder document URI (FOLDER_DOC).
-         * Reference-mode manual picks are introduced in a later step.
-         *
-         * Join rows keep their original ids, edit params, `isManuallyAdded`, and `addedAt`. The file
-         * row's `addedAt` is the earliest membership timestamp for that uri.
+         * v4 → v5: splits the flat `wallpapers` table into a `wallpaper_files` registry (one row per
+         * distinct uri) plus a join table keyed by `fileId`. `sourceType` is INTERNALIZED for uris under
+         * `internal_wallpapers/`, otherwise FOLDER_DOC. A file row's `addedAt` is its earliest membership's.
          */
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // 1. File registry, deduped by uri.
                 db.execSQL("""
                     CREATE TABLE wallpaper_files (
                         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -125,7 +99,6 @@ abstract class AppDatabase : RoomDatabase() {
                     GROUP BY uri
                 """.trimIndent())
 
-                // 2. Rebuild wallpapers as a join table (uri column replaced by fileId).
                 db.execSQL("""
                     CREATE TABLE wallpapers_new (
                         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -153,20 +126,13 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX index_wallpapers_fileId ON wallpapers(fileId)")
                 db.execSQL("CREATE UNIQUE INDEX index_wallpapers_collectionId_fileId ON wallpapers(collectionId, fileId)")
 
-                // 3. `isFavorites` flag on collections, marking the app-owned Favourites collection.
-                // Existing collections are all user-owned so the default is 0; the Favourites row
-                // itself is created lazily by the repository on the first favourite.
+                // The Favourites row itself is created lazily on the first favourite
                 db.execSQL("ALTER TABLE collections ADD COLUMN isFavorites INTEGER NOT NULL DEFAULT 0")
 
-                // 4. User-set `isPinned` flag (pinned collections sort first). Folded into this
-                // migration like isFavorites. the lazily-created Favourites row is born pinned.
                 db.execSQL("ALTER TABLE collections ADD COLUMN isPinned INTEGER NOT NULL DEFAULT 0")
 
-                // 5. `folder_exclusions` table per-collection tombstones that make in-app
-                // deletions of folder-sourced images survive folder sync. Keyed by (collectionId, uri);
-                // the nullable edit columns snapshot the removed membership's edit for "Restore removed
-                // images". Starts empty: pre-existing deletions were already resurrected by past
-                // syncs, so there is nothing to backfill.
+                // Tombstones so in-app deletions survive folder sync; the nullable edit columns snapshot
+                // the removed membership's edit for "Restore removed images". Nothing to backfill.
                 db.execSQL("""
                     CREATE TABLE folder_exclusions (
                         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -188,25 +154,17 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE collections RENAME COLUMN rotationFrequency TO rotationPolicy")
 
-                // `isDefault` marks the hidden join row that is the global default wallpaper,
-                // rather than one of a collection's images.
+                // Marks the hidden join row that is the global default wallpaper
                 db.execSQL("ALTER TABLE wallpapers ADD COLUMN isDefault INTEGER NOT NULL DEFAULT 0")
 
-                // `isVerified` records whether this device has ever proven the uri names the image it
-                // claims. Every existing row was registered by a pick or a scan that had just read the
-                // source, so they all default to verified; only a restore can introduce a 0.
+                // Whether this device has ever proven the uri names the image it claims. Existing rows
+                // were all read when registered, so they default to verified; only a restore adds a 0.
                 db.execSQL("ALTER TABLE wallpaper_files ADD COLUMN isVerified INTEGER NOT NULL DEFAULT 1")
 
-                // Rebuild `collections` for two changes at once. Needed because `isFavorites` shipped in v5
-                //
-                //  - `isFavorites` becomes `appRole`, one nullable key naming *which* app-owned
-                //    collection this is.
-                //  - `defaultWallpaperId` arrives: a collection's own default-wallpaper override,
-                //    pointing at one of its memberships, null to follow the global one.
-                //
-                // Foreign keys are off while migrations run (SQLite's default; Room turns them on
-                // when it opens the database, afterward), so dropping a table that `wallpapers`
-                // and `folder_exclusions` reference does not cascade their rows away.
+                // Rebuild `collections`: `isFavorites` becomes the nullable `appRole`, and
+                // `defaultWallpaperId` (a membership id; null follows the global default) is added.
+                // Foreign keys are off during migrations, so dropping this table, which `wallpapers`
+                // and `folder_exclusions` reference, does not cascade their rows away.
                 db.execSQL("""
                     CREATE TABLE collections_new (
                         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,

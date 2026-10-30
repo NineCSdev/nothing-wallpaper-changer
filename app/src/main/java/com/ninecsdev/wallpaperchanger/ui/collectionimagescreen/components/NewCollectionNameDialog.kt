@@ -30,10 +30,6 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * Name prompt for a collection created from the copy/move sheet. The selection is its content,
- * so a name is all it asks for.
- */
 @Composable
 internal fun NewCollectionNameDialog(
     onConfirm: (String) -> Unit,

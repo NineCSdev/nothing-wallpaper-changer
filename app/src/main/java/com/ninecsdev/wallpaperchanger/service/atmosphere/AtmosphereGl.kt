@@ -11,23 +11,16 @@ import java.nio.FloatBuffer
 
 /**
  * The GL plumbing shared by every pass: program building, texture and FBO allocation, and the
- * full-screen quad.
- *
- * Nothing here decides what the effect looks like. The one place a decision is embedded is
- * [createFboTexture] / [uploadPhoto]'s filter and wrap state, which is load-bearing and is
- * documented there.
+ * full-screen quad. The filter state in [createFboTexture] and [uploadPhoto] is load-bearing.
  */
 internal object AtmosphereGl {
 
     private const val TAG = "AtmosphereGl"
 
     /**
-     * NDC position + texture coordinate, six vertices, two triangles.
-     *
-     * The v axis maps to NDC y as an **identity** (y = -1 -> v = 0). That makes every
-     * render-to-texture round-trip orientation-neutral, which is what keeps a two-pass blur from
-     * silently mirroring its input. The photo, the only texture that arrives from a Bitmap, is
-     * flipped once inside the composite shader instead.
+     * NDC position + texture coordinate. The v axis maps to NDC y as an identity (y = -1 -> v = 0),
+     * so render-to-texture round-trips are orientation-neutral (a two-pass blur would otherwise
+     * mirror its input). The photo, the only Bitmap texture, is flipped once in the composite shader.
      */
     private val QUAD = floatArrayOf(
         // x, y, u, v
@@ -42,8 +35,6 @@ internal object AtmosphereGl {
     private const val FLOATS_PER_VERTEX = 4
     private const val QUAD_VERTEX_COUNT = 6
     const val BYTES_PER_FLOAT = 4
-
-    // Programs
 
     fun readAsset(context: Context, path: String): String =
         context.assets.open(path).bufferedReader().use { it.readText() }
@@ -66,8 +57,6 @@ internal object AtmosphereGl {
         val status = IntArray(1)
         GLES30.glGetProgramiv(program, GLES30.GL_LINK_STATUS, status, 0)
 
-        // Attached shaders are reference-counted by the program; deleting them here is correct
-        // and frees the compiler's copies immediately.
         GLES30.glDeleteShader(vertex)
         GLES30.glDeleteShader(fragment)
 
@@ -94,14 +83,9 @@ internal object AtmosphereGl {
         return shader
     }
 
-    // Textures and framebuffers
-
     /**
-     * A color attachment for one of the offscreen passes.
-     *
-     * Plain `GL_LINEAR`, no mipmaps. The magnify from the 72px raster to the panel is bilinear,
-     * and that upscale is a real part of how five flat polygons end up reading as gradients --
-     * not an implementation detail to optimize.
+     * A color attachment for an offscreen pass. Plain `GL_LINEAR`, no mipmaps: the bilinear magnify
+     * from the 72px raster to the panel is what turns flat polygons into gradients.
      */
     fun createFboTexture(width: Int, height: Int): Int {
         val ids = IntArray(1)
@@ -150,11 +134,8 @@ internal object AtmosphereGl {
     }
 
     /**
-     * Uploads the source photo and builds its mip chain.
-     *
-     * The mipmaps are **not** optional. The composite pass renders into a 72-pixel-wide target,
-     * so a trilinear sample lands several mip levels down; without them the photo is point-sampled
-     * to a fraction of its size and aliases in a way the effect never should.
+     * Uploads the source photo with a mip chain. The mipmaps are not optional: the composite pass
+     * renders into a 72-pixel-wide target, and without them the photo aliases badly.
      */
     fun uploadPhoto(bitmap: Bitmap): Int {
         val ids = IntArray(1)
@@ -176,16 +157,12 @@ internal object AtmosphereGl {
         if (id != 0) GLES30.glDeleteTextures(1, intArrayOf(id), 0)
     }
 
-    /**
-     * Every pass samples from unit 0 and nothing here ever changes the active unit, so both the
-     * unit selection and each program's sampler uniform are set once at startup (see
-     * [AtmosphereRenderer.onSurfaceCreated]) rather than re-sent on every bind.
-     */
+    /** Every pass samples unit 0; sampler uniforms are set once at startup ([bindSamplerToUnit0]). */
     fun bindTexture0(texture: Int) {
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, texture)
     }
 
-    /** Points [program]'s [samplerName] at texture unit 0. Program state, so once after link. */
+    /** Points [program]'s [samplerName] at texture unit 0. Program state: call once after link. */
     fun bindSamplerToUnit0(program: Int, samplerName: String) {
         if (program == 0) return
         GLES30.glUseProgram(program)
@@ -199,15 +176,9 @@ internal object AtmosphereGl {
         out[2] = (color and 0xFF) / 255f
     }
 
-    // The full-screen quad
-
     /**
-     * The quad every full-screen pass draws.
-     *
-     * An owned object rather than a shared one, because GL names are only meaningful inside the
-     * context that produced them and there can be more than one context alive at a time: the
-     * live-wallpaper picker runs a preview engine alongside the real one. A single shared name
-     * would have each engine drawing with the other's buffer.
+     * The quad every full-screen pass draws. Per-instance, not shared: GL names are only valid in
+     * their own context, and the picker's preview engine runs alongside the real one.
      */
     class FullScreenQuad {
         private var vbo = 0

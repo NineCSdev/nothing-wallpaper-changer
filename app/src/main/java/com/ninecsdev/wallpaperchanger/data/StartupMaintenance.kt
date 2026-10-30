@@ -11,11 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * One-shot app-startup housekeeping, triggered from the UI's entry point but owned here so
- * the work is decoupled from any UI lifecycle. Runs on the process-lived [ApplicationScope] rather
- * than a `viewModelScope`, so it isn't canceled if the user opens then immediately closes the app.
- */
+/** App-startup housekeeping. Runs on [ApplicationScope] so closing the app right after opening it does not cancel it. */
 @Singleton
 class StartupMaintenance @Inject constructor(
     private val repository: WallpaperRepository,
@@ -26,14 +22,11 @@ class StartupMaintenance @Inject constructor(
         const val TAG = "StartupMaintenance"
     }
 
-    /** Ensures the tasks run at most once per process, even if triggered from several places. */
     private val hasRun = AtomicBoolean(false)
 
     /**
-     * Runs the startup tasks once per process, in the one order that matters: the backfill migrates
-     * the default wallpaper into rows, and until it has, that file is referenced by nothing and
-     * [WallpaperRepository.reconcileStorage] would reclaim it. So the backfill failing skips
-     * reconciliation entirely rather than letting it run against state the migration still owns.
+     * Until the backfill has moved the default wallpaper into rows, nothing references its file and
+     * [WallpaperRepository.reconcileStorage] would reclaim it, so a failed backfill skips reconciliation.
      */
     // TODO tests: check "tests/Storage Reconcile Tests" note (the backfill gate)
     fun runOnce() {
@@ -53,7 +46,6 @@ class StartupMaintenance @Inject constructor(
         }
     }
 
-    /** Moves a default wallpaper stored as a bare settings uri into the rows that now hold it. */
     // TODO: delete this and its two AppDataStore accessors in v0.4.1
     // TODO tests: see vault note tests/Default Wallpaper Membership Tests.md (backfill)
     private suspend fun backfillDefaultWallpaper() {

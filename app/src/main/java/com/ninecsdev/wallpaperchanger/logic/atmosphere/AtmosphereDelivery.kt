@@ -16,15 +16,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Atmosphere *delivery*, the final hop of the rotation pipeline when atmosphere mode is effective.
- *
- * **Nothing is rendered or measured here.** The image arrives already screen-fitted and already
- * carrying its palette, and delivery's job is to publish it into the engine's on-disk source and say
- * so. A rotation delivery is a copy and a broadcast.
- *
- * Seeds and pixels travel in **one container**, swapped in with a single rename. Two files could not
- * be swapped atomically, and a reader that got fresh pixels with stale seeds would paint one photo's
- * blobs from another photo's palette.
+ * Publishes an already-rendered image and its seeds into the engine's on-disk source and tells the
+ * engine to reload. Seeds and pixels travel in one container, so a reader never pairs fresh pixels
+ * with another photo's palette.
  */
 @Singleton
 class AtmosphereDelivery @Inject constructor(
@@ -35,21 +29,12 @@ class AtmosphereDelivery @Inject constructor(
         const val TAG = "AtmosphereDelivery"
     }
 
-    /**
-     * A rotation delivery the engine has been told about but has not confirmed showing yet.
-     *
-     * @param collectionId the collection whose rotation may advance once the image is shown.
-     * @param wallpaperId the membership behind that image.
-     */
+    /** A rotation delivery the engine has been told about but has not confirmed showing yet. */
     private class InFlightDelivery(val collectionId: Long?, val wallpaperId: Long?)
 
-    /** The rotation delivery in flight to the engine, or null when none is. */
     private val inFlight = AtomicReference<InFlightDelivery?>(null)
 
-    /** Consumes the delivery the engine has just confirmed showing.
-     *
-     * Records its image as the live one.
-     */
+    /** Consumes the in-flight delivery the engine has just confirmed showing and records its image as live. */
     suspend fun confirmDisplayed(): Long? {
         val delivered = inFlight.getAndSet(null) ?: return null
 
@@ -59,15 +44,12 @@ class AtmosphereDelivery @Inject constructor(
 
     /**
      * Publishes the delivery staged by the last refill and broadcasts a rotation reload.
-     *
-     * Returns false (and logs) when nothing is staged (what a refill ran on static mode leaves).
-     * Failing is the point: the buffer it left carries static framing and no palette. The rotation
-     * waits for the next refill.
+     * Returns false when nothing is staged (a static-mode refill leaves a buffer with static framing
+     * and no palette); the rotation then waits for the next refill.
      */
     // TODO tests: see vault note tests/Atmosphere Delivery Tests.md
     suspend fun deliverPrepared(collectionId: Long?): Boolean = withContext(Dispatchers.IO) {
-        // Tagged as a rotation delivery: its display, and only its display, advances the magazine
-        // and names the live image. Set before publishing so the confirmation can never arrive ahead of it.
+        // Set before publishing so the display confirmation can never arrive ahead of it
         val latched = InFlightDelivery(collectionId, wallpaperRecordStore.snapshot().bufferedWallpaperId)
         try {
             inFlight.set(latched)
@@ -79,8 +61,7 @@ class AtmosphereDelivery @Inject constructor(
             Log.i(TAG, "Delivered the staged atmosphere source (fromRotation=true).")
             true
         } catch (e: Exception) {
-            // An escape here would leave the latch set: the next display confirmation would then
-            // credit a rotation whose image never reached the engine.
+            // A latch left set would credit the next display confirmation to an image the engine never got
             Log.e(TAG, "Failed to publish the staged delivery to the atmosphere source", e)
             inFlight.compareAndSet(latched, null)
             false
@@ -88,20 +69,12 @@ class AtmosphereDelivery @Inject constructor(
     }
 
     /**
-     * Publishes an already-rendered image and broadcasts a non-rotation reload.
-     *
-     * The entry point for images that never go through the rotation buffer: the default wallpaper,
-     * the revert-to-default path that runs when a collection empties, and the pre-render that
-     * happens before the system picker is launched. None of those is a rotation, so none of them
-     * may advance the magazine.
-     *
-     * The caller keeps ownership of `render.bitmap` and is responsible for recycling it.
-     *
-     * [wallpaperId] is the membership the image was rendered from.
+     * For images outside the rotation buffer (default wallpaper, revert on an emptied collection,
+     * pre-render before the picker). Never a rotation, so never advances the magazine.
+     * The caller keeps ownership of `render.bitmap`; [wallpaperId] is the membership it came from.
      */
     suspend fun deliverRender(render: AtmosphereRender, wallpaperId: Long): Boolean = withContext(Dispatchers.IO) {
         try {
-            // Not a rotation, so it must not leave a delivery to be credited later.
             inFlight.set(null)
             publish(render.seeds, ImageProcessingUtils.compressToBytes(render.bitmap), fromRotation = false)
                 .also { published ->
@@ -114,32 +87,22 @@ class AtmosphereDelivery @Inject constructor(
     }
 
     /**
-     * Deletes the on-disk source once the engine is confirmed gone (the user left atmosphere mode
-     * and a static wallpaper actually replaced the live one). It is a screen-sized image that would
-     * otherwise sit in `filesDir` indefinitely; re-entering atmosphere re-renders it.
-     *
-     * Only call after confirming the engine is no longer the system wallpaper — a live engine
-     * cold-starts by re-reading this file, so deleting it out from under one shows black.
+     * Only call after confirming the engine is no longer the system wallpaper: a live engine
+     * cold-starts by re-reading the source, so deleting it from under one shows black.
      */
     suspend fun clearSource() {
         val source = AtmosphereSource.file(appContext.filesDir)
         if (source.exists() && !source.delete()) {
             Log.w(TAG, "Could not delete the atmosphere source file.")
         }
-        // The staged delivery is the same screen-sized image one step earlier in its life.
         AtmosphereSource.clearPending(appContext.filesDir)
-        // Nothing is published anymore, so nothing is live and nothing is in flight
         inFlight.set(null)
         wallpaperRecordStore.setLiveAtmosphereWallpaperId(null)
     }
 
     /**
-     * Signals the live engine to re-decode its on-disk source.
-     *
-     * The file is the source of truth, because the system starts the engine at boot
-     * and recreates it on surface changes, both of which can happen with this process gone.
-     *
-     * [fromRotation] marks whether the reload is a rotation delivery that should advance the magazine
+     * The on-disk source is the source of truth: the system starts the engine at boot and recreates
+     * it on surface changes, possibly with this process gone. [fromRotation] reloads advance the magazine.
      */
     private fun sendReload(fromRotation: Boolean) {
         appContext.sendBroadcast(

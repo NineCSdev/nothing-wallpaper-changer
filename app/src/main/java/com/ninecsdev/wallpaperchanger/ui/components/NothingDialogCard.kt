@@ -19,15 +19,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.CardCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
-/**
- * The black, thin-bordered dialog card shared by the app's modals. Lays out
- * [content] in a padded [Column] and, when [isProcessing] is true, blocks it behind a
- * [ProcessingOverlay] showing [processingMessage].
- *
- * [overlay] is an extra [BoxScope] slot for dialogs layered above the card (e.g. the edit
- * card's delete confirmation). [columnContentAlignment] sets the content column's horizontal
- * alignment.
- */
+/** [overlay] is an extra slot for dialogs layered above the card (e.g. the edit card's delete confirmation). */
 @Composable
 internal fun NothingDialogCard(
     isProcessing: Boolean,

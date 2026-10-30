@@ -23,14 +23,6 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * The shared "bold all-caps title + dimmed subtitle" header used by settings rows and the
- * main-screen cards (toggle rows, selectors, sliders, the language picker, etc.).
- *
- * When [infoDialogTitle] and [infoDialogBody] are provided, a small [InfoDialogIcon] renders
- * inline at the end of the title and opens a Nothing-styled explanation dialog; callers only supply
- * the two strings. A null [subtitle] renders the title alone.
- */
 private const val INFO_ICON_ID = "info"
 
 @Composable

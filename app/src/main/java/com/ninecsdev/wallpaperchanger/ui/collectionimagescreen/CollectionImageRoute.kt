@@ -18,12 +18,6 @@ import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.transf
 import com.ninecsdev.wallpaperchanger.ui.components.rememberMediaAccessGatedAction
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.importSummaryText
 
-/**
- * Stateful entry point for the Collection Image screen: owns the ViewModel, collects
- * state, and hosts the photo-picker launchers whose results feed back into it.
- * Navigation is received as parameters so this composable stays independent of the
- * nav graph.
- */
 @Composable
 fun CollectionImageRoute(
     onBack: () -> Unit,
@@ -40,7 +34,7 @@ fun CollectionImageRoute(
         }
     }
 
-    // Single-select picker for re-linking an unavailable image; uri is null if canceled.
+    // uri is null if canceled
     val relinkPickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->

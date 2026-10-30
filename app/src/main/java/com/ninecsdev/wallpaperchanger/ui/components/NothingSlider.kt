@@ -33,7 +33,6 @@ private val ThumbSize = 14.dp
 private val TrackHeight = 3.dp
 private val SliderHeight = 28.dp
 
-/** Slider with a rounded-square thumb on a thin track. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NothingSlider(

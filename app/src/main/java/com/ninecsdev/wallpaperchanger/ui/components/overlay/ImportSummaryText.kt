@@ -4,12 +4,7 @@ import android.content.Context
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
 
-/**
- * Builds the post-add snackbar message for a [PickImportResult], omitting any zero-count part
- * (e.g. a fully-referenced batch shows only "N ADDED AS REFERENCES").
- * Takes a [Context] rather than reading resources from composition: the counts only become known
- * inside the coroutine that shows the message.
- */
+/** Omits zero-count parts. Takes a [Context] because the counts only become known inside the coroutine that shows the message. */
 fun importSummaryText(context: Context, result: PickImportResult): String {
     val parts = listOfNotNull(
         if (result.referenced > 0) context.getString(R.string.import_summary_referenced, result.referenced) else null,

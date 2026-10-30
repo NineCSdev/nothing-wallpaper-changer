@@ -16,11 +16,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
-/**
- * Small rounded box with a warning icon.
- * Indicates that a wallpaper's source file could no longer be read (deleted, permission
- * revoked, offline) — it is excluded from rotation until it becomes readable again.
- */
+/** The source file could no longer be read; it is excluded from rotation until it becomes readable again. */
 @Composable
 internal fun UnavailableBadge(modifier: Modifier = Modifier, size: Int = 14) {
     StatusBadge(

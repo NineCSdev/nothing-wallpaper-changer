@@ -29,7 +29,6 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/** Both halves of backup on one screen: writing an archive, and restoring from one. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BackupScreen(
@@ -112,8 +111,6 @@ fun BackupScreen(
         }
     }
 }
-
-// Previews
 
 @Preview(showSystemUi = true, name = "Backup", backgroundColor = 0xFF000000)
 @Composable

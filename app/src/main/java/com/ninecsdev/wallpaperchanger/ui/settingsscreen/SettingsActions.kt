@@ -6,11 +6,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
 
-/**
- * ViewModel-owned intents of the Settings screen, implemented by [SettingsViewModel].
- * Navigation and activity-level callbacks are deliberately not part of this contract;
- * they stay as plain parameters on [SettingsScreen] / [SettingsRoute].
- */
+/** ViewModel-owned intents only; navigation and activity-level callbacks stay as parameters on the screen and route. */
 // TODO tests: see vault note tests/screen-actions-routes.md
 interface SettingsActions {
     fun setScreenOffDelay(delayMs: Long)

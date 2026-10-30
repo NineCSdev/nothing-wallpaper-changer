@@ -3,41 +3,30 @@ package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen
 import com.ninecsdev.wallpaperchanger.data.source.SourceDetails
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 
-/**
- * ViewModel-owned intents of the Collection Image screen, implemented by
- * [CollectionImageViewModel]. Navigation and launcher-backed callbacks (back, add
- * wallpapers, edit, relink picker) are deliberately not part of this contract; they
- * stay as plain parameters on [CollectionImageScreen] / [CollectionImageRoute].
- */
+// Navigation and launcher-backed callbacks (back, add, edit, relink picker) stay out of this contract.
 // TODO tests: see vault note tests/screen-actions-routes.md
 interface CollectionImageActions {
-    // Full-screen preview
     fun openPreview(wallpaper: WallpaperImage)
     fun closePreview()
     suspend fun sourceDetails(wallpaper: WallpaperImage): SourceDetails
 
-    // Selection mode
     fun enterSelectionMode(id: Long)
     fun toggleSelection(id: Long)
     fun exitSelectionMode()
     fun deleteSelectedWallpapers()
 
-    // Copy/move to another collection
     fun requestTransfer(mode: TransferMode)
     fun transferToCollection(target: TransferTarget)
     fun requestNewTransferTarget()
     fun transferToNewCollection(name: String)
     fun cancelTransfer()
 
-    // Favourites
     fun toggleFavoriteSelected()
     fun toggleFavorite(wallpaper: WallpaperImage)
 
-    // Collection default wallpaper
     fun toggleCollectionDefaultSelected()
     fun toggleCollectionDefault(wallpaper: WallpaperImage)
 
-    // Re-link unavailable image
     fun requestRelink(wallpaper: WallpaperImage)
     fun cancelRelink()
 }

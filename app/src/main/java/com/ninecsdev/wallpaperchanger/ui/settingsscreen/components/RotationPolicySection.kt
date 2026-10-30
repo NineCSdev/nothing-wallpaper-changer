@@ -33,11 +33,7 @@ import com.ninecsdev.wallpaperchanger.ui.components.rotationSummary
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
-/**
- * The app-wide rotation cadence. Collections follow it unless they carry their own override.
- *
- * The row describes the setting, states the cadence in force on its trailing edge and opens the picker.
- */
+/** The app-wide cadence; collections follow it unless they carry their own override. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun RotationPolicySection(

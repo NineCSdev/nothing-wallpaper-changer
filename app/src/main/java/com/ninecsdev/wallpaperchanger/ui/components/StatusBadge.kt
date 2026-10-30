@@ -20,11 +20,6 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
-/**
- * Small rounded status indicator box with a centered icon.
- * Callers supply their own fully-configured [Icon] (imageVector or painter, tint,
- * contentDescription) sized to match [size].
- */
 @Composable
 internal fun StatusBadge(
     backgroundColor: Color,

@@ -20,10 +20,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-/**
- * A small circular LED indicator that can optionally pulse.
- * Used in both the main dashboard header and the collection list toolbar.
- */
 @Composable
 fun StatusLed(
     color: Color,

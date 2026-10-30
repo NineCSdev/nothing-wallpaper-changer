@@ -29,11 +29,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService
 import kotlinx.coroutines.launch
 
-/**
- * Stateful entry point for the Settings screen: owns the ViewModel, collects state,
- * and wires it into the stateless [SettingsScreen]. Navigation is received as
- * parameters so this composable stays independent of the nav graph.
- */
 @Composable
 fun SettingsRoute(
     onBack: () -> Unit,
@@ -56,9 +51,7 @@ fun SettingsRoute(
         onStopOrDispose { }
     }
 
-    // The snackbar host is owned here, because this is where notices arrive.
-    // A mode change can owe the user a word: it cleared their wallpaper, it could not leave, or
-    // entering cost them their separate lock-screen wallpaper.
+    // The snackbar host is owned here because this is where notices arrive.
     val snackbarHostState = remember { SnackbarHostState() }
     val exitClearedMessage = stringResource(R.string.settings_atmosphere_exit_cleared_snackbar)
     val exitFailedMessage = stringResource(R.string.settings_atmosphere_exit_failed_snackbar)
@@ -76,14 +69,11 @@ fun SettingsRoute(
         }
     }
 
-    // Tapping the locked keep-local-copies toggle asks for the permission instead of doing nothing.
     val mediaAccessLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { viewModel.refreshMediaAccess() }
 
-    // From the partial "selected photos" state the toggle explains before jumping to app settings
-    // (a bare context switch with no warning would be jarring); the system dialog is the
-    // explanation for the denied state.
+    // From the partial state the toggle explains before jumping to app settings; the system dialog explains the denied state.
     var showPartialPrompt by remember { mutableStateOf(false) }
     if (showPartialPrompt) {
         ConfirmationOverlay(
@@ -100,7 +90,7 @@ fun SettingsRoute(
         )
     }
 
-    // Render nothing until the real state has loaded (see SettingsViewModel.uiState).
+    // Render nothing until the real state has loaded.
     val loadedUiState = uiState ?: return
 
     SettingsScreen(

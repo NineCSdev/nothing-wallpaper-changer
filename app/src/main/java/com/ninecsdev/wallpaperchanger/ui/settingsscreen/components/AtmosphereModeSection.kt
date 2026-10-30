@@ -30,18 +30,9 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 /**
- * The atmosphere settings block: an on/off toggle for the live atmosphere effect (off = static)
- * plus, when atmosphere is desired, the extra state that static mode doesn't need.
- *
- * The toggle is a boolean *view* of the underlying [WallpaperMode] enum: on ↔ [WallpaperMode.ATMOSPHERE],
- * off ↔ [WallpaperMode.STATIC]. Flipping it off while the engine is live is the deliberate
- * exit-live-wallpaper path (handled downstream in `setWallpaperMode`).
- *
- * Atmosphere being *desired* (the stored preference) is distinct from it being *effective*
- * ([engineActive], i.e. our live wallpaper is actually set on the system). While desired but not
- * active, the block surfaces the mismatch and offers the set-button that sends the user to the
- * system live-wallpaper picker; once active it shows a confirmed state instead. A null
- * [engineActive] means not yet checked, and shows neither.
+ * The toggle is a boolean view of [WallpaperMode]; flipping it off while the engine is live is the deliberate exit path.
+ * While atmosphere is desired but [engineActive] is false, the block surfaces the mismatch and offers the set-button;
+ * a null [engineActive] means not yet checked and shows neither.
  */
 @Composable
 internal fun AtmosphereModeSection(
@@ -100,7 +91,6 @@ internal fun AtmosphereModeSection(
     }
 }
 
-/** A small status line: a colored dot plus a short label (mismatch / confirmed). */
 @Composable
 private fun StatusRow(
     dotColor: Color,

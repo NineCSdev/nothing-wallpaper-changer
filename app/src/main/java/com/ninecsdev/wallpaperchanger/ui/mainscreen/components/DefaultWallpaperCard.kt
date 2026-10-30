@@ -44,10 +44,6 @@ private const val THUMBNAIL_HEIGHT_DP = 80
 /**  Fraction of the screen width the thumbnail occupies for [EditableWallpaperImage]. Approximated. */
 private const val THUMBNAIL_DECODE_FRACTION = 0.2f
 
-/**
- * Component for configuring the default wallpaper.
- * Expands to show the selected wallpaper, change it, edit its framing and apply it now.
- */
 @Composable
 internal fun DefaultWallpaperCard(
     revertToDefault: Boolean,

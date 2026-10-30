@@ -9,22 +9,14 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * The blob layer: five flat-filled shapes that appear at frame
- * [AtmosphereConstants.FIRST_BLOB_FRAME], grow, and drift across the screen.
- *
- * Each blob **starts where its color lives in the photo** and travels to a random target, so the
- * opening frames of a morph correlate with the source image and the settled frame does not. The
- * targets are re-rolled on every lock, which is why the same wallpaper never settles the same way
- * twice.
+ * The blob layer: five flat-filled shapes that appear at [AtmosphereConstants.FIRST_BLOB_FRAME],
+ * grow, and drift across the screen. Each blob starts where its color lives in the photo and
+ * travels to a random target re-rolled on every lock.
  */
 internal class ShapeCreator {
 
     private companion object {
-        /**
-         * Rolled **once per process** and only advanced thereafter. This is not the same lifetime
-         * as `targetRandom` and the difference shows: blob sizes and the path shape evolve slowly
-         * across the process's life, while the layout jumps on every lock.
-         */
+        /** Seeded once per process and only advanced, so sizes and path shape evolve slowly while the layout jumps on every lock. */
         val PROCESS_RANDOM = Random(System.currentTimeMillis() / 1000L)
 
         const val FLOATS_PER_POSITION = 2
@@ -32,7 +24,7 @@ internal class ShapeCreator {
 
     private val outlines = Array(AtmosphereConstants.BLOB_COUNT) { BlobOutline() }
 
-    /** Drift destinations in surface pixels, five (x, y) pairs. */
+    /** Drift destinations in surface pixels, (x, y) pairs. */
     private val targets = FloatArray(AtmosphereConstants.BLOB_COUNT * 2)
 
     /** Per blob, per anchor, quantized to {2, 4, 6}. */
@@ -40,10 +32,9 @@ internal class ShapeCreator {
         FloatArray(AtmosphereConstants.ANCHOR_COUNT)
     }
 
-    /** The width-scaled pentagon every outline is rewound to; rebuilt by [fillBaseAnchors]. */
     private val baseAnchors = FloatArray(AtmosphereConstants.ANCHOR_COUNT * 2)
 
-    /** 0 straight, 1 and 2 the two semicircular arcs. Shared by all five blobs, not per blob. */
+    /** 0 straight, 1 and 2 the two semicircular arcs. Shared by all blobs. */
     private var rotationMode = 0
 
     private var seeds: List<VertexInfo> = emptyList()
@@ -59,7 +50,7 @@ internal class ShapeCreator {
     private val positions = FloatArray(BlobOutline.MAX_STRIP_VERTICES * FLOATS_PER_POSITION)
     private val positionBuffer = AtmosphereGl.newFloatBuffer(positions.size)
 
-    /** Reused by [positionAt]; five blobs a frame is not the place to box floats. */
+    /** Reused by [positionAt] to avoid per-frame allocation. */
     private val blobPosition = FloatArray(2)
 
     private val mvp = FloatArray(16)
@@ -70,8 +61,6 @@ internal class ShapeCreator {
 
     val isReady: Boolean get() = program != 0 && seeds.size == VertexInfo.SEED_COUNT
 
-    // Lifecycle
-
     fun onSurfaceCreated(vertexSource: String, fragmentSource: String) {
         program = AtmosphereGl.buildProgram(vertexSource, fragmentSource, "blob")
         if (program == 0) return
@@ -79,8 +68,7 @@ internal class ShapeCreator {
         uAlpha = GLES30.glGetUniformLocation(program, "uAlpha")
         uColor = GLES30.glGetUniformLocation(program, "uColor")
 
-        // Sized once at the worst case and only ever sub-loaded after this, so the per-frame path
-        // never re-specifies buffer storage — five blobs a frame is not the place to reallocate.
+        // Sized once at the worst case and only sub-loaded afterwards, so frames never reallocate.
         vbo = AtmosphereGl.createBuffer()
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, vbo)
         GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, positionBytes, null, GLES30.GL_DYNAMIC_DRAW)
@@ -96,17 +84,11 @@ internal class ShapeCreator {
         }
     }
 
-    // State
-
     fun setSeeds(newSeeds: List<VertexInfo>) {
         seeds = newSeeds
     }
 
-    /**
-     * Re-rolls everything that is random and rewinds every outline to its base pentagon.
-     *
-     * Called on entering the lock state, which is what makes each unlock a fresh layout.
-     */
+    /** Re-rolls everything random and rewinds every outline to its base pentagon; called on entering the lock state. */
     fun reset(width: Int, height: Int) {
         surfaceWidth = width
         surfaceHeight = height
@@ -119,7 +101,6 @@ internal class ShapeCreator {
         rotationMode = PROCESS_RANDOM.nextInt(3)
 
         val rate = AtmosphereConstants.renderRate(width)
-        // One pentagon for all five
         fillBaseAnchors(rate)
         for (s in 0 until AtmosphereConstants.BLOB_COUNT) {
             for (j in 0 until AtmosphereConstants.ANCHOR_COUNT) {
@@ -130,10 +111,7 @@ internal class ShapeCreator {
         }
     }
 
-    /**
-     * The base pentagon, scaled about its centroid by the render rate. On a panel at least
-     * as wide as the reference this is the literal constant.
-     */
+    /** The base pentagon scaled about its centroid by the render rate. */
     private fun fillBaseAnchors(rate: Float) {
         for (i in 0 until AtmosphereConstants.ANCHOR_COUNT) {
             val dx = AtmosphereConstants.DEFAULT_VERTICES[i * 2] - AtmosphereConstants.DEFAULT_CENTROID_X
@@ -143,16 +121,9 @@ internal class ShapeCreator {
         }
     }
 
-    // Drawing
-
     /**
-     * Blends the five blobs over whatever is already in the bound framebuffer.
-     *
-     * Returns without touching GL below [AtmosphereConstants.FIRST_BLOB_FRAME] -- for the first
-     * ten frames the blobs simply do not exist.
-     *
-     * @param isInit true when seeking, which replays each outline's growth from its pristine
-     * anchors rather than stepping it.
+     * Blends the blobs over the bound framebuffer; draws nothing below
+     * [AtmosphereConstants.FIRST_BLOB_FRAME]. [isInit] seeks by replaying growth from pristine anchors.
      */
     fun draw(frame: Int, isInit: Boolean, width: Int, height: Int) {
         if (frame < AtmosphereConstants.FIRST_BLOB_FRAME) return
@@ -202,17 +173,11 @@ internal class ShapeCreator {
             vertexCount * FLOATS_PER_POSITION * AtmosphereGl.BYTES_PER_FLOAT, positionBuffer
         )
 
-        // Constant across the strip and only changes on reset, so a uniform rather than a
-        // per-vertex attribute streamed five times a frame.
         GLES30.glUniform3fv(uColor, 1, outline.color, 0)
         applyMvp(index, easedTravel, width, height)
         GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, vertexCount)
     }
 
-    /**
-     * Places the blob on screen: translate to its drifted position, offset by the base pentagon's
-     * centroid so the outline sits on that point, then project surface pixels into NDC.
-     */
     private fun applyMvp(index: Int, easedTravel: Float, width: Int, height: Int) {
         val seed = seeds[index + 1]
         val anchorX = (seed.x.toFloat() / seed.bitmapWidth) * width
@@ -232,18 +197,11 @@ internal class ShapeCreator {
             0f
         )
 
-        // multiplyMM only forbids aliasing between the result and its inputs, and mvp is neither.
         Matrix.multiplyMM(mvp, 0, projection, 0, model, 0)
         GLES30.glUniformMatrix4fv(uMvpMatrix, 1, false, mvp, 0)
     }
 
-    /**
-     * Where the blob is at [progress] along its journey from anchor to target.
-     *
-     * All three modes end on the target -- a half turn about the midpoint of anchor->target with
-     * radius `dist / 2` lands exactly on it. They differ only in whether the blob slides straight
-     * there or bows out to one side on the way.
-     */
+    /** Where the blob is at [progress] from anchor to target; all three modes end exactly on the target. */
     private fun positionAt(
         anchorX: Float,
         anchorY: Float,
@@ -266,9 +224,7 @@ internal class ShapeCreator {
             return
         }
 
-        // A half turn about the midpoint, radius half the distance, lands exactly on the target --
-        // which is why both arcs and the straight line share an endpoint and differ only in the
-        // route.
+        // A half turn about the midpoint (radius half the distance) lands exactly on the target.
         val midX = (anchorX + targetX) * 0.5f
         val midY = (anchorY + targetY) * 0.5f
         val armX = anchorX - midX
@@ -283,18 +239,13 @@ internal class ShapeCreator {
         blobPosition[1] = midY + armX * s + armY * c
     }
 
-    /** Linear 0..1 across the travel window; the ease is applied by the caller. */
+    /** Linear 0..1; the caller applies the ease. */
     private fun travelProgress(frame: Int): Float = AtmosphereConstants.ramp(
         frame,
         from = AtmosphereConstants.FIRST_BLOB_FRAME,
         to = AtmosphereConstants.TOTAL_ANIM_FRAMES
     )
 
-    /**
-     * Blob opacity. Full at frame [AtmosphereConstants.RANDOMIZE_SHAPES_TRANSITION] -- barely a
-     * third of the way in, while the photo is still more than half visible and the blobs are
-     * still traveling.
-     */
     private fun alphaAt(frame: Int): Float = AtmosphereConstants.easedRamp(
         frame,
         from = AtmosphereConstants.FIRST_BLOB_FRAME,

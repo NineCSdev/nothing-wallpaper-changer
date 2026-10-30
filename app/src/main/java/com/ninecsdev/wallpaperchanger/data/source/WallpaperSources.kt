@@ -30,35 +30,21 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Summary of importing a batch of picked URIs: how many were kept as external
- * references (MediaStore uris read under `READ_MEDIA_IMAGES`), how many were internalized
- * (user setting, missing permission, or a failed conversion), and how many failed both and were
- * dropped. Surfaced to the UI as a post-add notice.
- */
+/** Counts for the post-add notice; [skipped] failed both referencing and internalizing and were dropped. */
 data class PickImportResult(
     val referenced: Int = 0,
     val internalized: Int = 0,
     val skipped: Int = 0
 )
 
-/**
- * Full outcome of [WallpaperSources.acquirePicked]: the durable (uri, source type) pairs ready to
- * register in the file registry, plus the [PickImportResult] counts for the UI.
- */
 data class PickImportOutcome(
     val files: List<Pair<String, SourceType>>,
     val result: PickImportResult
 )
 
 /**
- * Owns the lifecycle of a wallpaper's backing source (acquire / reclaim per [SourceType]),
- * hiding the ContentResolver grant mechanics and the [ImageInternalizer] fallback from callers.
- * The counterpart split with [WallpaperRepository][com.ninecsdev.wallpaperchanger.data.WallpaperRepository]:
- * DB rows and transactions are the repository's; backing resources (grants, internal copies) are this
- * module's.
- *
- * Every member here is safe to call from any dispatcher. Callers never wrap a call to this class.
+ * Owns a wallpaper's backing resources (grants, internal copies); DB rows and transactions belong to
+ * the [repository][com.ninecsdev.wallpaperchanger.data.WallpaperRepository]. Every member is safe to call from any dispatcher, so callers never wrap a call.
  */
 // TODO: add tests, check "WallpaperSources Tests" vault note
 @Singleton
@@ -70,23 +56,20 @@ class WallpaperSources @Inject constructor(
     private companion object {
         const val TAG = "WallpaperSources"
 
-        /** Ids per MediaStore `IN (...)` query, kept well under SQLite's bind/expression limits. */
+        /** Kept well under SQLite's bind/expression limits. */
         const val MEDIA_QUERY_CHUNK_SIZE = 500
 
-        /** Grants held on purpose by something other than a collection root. See [pinnedGrantUris]. */
         val KEY_PINNED_GRANTS = stringSetPreferencesKey("pinned_grant_uris")
         const val MILLIS_PER_SECOND = 1000L
 
         const val INTERNALIZED_MIME_TYPE = "image/webp"
 
-        /** What [fingerprint] reads from a MediaStore row. */
         val MEDIA_FINGERPRINT_COLUMNS = arrayOf(
             OpenableColumns.DISPLAY_NAME,
             OpenableColumns.SIZE,
             MediaStore.MediaColumns.DATE_MODIFIED
         )
 
-        /** [MEDIA_FINGERPRINT_COLUMNS]' counterpart for a document uri. */
         val DOCUMENT_FINGERPRINT_COLUMNS = arrayOf(
             OpenableColumns.DISPLAY_NAME,
             OpenableColumns.SIZE,
@@ -95,13 +78,9 @@ class WallpaperSources @Inject constructor(
     }
 
     /**
-     * Makes a batch of picked [uris][uriStrings] durable, deciding how per uri: if the user's "keep local
-     * copies" setting is on or `READ_MEDIA_IMAGES` was denied, everything is internalized.
-     * Otherwise, each picker uri is kept as an external reference by converting it to its stable
-     * MediaStore uri and verifying it points at the picked bytes; a uri that fails the conversion
-     * (e.g. a cloud-only pick with no local MediaStore row) falls back to internalizing just that image,
-     * and a uri that fails internalization too is dropped.
-     * See [tryConvertToMediaStore].
+     * Everything is internalized when "keep local copies" is on or `READ_MEDIA_IMAGES` was denied.Otherwise,
+     * each pick is referenced via its MediaStore uri, falling back to internalizing just that image
+     * (e.g. a cloud-only pick), and is dropped if that fails too.
      */
     suspend fun acquirePicked(uriStrings: List<String>): PickImportOutcome {
         if (uriStrings.isEmpty()) return PickImportOutcome(emptyList(), PickImportResult())
@@ -118,7 +97,6 @@ class WallpaperSources @Inject constructor(
             )
         }
 
-        // Two file-descriptor opens per uri, so it runs in IO
         val referenced = withContext(Dispatchers.IO) { uris.mapNotNull { tryConvertToMediaStore(it) } }
         val toInternalize = uris - referenced.map { it.first }.toSet()
 
@@ -141,23 +119,18 @@ class WallpaperSources @Inject constructor(
         )
     }
 
-    /** True while the app holds `READ_MEDIA_IMAGES`. */
-    fun hasMediaAccess(): Boolean =
-        appContext.checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
+    fun hasMediaAccess(): Boolean = appContext.checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
 
     /**
-     * True while the app holds only the Android 14+ partial grant (`READ_MEDIA_VISUAL_USER_SELECTED`
-     * without `READ_MEDIA_IMAGES`). Re-requesting the permission from this state only re-opens the
-     * manage-selection sheet (no reliable "allow all" option), so upgrade flows send the user to the
-     * app's system settings page instead. Mutually exclusive with [hasMediaAccess].
+     * Only the Android 14+ partial grant. Re-requesting from here only re-opens the manage-selection sheet
+     * (no reliable "allow all"), so upgrade flows send the user to the app's settings page instead.
      */
     fun hasPartialMediaAccess(): Boolean =
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
             !hasMediaAccess() &&
             appContext.checkSelfPermission(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) ==
             PackageManager.PERMISSION_GRANTED
 
-    /** Returns the folder's name for a [treeUri]. Null when the provider has no name for it. */
     suspend fun folderDisplayName(treeUri: String): String? = withContext(Dispatchers.IO) {
         try {
             val uri = treeUri.toUri()
@@ -174,7 +147,6 @@ class WallpaperSources @Inject constructor(
         }
     }
 
-    /** Reads [uri]'s [SourceFingerprint]. */
     suspend fun fingerprint(uri: String, sourceType: SourceType): SourceFingerprint =
         withContext(Dispatchers.IO) {
             if (sourceType == SourceType.INTERNALIZED) return@withContext fingerprintLocalFile(uri)
@@ -199,7 +171,6 @@ class WallpaperSources @Inject constructor(
             }
         }
 
-    /** An app-private copy is a plain file, no provider is involved. */
     private fun fingerprintLocalFile(uri: String): SourceFingerprint {
         val path = uri.toUri().path ?: return SourceFingerprint()
         val file = File(path)
@@ -207,10 +178,6 @@ class WallpaperSources @Inject constructor(
         return SourceFingerprint(file.name, file.length(), file.lastModified())
     }
 
-    /**
-     * Reads [uri]'s [SourceDetails]: one catalogue query for name and size, the provider's mime
-     * type, and the image header for its size in pixels.
-     */
     suspend fun details(uri: String, sourceType: SourceType): SourceDetails {
         val folderName = if (sourceType == SourceType.FOLDER_DOC) folderDisplayName(uri) else null
 
@@ -235,12 +202,12 @@ class WallpaperSources @Inject constructor(
         }
     }
 
-    /** Stops a decode once the header has been read, before any pixels are. */
+    /** Thrown to stop a decode once the header is read, before any pixels are. */
     private class HeaderRead : RuntimeException() {
         override fun fillInStackTrace(): Throwable = this
     }
 
-    /** The image's size, orientation-corrected, from its header alone. Null if unreadable. */
+    /** Orientation-corrected size from the header alone; null if unreadable. */
     private fun readDimensions(uri: String): Size? {
         var size: Size? = null
         try {
@@ -249,7 +216,7 @@ class WallpaperSources @Inject constructor(
                 throw HeaderRead()
             }
         } catch (_: HeaderRead) {
-            // The expected way out
+            // Expected
         } catch (e: Exception) {
             Log.w(TAG, "Could not read the header of $uri", e)
         }
@@ -259,7 +226,6 @@ class WallpaperSources @Inject constructor(
     private fun Cursor.stringOrNull(column: String): String? = stringAt(getColumnIndex(column))
     private fun Cursor.longOrNull(column: String): Long? = longAt(getColumnIndex(column))
 
-    /** True if [uri] can currently be opened for reading. */
     suspend fun isReadable(uri: String): Boolean = withContext(Dispatchers.IO) {
         try {
             appContext.contentResolver.openAssetFileDescriptor(uri.toUri(), "r")?.use { true } ?: false
@@ -268,23 +234,16 @@ class WallpaperSources @Inject constructor(
         }
     }
 
-    /**
-     * Reclaims a source's backing resource per [sourceType]: app-private copies are deleted;
-     * MediaStore references and folder documents are left alone.
-     */
+    /** Deletes app-private copies; MediaStore references and folder documents are left alone. */
     suspend fun reclaim(uri: String, sourceType: SourceType) {
         when (sourceType) {
-            // Only this branch touches disk so run that part in IO
             SourceType.INTERNALIZED -> withContext(Dispatchers.IO) { imageInternalizer.deleteInternalFile(uri.toUri().path) }
             SourceType.MEDIA_STORE -> Unit
             SourceType.FOLDER_DOC -> Unit
         }
     }
 
-    /**
-     * Takes a persistable READ grant for [uri] (a folder tree from the system folder picker) so it
-     * survives across reboots. Counterpart of [releasePersistedGrant]
-     */
+    /** Takes a persistable READ grant for a folder tree so it survives reboots. Counterpart of [releasePersistedGrant]. */
     suspend fun takePersistedGrant(uri: String) {
         withContext(Dispatchers.IO) {
             appContext.contentResolver.takePersistableUriPermission(
@@ -293,19 +252,15 @@ class WallpaperSources @Inject constructor(
         }
     }
 
-    /**
-     * Snapshot of every uri this app currently holds a persisted grant for (folder trees). Callers
-     * must take this snapshot *before* computing their keep set so a grant acquired concurrently
-     * can never look orphaned.
-     */
+    /** Callers must take this *before* computing their keep set, so a grant acquired concurrently never looks orphaned. */
     suspend fun persistedGrantUris(): List<String> =
         withContext(Dispatchers.IO) {
             appContext.contentResolver.persistedUriPermissions.map { it.uri.toString() }
         }
 
     /**
-     * Uris a grant is deliberately held for by something that is not a collection root (a wizard
-     * still reading the file it was handed). Persisted because the holder and the sweep aren't in the same process.
+     * Grants deliberately held by something other than a collection root (a wizard still reading its file).
+     * Persisted because the holder and the sweep are not in the same process.
      */
     suspend fun pinnedGrantUris(): Set<String> {
         val pinned = appContext.appPreferences.safeData().first()[KEY_PINNED_GRANTS].orEmpty()
@@ -316,7 +271,6 @@ class WallpaperSources @Inject constructor(
         return live
     }
 
-    /** Holds [uri] out of the reclaim sweep until [unpinGrant]. */
     suspend fun pinGrant(uri: String) = editPins { it + uri }
 
     /** Hands [uri] back to the sweep. Releasing the grant itself stays the caller's to do. */
@@ -328,10 +282,7 @@ class WallpaperSources @Inject constructor(
         }
     }
 
-    /**
-     * Releases a persisted READ URI permission previously taken via `takePersistableUriPermission`
-     * (a folder tree grant). Safe to call even if already released.
-     */
+    /** Safe to call even if already released. */
     suspend fun releasePersistedGrant(uri: String) {
         withContext(Dispatchers.IO) {
             try {
@@ -345,10 +296,8 @@ class WallpaperSources @Inject constructor(
     }
 
     /**
-     * Disk ↔ DB reconcile of `internal_wallpapers/`: deletes any file the rows no longer reference.
-     * Callers pass the uris they want kept and [ImageInternalizer.deleteOrphanInternalFiles] resolves
-     * them to filenames, so nobody outside that class has to know how an internal file is named.
-     * See it for the grace-period guard against racing an in-progress import.
+     * Deletes `internal_wallpapers/` files the rows no longer reference. Callers pass Uris to keep;
+     * [ImageInternalizer.deleteOrphanInternalFiles] owns the naming and the grace-period guard against an in-progress import.
      */
     suspend fun sweepInternalFiles(keepUris: List<String>) {
         withContext(Dispatchers.IO) {
@@ -356,12 +305,7 @@ class WallpaperSources @Inject constructor(
         }
     }
 
-    /**
-     * The subset of [uris] whose image still exists in the device's MediaStore image table.
-     * One indexed `_ID IN (...)` query per chunk. Callers must hold `READ_MEDIA_IMAGES`.
-     *
-     * **A uri with no readable media id counts as existing.**
-     */
+    /** Callers must hold `READ_MEDIA_IMAGES`. A uri with no readable media id counts as existing. */
     suspend fun queryExistingMediaStoreUris(uris: List<String>): Set<String> =
         withContext(Dispatchers.IO) {
             val (checkable, unreadable) = uris
@@ -386,11 +330,7 @@ class WallpaperSources @Inject constructor(
             existing
         }
 
-    /**
-     * Converts a photo-picker [pickerUri] to the stable MediaStore uri of the same image, or null
-     * if the pick can't be referenced (caller falls back to internalizing). The media id is the
-     * picker uri's last path segment.
-     */
+    /** (pickerUri, stable MediaStore uri) of the same image, or null if it cannot be referenced. The media id is the picker Uri's last path segment. */
     private fun tryConvertToMediaStore(pickerUri: Uri): Pair<Uri, Uri>? {
         val mediaId = pickerUri.lastPathSegment?.toLongOrNull() ?: return null
 
@@ -399,7 +339,7 @@ class WallpaperSources @Inject constructor(
         val pickedLength = sourceLength(pickerUri)
         val mediaLength = sourceLength(mediaUri)
 
-        // Only accept when we are sure they are the same image (same byte length)
+        // Same byte length is the proof it is the same image
         if (pickedLength == null || pickedLength != mediaLength) {
             Log.w(TAG, "MediaStore conversion rejected for $pickerUri (lengths $pickedLength vs $mediaLength), internalizing")
             return null
@@ -407,7 +347,6 @@ class WallpaperSources @Inject constructor(
         return pickerUri to mediaUri
     }
 
-    /** Byte length behind [uri], or null when unreadable or the provider doesn't report one. */
     private fun sourceLength(uri: Uri): Long? = try {
         appContext.contentResolver.openAssetFileDescriptor(uri, "r")?.use { descriptor ->
             descriptor.length.takeIf { it >= 0 }
@@ -416,9 +355,7 @@ class WallpaperSources @Inject constructor(
         null
     }
 }
-
-/** The folder tree a document uri was built from, or null when it was not built from one. */
-internal fun treeUriOf(documentUri: String): String? = documentUri.substringBefore(DOCUMENT_SEGMENT, "").takeIf { it.isNotEmpty() }
-
-/** A tree-built document uri is `.../tree/<tree>/document/<doc>`; this splits the two. */
+// A tree-built document uri is `.../tree/<tree>/document/<doc>`
 private const val DOCUMENT_SEGMENT = "/document/"
+
+internal fun treeUriOf(documentUri: String): String? = documentUri.substringBefore(DOCUMENT_SEGMENT, "").takeIf { it.isNotEmpty() }

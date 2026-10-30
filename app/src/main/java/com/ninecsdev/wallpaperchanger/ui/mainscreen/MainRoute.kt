@@ -11,14 +11,7 @@ import com.ninecsdev.wallpaperchanger.ui.components.hasPartialMediaAccess
 import com.ninecsdev.wallpaperchanger.ui.components.mediaAccessPermissions
 import com.ninecsdev.wallpaperchanger.ui.components.openAppSettings
 
-/**
- * Stateful entry point for the main screen: collects state and wires the ViewModel
- * into the stateless [MainScreen]. Navigation and service/activity callbacks are
- * received as parameters so this composable stays independent of the nav graph.
- *
- * [viewModel] is passed in (not resolved here) because it is activity-scoped and
- * shared with the activity's result launchers.
- */
+/** [viewModel] is passed in because it is activity-scoped and shared with the activity's result launchers. */
 @Composable
 fun MainRoute(
     viewModel: MainViewModel,
@@ -45,7 +38,7 @@ fun MainRoute(
         onPauseOrDispose { }
     }
 
-    // Render nothing until the real state has loaded (see MainViewModel.uiState).
+    // Render nothing until the real state has loaded.
     val loadedUiState = uiState ?: return
 
     MainScreen(

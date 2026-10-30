@@ -21,11 +21,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * Square slot for one image of a [CollectionGridItem], drawn from the file's grid thumbnail.
- *
- * Its memory-cache key is its own, not the grid tile's.
- */
+/** Its memory-cache key is its own, not the grid tile's. */
 @Composable
 fun ThumbnailSlot(
     file: PreviewFile?,

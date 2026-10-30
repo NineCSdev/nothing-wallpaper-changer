@@ -4,21 +4,17 @@ import kotlin.math.sqrt
 
 /**
  * One blob's outline: five anchors that push outward every frame, smoothed into a closed cubic
- * Bezier and emitted as a triangle strip.
+ * Bezier and emitted as a triangle strip. Anchors live in the base pentagon's own space, so growth
+ * is independent of where the blob sits on screen.
  *
- * The anchors live in the base pentagon's own space, centred on its shoelace centroid, so growth
- * here is independent of where the blob sits on screen — placement is entirely the caller's MVP.
- *
- * Two copies of the anchors are kept. The working set is what grows; the pristine set is what a
- * seek replays from. That is what makes `draw(n)` a real seek rather than an approximation, and
- * it is why the debug frame scrub can be trusted.
+ * Two anchor sets are kept: the working set grows, the pristine set is what a seek replays from,
+ * which makes `draw(n)` an exact seek.
  */
 internal class BlobOutline {
 
     /** Working anchors, five (x, y) pairs, mutated every frame. */
     private val anchors = FloatArray(AtmosphereConstants.ANCHOR_COUNT * 2)
 
-    /** Untouched copy of the base pentagon; a seek restores from this. */
     private val pristine = FloatArray(AtmosphereConstants.ANCHOR_COUNT * 2)
 
     /** Per-anchor radial growth rate, quantized to {2, 4, 6} and scaled by the render rate. */
@@ -27,19 +23,14 @@ internal class BlobOutline {
     /** Handle tension, ramping to [AtmosphereConstants.CURVE_SCALE_MAX] over ~16 frames. */
     private var curveScale = 0f
 
-    /** Shoelace centroid of the base pentagon — the point growth radiates from. */
+    /** Centroid of the base pentagon: the point growth radiates from. */
     private var centroidX = 0f
     private var centroidY = 0f
 
     /** Flat fill color, `pixelColor` of this blob's seed, unpacked to 0..1. */
     val color = FloatArray(3)
 
-    /**
-     * Scratch for the tessellated loop before it is walked into a strip.
-     *
-     * Held rather than allocated per call: this runs five times a frame for the length of a
-     * 185-frame animation, and the one thing that must not vary is the frame pacing.
-     */
+    /** Scratch for the tessellated loop; held rather than allocated per call to keep frame pacing steady. */
     private val loop = FloatArray(MAX_STRIP_VERTICES * 2)
 
     fun reset(baseAnchors: FloatArray, growthSteps: FloatArray, blobColor: Int) {
@@ -54,10 +45,8 @@ internal class BlobOutline {
     }
 
     /**
-     * Brings the outline to [frame].
-     *
-     * @param isInit true to seek — restore the pristine anchors and replay every growth step from
-     * [AtmosphereConstants.FIRST_BLOB_FRAME]. False to step a single frame forward.
+     * Brings the outline to [frame]. [isInit] seeks (restores the pristine anchors and replays
+     * every growth step); false steps a single frame forward.
      */
     fun advanceTo(frame: Int, isInit: Boolean) {
         if (isInit) {
@@ -78,11 +67,7 @@ internal class BlobOutline {
         }
     }
 
-    /**
-     * One frame of radial growth. The step on the very first frame is multiplied by
-     * [AtmosphereConstants.GROWTH_KICK] — that single push is what establishes the blob's size,
-     * and the ~90 ordinary pushes that follow only refine it.
-     */
+    /** One frame of radial growth; the first frame's step is multiplied by [AtmosphereConstants.GROWTH_KICK] and sets the blob's size. */
     private fun push(k: Int) {
         for (j in 0 until AtmosphereConstants.ANCHOR_COUNT) {
             var d = steps[j]
@@ -100,7 +85,6 @@ internal class BlobOutline {
         anchors[index * 2 + 1] += dy / length * distance
     }
 
-    /** Shoelace centroid over the *base* anchors, computed once per reset. */
     private fun computeCentroid() {
         val centroid = AtmosphereConstants.centroidOf(pristine)
         centroidX = centroid[0]
@@ -108,14 +92,9 @@ internal class BlobOutline {
     }
 
     /**
-     * Tessellates the closed outline and writes it into [out] as a triangle strip, returning the
-     * vertex count.
-     *
-     * The strip order is a parity walk over the outline — front, back, front, back — which fills a
-     * closed loop without an index buffer or a centre vertex.
-     *
-     * @param coarseness 0 at the start of the morph, 1 at the end. The outline deliberately
-     * *coarsens* as the animation runs.
+     * Tessellates the closed outline into [out] as a triangle strip, returning the vertex count.
+     * [coarseness] is 0 at the start of the morph and 1 at the end; the outline deliberately
+     * coarsens as the animation runs.
      */
     fun tessellate(coarseness: Float, out: FloatArray): Int {
         val n = AtmosphereConstants.ANCHOR_COUNT
@@ -155,10 +134,7 @@ internal class BlobOutline {
         return emitStrip(w / 2, out)
     }
 
-    /**
-     * Walks the closed loop alternately from both ends so consecutive triples form triangles that
-     * tile the interior: `0, 1, last, 2, last-1, ...`
-     */
+    /** Walks the loop alternately from both ends (`0, last, 1, last-1, ...`) so triples tile the interior without an index buffer. */
     private fun emitStrip(pointCount: Int, out: FloatArray): Int {
         var head = 0
         var tail = pointCount - 1

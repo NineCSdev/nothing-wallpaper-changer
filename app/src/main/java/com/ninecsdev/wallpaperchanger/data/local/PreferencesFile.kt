@@ -15,10 +15,7 @@ import java.io.IOException
 private const val TAG = "PreferencesFile"
 private const val OLD_PREFS_NAME = "smart_wallpaper_prefs"
 
-/**
- * The one preferences file the app persists to. Shared by [AppDataStore] and [WallpaperRecordStore].
- * On first launch after migration, existing SharedPreferences values are imported and the old file is deleted.
- */
+/** The one preferences file, shared by [AppDataStore] and [WallpaperRecordStore]; imports the old SharedPreferences on first launch. */
 internal val Context.appPreferences by preferencesDataStore(
     name = "app_settings",
     produceMigrations = { context ->
@@ -26,10 +23,7 @@ internal val Context.appPreferences by preferencesDataStore(
     }
 )
 
-/**
- * Reads that survive a damaged file. IO and corruption errors (CorruptionException is an
- * IOException) fall back to empty preferences so every reader gets its defaults instead of a crash
- */
+/** IO and corruption errors (CorruptionException is an IOException) yield empty preferences, so readers get defaults instead of a crash. */
 internal fun DataStore<Preferences>.safeData(): Flow<Preferences> = data.catch { e ->
     if (e is IOException) {
         Log.e(TAG, "DataStore read failed, falling back to defaults", e)
@@ -39,7 +33,7 @@ internal fun DataStore<Preferences>.safeData(): Flow<Preferences> = data.catch {
     }
 }
 
-/** For values whose absence is meaningful: writes [value], or removes the key when it is null. */
+/** Removes the key when [value] is null, for values whose absence is meaningful. */
 internal fun <T> MutablePreferences.setOrClear(key: Preferences.Key<T>, value: T?) {
     if (value == null) remove(key) else this[key] = value
 }

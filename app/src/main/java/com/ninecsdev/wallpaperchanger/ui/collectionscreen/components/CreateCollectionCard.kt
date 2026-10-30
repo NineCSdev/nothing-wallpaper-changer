@@ -47,9 +47,6 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
-/**
- * Card pop-up for creating a new collection.
- */
 @Composable
 internal fun CreateCollectionCard(
     isProcessing: Boolean = false,
@@ -249,8 +246,6 @@ private fun CreateCardActions(
         )
     }
 }
-
-// Previews
 
 @Preview(name = "CreateCollectionCard – Idle", showBackground = true, backgroundColor = 0xFF000000)
 @Composable

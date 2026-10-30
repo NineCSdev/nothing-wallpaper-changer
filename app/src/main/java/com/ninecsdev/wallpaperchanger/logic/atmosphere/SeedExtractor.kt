@@ -16,13 +16,9 @@ import kotlin.math.roundToInt
 import kotlin.random.Random
 
 /**
- * Stage 1: a photo becomes six colored seeds.
- *
- * This runs on the app side rather than inside the engine, keeps the cost off the wallpaper thread,
+ * Turns a photo into exactly [VertexInfo.SEED_COUNT] seeds sorted by population descending (entry 0
+ * is the background, see [VertexInfo]). Runs app-side so the cost stays off the engine's thread,
  * where it would show as a black frame at boot and on every surface recreate.
- *
- * The output is always exactly [VertexInfo.SEED_COUNT] entries, sorted by population
- * descending, and **entry 0 is the background color, not a blob** — see [VertexInfo].
  */
 @Singleton
 class SeedExtractor @Inject constructor() {
@@ -30,57 +26,24 @@ class SeedExtractor @Inject constructor() {
     private companion object {
         const val TAG = "SeedExtractor"
 
-        /**
-         * No filters and no targets means raw quantizer output: near-black, near-white and skin
-         * tones are all eligible and there is no Vibrant/Muted bias. Both are deliberate — the
-         * default filter would drop exactly the dark dominant colors this effect leans on.
-         */
+        // Used with no filters or targets (raw quantizer output): the default filter would
+        // drop exactly the dark dominant colors this effect leans on
         const val MAX_COLOR_COUNT = VertexInfo.SEED_COUNT
 
         /**
-         * Linear divisor applied before the scan, so the cost falls by its square.
-         *
-         * **It is not only a cost knob.** The reduction decides how many pixels the quantizer
-         * sees and therefore where its median-cut boxes split, so it moves the *colors* the
-         * palette reports -- not merely how extreme the pixel picked for each one is. It also
-         * decides whether [Palette] resamples again: above its 112x112 budget it subsamples the
-         * scan a second time with the filter off, and below that threshold it leaves it alone.
-         *
-         * Have tried 2 (more saturated blobs, ~300 ms) and 4 (a bit less saturated, ~60 ms).
-         *
-         * **16 was measured on device across four photos and rejected.**
+         * Linear divisor applied before the scan. Not only a cost knob: it shifts the quantizer's
+         * median-cut splits and so the colors reported. 2 gave more saturated blobs (~300 ms),
+         * 4 less (~60 ms); 16 was measured on device and rejected.
          */
         const val SCAN_DOWNSCALE = 4
 
-        /**
-         * One step of the analysis crop. [ANALYSIS_STEPS] of these is the framing the palette is
-         * quantized at, whatever framing the delivery itself carries.
-         *
-         * **This is not the presentation zoom, and it must not be re-derived from it.** It looks
-         * like it: the presentation zoom was long believed to be 1.09, and this constant was once
-         * written as `1 + 2 * 0.045` to say so. The presentation zoom was measured on device and is
-         * **1.10**, so the resemblance is a coincidence. What justifies the value here is only that
-         * [ANALYSIS_STEPS] of it was pinned against a reference render; see [ANALYSIS_STEPS].
-         */
+        // Empirical, not the platform parallax zoom (measured 1.10): do not derive one from the other
         const val SCAN_ZOOM_STEP = 1.09f
 
         /**
-         * How far in the palette is measured, in [SCAN_ZOOM_STEP]s: the center ~84% of the photo.
-         *
-         * **Pinned by measurement, not derived.**
-         *
-         * **No mechanism is claimed, and there is now less to claim than there once was.** The
-         * old note here said one step would be the presentation zoom and only the second was
-         * unexplained. Measurement put the presentation zoom at 1.10, so **neither** step is it and
-         * the whole 1.1881 is unexplained. Treat it as load-bearing and empirical: verify against a
-         * reference render before changing it, do not "simplify" it back to one step, and do not
-         * rebuild it out of the platform zoom.
-         *
-         * Why so little slack: Palette is a six-box median cut and a swatch is its box's
-         * population-weighted mean, so on a photo built from a few near-equal masses the split
-         * points sit on a knife edge. The `wallpaper1` case has ranks 2 and 3 separated by 13
-         * counts out of ~12,660 -- a few percent of framing either way moves a box, and moving a
-         * box changes a color, its population rank, and therefore which blob is drawn over which.
+         * Steps of [SCAN_ZOOM_STEP] the palette is measured at (the center ~84% of the photo).
+         * Empirical and load-bearing: near-equal color masses sit on a median-cut knife edge, so a
+         * few percent of framing can change a color's rank. Verify against a reference render before changing.
          */
         const val ANALYSIS_STEPS = 2
 
@@ -93,24 +56,20 @@ class SeedExtractor @Inject constructor() {
         const val XYZ_EPSILON = 0.008856
         const val XYZ_KAPPA = 903.3
 
-        /** sRGB -> linear for all 256 channel values. Exact, because the input is 8-bit. */
         val SRGB_TO_LINEAR = DoubleArray(256) { i ->
             val c = i / 255.0
             if (c < 0.04045) c / 12.92 else ((c + 0.055) / 1.055).pow(2.4)
         }
     }
 
-    /**
-     * @param bitmap the fitted, edit-applied photo **before** framing. Framing is a presentation
-     * choice shouldn't change the palette we create.
-     */
+    /** [bitmap] is the fitted, edit-applied photo before framing: framing must not change the palette. */
     suspend fun extract(bitmap: Bitmap): List<VertexInfo> = withContext(Dispatchers.Default) {
         val started = System.currentTimeMillis()
 
         val scan = prepareScan(bitmap, SCAN_ZOOM)
         try {
-            // Palette quantizes on its own 112x112 downscale regardless, so feeding it the same
-            // reduced bitmap keeps the swatches and the pixels they are matched against consistent.
+            // Palette downscales to 112x112 regardless; feeding it the reduced bitmap keeps
+            // swatches and the pixels they are matched against consistent
             val swatches = Palette.Builder(scan.bitmap)
                 .maximumColorCount(MAX_COLOR_COUNT)
                 .clearFilters()
@@ -139,14 +98,9 @@ class SeedExtractor @Inject constructor() {
     }
 
     /**
-     * The bitmap stage 1 actually reads, plus the mapping back to the photo it came from.
-     *
-     * [bitmap] is the centre `1 / scanZoom` of the photo, reduced by [SCAN_DOWNSCALE].
-     * [referenceWidth] and [referenceHeight] are the *whole* photo at that same reduced scale, and
-     * [offsetX] / [offsetY] locate the crop inside it so adding the offset to a pixel's position
-     * in [bitmap] gives its position in the photo, which is the frame [VertexInfo] leaves here in.
-     *
-     * Note that is the *photo's* frame, not the delivered image's..
+     * [bitmap] is the center `1 / scanZoom` of the photo, reduced by [SCAN_DOWNSCALE]. [referenceWidth] and
+     * [referenceHeight] are the whole photo at that scale; adding [offsetX]/[offsetY] to a position in
+     * [bitmap] gives its position in the photo (not in the delivered image).
      */
     private data class Scan(
         val bitmap: Bitmap,
@@ -162,13 +116,7 @@ class SeedExtractor @Inject constructor() {
         }
     }
 
-    /**
-     * Crops to the analysis framing and reduces, in one allocation.
-     *
-     * **Only the analysis is cropped.** Anchors come back in the full bitmap's coordinates (see
-     * [Scan]), because the composite draws the whole image and a blob has to start where its color
-     * actually appears in it.
-     */
+    /** Only the analysis is cropped: anchors stay in the full bitmap's coordinates because the composite draws the whole image. */
     private fun prepareScan(bitmap: Bitmap, scanZoom: Float): Scan {
         val cropWidth = (bitmap.width / scanZoom).roundToInt().coerceIn(1, bitmap.width)
         val cropHeight = (bitmap.height / scanZoom).roundToInt().coerceIn(1, bitmap.height)
@@ -201,13 +149,8 @@ class SeedExtractor @Inject constructor() {
     }
 
     /**
-     * For each swatch, the single pixel of the whole bitmap closest to it in CIE-LAB.
-     *
-     * That pixel's position is what anchors the blob at the start of the morph, so a blob really
-     * does begin where its color lives in the photo; its raw color, not the swatch's quantized
-     * one, is what gets drawn.
-     *
-     * O(pixels x swatches), which is why this is a background-thread, once-per-image cost.
+     * For each swatch, the pixel closest to it in CIE-LAB. Its position anchors the blob and its raw
+     * color (not the swatch's quantized one) is what is drawn. O(pixels x swatches): background only.
      */
     private fun nearestPixelPerSwatch(
         scan: Scan,
@@ -257,19 +200,9 @@ class SeedExtractor @Inject constructor() {
     }
 
     /**
-     * CIE-LAB conversion, numerically identical to `ColorUtils.colorToLAB` but affordable to run
-     * a few million times.
-     *
-     * The library version costs **24 `Math.pow` calls per pixel** on this path: three to
-     * linearise sRGB, three for the cube-root pivot, and — the surprise — eighteen inside
-     * `distanceEuclidean`, which squares its terms with `Math.pow(x, 2)` and is called once per
-     * swatch. Over a screen-sized bitmap that is upwards of sixty million `pow` calls, which is
-     * where the six and a half seconds went.
-     *
-     * Two changes, both exact rather than approximations. The sRGB linearisation depends only on
-     * an 8-bit channel, so all 256 answers are precomputed once. And the caller compares squared
-     * distances (above). Only the pivot's cube root survives, and it is deliberately still
-     * `Math.pow(x, 1/3.0)` rather than `cbrt` so the values match the library bit for bit.
+     * Numerically identical to `ColorUtils.colorToLAB` but avoids its ~24 `Math.pow` calls per pixel
+     * (sRGB via lookup table, squared distances in the caller). The pivot keeps `pow(x, 1/3.0)`, not
+     * `cbrt`, to match it bit for bit.
      */
     private fun colorToLab(color: Int, outLab: DoubleArray) {
         val sr = SRGB_TO_LINEAR[(color shr 16) and 0xFF]
@@ -293,19 +226,9 @@ class SeedExtractor @Inject constructor() {
         }
 
     /**
-     * Tops the list up to [VertexInfo.SEED_COUNT] when the photo quantized to fewer than
-     * six colors, which happens on near-monochrome sources.
-     *
-     * Synthesised colors are the most populous swatch with its saturation walked away in 0.1
-     * steps — half of them down, the rest up — wrapping by 0.6 when they run off either end.
-     * They are placed at random positions, the only true randomness in the seed list.
-     *
-     * Every step is measured from the base saturation, not from the previous step: the offsets
-     * are k * 0.1 with k counting away from the base in both directions, so the pair either side
-     * of it is the nearest and the outermost is the furthest.
-     *
-     * The copies matter. `Swatch.hsl` hands back the swatch's own array, and writing to it would
-     * leave the caller's swatch holding a saturation it never had.
+     * Tops up near-monochrome sources: the base swatch's saturation walked in 0.1 steps from the base
+     * (half down, the rest up, wrapping by 0.6), at random positions. `Swatch.hsl` is the swatch's
+     * own array, so it is copied.
      */
     private fun padToSeedCount(seeds: MutableList<VertexInfo>, base: Palette.Swatch) {
         val missing = VertexInfo.SEED_COUNT - seeds.size
@@ -347,11 +270,7 @@ class SeedExtractor @Inject constructor() {
         )
     }
 
-    /**
-     * Only reachable if the quantizer finds nothing at all — a zero-area or fully transparent
-     * bitmap. Produces a valid six-entry list of mid-gray so the engine renders *something*
-     * rather than reading a short array.
-     */
+    /** Only reachable on a zero-area or fully transparent bitmap; mid-gray keeps the list at six entries. */
     private fun flatFallback(scan: Scan): List<VertexInfo> {
         val grey = 0xFF808080.toInt()
         return List(VertexInfo.SEED_COUNT) {

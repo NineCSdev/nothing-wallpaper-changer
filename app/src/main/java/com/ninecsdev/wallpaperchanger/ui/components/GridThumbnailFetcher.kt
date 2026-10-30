@@ -18,7 +18,6 @@ import java.io.IOException
 /** Coil model for a small image of a file (a grid tile, edited or not, or a collection card slot): its [GridThumbnailCache] entry instead of its original. */
 data class GridThumbnail(val fileId: Long, val uriString: String, val sourceType: SourceType)
 
-/** Loads a [GridThumbnail], creating it on first view. */
 class GridThumbnailFetcher(
     private val data: GridThumbnail,
     private val options: Options,

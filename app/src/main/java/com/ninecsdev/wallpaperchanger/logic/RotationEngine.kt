@@ -17,15 +17,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Owns the in-memory rotation state (the "magazine") and the shuffle-cycle algorithm.
- * Picks the next image, delegates disk-buffer preparation to [BufferManager],
- * and self-heals by removing images that fail to load.
- *
- * The magazine is kept in sync **reactively**: [start] subscribes to
- * [WallpaperRepository.activeCollectionImagesFlow] and rebuilds the magazine whenever the active
- * collection or its images change.
- * All mutable state is guarded by a single [Mutex] so a screen-off refill and a reactive reload
- * cannot interleave.
+ * Owns the in-memory rotation state (the "magazine") and the shuffle cycle. All mutable state is
+ * guarded by a single [Mutex] so a screen-off refill and a reactive reload cannot interleave.
  */
 @Singleton
 class RotationEngine @Inject constructor(
@@ -44,13 +37,8 @@ class RotationEngine @Inject constructor(
     private var collectorJob: Job? = null
 
     /**
-     * Starts observing the active collection's images and keeping the magazine + disk buffer in
-     * sync. Cancels any previous subscription first (idempotent across service restarts) and
-     * suspends until the first load + refill pass completes, so the caller can rely on the buffer
-     * being ready before it marks the service Running.
-     *
-     * The passed [scope] should be the owning service's scope: cancelling it (in `onDestroy`)
-     * tears the subscription down.
+     * Idempotent across service restarts. Suspends until the first load and refill complete, so the
+     * buffer is ready before the caller marks the service Running. Cancelling [scope] tears it down.
      */
     suspend fun start(scope: CoroutineScope) {
         collectorJob?.cancel()
@@ -68,11 +56,7 @@ class RotationEngine @Inject constructor(
         firstLoad.await()
     }
 
-    /**
-     * Rebuilds the magazine from a fresh snapshot (shuffled, pointer reset) and refills the disk
-     * buffer, all under the lock so it is atomic with respect to a concurrent screen-off refill.
-     * A `null` snapshot (no active collection) clears the magazine.
-     */
+    /** Atomic with respect to a concurrent screen-off refill. A null snapshot (no active collection) clears the magazine. */
     private suspend fun reloadAndRefill(snapshot: Pair<WallpaperCollection, List<WallpaperImage>>?) {
         mutex.withLock {
             if (snapshot == null) {
@@ -94,21 +78,15 @@ class RotationEngine @Inject constructor(
     }
 
     /**
-     * Advances to the next image and pre-renders it into the disk buffer. Called both by the
-     * reactive reload (already holding the lock via [reloadAndRefill]) and by `ScreenStateReceiver`
-     * after each rotation (via the public [refillDiskBuffer]). Self-heals by marking a file
-     * unavailable the moment its source is definitively gone (see [BufferPreparationResult.Failure]),
-     * rather than deleting the wallpaper/collection entry so the user's curation is never destroyed by
-     * a background failure, and [WallpaperRepository.reprobeUnavailableFiles] can restore it later.
+     * Advances to the next image and pre-renders it. A definitively gone source is marked unavailable,
+     * never deleted, so the user's curation survives and [WallpaperRepository.reprobeUnavailableFiles] can restore it.
      */
     suspend fun refillDiskBuffer(): Boolean = mutex.withLock { refillDiskBufferLocked() }
 
     /**
-     * Runs [block] against a buffer that can be proved to belong to [collectionId], or returns null when
-     * what is prepared belongs to someone else.
-     *
-     * Takes the same lock the reactive reload holds, so an in-flight rebuild is waited out and no
-     * rebuild can start while [block] runs. **[block] must not re-enter the engine**
+     * Runs [block] only if the prepared buffer belongs to [collectionId], else returns null. Takes the
+     * reload lock, so an in-flight rebuild is waited out and none starts meanwhile.
+     * [block] must not re-enter the engine.
      */
     // TODO tests: see vault note tests/Collection Switch Rotation Gate Tests.md
     suspend fun <T> withBufferFor(collectionId: Long, block: suspend () -> T): T? = mutex.withLock {
@@ -163,10 +141,7 @@ class RotationEngine @Inject constructor(
         return false
     }
 
-    /**
-     * Reshuffles the magazine for a new cycle, ensuring the image that just closed the previous
-     * cycle (at [imageMagazine]'s last index when called) doesn't land first.
-     */
+    /** Ensures the image that just closed the previous cycle doesn't land first. */
     private fun reshuffleMagazineLocked() {
         val lastShown = imageMagazine.last()
         imageMagazine.shuffle()
@@ -177,12 +152,7 @@ class RotationEngine @Inject constructor(
         }
     }
 
-    /**
-     * Resets the in-memory magazine state.
-     *
-     * Note: only call if already holding the lock (see [reloadAndRefill]) or during teardown
-     * (magazine won't be read afterward, see [WallpaperService.onDestroy()][com.ninecsdev.wallpaperchanger.service.WallpaperService.onDestroy])
-     */
+    /** Only call while holding the lock (see [reloadAndRefill]) or during teardown, when the magazine won't be read afterward. */
     fun clearMagazine() {
         imageMagazine.clear()
         currentPointer = -1

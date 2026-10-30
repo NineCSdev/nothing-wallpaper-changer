@@ -11,11 +11,6 @@ import com.ninecsdev.wallpaperchanger.ui.components.overlay.CollectionPickerShee
 import com.ninecsdev.wallpaperchanger.ui.components.CollectionPreviewState
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.CollectionPickerSheetState
 
-/**
- * The main screen's active-collection picker: wires [com.ninecsdev.wallpaperchanger.ui.mainscreen.CollectionPickerSheetState] into the shared
- * [CollectionPickerSheet]. The currently active collection is marked, tapping any tile picks it
- * immediately, and the leading "new collection" tile hands off to [onCreateCollection].
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ActiveCollectionPickerSheet(

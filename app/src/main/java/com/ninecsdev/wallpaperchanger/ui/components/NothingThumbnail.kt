@@ -19,13 +19,7 @@ import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
-/**
- * Bordered preview thumbnail with a placeholder icon, used by the main-screen cards and by the
- * edit-collection card's default-wallpaper row. Collection grids use the plain gray
- * [ThumbnailSlot] instead.
- *
- * [content] replaces the plain image for callers that draw the thumbnail themselves
- */
+/** [content] replaces the plain image for callers that draw the thumbnail themselves. */
 @Composable
 internal fun NothingThumbnail(
     uri: String?,
@@ -60,11 +54,8 @@ internal fun NothingThumbnail(
     }
 }
 /**
- * A [NothingThumbnail] that honors the wallpaper's own framing: an edited membership renders
- * through [EditableWallpaperImage] so the thumbnail shows what will actually be applied, an
- * unedited one falls back to the plain image, and a null wallpaper to the placeholder.
- *
- * [decodeFraction] is the share of the screen width the thumbnail occupies; callers approximate it.
+ * Honors the wallpaper's framing: an edited membership renders through [EditableWallpaperImage].
+ * [decodeFraction] is the share of screen width the thumbnail occupies; callers approximate it.
  */
 @Composable
 internal fun WallpaperThumbnail(

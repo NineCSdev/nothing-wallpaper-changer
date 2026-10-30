@@ -19,11 +19,6 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 // Opaque so the divider's ends don't brighten where they cross the border.
 private val CardRuleColor = NothingWhite.copy(alpha = 0.5f).compositeOver(NothingBlack)
 
-/**
- * The black, white-bordered [OutlinedCard] chrome shared by the main-screen cards
- * ([WallpaperSelectionCard], [DefaultWallpaperCard]). Lays out its [content] in a [Column];
- * use [NothingCardDivider] to separate sections with the matching 2dp rule.
- */
 @Composable
 internal fun NothingOutlinedCard(
     modifier: Modifier = Modifier,
@@ -42,7 +37,6 @@ internal fun NothingOutlinedCard(
     }
 }
 
-/** The 2dp divider used between sections of a [NothingOutlinedCard]. */
 @Composable
 internal fun NothingCardDivider() {
     HorizontalDivider(

@@ -8,12 +8,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
 import com.ninecsdev.wallpaperchanger.model.enums.SourceType
 
-/**
- * Type converters for Room Database.
- * Converts complex objects into primitives that SQLite can store.
- */
 class Converters {
-    // CollectionType Converters
     @TypeConverter
     fun fromCollectionType(type: CollectionType): String = type.name
 
@@ -26,7 +21,6 @@ class Converters {
             CollectionType.FOLDER
         }
 
-    // CropRule Converters
     @TypeConverter
     fun fromCropRule(rule: CropRule): String = rule.name
 
@@ -39,21 +33,18 @@ class Converters {
             CropRule.CENTER
         }
 
-    // CollectionRotationSetting Converters
     @TypeConverter
     fun fromRotationSetting(setting: CollectionRotationSetting): String = setting.encode()
 
     @TypeConverter
     fun toRotationSetting(value: String): CollectionRotationSetting =
-        // Decoding is total and logs its own fallthrough, no need for try/catch
         CollectionRotationSetting.decode(value)
 
-    // AppCollectionRole Converters
     @TypeConverter
     fun fromAppCollectionRole(role: AppCollectionRole?): String? = role?.name
 
-    // An unknown key would silently demote an app-owned collection to user-owned, which would list
-    // the defaults collection in the UI. Log loudly; null is still the only safe answer.
+    // An unknown key demotes an app-owned collection to user-owned (null), which would list the defaults
+    // collection in the UI; null is still the only safe answer, so log loudly.
     @TypeConverter
     fun toAppCollectionRole(value: String?): AppCollectionRole? =
         value?.let {
@@ -65,7 +56,6 @@ class Converters {
             }
         }
 
-    // SourceType Converters
     @TypeConverter
     fun fromSourceType(sourceType: SourceType): String = sourceType.name
 

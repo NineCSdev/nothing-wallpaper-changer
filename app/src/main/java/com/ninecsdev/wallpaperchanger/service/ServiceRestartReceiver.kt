@@ -13,17 +13,10 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Restarts [WallpaperService] after system events that kill the process without a graceful
- * [WallpaperService.onDestroy]:
- *
- * - **Boot** (`BOOT_COMPLETED` / `QUICKBOOT_POWERON`): restarts only if the user enabled
- *   start-on-boot and the service was last left on.
- * - **App update** (`MY_PACKAGE_REPLACED`): a package replace kills the process without
- *   `onDestroy`. Restarts whenever the service was last left on.
- *
- * Both paths gate on [AppDataStore.isServiceDesired], the persisted user intent that,
- * unlike `service_running`, survives an ungraceful kill (not self-healed by
- * [ServiceLifecycle][com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle])
+ * Restarts [WallpaperService] after boot (only if start-on-boot is enabled) or an app update
+ * (a package replace kills the process without `onDestroy`). Both gate on
+ * [AppDataStore.isServiceDesired], the persisted intent that, unlike `service_running`, survives
+ * an ungraceful kill.
  */
 @AndroidEntryPoint
 class ServiceRestartReceiver : BroadcastReceiver() {
@@ -61,7 +54,7 @@ class ServiceRestartReceiver : BroadcastReceiver() {
         try {
             context.startForegroundService(Intent(context, WallpaperService::class.java))
         } catch (e: ForegroundServiceStartNotAllowedException) {
-            // Defensive only: this is not expected to fire on a stock platform.
+            // Defensive only: not expected on a stock platform.
             Log.w(tag, "System refused the background foreground-service start after $action.", e)
         } catch (e: Exception) {
             Log.e(tag, "Failed to start service after $action.", e)
@@ -77,20 +70,13 @@ class ServiceRestartReceiver : BroadcastReceiver() {
             Intent.ACTION_MY_PACKAGE_REPLACED   // Updating the app
         )
 
-        /**
-         * Pure restart-gating decision, kept side-effect-free so it is trivially unit-testable
-         * without Android dependencies.
-         *
-         * Every path requires [desired], the persisted intent flag that survives an
-         * ungraceful kill.
-         */
+        /** Pure and side-effect-free for unit testing; every path requires [desired]. */
         internal fun shouldRestartService(
             action: String,
             startOnBoot: Boolean,
             desired: Boolean
         ): Boolean {
-            if (!desired) return false
-            return when (action) {
+            return desired && when (action) {
                 Intent.ACTION_BOOT_COMPLETED, ACTION_QUICKBOOT_POWERON -> startOnBoot
                 Intent.ACTION_MY_PACKAGE_REPLACED -> true
                 else -> false

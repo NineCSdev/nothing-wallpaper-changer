@@ -22,12 +22,7 @@ import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
-/**
- * The small inline info icon that opens a Nothing-styled explanation dialog. It owns the
- * dialog's visibility state, so callers only supply the two strings. Extracted from
- * [SettingsRowHeader] so labels outside settings rows (e.g. the edit-collection card's
- * crop-rule section) can reuse the same teaching mechanism.
- */
+/** Owns the dialog's visibility so callers only supply the two strings. */
 @Composable
 internal fun InfoDialogIcon(
     dialogTitle: String,

@@ -89,7 +89,6 @@ internal fun <T> SettingsSegmentedSelector(
 @Preview(showBackground = true, backgroundColor =0xFF000000)
 @Composable
 fun SettingsSegmentedSelectorPreview() {
-    // Example state for the preview
     val options = listOf("Daily", "Weekly", "Monthly")
     val selectedOption = options[0]
 

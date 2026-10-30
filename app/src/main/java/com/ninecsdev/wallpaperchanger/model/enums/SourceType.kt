@@ -1,30 +1,16 @@
 package com.ninecsdev.wallpaperchanger.model.enums
 
 /**
- * How the app accesses the physical bytes of a [WallpaperFile][com.ninecsdev.wallpaperchanger.model.WallpaperFile].
- *
- * Determines the cleanup action when the file becomes orphaned (no collection references it):
- * delete the app-private copy, release the persisted read grant, or nothing.
+ * How the app accesses the bytes of a [WallpaperFile][com.ninecsdev.wallpaperchanger.model.WallpaperFile].
+ * Decides the cleanup when the file is orphaned (no collection references it).
  */
 enum class SourceType {
-    /**
-     * A stable MediaStore image URI (`content://media/external/images/media/<id>`) read under
-     * the `READ_MEDIA_IMAGES`. Derived at pick time from the photo-picker URI's embedded media id.
-     * The bytes live in the user's storage; on orphan there is nothing to clean up.
-     */
+    /** A stable `content://media/external/images/media/<id>` URI derived at pick time from the photo-picker URI. Orphan: nothing to clean up. */
     MEDIA_STORE,
 
-    /**
-     * An app-private WebP copy under `files/internal_wallpapers/` produced by
-     * [ImageInternalizer][com.ninecsdev.wallpaperchanger.logic.ImageInternalizer].
-     * On orphan, we delete the file.
-     */
+    /** An app-private WebP copy under `files/internal_wallpapers/`. Orphan: the file is deleted. */
     INTERNALIZED,
 
-    /**
-     * A document URI from a user-selected folder tree (`ACTION_OPEN_DOCUMENT_TREE`).
-     * The app does not own the bytes; the grant is tied to the collection's `rootUri`, so on
-     * orphan there is nothing file-specific to clean up.
-     */
+    /** A document URI under a user-selected folder tree; the grant is tied to the collection's `rootUri`. Orphan: nothing file-specific to clean up. */
     FOLDER_DOC
 }

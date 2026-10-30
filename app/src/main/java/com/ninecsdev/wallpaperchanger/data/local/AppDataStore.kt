@@ -39,10 +39,7 @@ private val KEY_KEEP_LOCAL_COPIES = booleanPreferencesKey("keep_local_copies")
 private val KEY_ROTATION_POLICY = stringPreferencesKey("rotation_policy")
 private val KEY_SKIP_ON_DND = booleanPreferencesKey("skip_on_dnd")
 
-/**
- * The user's settings: what they chose, as distinct from the [WallpaperRecordStore]'s record of what
- * happened. Both sit on the preferences file declared in [appPreferences].
- */
+/** The user's settings: what they chose, as distinct from the [WallpaperRecordStore]'s record of what happened. */
 @Singleton
 class AppDataStore @Inject constructor(
     @ApplicationContext context: Context
@@ -51,14 +48,9 @@ class AppDataStore @Inject constructor(
 
     private val safeData: Flow<Preferences> = dataStore.safeData()
 
-    // Generic helpers, every setting below is one of these
-
-
     private fun <T> settingFlow(key: Preferences.Key<T>, default: T): Flow<T> =
-        // Ends in distinctUntilChanged() to not re-emit unchanged flows
         safeData.map { prefs -> prefs[key] ?: default }.distinctUntilChanged()
 
-    /** For settings whose stored type differs from the exposed type (enums, Uri). */
     private fun <S, T> mappedSettingFlow(
         key: Preferences.Key<S>,
         default: T,
@@ -70,16 +62,14 @@ class AppDataStore @Inject constructor(
         dataStore.edit { prefs -> prefs[key] = value }
     }
 
-    /** For settings whose absence is meaningful. Writes [value], or removes the key when it is null */
+    /** Removes the key when [value] is null, for settings whose absence is meaningful. */
     private suspend fun <T> setOrClear(key: Preferences.Key<T>, value: T?) {
         dataStore.edit { prefs -> prefs.setOrClear(key, value) }
     }
 
-    /** Enum-by-name parse that treats a corrupted/unknown stored value as the default. */
+    /** An unknown stored name falls back to [default]. */
     private inline fun <reified T : Enum<T>> enumByName(raw: String, default: T): T =
         enumValues<T>().firstOrNull { it.name == raw } ?: default
-
-    // Flows (reactive reads)
 
     fun revertToDefaultFlow(): Flow<Boolean> =
         settingFlow(KEY_REVERT_TO_DEFAULT, true)
@@ -88,14 +78,9 @@ class AppDataStore @Inject constructor(
         settingFlow(KEY_SERVICE_RUNNING, false)
 
     /**
-     * Persisted user intent — "the service was last left on." Unlike [serviceRunningFlow],
-     * this is never cleared by [ServiceLifecycle][com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle]'s
-     * stale-flag self-heal, so it survives an ungraceful kill (e.g. package replace, where
-     * `onDestroy` never runs) and drives the restart decision in
-     * [ServiceRestartReceiver][com.ninecsdev.wallpaperchanger.service.ServiceRestartReceiver].
-     *
-     * Migration: for installs predating this key, fall back to the old `service_running`
-     * value so the very update that ships this feature still restarts the service.
+     * "The service was last left on." Unlike [serviceRunningFlow] it is never cleared by the stale-flag
+     * self-heal, so it survives an ungraceful kill (package replace never runs `onDestroy`) and drives restart.
+     * Installs predating this key fall back to `service_running`.
      */
     fun serviceDesiredFlow(): Flow<Boolean> =
         safeData.map { prefs -> prefs[KEY_SERVICE_DESIRED] ?: prefs[KEY_SERVICE_RUNNING] ?: false }
@@ -142,12 +127,7 @@ class AppDataStore @Inject constructor(
     fun skipOnDndFlow(): Flow<Boolean> =
         settingFlow(KEY_SKIP_ON_DND, false)
 
-    // Suspend reads (suspend, one-shot)
-
-    /**
-     * The default wallpaper as it was stored before it became a row, read only by the one-shot
-     * backfill in [StartupMaintenance][com.ninecsdev.wallpaperchanger.data.StartupMaintenance].
-     */
+    /** The default wallpaper as stored before it became a row; read only by the [StartupMaintenance] backfill. */
     // TODO: remove with the backfill in v0.4.1, along with KEY_DEFAULT_WALLPAPER_URI
     suspend fun getLegacyDefaultWallpaperUri(): Uri? =
         mappedSettingFlow(KEY_DEFAULT_WALLPAPER_URI, null) { it.toUri() }.first()
@@ -190,8 +170,6 @@ class AppDataStore @Inject constructor(
 
     suspend fun getSkipOnDnd(): Boolean =
         skipOnDndFlow().first()
-
-    // Writes (suspend)
 
     // TODO: remove with the backfill in v0.4.1, along with KEY_DEFAULT_WALLPAPER_URI
     suspend fun clearLegacyDefaultWallpaperUri() =

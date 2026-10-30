@@ -86,11 +86,6 @@ private const val DEFAULT_THUMBNAIL_HEIGHT_DP = 40
 
 /** Fraction of the screen width the default-wallpaper thumbnail occupies. Approximated. */
 private const val DEFAULT_THUMBNAIL_DECODE_FRACTION = 0.1f
-/**
- * Card pop-up for managing a collection.
- *
- * For folder collections there is a folder section with folder specific actions.
- */
 // TODO tests: see vault note tests/Edit Collection Card Tests
 @Composable
 internal fun EditCollectionCard(
@@ -195,7 +190,6 @@ private fun EditCollectionCardContent(
                     RotationPickerContent(
                         title = stringResource(R.string.edit_collection_rotation_title),
                         policy = effectivePolicy,
-                        // Picking a cadence here is the override
                         onPolicyChange = { onRotationPolicySelected(CollectionRotationSetting.Override(it)) },
                         onDone = { hideThen { showRotationPicker = false } },
                         modifier = Modifier.padding(horizontal = 24.dp)
@@ -271,10 +265,7 @@ private fun EditCollectionCardContent(
     }
 }
 
-/**
- * Collection-identity header: the name as an in-place editable title (static for the
- * rename-blocked Favourites collection), a `TYPE · N IMAGES · ACTIVE` metadata line, and ✕.
- */
+/** Name is an in-place editable title, static for the rename-blocked Favourites collection. */
 @Composable
 private fun EditCardHeader(
     collection: WallpaperCollection,
@@ -364,7 +355,6 @@ private fun EditableTitle(
                 .onFocusChanged { isFocused = it.isFocused }
         )
         Spacer(modifier = Modifier.width(8.dp))
-        // Tap-to-edit affordance: brightens while editing, and focuses the field when tapped.
         Icon(
             painter = painterResource(R.drawable.icon_edit),
             contentDescription = null,
@@ -476,12 +466,7 @@ private fun RotationSettingRow(
     }
 }
 
-/**
- * The collection's default-wallpaper override, read-and-clear-only.
- *
- * Setting one happens on the image itself (the selection pill and the full-screen preview), so this
- * row only reports and clears. With no override it collapses to the title and "Following global".
- */
+/** Read-and-clear-only: an override is set on the image itself (selection pill, full-screen preview). */
 @Composable
 private fun DefaultWallpaperRow(wallpaper: WallpaperImage?, onClear: () -> Unit) {
     if (wallpaper == null) {
@@ -521,10 +506,7 @@ private fun DefaultWallpaperRow(wallpaper: WallpaperImage?, onClear: () -> Unit)
     }
 }
 
-/**
- * Folder-only maintenance actions: manual re-sync and, when [excludedCount] > 0, the
- * "Restore removed images (N)" recovery row (the row disappears once the count is 0).
- */
+/** Folder-only actions; the "Restore removed images (N)" row hides once [excludedCount] is 0. */
 @Composable
 private fun FolderMaintenanceSection(
     excludedCount: Int,
@@ -578,8 +560,6 @@ private fun FolderActionButton(
     }
 }
 
-// Previews
-
 private val previewFolderCollection = WallpaperCollection(
     id = 1,
     name = "Amoled Dark",
@@ -596,11 +576,8 @@ private val previewManualCollection = WallpaperCollection(
     lastUsedAt = 0L
 )
 
-/** Stand-in override for the previews; the row's shape is what they exercise, not the image. */
 private val PREVIEW_DEFAULT_WALLPAPER = WallpaperImage(id = 1, collectionId = 1, uriString = "")
 
-
-/** Simulates the Dialog scrim so previews look identical to the in-app experience. */
 @Composable
 private fun DialogScrim(content: @Composable () -> Unit) {
     Box(

@@ -8,12 +8,9 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.PointerInputScope
 
 /**
- * Runs [readGesture] for every touch and turns the ones that were taps into single or double taps.
- *
- * [readGesture] reads one touch through to its end, applies whatever that touch turned out to be,
- * and returns where it was tapped (null if it wasn't a tap).
- *
- * **A tap is reported only once the double-tap window has closed without a second gesture or tap**
+ * Runs [readGesture] for every touch and turns taps into single or double taps. It reads one touch to its end,
+ * applies what it turned out to be, and returns where it was tapped (null if not a tap).
+ * A tap is reported only once the double-tap window has closed without a second tap.
  */
 internal suspend fun PointerInputScope.detectTapAwareGestures(
     readGesture: suspend AwaitPointerEventScope.(down: PointerInputChange) -> Offset?,

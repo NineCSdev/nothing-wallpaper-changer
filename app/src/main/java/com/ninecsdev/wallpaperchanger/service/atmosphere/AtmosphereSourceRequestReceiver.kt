@@ -13,12 +13,8 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Answers [AtmosphereProtocol.ACTION_SOURCE_REQUESTED] by rendering a source and handing it
- * to the engine.
- *
- * **Manifest-declared on purpose.** The engine can be running with this app's process dead.
- *
- * Desired wallpaper mode has no say here, for the reason in [AtmosphereSourceProvisioner.provision].
+ * Answers [AtmosphereProtocol.ACTION_SOURCE_REQUESTED] by rendering a source for the engine.
+ * Manifest-declared on purpose: the engine can be running with this app's process dead.
  */
 @AndroidEntryPoint
 class AtmosphereSourceRequestReceiver : BroadcastReceiver() {
