@@ -1,11 +1,14 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen
 
-import com.ninecsdev.wallpaperchanger.data.TransferResult
 import com.ninecsdev.wallpaperchanger.data.local.PreviewFile
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.FilterChip
+import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.FilterDimension
+import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.GalleryFilter
+import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.matches
 
 enum class TransferMode { COPY, MOVE }
 
@@ -43,8 +46,39 @@ data class CollectionImageUiState(
     val transferMode: TransferMode? = null,
     /** All collections except this one. */
     val transferTargets: List<TransferTarget> = emptyList(),
-    val isNamingNewTarget: Boolean = false
+    val isNamingNewTarget: Boolean = false,
+    val filter: GalleryFilter? = null,
+    val frozenIds: Set<Long>? = null
 ) {
+    /** What the grid and the preview show. The rotation never sees the filter. */
+    val visibleWallpapers: List<WallpaperImage> by lazy(LazyThreadSafetyMode.NONE) {
+        when {
+            frozenIds != null -> wallpapers.filter { it.id in frozenIds }
+            filter != null -> wallpapers.filter { filter.matches(it, favoriteFileIds) }
+            else -> wallpapers
+        }
+    }
+
+    /** Counts are over the whole collection. A dimension shows only when both answers match something, or it is chosen. */
+    val filterChips: List<FilterChip> by lazy(LazyThreadSafetyMode.NONE) {
+        FilterDimension.entries
+            .filterNot { it == FilterDimension.FAVORITE && isFavoritesCollection }
+            .filterNot { it == FilterDimension.FROM_FOLDER && collectionType != CollectionType.FOLDER }
+            .flatMap { dimension ->
+                val yes = wallpapers.count { dimension.matches(it, favoriteFileIds) }
+                val no = wallpapers.size - yes
+                val chosen = filter?.get(dimension)
+                if (chosen == null && (yes == 0 || no == 0)) emptyList()
+                else listOf(
+                    FilterChip(dimension, answer = true, count = yes, isSelected = chosen == true),
+                    FilterChip(dimension, answer = false, count = no, isSelected = chosen == false)
+                )
+            }
+    }
+
+    val showsFilterButton: Boolean
+        get() = filter != null || filterChips.isNotEmpty()
+
     /** The wallpaper the edit action targets: the single selection, or null when edit doesn't apply. */
     val selectedWallpaper: WallpaperImage?
         get() = if (isSelectionMode && selectedIds.size == 1) {

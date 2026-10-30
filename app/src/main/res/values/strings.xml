@@ -315,6 +315,21 @@
     <string name="image_screen_delete_single_message">This action cannot be undone.\nThe selected wallpaper will be removed.</string>
     <string name="image_screen_delete_multiple_message">This action cannot be undone.\nThe selected wallpapers will be removed.</string>
 
+    <!-- Gallery filters -->
+    <string name="cd_filter">Filter</string>
+    <string name="filter_available">AVAILABLE</string>
+    <string name="filter_unavailable">UNAVAILABLE</string>
+    <string name="filter_edited">EDITED</string>
+    <string name="filter_not_edited">NOT EDITED</string>
+    <string name="filter_favorites">FAVOURITES</string>
+    <string name="filter_not_favorites">NOT FAVOURITES</string>
+    <string name="filter_local_copies">LOCAL COPIES</string>
+    <string name="filter_references">REFERENCES</string>
+    <string name="filter_from_folder">FROM FOLDER</string>
+    <string name="filter_added_by_you">ADDED BY YOU</string>
+    <string name="filter_no_matches">NO MATCHES</string>
+    <string name="filter_clear">CLEAR FILTERS</string>
+
     <!-- Re-link unavailable image -->
     <string name="relink_dialog_title">IMAGE UNAVAILABLE</string>
     <string name="relink_dialog_message">This image can no longer be read.\nRe-select it from your photos to restore it.\nAny edits are kept.</string>

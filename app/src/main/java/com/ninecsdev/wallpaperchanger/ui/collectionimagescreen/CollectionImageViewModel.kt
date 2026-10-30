@@ -12,6 +12,7 @@ import com.ninecsdev.wallpaperchanger.data.source.SourceDetails
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.pinnedFirst
+import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.FilterDimension
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -36,6 +37,17 @@ class CollectionImageViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CollectionImageUiState())
     val uiState: StateFlow<CollectionImageUiState> = _uiState.asStateFlow()
 
+    private inline fun updateState(transform: (CollectionImageUiState) -> CollectionImageUiState) =
+        _uiState.update { transform(it).withSettledFreeze() }
+
+    // While selecting or previewing under a filter the visible ids are pinned, so favouriting
+    // an image can't pull it out from under a selection or a pager page
+    private fun CollectionImageUiState.withSettledFreeze(): CollectionImageUiState = when {
+        !isSelectionMode && previewWallpaper == null -> if (frozenIds == null) this else copy(frozenIds = null)
+        frozenIds == null && filter != null -> copy(frozenIds = visibleWallpapers.mapTo(HashSet()) { it.id })
+        else -> this
+    }
+
     // No replay, so a notice raised while the screen is off-view is dropped rather than shown late
     // TODO tests: see vault note tests/One-Shot Event Delivery Tests
     private val _notices = MutableSharedFlow<CollectionImageNotice>(
@@ -57,7 +69,7 @@ class CollectionImageViewModel @Inject constructor(
     private fun loadCollectionMetadata() {
         viewModelScope.launch {
             val collection = repository.getCollectionById(collectionId)
-            _uiState.update {
+            updateState {
                 it.copy(
                     collectionName = collection?.name ?: "",
                     collectionType = collection?.type,
@@ -71,7 +83,7 @@ class CollectionImageViewModel @Inject constructor(
     private fun observeFavorites() {
         viewModelScope.launch {
             repository.favoriteFileIdsFlow().collect { ids ->
-                _uiState.update { it.copy(favoriteFileIds = ids) }
+                updateState { it.copy(favoriteFileIds = ids) }
             }
         }
     }
@@ -79,7 +91,7 @@ class CollectionImageViewModel @Inject constructor(
     private fun observeCollectionDefault() {
         viewModelScope.launch {
             repository.collectionDefaultWallpaperIdFlow(collectionId).collect { id ->
-                _uiState.update { it.copy(defaultWallpaperId = id) }
+                updateState { it.copy(defaultWallpaperId = id) }
             }
         }
     }
@@ -88,7 +100,7 @@ class CollectionImageViewModel @Inject constructor(
         viewModelScope.launch {
             repository.getImagesForCollection(collectionId)
                 .collect { images ->
-                    _uiState.update { state ->
+                    updateState { state ->
                         // After saving an edit we return to the preview, so refresh it
                         val previewId = state.previewWallpaper?.id
                         val updatedPreview = previewId?.let { id ->
@@ -112,22 +124,22 @@ class CollectionImageViewModel @Inject constructor(
     }
 
     override fun requestRelink(wallpaper: WallpaperImage) {
-        _uiState.update { it.copy(relinkTarget = wallpaper) }
+        updateState { it.copy(relinkTarget = wallpaper) }
     }
 
     override fun cancelRelink() {
-        _uiState.update { it.copy(relinkTarget = null) }
+        updateState { it.copy(relinkTarget = null) }
     }
 
     fun onRelinkPicked(uri: Uri?) {
         val target = _uiState.value.relinkTarget
         if (uri == null || target == null) {
-            _uiState.update { it.copy(relinkTarget = null) }
+            updateState { it.copy(relinkTarget = null) }
             return
         }
         viewModelScope.launch {
             val result = repository.relinkUnavailableFile(target, uri.toString())
-            _uiState.update { it.copy(relinkTarget = null) }
+            updateState { it.copy(relinkTarget = null) }
             if (result == RelinkResult.FAILED) {
                 _notices.tryEmit(CollectionImageNotice.RelinkFailed)
             }
@@ -135,14 +147,14 @@ class CollectionImageViewModel @Inject constructor(
     }
 
     override fun enterSelectionMode(id: Long) {
-        _uiState.update {
+        updateState {
             it.copy(isSelectionMode = true, selectedIds = setOf(id))
         }
     }
 
     /** Exits selection mode when the last selection is cleared. */
     override fun toggleSelection(id: Long) {
-        _uiState.update { state ->
+        updateState { state ->
             val updated = if (id in state.selectedIds) {
                 state.selectedIds - id
             } else {
@@ -157,7 +169,7 @@ class CollectionImageViewModel @Inject constructor(
     }
 
     override fun exitSelectionMode() {
-        _uiState.update {
+        updateState {
             it.copy(isSelectionMode = false, selectedIds = emptySet())
         }
     }
@@ -193,17 +205,17 @@ class CollectionImageViewModel @Inject constructor(
                         isPinned = collection.isPinned
                     )
                 }
-            _uiState.update { it.copy(transferMode = mode, transferTargets = targets) }
+            updateState { it.copy(transferMode = mode, transferTargets = targets) }
         }
     }
 
     override fun cancelTransfer() {
-        _uiState.update { it.copy(transferMode = null, transferTargets = emptyList(), isNamingNewTarget = false) }
+        updateState { it.copy(transferMode = null, transferTargets = emptyList(), isNamingNewTarget = false) }
     }
 
     override fun requestNewTransferTarget() {
         if (_uiState.value.transferMode == null) return
-        _uiState.update { it.copy(isNamingNewTarget = true) }
+        updateState { it.copy(isNamingNewTarget = true) }
     }
 
     override fun transferToNewCollection(name: String) {
@@ -243,7 +255,7 @@ class CollectionImageViewModel @Inject constructor(
     }
 
     private fun finishTransfer(mode: TransferMode, result: TransferResult, targetName: String) {
-        _uiState.update {
+        updateState {
             it.copy(
                 transferMode = null,
                 transferTargets = emptyList(),
@@ -307,12 +319,27 @@ class CollectionImageViewModel @Inject constructor(
         repository.setCollectionDefaultWallpaper(collectionId, wallpaper.id.takeUnless { alreadyDefault })
     }
 
+    override fun toggleFilter() {
+        updateState { it.copy(filter = if (it.filter == null) emptyMap() else null) }
+    }
+
+    override fun toggleFilterChip(dimension: FilterDimension, answer: Boolean) {
+        updateState { state ->
+            val filter = state.filter ?: return@updateState state
+            state.copy(filter = if (filter[dimension] == answer) filter - dimension else filter + (dimension to answer))
+        }
+    }
+
+    override fun clearFilter() {
+        updateState { it.copy(filter = it.filter?.let { emptyMap() }) }
+    }
+
     override fun openPreview(wallpaper: WallpaperImage) {
-        _uiState.update { it.copy(previewWallpaper = wallpaper) }
+        updateState { it.copy(previewWallpaper = wallpaper) }
     }
 
     override fun closePreview() {
-        _uiState.update { it.copy(previewWallpaper = null) }
+        updateState { it.copy(previewWallpaper = null) }
     }
 
     // Read once per source, so reopening the sheet on a page does not reopen its file

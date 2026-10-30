@@ -16,6 +16,8 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -32,6 +34,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -59,6 +62,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -84,6 +88,10 @@ import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.resolveCollectionDisplayName
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.CropRuleAlignment
+import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.FilterButton
+import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.FilterChipRow
+import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.FilterDimension
+import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.FilterNoMatches
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.NewCollectionNameDialog
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.SelectionActionBar
 import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.components.WallpaperPreviewOverlay
@@ -102,12 +110,16 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 
 internal const val GRID_COLUMNS = 3
 
 // The selection pill's 16dp inset, 64dp height and some breathing room
 private val SelectionPillClearance = 88.dp
+
+private const val FILTER_ROW_KEY = "filter-row"
+private const val GRID_HEADER_ITEMS = 1
 
 /** Memory-cache key of a grid thumbnail, reused as the preview's placeholder. Keyed by uri, not id: wallpapers sharing a file share the thumbnail. */
 internal fun wallpaperThumbCacheKey(uri: String) = "wallpaper-thumb-$uri"
@@ -162,7 +174,7 @@ fun CollectionImageScreen(
     SharedTransitionLayout {
         val sharedScope = this
 
-        fun wallpaperIndex(id: Long?) = uiState.wallpapers.indexOfFirst { it.id == id }.coerceAtLeast(0)
+        fun wallpaperIndex(id: Long?) = uiState.visibleWallpapers.indexOfFirst { it.id == id }.coerceAtLeast(0)
 
         // Driven locally so the close can play its shared-element flight before previewWallpaper clears
         val previewVisibleState = remember { MutableTransitionState(uiState.previewWallpaper != null) }
@@ -170,6 +182,7 @@ fun CollectionImageScreen(
         // Pinned at open so page swipes never yank the pager back to the tapped page
         var pagerStartIndex by remember { mutableIntStateOf(wallpaperIndex(uiState.previewWallpaper?.id)) }
         val gridState = rememberLazyGridState()
+        val scope = rememberCoroutineScope()
 
         // Stops the preview falling back to fullscreen framing until the full-res image decodes
         val knownAspectRatios = remember { mutableStateMapOf<Long, Float>() }
@@ -178,7 +191,7 @@ fun CollectionImageScreen(
 
         val currentPreview by rememberUpdatedState(uiState.previewWallpaper)
         val currentActions by rememberUpdatedState(actions)
-        val currentWallpapers by rememberUpdatedState(uiState.wallpapers)
+        val currentWallpapers by rememberUpdatedState(uiState.visibleWallpapers)
 
         // The flip fires the reverse flight: the viewed wallpaper's cell enters as the overlay exits
         val dismissPreview = {
@@ -269,6 +282,19 @@ fun CollectionImageScreen(
                             }
                         }
                     },
+                    actions = {
+                        // Stays visible but inert while selecting, so a filtered selection still says so
+                        if (uiState.showsFilterButton && (!uiState.isSelectionMode || uiState.filter != null)) {
+                            FilterButton(
+                                isActive = uiState.filter != null,
+                                enabled = !uiState.isSelectionMode,
+                                onClick = {
+                                    if (uiState.filter == null) scope.launch { gridState.animateScrollToItem(0) }
+                                    actions.toggleFilter()
+                                }
+                            )
+                        }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = NothingBlack,
                         titleContentColor = NothingWhite
@@ -305,7 +331,22 @@ fun CollectionImageScreen(
                         ),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(uiState.wallpapers, key = { it.id }) { wallpaper ->
+                        // Always composed, so it stays index 0 and the scroll anchor while it expands
+                        item(key = FILTER_ROW_KEY, span = { GridItemSpan(maxLineSpan) }) {
+                            AnimatedVisibility(
+                                visible = uiState.filter != null,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut()
+                            ) {
+                                FilterChipRow(
+                                    chips = uiState.filterChips,
+                                    enabled = !uiState.isSelectionMode,
+                                    onChipClick = { actions.toggleFilterChip(it.dimension, it.answer) },
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                            }
+                        }
+                        items(uiState.visibleWallpapers, key = { it.id }) { wallpaper ->
                             val isSelected = wallpaper.id in uiState.selectedIds
                             val isCurrentPreview = wallpaper.id == uiState.previewWallpaper?.id
                             WallpaperThumbnail(
@@ -342,6 +383,11 @@ fun CollectionImageScreen(
                                 }
                             )
                         }
+                        if (uiState.visibleWallpapers.isEmpty() && uiState.wallpapers.isNotEmpty()) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                FilterNoMatches(onClear = actions::clearFilter)
+                            }
+                        }
                     }
 
                     // Keeps the viewed wallpaper's thumbnail composed so dismissing has a flight target not covered by the top bar
@@ -360,7 +406,7 @@ fun CollectionImageScreen(
                             info.offset.y + info.size.height <= gridState.layoutInfo.viewportEndOffset
                         if (!safelyVisible) {
                             // scrollToItem aligns to the content area start, which contentPadding keeps below the top bar
-                            gridState.scrollToItem(index)
+                            gridState.scrollToItem(index + GRID_HEADER_ITEMS)
                         }
                     }
                 }
@@ -394,7 +440,7 @@ fun CollectionImageScreen(
             exit = fadeOut(animationSpec = tween(durationMillis = 200))
         ) {
             WallpaperPreviewOverlay(
-                wallpapers = uiState.wallpapers,
+                wallpapers = uiState.visibleWallpapers,
                 initialIndex = pagerStartIndex,
                 sharedTransitionScope = sharedScope,
                 animatedVisibilityScope = this,
@@ -725,6 +771,9 @@ private object PreviewCollectionImageActions : CollectionImageActions {
     override fun openPreview(wallpaper: WallpaperImage) {}
     override fun closePreview() {}
     override suspend fun sourceDetails(wallpaper: WallpaperImage) = SourceDetails()
+    override fun toggleFilter() {}
+    override fun toggleFilterChip(dimension: FilterDimension, answer: Boolean) {}
+    override fun clearFilter() {}
     override fun enterSelectionMode(id: Long) {}
     override fun toggleSelection(id: Long) {}
     override fun exitSelectionMode() {}

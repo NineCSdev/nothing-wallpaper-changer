@@ -316,6 +316,21 @@
     <string name="image_screen_delete_single_message">Esta acción no se puede deshacer.\nEl fondo de pantalla será eliminado.</string>
     <string name="image_screen_delete_multiple_message">Esta acción no se puede deshacer.\nLos fondos de pantalla serán eliminados.</string>
 
+    <!-- Filtros de la galería -->
+    <string name="cd_filter">Filtrar</string>
+    <string name="filter_available">DISPONIBLES</string>
+    <string name="filter_unavailable">NO DISPONIBLES</string>
+    <string name="filter_edited">EDITADAS</string>
+    <string name="filter_not_edited">SIN EDITAR</string>
+    <string name="filter_favorites">FAVORITAS</string>
+    <string name="filter_not_favorites">NO FAVORITAS</string>
+    <string name="filter_local_copies">COPIAS LOCALES</string>
+    <string name="filter_references">REFERENCIAS</string>
+    <string name="filter_from_folder">DE LA CARPETA</string>
+    <string name="filter_added_by_you">AÑADIDAS POR TI</string>
+    <string name="filter_no_matches">SIN RESULTADOS</string>
+    <string name="filter_clear">QUITAR FILTROS</string>
+
     <!-- Re-enlazar imagen no disponible -->
     <string name="relink_dialog_title">IMAGEN NO DISPONIBLE</string>
     <string name="relink_dialog_message">Esta imagen ya no se puede leer.\nVuelve a seleccionarla desde tus fotos.\nSe conservan los ajustes.</string>
