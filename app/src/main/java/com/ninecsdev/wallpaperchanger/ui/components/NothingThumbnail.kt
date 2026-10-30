@@ -14,7 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite

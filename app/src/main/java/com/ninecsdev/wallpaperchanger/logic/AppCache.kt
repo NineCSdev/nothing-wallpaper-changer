@@ -5,8 +5,6 @@ import android.content.Context
 import android.os.StatFs
 import android.os.storage.StorageManager
 import android.util.Log
-import coil.annotation.ExperimentalCoilApi
-import coil.imageLoader
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -33,15 +31,11 @@ class AppCache @Inject constructor(
         const val TAG = "AppCache"
     }
 
-    @OptIn(ExperimentalCoilApi::class)
     suspend fun sizeBytes(): Long = withContext(Dispatchers.IO) {
-        val ownFiles = clearable().sumOf { file -> file.walkBottomUp().filter { it.isFile }.sumOf { it.length() } }
-        ownFiles + (appContext.imageLoader.diskCache?.size ?: 0L)
+        clearable().sumOf { file -> file.walkBottomUp().filter { it.isFile }.sumOf { it.length() } }
     }
 
-    @OptIn(ExperimentalCoilApi::class)
     suspend fun clear() = withContext(Dispatchers.IO) {
-        appContext.imageLoader.diskCache?.clear()
         clearable().forEach { it.deleteRecursively() }
     }
 
@@ -60,11 +54,8 @@ class AppCache @Inject constructor(
     }
 
     /** Top-level entries of `cacheDir` that are ours to delete */
-    @OptIn(ExperimentalCoilApi::class)
     private fun clearable(): List<File> {
-        // Coil's disk cache is cleared through Coil, so its journal never points at deleted files
-        val coilDir = appContext.imageLoader.diskCache?.directory?.toFile()
-        val kept = bufferManager.bufferFiles() + listOfNotNull(coilDir)
+        val kept = bufferManager.bufferFiles()
         return appContext.cacheDir.listFiles()?.filter { it !in kept }.orEmpty()
     }
 }

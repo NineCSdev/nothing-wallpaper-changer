@@ -1,11 +1,13 @@
 package com.ninecsdev.wallpaperchanger.ui.collectionimagescreen
 
 import android.content.Context
-import coil.imageLoader
-import coil.intercept.Interceptor
-import coil.request.ImageRequest
-import coil.request.ImageResult
-import coil.size.Scale
+import coil3.Extras
+import coil3.getExtra
+import coil3.imageLoader
+import coil3.intercept.Interceptor
+import coil3.request.ImageRequest
+import coil3.request.ImageResult
+import coil3.size.Scale
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.di.ApplicationScope
 import com.ninecsdev.wallpaperchanger.ui.components.GridThumbnail
@@ -54,8 +56,8 @@ class CollectionGridWarmer @Inject constructor(
                             .memoryCacheKey(key)
                             .size(cellPx)
                             .scale(Scale.FILL)
-                            .interceptorDispatcher(Dispatchers.IO)
-                            .setParameter(WARM_UP, true, memoryCacheKey = null)
+                            .interceptorCoroutineContext(Dispatchers.IO)
+                            .apply { extras[WARM_UP] = true }
                             .build()
                     ).job
                     inFlight[key] = job
@@ -70,14 +72,15 @@ class CollectionGridWarmer @Inject constructor(
      */
     val interceptor = Interceptor { chain ->
         val request = chain.request
-        if (request.parameters.value<Boolean>(WARM_UP) != true) {
+        if (!request.getExtra(WARM_UP)) {
             // join, not await: a canceled warm-up must not cancel the request waiting on it
-            request.memoryCacheKey?.let { inFlight[it.key] }?.join()
+            request.memoryCacheKey?.let { inFlight[it] }?.join()
         }
-        chain.proceed(request)
+        chain.proceed()
     }
 
     private companion object {
-        const val WARM_UP = "collection_grid_warm_up"
+        // Extras stay out of the memory cache key, so a warm-up fills the grid's own entry
+        val WARM_UP = Extras.Key(default = false)
     }
 }

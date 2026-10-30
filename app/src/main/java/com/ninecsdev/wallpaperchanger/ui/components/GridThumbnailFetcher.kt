@@ -1,14 +1,14 @@
 package com.ninecsdev.wallpaperchanger.ui.components
 
-import coil.ImageLoader
-import coil.decode.DataSource
-import coil.decode.ImageSource
-import coil.fetch.FetchResult
-import coil.fetch.Fetcher
-import coil.fetch.SourceResult
-import coil.request.Options
-import coil.size.Scale
-import coil.size.pxOrElse
+import coil3.ImageLoader
+import coil3.decode.DataSource
+import coil3.decode.ImageSource
+import coil3.fetch.FetchResult
+import coil3.fetch.Fetcher
+import coil3.fetch.SourceFetchResult
+import coil3.request.Options
+import coil3.size.Scale
+import coil3.size.pxOrElse
 import com.ninecsdev.wallpaperchanger.data.source.GridThumbnailCache
 import com.ninecsdev.wallpaperchanger.data.source.ThumbnailBox
 import com.ninecsdev.wallpaperchanger.model.enums.SourceType
@@ -36,8 +36,8 @@ class GridThumbnailFetcher(
         )
         val file = cache.fileFor(data.fileId, data.uriString, data.sourceType, box)
             ?: throw IOException("No thumbnail for ${data.uriString}")
-        return SourceResult(
-            source = ImageSource(file.toOkioPath()),
+        return SourceFetchResult(
+            source = ImageSource(file.toOkioPath(), options.fileSystem),
             mimeType = null, // JPEG or WebP, sniffed by the decoder
             dataSource = DataSource.DISK
         )
