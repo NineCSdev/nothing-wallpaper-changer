@@ -9,6 +9,9 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -36,6 +39,11 @@ class RotationEngine @Inject constructor(
 
     private var collectorJob: Job? = null
 
+    private val _loadedCollectionId = MutableStateFlow<Long?>(null)
+
+    /** The collection the magazine was last loaded from, set once its buffer refill has been attempted. */
+    val loadedCollectionId: StateFlow<Long?> = _loadedCollectionId.asStateFlow()
+
     /**
      * Idempotent across service restarts. Suspends until the first load and refill complete, so the
      * buffer is ready before the caller marks the service Running. Cancelling [scope] tears it down.
@@ -61,11 +69,13 @@ class RotationEngine @Inject constructor(
         mutex.withLock {
             if (snapshot == null) {
                 clearMagazine()
+                _loadedCollectionId.value = null
                 return
             }
             val (collection, images) = snapshot
             loadMagazineLocked(collection.defaultCropRule, images)
             refillDiskBufferLocked()
+            _loadedCollectionId.value = collection.id
         }
     }
 

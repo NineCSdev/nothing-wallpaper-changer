@@ -44,9 +44,6 @@ class RotationScheduler @Inject constructor(
 
         /** Backoff after an attempt that did not rotate, so a persistent failure cannot spin. */
         const val RETRY_DELAY_MS = 60 * 1000L
-
-        /** Short, because the rotation holding the guard is expected to finish within seconds. */
-        const val ALREADY_RUNNING_RETRY_DELAY_MS = 5 * 1000L
     }
 
     private val screenOn = MutableStateFlow(true)
@@ -125,7 +122,7 @@ class RotationScheduler @Inject constructor(
 
                 // Looping re-reads the anchor: once the rotation holding the guard stamps it, the
                 // next pass simply sleeps until the new due time.
-                RotationOutcome.ALREADY_RUNNING -> delay(ALREADY_RUNNING_RETRY_DELAY_MS.milliseconds)
+                RotationOutcome.ALREADY_RUNNING -> delay(RotationCoordinator.ALREADY_RUNNING_RETRY_DELAY_MS.milliseconds)
             }
         }
     }

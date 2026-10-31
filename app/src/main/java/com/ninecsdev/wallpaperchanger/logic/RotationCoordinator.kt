@@ -4,6 +4,9 @@ import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.policyOr
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
@@ -37,13 +40,18 @@ class RotationCoordinator @Inject constructor(
     private val rotationEngine: RotationEngine,
     private val wallpaperApplier: WallpaperApplier,
     private val appDataStore: AppDataStore,
-    private val atmosphereDelivery: AtmosphereDelivery
+    private val atmosphereDelivery: AtmosphereDelivery,
+    private val wallpaperModeResolver: WallpaperModeResolver
 ) {
     companion object {
         private const val TAG = "RotationCoordinator"
+        private const val SWITCH_TAG = "CollectionSwitch"
 
         /** Upper bound on the swap pipeline, so a wedged read cannot leave the guard latched forever. */
         const val WORK_TIMEOUT_MS = 30_000L
+
+        /** Short, because the rotation holding the guard is expected to finish within seconds. */
+        const val ALREADY_RUNNING_RETRY_DELAY_MS = 5_000L
     }
 
     /** Held across the apply and refill. Static rotations are covered end to end; the atmosphere path releases it at delivery. */
@@ -57,14 +65,23 @@ class RotationCoordinator @Inject constructor(
     suspend fun rotateOnce(
         logTag: String,
         onApplied: () -> Unit = {}
-    ): RotationOutcome {
+    ): RotationOutcome = guarded(logTag) { rotateGuarded(logTag, onApplied) }
+
+    /**
+     * Shows the newly active collection's prepared image regardless of its rotation policy. Shares the
+     * rotation guard, so the caller retries [RotationOutcome.ALREADY_RUNNING].
+     */
+    // TODO tests: see vault note tests/Collection Switch Rotation Gate Tests.md
+    suspend fun applySwitch(): RotationOutcome = guarded(SWITCH_TAG) { switchGuarded() }
+
+    private suspend fun guarded(logTag: String, work: suspend () -> RotationOutcome): RotationOutcome {
         if (!isWorkInProgress.compareAndSet(false, true)) {
             Log.d(TAG, "$logTag: a rotation is already in progress. Skipping.")
             return RotationOutcome.ALREADY_RUNNING
         }
 
         return try {
-            withTimeout(WORK_TIMEOUT_MS.milliseconds) { rotateGuarded(logTag, onApplied) }
+            withTimeout(WORK_TIMEOUT_MS.milliseconds) { work() }
         } catch (_: TimeoutCancellationException) {
             Log.w(TAG, "$logTag: rotation timed out after ${WORK_TIMEOUT_MS}ms. Cancelled.")
             RotationOutcome.NOT_DONE
@@ -122,6 +139,36 @@ class RotationCoordinator @Inject constructor(
             // Nothing was delivered, so nothing to advance and nothing to refill.
             WallpaperApplyOutcome.ALREADY_LIVE, WallpaperApplyOutcome.FAILED-> RotationOutcome.NOT_DONE
         }
+    }
+
+    private suspend fun switchGuarded(): RotationOutcome {
+        val activeCollection = repository.getActiveCollectionOnce() ?: return RotationOutcome.NOT_DONE
+
+        // The switch zeroed it, so a stamp means a rotation has already shown this collection since
+        if (activeCollection.lastWallpaperChangeAt != 0L) {
+            Log.d(TAG, "$SWITCH_TAG: collection ${activeCollection.id} was already shown since the switch.")
+            return RotationOutcome.NOT_DONE
+        }
+
+        val atmosphere = wallpaperModeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE
+        // Lock-only shows nothing until the next lock, which the zeroed anchor already makes due
+        if (!atmosphere && appDataStore.getWallpaperDestination() == WallpaperDestination.LOCK) {
+            return RotationOutcome.NOT_DONE
+        }
+
+        val applied = rotationEngine.withBufferFor(activeCollection.id) {
+            if (!atmosphere) wallpaperApplier.applyBufferWallpaper(activeCollection.id)
+            else if (atmosphereDelivery.deliverPreparedNow()) WallpaperApplyOutcome.SHOWN
+            else WallpaperApplyOutcome.FAILED
+        }
+        if (applied != WallpaperApplyOutcome.SHOWN) {
+            Log.w(TAG, "$SWITCH_TAG: nothing shown for collection ${activeCollection.id} ($applied); the next trigger will.")
+            return RotationOutcome.NOT_DONE
+        }
+
+        repository.markWallpaperChanged(activeCollection.id)
+        rotationEngine.refillDiskBuffer()
+        return RotationOutcome.ROTATED
     }
 
     /**

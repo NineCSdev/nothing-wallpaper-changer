@@ -17,6 +17,7 @@ import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycleTracker
 import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
 import com.ninecsdev.wallpaperchanger.logic.RotationCoordinator
 import com.ninecsdev.wallpaperchanger.logic.RotationEngine
+import com.ninecsdev.wallpaperchanger.logic.RotationOutcome
 import com.ninecsdev.wallpaperchanger.logic.RotationScheduler
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
 import com.ninecsdev.wallpaperchanger.model.LifecycleVerdict
@@ -27,12 +28,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 import javax.inject.Inject
 
 /** Foreground service that keeps the rotation triggers ([ScreenStateReceiver], the scheduler) and the notification alive. */
@@ -53,6 +57,7 @@ class WallpaperService : Service() {
     private var screenStateReceiver: BroadcastReceiver? = null
     private var atmosphereDisplayedReceiver: BroadcastReceiver? = null
     private var notificationJob: Job? = null
+    private var switchJob: Job? = null
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     companion object {
@@ -213,6 +218,24 @@ class WallpaperService : Service() {
 
         rotationScheduler.setScreenOn((getSystemService(POWER_SERVICE) as PowerManager).isInteractive)
         rotationScheduler.start(serviceScope)
+        startSwitchCollector()
+    }
+
+    private fun startSwitchCollector() {
+        switchJob?.cancel()
+        switchJob = serviceScope.launch(Dispatchers.IO) {
+            var previous = rotationEngine.loadedCollectionId.value
+            rotationEngine.loadedCollectionId.collect { loaded ->
+                val switched = loaded != null && loaded != previous
+                previous = loaded
+                if (!switched) return@collect
+
+                // Detached like the scheduler's rotation: a pause cancels the wait, never a half-done apply
+                while (serviceScope.async { rotationCoordinator.applySwitch() }.await() == RotationOutcome.ALREADY_RUNNING) {
+                    delay(RotationCoordinator.ALREADY_RUNNING_RETRY_DELAY_MS.milliseconds)
+                }
+            }
+        }
     }
 
     /**
@@ -237,6 +260,8 @@ class WallpaperService : Service() {
 
     private fun stopRotationTriggers() {
         rotationScheduler.stop()
+        switchJob?.cancel()
+        switchJob = null
 
         val receiver = screenStateReceiver ?: return
         unregisterReceiver(receiver)

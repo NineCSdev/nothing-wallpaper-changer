@@ -69,6 +69,28 @@ class AtmosphereDelivery @Inject constructor(
     }
 
     /**
+     * Publishes the staged delivery for a collection switch. The engine adopts it on the next frame
+     * instead of holding it for a dark panel, which makes it live once published.
+     */
+    // TODO tests: see vault note tests/Collection Switch Rotation Gate Tests.md
+    suspend fun deliverPreparedNow(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            // A rotation the engine was still holding is replaced by this one, so its confirmation will never come
+            inFlight.set(null)
+            val bufferedId = wallpaperRecordStore.snapshot().bufferedWallpaperId
+            if (!AtmosphereSource.promotePending(appContext.filesDir)) return@withContext false
+
+            sendReload(fromRotation = false)
+            wallpaperRecordStore.setLiveAtmosphereWallpaperId(bufferedId)
+            Log.i(TAG, "Delivered the staged atmosphere source for a collection switch.")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to publish the staged delivery for a collection switch", e)
+            false
+        }
+    }
+
+    /**
      * For images outside the rotation buffer (default wallpaper, revert on an emptied collection,
      * pre-render before the picker). Never a rotation, so never advances the magazine.
      * The caller keeps ownership of `render.bitmap`; [wallpaperId] is the membership it came from.
