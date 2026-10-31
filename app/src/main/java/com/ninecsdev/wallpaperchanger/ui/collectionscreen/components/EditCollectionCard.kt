@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -194,7 +195,7 @@ private fun EditCollectionCardContent(
                         onDone = { hideThen { showRotationPicker = false } },
                         modifier = Modifier.padding(horizontal = 24.dp)
                     )
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.navigationBarsPadding().height(24.dp))
                 }
             }
         }

@@ -4,8 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,6 +58,7 @@ internal fun NothingSheetHandle() { BottomSheetDefaults.DragHandle(color = Nothi
 /**
  * The app's bottom-sheet chrome. Scrim tap, swipe-down and back dismiss via [onDismiss], animated by the sheet;
  * a sheet closed from inside must ask for that animation through the `hideThen` handed to [content].
+ * [content] owns the bottom inset, so a scrolling list can draw behind the navigation bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,6 +114,7 @@ internal fun NothingBottomSheet(
             containerColor = NothingBlack,
             shape = SheetShape,
             dragHandle = null,
+            contentWindowInsets = { WindowInsets.safeDrawing.only(WindowInsetsSides.Top) },
             modifier = modifier
         ) {
             Column(

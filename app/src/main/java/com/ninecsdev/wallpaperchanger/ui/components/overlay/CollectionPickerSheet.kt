@@ -4,9 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -71,11 +73,7 @@ private fun CollectionPickerContent(
     onItemClick: (CollectionPickerItem) -> Unit,
     onCreateNew: (() -> Unit)?
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 24.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = title,
             style = NothingType.titleCaps,
@@ -87,7 +85,12 @@ private fun CollectionPickerContent(
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(
+                start = 24.dp,
+                top = 8.dp,
+                end = 24.dp,
+                bottom = 32.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            ),
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
             modifier = Modifier.fillMaxWidth()
