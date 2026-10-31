@@ -42,20 +42,23 @@ class GridThumbnailCache @Inject constructor(
     /**
      * When the source cannot be read or says nothing about itself, the thumbnail already held is returned
      * as is, so an unavailable file keeps its last known picture. Null only with no readable source and no stored thumbnail.
+     * An [isAvailable] false file is never probed: self-heal owns re-probing, and flips the flag when it reads again.
      */
-    suspend fun fileFor(fileId: Long, uri: String, sourceType: SourceType, box: ThumbnailBox): File? =
+    suspend fun fileFor(fileId: Long, uri: String, sourceType: SourceType, isAvailable: Boolean, box: ThumbnailBox): File? =
         withContext(Dispatchers.IO) {
             val folder = File(root, fileId.toString())
             val uriKey = uri.hashCode().toUInt().toString(16)
-            val stamp = stampOf(wallpaperSources.fingerprint(uri, sourceType))
             val heldForUri = finished(folder).filter { it.name.startsWith("${uriKey}_") }
+            val held = heldForUri.maxByOrNull { it.lastModified() }
+            if (!isAvailable) return@withContext held
+
+            val stamp = stampOf(wallpaperSources.fingerprint(uri, sourceType))
             if (stamp != null) {
                 heldForUri
                     .firstOrNull { it.name.endsWith("_$stamp") && covers(it, box) }
                     ?.let { return@withContext it }
             }
 
-            val held = heldForUri.maxByOrNull { it.lastModified() }
             // No stamp is also how an unreachable source answers
             if (stamp == null && held != null) return@withContext held
             create(uri, box, folder) { width, height, isFullSize ->

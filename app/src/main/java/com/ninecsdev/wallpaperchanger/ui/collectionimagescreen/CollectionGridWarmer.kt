@@ -46,7 +46,7 @@ class CollectionGridWarmer @Inject constructor(
                     val key = wallpaperThumbCacheKey(wallpaper.uriString)
                     val job = imageLoader.enqueue(
                         ImageRequest.Builder(appContext)
-                            .data(GridThumbnail(wallpaper.fileId, wallpaper.uriString, wallpaper.sourceType))
+                            .data(GridThumbnail(wallpaper.fileId, wallpaper.uriString, wallpaper.sourceType, wallpaper.isAvailable))
                             .memoryCacheKey(key)
                             .size(cellPx)
                             .scale(Scale.FILL)

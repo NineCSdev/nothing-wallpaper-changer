@@ -18,6 +18,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.logic.DiagnosticReport
+import com.ninecsdev.wallpaperchanger.ui.CreateDocumentInDownloads
 import com.ninecsdev.wallpaperchanger.ui.components.hasPartialMediaAccess
 import com.ninecsdev.wallpaperchanger.ui.components.mediaAccessPermissions
 import com.ninecsdev.wallpaperchanger.ui.components.openAppSettings
@@ -56,6 +58,7 @@ fun SettingsRoute(
     val exitClearedMessage = stringResource(R.string.settings_atmosphere_exit_cleared_snackbar)
     val exitFailedMessage = stringResource(R.string.settings_atmosphere_exit_failed_snackbar)
     val lockRemovedMessage = stringResource(R.string.settings_atmosphere_lock_removed_snackbar)
+    val diagnosticsFailedMessage = stringResource(R.string.settings_diagnostics_failed_snackbar)
 
     LaunchedEffect(Unit) {
         viewModel.notices.collect { notice ->
@@ -66,6 +69,16 @@ fun SettingsRoute(
                     AtmosphereNotice.LOCK_WALLPAPER_REMOVED -> lockRemovedMessage
                 }
             )
+        }
+    }
+
+    val diagnosticsLauncher = rememberLauncherForActivityResult(
+        CreateDocumentInDownloads(DiagnosticReport.MIME_TYPE)
+    ) { target ->
+        target?.let {
+            scope.launch {
+                if (!viewModel.saveDiagnostics(it)) snackbarHostState.showSnackbar(diagnosticsFailedMessage)
+            }
         }
     }
 
@@ -121,6 +134,7 @@ fun SettingsRoute(
                 }
             }
         },
-        onOpenBackup = onOpenBackup
+        onOpenBackup = onOpenBackup,
+        onSaveDiagnostics = { diagnosticsLauncher.launch(DiagnosticReport.suggestedFileName()) }
     )
 }

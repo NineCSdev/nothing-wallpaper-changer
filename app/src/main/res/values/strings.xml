@@ -484,6 +484,9 @@
     <string name="settings_source_subtitle">Open source on GitHub. Stars are welcomed!</string>
     <string name="settings_issues_title">REPORT A BUG</string>
     <string name="settings_issues_subtitle">Open an issue on GitHub</string>
+    <string name="settings_diagnostics_title">SAVE DIAGNOSTIC LOGS</string>
+    <string name="settings_diagnostics_subtitle">Includes folder and file names</string>
+    <string name="settings_diagnostics_failed_snackbar">Could not gather the logs</string>
     <string name="settings_version_byline">by NineCSdev</string>
     <string name="cd_open_developer_profile">Open the developer\'s GitHub profile</string>
 

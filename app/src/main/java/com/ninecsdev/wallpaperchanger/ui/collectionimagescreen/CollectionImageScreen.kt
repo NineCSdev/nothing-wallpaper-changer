@@ -602,7 +602,7 @@ private fun SharedTransitionScope.WallpaperThumbnail(
                 if (wallpaper.editParams == null) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data(GridThumbnail(wallpaper.fileId, wallpaper.uriString, wallpaper.sourceType))
+                            .data(GridThumbnail(wallpaper.fileId, wallpaper.uriString, wallpaper.sourceType, wallpaper.isAvailable))
                             .memoryCacheKey(wallpaperThumbCacheKey(wallpaper.uriString))
                             .build(),
                         contentDescription = null,

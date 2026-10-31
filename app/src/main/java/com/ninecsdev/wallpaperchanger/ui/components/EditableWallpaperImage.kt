@@ -42,13 +42,13 @@ internal fun EditableWallpaperImage(
 
     val context = LocalContext.current
     val (screenW, screenH) = remember { ImageProcessingUtils.getWallpaperCanvasSize(context) }
-    val model = remember(wallpaper.uriString, edit.zoom, decodeFraction, memoryCacheKey, placeholderMemoryCacheKey, fromGridThumbnail) {
+    val model = remember(wallpaper.uriString, wallpaper.isAvailable, edit.zoom, decodeFraction, memoryCacheKey, placeholderMemoryCacheKey, fromGridThumbnail) {
         val frameScale = decodeFraction * edit.zoom
         val targetW = (screenW * frameScale).roundToInt().coerceIn(1, screenW)
         val targetH = (screenH * frameScale).roundToInt().coerceIn(1, screenH)
         ImageRequest.Builder(context)
             .data(
-                if (fromGridThumbnail) GridThumbnail(wallpaper.fileId, wallpaper.uriString, wallpaper.sourceType)
+                if (fromGridThumbnail) GridThumbnail(wallpaper.fileId, wallpaper.uriString, wallpaper.sourceType, wallpaper.isAvailable)
                 else wallpaper.uriString
             )
             .size(targetW, targetH)

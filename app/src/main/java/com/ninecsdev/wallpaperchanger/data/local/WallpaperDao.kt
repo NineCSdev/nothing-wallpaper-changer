@@ -191,8 +191,8 @@ abstract class WallpaperDao {
     // TODO tests: see vault note tests/Collection Picker Tests.md
     @Query(
         """
-        SELECT collectionId, fileId, uri, sourceType FROM (
-            SELECT w.collectionId AS collectionId, f.id AS fileId, f.uri AS uri, f.sourceType AS sourceType,
+        SELECT collectionId, fileId, uri, sourceType, isAvailable FROM (
+            SELECT w.collectionId AS collectionId, f.id AS fileId, f.uri AS uri, f.sourceType AS sourceType, f.isAvailable AS isAvailable,
                    ROW_NUMBER() OVER (
                        PARTITION BY w.collectionId ORDER BY w.addedAt ASC, w.id ASC
                    ) AS rn

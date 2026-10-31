@@ -16,7 +16,7 @@ import okio.Path.Companion.toOkioPath
 import java.io.IOException
 
 /** Coil model for a small image of a file (a grid tile, edited or not, or a collection card slot): its [GridThumbnailCache] entry instead of its original. */
-data class GridThumbnail(val fileId: Long, val uriString: String, val sourceType: SourceType)
+data class GridThumbnail(val fileId: Long, val uriString: String, val sourceType: SourceType, val isAvailable: Boolean)
 
 class GridThumbnailFetcher(
     private val data: GridThumbnail,
@@ -33,7 +33,7 @@ class GridThumbnailFetcher(
             height = height.takeIf { it > 0 } ?: width.takeIf { it > 0 } ?: FALLBACK_SIDE,
             fill = options.scale == Scale.FILL
         )
-        val file = cache.fileFor(data.fileId, data.uriString, data.sourceType, box)
+        val file = cache.fileFor(data.fileId, data.uriString, data.sourceType, data.isAvailable, box)
             ?: throw IOException("No thumbnail for ${data.uriString}")
         return SourceFetchResult(
             source = ImageSource(file.toOkioPath(), options.fileSystem),

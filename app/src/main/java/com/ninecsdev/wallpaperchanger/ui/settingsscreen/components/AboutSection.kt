@@ -35,7 +35,7 @@ private const val ISSUES_URL = "$REPO_URL/issues"
 private const val PROFILE_URL = "https://github.com/NineCSdev"
 
 @Composable
-internal fun AboutSection() {
+internal fun AboutSection(onSaveDiagnostics: () -> Unit) {
     val context = LocalContext.current
 
     AboutLinkRow(
@@ -58,6 +58,14 @@ internal fun AboutSection() {
         subtitle = stringResource(R.string.settings_issues_subtitle),
         onClick = safeClick({ openUrl(context, ISSUES_URL) })
     )
+
+    AboutLinkRow(
+        icon = R.drawable.icon_description,
+        title = stringResource(R.string.settings_diagnostics_title),
+        subtitle = stringResource(R.string.settings_diagnostics_subtitle),
+        onClick = safeClick(onSaveDiagnostics),
+        trailingIcon = R.drawable.icon_download
+    )
 }
 
 @Composable
@@ -66,7 +74,8 @@ private fun AboutLinkRow(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    @DrawableRes trailingIcon: Int = R.drawable.icon_external_link
 ) {
     Row(
         modifier = modifier
@@ -90,7 +99,7 @@ private fun AboutLinkRow(
         )
 
         Icon(
-            painter = painterResource(R.drawable.icon_external_link),
+            painter = painterResource(trailingIcon),
             contentDescription = null,
             tint = NothingWhite.copy(alpha = 0.4f),
             modifier = Modifier.size(18.dp)
@@ -139,7 +148,7 @@ private fun AboutSectionPreview() {
                 .padding(horizontal = 24.dp)
         ) {
             SettingsPanel(label = stringResource(R.string.settings_section_about)) {
-                AboutSection()
+                AboutSection(onSaveDiagnostics = {})
             }
 
             AppVersionFooter(version = "0.4.1-beta")

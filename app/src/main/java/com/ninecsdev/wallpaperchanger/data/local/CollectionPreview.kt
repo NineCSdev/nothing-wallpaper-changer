@@ -12,5 +12,6 @@ data class CollectionPreview(
 data class PreviewFile(
     val fileId: Long,
     @ColumnInfo(name = "uri") val uriString: String,
-    val sourceType: SourceType
+    val sourceType: SourceType,
+    val isAvailable: Boolean
 )

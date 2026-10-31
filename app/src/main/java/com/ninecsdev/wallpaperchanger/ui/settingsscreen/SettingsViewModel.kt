@@ -2,6 +2,7 @@ package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
 import android.app.LocaleManager
 import android.content.Context
+import android.net.Uri
 import android.os.LocaleList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,6 +15,7 @@ import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereExitOutcome
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereTransition
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
 import com.ninecsdev.wallpaperchanger.logic.AppCache
+import com.ninecsdev.wallpaperchanger.logic.DiagnosticReport
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
@@ -47,6 +49,7 @@ class SettingsViewModel @Inject constructor(
     private val wallpaperSources: WallpaperSources,
     private val atmosphereTransition: AtmosphereTransition,
     private val wallpaperModeResolver: WallpaperModeResolver,
+    private val diagnosticReport: DiagnosticReport,
     @param:ApplicationContext private val context: Context
 ) : ViewModel(), SettingsActions {
 
@@ -304,6 +307,9 @@ class SettingsViewModel @Inject constructor(
         if (entry.lockWallpaperRemoved) lockRemovalPending = true
         return entry.sourceReady
     }
+
+    /** Returns whether the report reached [target]. */
+    suspend fun saveDiagnostics(target: Uri): Boolean = diagnosticReport.write(target)
 
     /**
      * Applies [tag] (empty = follow the system) optimistically; the system recreates the Activity,

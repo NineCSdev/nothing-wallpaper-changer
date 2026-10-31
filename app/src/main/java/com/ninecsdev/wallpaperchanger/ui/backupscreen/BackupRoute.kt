@@ -2,8 +2,6 @@ package com.ninecsdev.wallpaperchanger.ui.backupscreen
 
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
-import android.content.Context
-import android.content.Intent
 import android.provider.DocumentsContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -14,6 +12,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.data.backup.BackupFormat
+import com.ninecsdev.wallpaperchanger.ui.CreateDocumentInDownloads
+import com.ninecsdev.wallpaperchanger.ui.OpenDocumentInDownloads
 import com.ninecsdev.wallpaperchanger.ui.components.mediaAccessPermissions
 import java.time.LocalDate
 
@@ -93,22 +93,3 @@ private val PICTURES_URI = DocumentsContract.buildDocumentUri(
     "com.android.externalstorage.documents",
     "primary:Pictures"
 )
-
-/** Where exports are saved by default, so restores look there first too */
-private val DOWNLOADS_URI = DocumentsContract.buildDocumentUri(
-    "com.android.externalstorage.documents",
-    "primary:Download"
-)
-
-private class CreateDocumentInDownloads(mimeType: String) :
-    ActivityResultContracts.CreateDocument(mimeType) {
-    override fun createIntent(context: Context, input: String): Intent =
-        super.createIntent(context, input).putExtra(DocumentsContract.EXTRA_INITIAL_URI, DOWNLOADS_URI)
-}
-
-private class OpenDocumentInDownloads : ActivityResultContracts.OpenDocument() {
-    override fun createIntent(context: Context, input: Array<String>): Intent =
-        super.createIntent(context, input).putExtra(DocumentsContract.EXTRA_INITIAL_URI, DOWNLOADS_URI)
-}
-
-

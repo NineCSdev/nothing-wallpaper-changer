@@ -59,7 +59,8 @@ fun SettingsScreen(
     onBackClick: () -> Unit,
     onRequestMediaAccess: () -> Unit,
     onSetAtmosphere: () -> Unit,
-    onOpenBackup: () -> Unit
+    onOpenBackup: () -> Unit,
+    onSaveDiagnostics: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -232,7 +233,7 @@ fun SettingsScreen(
                 }
 
                 SettingsPanel(label = stringResource(R.string.settings_section_about)) {
-                    AboutSection()
+                    AboutSection(onSaveDiagnostics = onSaveDiagnostics)
                 }
             }
 
@@ -276,7 +277,8 @@ fun SettingsScreenPreview() {
             onBackClick = {},
             onRequestMediaAccess = {},
             onSetAtmosphere = {},
-            onOpenBackup = {}
+            onOpenBackup = {},
+            onSaveDiagnostics = {}
         )
     }
 }

@@ -37,7 +37,7 @@ fun ThumbnailSlot(
         if (file != null) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(GridThumbnail(file.fileId, file.uriString, file.sourceType))
+                    .data(GridThumbnail(file.fileId, file.uriString, file.sourceType, file.isAvailable))
                     .memoryCacheKey("collection-slot-${file.uriString}")
                     .build(),
                 contentDescription = null,

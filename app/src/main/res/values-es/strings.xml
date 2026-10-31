@@ -485,6 +485,9 @@
     <string name="settings_source_subtitle">Código abierto en GitHub. ¡Las estrellas se agradecen!</string>
     <string name="settings_issues_title">INFORMAR DE UN FALLO</string>
     <string name="settings_issues_subtitle">Abre una incidencia en GitHub</string>
+    <string name="settings_diagnostics_title">GUARDAR REGISTROS DE DIAGNÓSTICO</string>
+    <string name="settings_diagnostics_subtitle">Incluyen nombres de carpetas y archivos</string>
+    <string name="settings_diagnostics_failed_snackbar">No se pudieron recopilar los registros</string>
     <string name="settings_version_byline">por NineCSdev</string>
     <string name="cd_open_developer_profile">Abrir el perfil de GitHub del desarrollador</string>
     <string name="backup_section_export">EXPORTAR</string>
