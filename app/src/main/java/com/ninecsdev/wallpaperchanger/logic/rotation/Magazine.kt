@@ -2,7 +2,7 @@ package com.ninecsdev.wallpaperchanger.logic.rotation
 
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
-import com.ninecsdev.wallpaperchanger.logic.delivery.BufferManager
+import com.ninecsdev.wallpaperchanger.logic.delivery.WallpaperBuffer
 import com.ninecsdev.wallpaperchanger.logic.delivery.BufferPreparationResult
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
@@ -28,7 +28,7 @@ import javax.inject.Singleton
 @Singleton
 class Magazine @Inject constructor(
     private val repository: WallpaperRepository,
-    private val bufferManager: BufferManager
+    private val wallpaperBuffer: WallpaperBuffer
 ) {
     private companion object {
         const val TAG = "Magazine"
@@ -102,7 +102,7 @@ class Magazine @Inject constructor(
      */
     // TODO tests: see vault note tests/Collection Switch Rotation Gate Tests.md
     suspend fun <T> withBufferFor(collectionId: Long, block: suspend () -> T): T? = mutex.withLock {
-        val prepared = bufferManager.preparedCollectionId()
+        val prepared = wallpaperBuffer.preparedCollectionId()
 
         if (prepared != collectionId) {
             Log.w(TAG, "Prepared buffer belongs to collection $prepared, not $collectionId.")
@@ -126,7 +126,7 @@ class Magazine @Inject constructor(
             }
             val nextImage = imageMagazine[currentPointer]
 
-            when (val result = bufferManager.prepareNextWallpaper(nextImage, activeCropRule)) {
+            when (val result = wallpaperBuffer.prepareNextWallpaper(nextImage, activeCropRule)) {
                 is BufferPreparationResult.Success -> return true
                 is BufferPreparationResult.Failure -> {
                     if (result.definitive) {
@@ -149,7 +149,7 @@ class Magazine @Inject constructor(
 
     /** Nothing renderable was left, so the stamp on whatever is still on disk is withdrawn */
     private suspend fun forgetPreparedAndFail(): Boolean {
-        bufferManager.forgetPrepared()
+        wallpaperBuffer.forgetPrepared()
         return false
     }
 

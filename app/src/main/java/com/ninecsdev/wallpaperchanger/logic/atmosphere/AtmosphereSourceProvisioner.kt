@@ -4,7 +4,7 @@ import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecord
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
-import com.ninecsdev.wallpaperchanger.logic.delivery.BufferManager
+import com.ninecsdev.wallpaperchanger.logic.render.WallpaperRenderer
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import kotlinx.coroutines.flow.first
@@ -16,7 +16,7 @@ import javax.inject.Singleton
 class AtmosphereSourceProvisioner @Inject constructor(
     private val repository: WallpaperRepository,
     private val wallpaperRecordStore: WallpaperRecordStore,
-    private val bufferManager: BufferManager,
+    private val renderer: WallpaperRenderer,
     private val atmosphereDelivery: AtmosphereDelivery
 ) {
     private companion object {
@@ -48,7 +48,7 @@ class AtmosphereSourceProvisioner @Inject constructor(
     }
 
     private suspend fun deliver(wallpaper: WallpaperImage, cropRule: CropRule): Boolean {
-        val render = bufferManager.renderForAtmosphere(wallpaper, cropRule) ?: return false
+        val render = renderer.renderForAtmosphere(wallpaper, cropRule) ?: return false
         return try {
             // The id lets a later exit give this exact photo back
             atmosphereDelivery.deliverRender(render, wallpaper.id)

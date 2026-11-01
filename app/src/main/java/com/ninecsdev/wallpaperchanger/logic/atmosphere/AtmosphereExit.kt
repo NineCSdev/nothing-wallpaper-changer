@@ -7,7 +7,7 @@ import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecord
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
-import com.ninecsdev.wallpaperchanger.logic.delivery.BufferManager
+import com.ninecsdev.wallpaperchanger.logic.render.WallpaperRenderer
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -31,7 +31,7 @@ class AtmosphereExit @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
     private val wallpaperRecordStore: WallpaperRecordStore,
     private val repository: WallpaperRepository,
-    private val bufferManager: BufferManager
+    private val renderer: WallpaperRenderer
 ) {
     private companion object {
         const val TAG = "AtmosphereExit"
@@ -76,7 +76,7 @@ class AtmosphereExit @Inject constructor(
         cropRule: CropRule,
         description: String
     ): Boolean {
-        val rendered = bufferManager.renderForStatic(wallpaper, cropRule) ?: return false
+        val rendered = renderer.renderForStatic(wallpaper, cropRule) ?: return false
         return try {
             setToBothScreens(rendered).also { applied ->
                 if (applied) {

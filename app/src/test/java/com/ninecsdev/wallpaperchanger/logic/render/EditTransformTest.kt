@@ -135,7 +135,7 @@ class EditTransformTest {
 
     @Test
     fun `the framing does not depend on the resolution the content decoded at`() {
-        // BufferManager decodes oversampled. Doubling the pixel dimensions must halve the scale and
+        // WallpaperRenderer decodes oversampled. Doubling the pixel dimensions must halve the scale and
         // leave everything the user can see untouched.
         for (zoom in zooms) {
             val once = computeEditTransform(900f, 1600f, 1080f, 2400f, zoom, -0.6f, 0.25f)

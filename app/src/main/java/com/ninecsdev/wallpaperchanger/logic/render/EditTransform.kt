@@ -34,7 +34,7 @@ data class LayerTransform(
 
 /**
  * Single source of truth for fit + zoom + normalized pan, shared by the editor preview, thumbnails and
- * [BufferManager], so the wallpaper matches what the editor showed. zoom 1.0 fits the container;
+ * [WallpaperRenderer], so the wallpaper matches what the editor showed. zoom 1.0 fits the container;
  * [offsetX]/[offsetY] are -1..1 over the full pan range (zero when the axis doesn't overflow).
  * Container dimensions must be > 0.
  */

@@ -8,6 +8,7 @@ import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
+import com.ninecsdev.wallpaperchanger.logic.render.WallpaperRenderer
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,7 +36,8 @@ class WallpaperDelivery @Inject constructor(
     private val appDataStore: AppDataStore,
     private val wallpaperRecordStore: WallpaperRecordStore,
     private val repository: WallpaperRepository,
-    private val bufferManager: BufferManager,
+    private val wallpaperBuffer: WallpaperBuffer,
+    private val renderer: WallpaperRenderer,
     private val wallpaperModeResolver: WallpaperModeResolver,
     private val atmosphereDelivery: AtmosphereDelivery
 ) {
@@ -69,7 +71,7 @@ class WallpaperDelivery @Inject constructor(
 
         if (wallpaperModeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE) {
             // Goes through the engine: setBitmap would evict it and end the mode
-            val render = bufferManager.renderForAtmosphere(defaultWallpaper, cropRule) ?: return@withContext false
+            val render = renderer.renderForAtmosphere(defaultWallpaper, cropRule) ?: return@withContext false
 
             return@withContext try {
                 atmosphereDelivery.deliverRender(render, defaultWallpaper.id).also { delivered ->
@@ -83,7 +85,7 @@ class WallpaperDelivery @Inject constructor(
         warnIfDesiringAtmosphere("applyDefaultWallpaper")
         val destination = appDataStore.getWallpaperDestination()
 
-        val rendered = bufferManager.renderForStatic(defaultWallpaper, cropRule) ?: return@withContext false
+        val rendered = renderer.renderForStatic(defaultWallpaper, cropRule) ?: return@withContext false
 
         return@withContext try {
             WallpaperManager.getInstance(appContext).setBitmap(
@@ -134,7 +136,7 @@ class WallpaperDelivery @Inject constructor(
         val destination = appDataStore.getWallpaperDestination()
         try {
             val bufferedId = wallpaperRecordStore.snapshot().bufferedWallpaperId
-            val prepared = bufferManager.openPrepared() ?: return@withContext DeliveryOutcome.FAILED
+            val prepared = wallpaperBuffer.openPrepared() ?: return@withContext DeliveryOutcome.FAILED
 
             // The platform write and our record of it are one step
             withContext(NonCancellable) {

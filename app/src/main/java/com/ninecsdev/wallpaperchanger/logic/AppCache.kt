@@ -5,7 +5,7 @@ import android.content.Context
 import android.os.StatFs
 import android.os.storage.StorageManager
 import android.util.Log
-import com.ninecsdev.wallpaperchanger.logic.delivery.BufferManager
+import com.ninecsdev.wallpaperchanger.logic.delivery.WallpaperBuffer
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,7 +23,7 @@ data class DeviceStorage(
 @Singleton
 class AppCache @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
-    private val bufferManager: BufferManager
+    private val wallpaperBuffer: WallpaperBuffer
 ) {
     private companion object {
         const val TAG = "AppCache"
@@ -52,7 +52,7 @@ class AppCache @Inject constructor(
     }
 
     private fun clearable(): List<File> {
-        val kept = bufferManager.bufferFiles()
+        val kept = wallpaperBuffer.bufferFiles()
         return appContext.cacheDir.listFiles()?.filter { it !in kept }.orEmpty()
     }
 }
