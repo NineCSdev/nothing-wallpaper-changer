@@ -1,7 +1,7 @@
 package com.ninecsdev.wallpaperchanger.ui.walleditscreen.components
 
 import androidx.compose.ui.geometry.Offset
-import com.ninecsdev.wallpaperchanger.logic.computeEditTransform
+import com.ninecsdev.wallpaperchanger.logic.render.computeEditTransform
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.ui.components.MaxZoom
 import com.ninecsdev.wallpaperchanger.ui.components.focalPan

@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.logic
+package com.ninecsdev.wallpaperchanger.data.source
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -7,6 +7,8 @@ import android.util.Log
 import androidx.core.net.toUri
 import androidx.core.graphics.scale
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
+import com.ninecsdev.wallpaperchanger.logic.render.ImageProcessingUtils
+import com.ninecsdev.wallpaperchanger.util.mapConcurrently
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

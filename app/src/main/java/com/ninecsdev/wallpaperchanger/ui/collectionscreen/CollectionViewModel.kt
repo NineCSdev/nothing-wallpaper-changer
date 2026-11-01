@@ -10,7 +10,7 @@ import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionSortOrder
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
-import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle
+import com.ninecsdev.wallpaperchanger.logic.lifecycle.ServiceLifecycle
 import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
 import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage

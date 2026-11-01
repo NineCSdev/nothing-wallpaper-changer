@@ -17,7 +17,7 @@ import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereTransition
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
 import com.ninecsdev.wallpaperchanger.logic.AppCache
 import com.ninecsdev.wallpaperchanger.logic.DiagnosticReport
-import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
+import com.ninecsdev.wallpaperchanger.data.source.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination

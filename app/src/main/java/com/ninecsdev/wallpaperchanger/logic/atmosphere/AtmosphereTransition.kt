@@ -6,7 +6,7 @@ import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
-import com.ninecsdev.wallpaperchanger.logic.RotationEngine
+import com.ninecsdev.wallpaperchanger.logic.rotation.RotationEngine
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers

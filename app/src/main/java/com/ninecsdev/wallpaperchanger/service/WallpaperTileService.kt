@@ -7,7 +7,7 @@ import android.service.quicksettings.TileService
 import android.util.Log
 import androidx.annotation.StringRes
 import com.ninecsdev.wallpaperchanger.R
-import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle
+import com.ninecsdev.wallpaperchanger.logic.lifecycle.ServiceLifecycle
 import com.ninecsdev.wallpaperchanger.model.LifecycleVerdict
 import com.ninecsdev.wallpaperchanger.model.ServiceIntent
 import com.ninecsdev.wallpaperchanger.model.ServiceState

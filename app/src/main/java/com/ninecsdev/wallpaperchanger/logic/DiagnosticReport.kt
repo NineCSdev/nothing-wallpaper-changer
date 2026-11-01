@@ -12,6 +12,7 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
+import com.ninecsdev.wallpaperchanger.logic.lifecycle.ServiceLifecycle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first

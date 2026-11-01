@@ -20,7 +20,6 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.local.appPreferences
 import com.ninecsdev.wallpaperchanger.data.local.safeData
-import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.model.enums.SourceType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers

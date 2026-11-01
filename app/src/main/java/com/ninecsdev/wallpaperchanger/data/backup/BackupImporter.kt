@@ -15,10 +15,10 @@ import com.ninecsdev.wallpaperchanger.data.source.FolderScanner
 import com.ninecsdev.wallpaperchanger.data.source.SourceFingerprint
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.data.source.treeUriOf
-import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
-import com.ninecsdev.wallpaperchanger.logic.mapConcurrently
-import com.ninecsdev.wallpaperchanger.logic.replaceAtomically
-import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle
+import com.ninecsdev.wallpaperchanger.data.source.ImageInternalizer
+import com.ninecsdev.wallpaperchanger.util.mapConcurrently
+import com.ninecsdev.wallpaperchanger.util.replaceAtomically
+import com.ninecsdev.wallpaperchanger.logic.lifecycle.ServiceLifecycle
 import com.ninecsdev.wallpaperchanger.model.CollectionRotationSetting
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.FolderExclusion

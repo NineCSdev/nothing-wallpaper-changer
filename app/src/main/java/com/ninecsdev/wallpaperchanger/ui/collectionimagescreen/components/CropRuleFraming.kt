@@ -7,7 +7,7 @@ import androidx.compose.ui.layout.ScaleFactor
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
-import com.ninecsdev.wallpaperchanger.logic.CropPlacement
+import com.ninecsdev.wallpaperchanger.logic.render.CropPlacement
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import kotlin.math.roundToInt
 

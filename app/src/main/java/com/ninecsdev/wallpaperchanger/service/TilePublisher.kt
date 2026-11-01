@@ -5,7 +5,7 @@ import android.content.Context
 import android.service.quicksettings.TileService
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.di.ApplicationScope
-import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle
+import com.ninecsdev.wallpaperchanger.logic.lifecycle.ServiceLifecycle
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope

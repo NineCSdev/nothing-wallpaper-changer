@@ -13,7 +13,7 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.Surface
 import com.ninecsdev.wallpaperchanger.BuildConfig
-import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
+import com.ninecsdev.wallpaperchanger.logic.render.ImageProcessingUtils
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereSource
 import java.util.concurrent.Executors

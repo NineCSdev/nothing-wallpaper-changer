@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.logic
+package com.ninecsdev.wallpaperchanger.logic.render
 
 
 /** Values in container units. Callers whose framework already fitted the content use [computeLayerTransform] instead. */

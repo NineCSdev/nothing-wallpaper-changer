@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
-import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
+import com.ninecsdev.wallpaperchanger.logic.render.ImageProcessingUtils
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereSource
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.VertexInfo

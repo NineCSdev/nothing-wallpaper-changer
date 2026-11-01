@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.StatFs
 import android.os.storage.StorageManager
 import android.util.Log
+import com.ninecsdev.wallpaperchanger.logic.delivery.BufferManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

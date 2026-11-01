@@ -2,7 +2,7 @@ package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
 import com.ninecsdev.wallpaperchanger.data.backup.BackupExportState
 import com.ninecsdev.wallpaperchanger.logic.DeviceStorage
-import com.ninecsdev.wallpaperchanger.logic.StorageUsage
+import com.ninecsdev.wallpaperchanger.data.source.StorageUsage
 import com.ninecsdev.wallpaperchanger.model.RotationPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination

@@ -6,7 +6,7 @@ import android.graphics.ImageDecoder
 import android.util.Log
 import androidx.core.graphics.scale
 import androidx.core.net.toUri
-import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
+import com.ninecsdev.wallpaperchanger.logic.render.ImageProcessingUtils
 import com.ninecsdev.wallpaperchanger.model.enums.SourceType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers

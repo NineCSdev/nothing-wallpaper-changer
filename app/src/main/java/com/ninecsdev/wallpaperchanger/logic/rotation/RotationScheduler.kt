@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.logic
+package com.ninecsdev.wallpaperchanger.logic.rotation
 
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository

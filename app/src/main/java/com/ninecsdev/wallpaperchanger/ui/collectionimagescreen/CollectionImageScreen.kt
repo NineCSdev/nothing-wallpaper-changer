@@ -83,7 +83,7 @@ import coil3.compose.AsyncImagePainter
 import coil3.request.ImageRequest
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.data.source.SourceDetails
-import com.ninecsdev.wallpaperchanger.logic.CropPlacement
+import com.ninecsdev.wallpaperchanger.logic.render.CropPlacement
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.resolveCollectionDisplayName

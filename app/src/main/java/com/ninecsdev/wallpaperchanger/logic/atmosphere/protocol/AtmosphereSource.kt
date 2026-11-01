@@ -3,7 +3,7 @@ package com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
-import com.ninecsdev.wallpaperchanger.logic.writeAtomically
+import com.ninecsdev.wallpaperchanger.util.writeAtomically
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File

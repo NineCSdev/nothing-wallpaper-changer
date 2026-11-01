@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.logic
+package com.ninecsdev.wallpaperchanger.logic.delivery
 
 import android.app.WallpaperManager
 import android.content.Context

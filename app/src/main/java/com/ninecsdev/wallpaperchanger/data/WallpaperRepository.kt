@@ -12,7 +12,7 @@ import com.ninecsdev.wallpaperchanger.data.source.PickImportResult
 import com.ninecsdev.wallpaperchanger.data.source.SourceDetails
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.data.source.computeFolderSyncDiff
-import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle
+import com.ninecsdev.wallpaperchanger.logic.lifecycle.ServiceLifecycle
 import com.ninecsdev.wallpaperchanger.model.ServiceIntent
 import com.ninecsdev.wallpaperchanger.model.enums.AppCollectionRole
 import com.ninecsdev.wallpaperchanger.model.enums.CollectionType
@@ -22,7 +22,7 @@ import com.ninecsdev.wallpaperchanger.model.enums.SourceType
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.FolderExclusion
 import com.ninecsdev.wallpaperchanger.model.Wallpaper
-import com.ninecsdev.wallpaperchanger.logic.mapConcurrently
+import com.ninecsdev.wallpaperchanger.util.mapConcurrently
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperFile
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage

@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.logic
+package com.ninecsdev.wallpaperchanger.util
 
 import java.io.File
 import java.nio.file.AtomicMoveNotSupportedException

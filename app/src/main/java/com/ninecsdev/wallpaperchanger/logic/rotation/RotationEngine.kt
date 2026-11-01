@@ -1,7 +1,9 @@
-package com.ninecsdev.wallpaperchanger.logic
+package com.ninecsdev.wallpaperchanger.logic.rotation
 
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
+import com.ninecsdev.wallpaperchanger.logic.delivery.BufferManager
+import com.ninecsdev.wallpaperchanger.logic.delivery.BufferPreparationResult
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage

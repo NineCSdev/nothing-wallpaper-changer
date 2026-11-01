@@ -1,10 +1,12 @@
-package com.ninecsdev.wallpaperchanger.logic
+package com.ninecsdev.wallpaperchanger.logic.rotation
 
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
+import com.ninecsdev.wallpaperchanger.logic.delivery.WallpaperApplier
+import com.ninecsdev.wallpaperchanger.logic.delivery.WallpaperApplyOutcome
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.policyOr

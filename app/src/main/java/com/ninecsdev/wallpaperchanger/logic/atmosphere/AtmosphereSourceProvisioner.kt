@@ -4,7 +4,7 @@ import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecord
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
-import com.ninecsdev.wallpaperchanger.logic.BufferManager
+import com.ninecsdev.wallpaperchanger.logic.delivery.BufferManager
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.model.enums.CropRule
 import kotlinx.coroutines.flow.first

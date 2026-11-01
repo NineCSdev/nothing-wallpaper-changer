@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.logic
+package com.ninecsdev.wallpaperchanger.util
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll

@@ -6,8 +6,8 @@ import android.content.Intent
 import android.os.PowerManager
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
-import com.ninecsdev.wallpaperchanger.logic.RotationCoordinator
-import com.ninecsdev.wallpaperchanger.logic.RotationScheduler
+import com.ninecsdev.wallpaperchanger.logic.rotation.RotationCoordinator
+import com.ninecsdev.wallpaperchanger.logic.rotation.RotationScheduler
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart

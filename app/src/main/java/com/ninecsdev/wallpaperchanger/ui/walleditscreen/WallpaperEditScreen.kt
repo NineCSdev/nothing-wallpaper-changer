@@ -36,9 +36,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.ninecsdev.wallpaperchanger.R
-import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
-import com.ninecsdev.wallpaperchanger.logic.computeEditTransform
-import com.ninecsdev.wallpaperchanger.logic.computeLayerTransform
+import com.ninecsdev.wallpaperchanger.logic.render.ImageProcessingUtils
+import com.ninecsdev.wallpaperchanger.logic.render.computeEditTransform
+import com.ninecsdev.wallpaperchanger.logic.render.computeLayerTransform
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay

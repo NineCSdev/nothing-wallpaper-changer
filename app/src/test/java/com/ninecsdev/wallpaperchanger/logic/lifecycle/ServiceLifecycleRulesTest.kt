@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.logic
+package com.ninecsdev.wallpaperchanger.logic.lifecycle
 
 import com.ninecsdev.wallpaperchanger.model.LifecycleVerdict
 import com.ninecsdev.wallpaperchanger.model.ServiceState

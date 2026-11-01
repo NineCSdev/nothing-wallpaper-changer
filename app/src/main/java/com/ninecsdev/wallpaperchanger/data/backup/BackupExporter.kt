@@ -13,7 +13,7 @@ import com.ninecsdev.wallpaperchanger.data.local.DB_SCHEMA_VERSION
 import com.ninecsdev.wallpaperchanger.data.local.DeviceDefaults
 import com.ninecsdev.wallpaperchanger.data.source.SourceFingerprint
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
-import com.ninecsdev.wallpaperchanger.logic.mapConcurrently
+import com.ninecsdev.wallpaperchanger.util.mapConcurrently
 import com.ninecsdev.wallpaperchanger.di.ApplicationScope
 import com.ninecsdev.wallpaperchanger.model.WallpaperFile
 import com.ninecsdev.wallpaperchanger.model.enums.SourceType

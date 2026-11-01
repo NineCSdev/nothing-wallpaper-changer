@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.logic
+package com.ninecsdev.wallpaperchanger.logic.delivery
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -12,6 +12,11 @@ import android.net.Uri
 import android.util.Log
 import androidx.core.graphics.createBitmap
 import androidx.core.net.toUri
+import com.ninecsdev.wallpaperchanger.logic.render.CropPlacement
+import com.ninecsdev.wallpaperchanger.logic.render.ImageProcessingUtils
+import com.ninecsdev.wallpaperchanger.logic.render.ParallaxZoom
+import com.ninecsdev.wallpaperchanger.logic.render.computeEditTransform
+import com.ninecsdev.wallpaperchanger.util.writeAtomically
 import kotlinx.coroutines.CancellationException
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore

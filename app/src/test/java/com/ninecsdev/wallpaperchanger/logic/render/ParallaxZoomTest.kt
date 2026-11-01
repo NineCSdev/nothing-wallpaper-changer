@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.logic
+package com.ninecsdev.wallpaperchanger.logic.render
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

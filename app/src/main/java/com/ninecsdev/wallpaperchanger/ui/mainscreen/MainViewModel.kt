@@ -8,9 +8,9 @@ import com.ninecsdev.wallpaperchanger.data.StartupMaintenance
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
-import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle
-import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
-import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
+import com.ninecsdev.wallpaperchanger.logic.lifecycle.ServiceLifecycle
+import com.ninecsdev.wallpaperchanger.data.source.ImageInternalizer
+import com.ninecsdev.wallpaperchanger.logic.delivery.WallpaperApplier
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereEntry
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereTransition
 import com.ninecsdev.wallpaperchanger.model.ServiceState

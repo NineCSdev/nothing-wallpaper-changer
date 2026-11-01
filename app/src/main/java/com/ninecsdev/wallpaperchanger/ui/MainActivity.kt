@@ -14,7 +14,7 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
-import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle
+import com.ninecsdev.wallpaperchanger.logic.lifecycle.ServiceLifecycle
 import com.ninecsdev.wallpaperchanger.model.LifecycleVerdict
 import com.ninecsdev.wallpaperchanger.model.ServiceIntent
 import com.ninecsdev.wallpaperchanger.service.WallpaperService

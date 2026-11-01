@@ -39,8 +39,8 @@ import coil3.request.ImageRequest
 import coil3.size.Scale
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.data.source.SourceDetails
-import com.ninecsdev.wallpaperchanger.logic.CropPlacement
-import com.ninecsdev.wallpaperchanger.logic.ImageProcessingUtils
+import com.ninecsdev.wallpaperchanger.logic.render.CropPlacement
+import com.ninecsdev.wallpaperchanger.logic.render.ImageProcessingUtils
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
