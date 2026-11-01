@@ -2,7 +2,6 @@ package com.ninecsdev.wallpaperchanger.ui.backupscreen
 
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
-import android.provider.DocumentsContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -14,6 +13,7 @@ import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.data.backup.BackupFormat
 import com.ninecsdev.wallpaperchanger.ui.CreateDocumentInDownloads
 import com.ninecsdev.wallpaperchanger.ui.OpenDocumentInDownloads
+import com.ninecsdev.wallpaperchanger.ui.PICTURES_URI
 import com.ninecsdev.wallpaperchanger.ui.components.mediaAccessPermissions
 import java.time.LocalDate
 
@@ -88,8 +88,3 @@ fun BackupRoute(
         }
     )
 }
-
-private val PICTURES_URI = DocumentsContract.buildDocumentUri(
-    "com.android.externalstorage.documents",
-    "primary:Pictures"
-)

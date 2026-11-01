@@ -82,7 +82,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     onStartClick = { checkPermissionsAndStart() },
                     onStopService = { stopWallpaperService() },
-                    onLaunchFolderPicker = { folderLauncher.launch(null) },
+                    onLaunchFolderPicker = { folderLauncher.launch(PICTURES_URI) },
                     onLaunchPhotosPicker = {
                         photosLauncher.launch(
                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
