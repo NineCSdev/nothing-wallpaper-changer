@@ -40,7 +40,7 @@ import coil3.size.Scale
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.data.source.SourceDetails
 import com.ninecsdev.wallpaperchanger.logic.render.CropPlacement
-import com.ninecsdev.wallpaperchanger.logic.render.ImageProcessingUtils
+import com.ninecsdev.wallpaperchanger.util.Bitmaps
 import com.ninecsdev.wallpaperchanger.model.EditParams
 import com.ninecsdev.wallpaperchanger.model.WallpaperCollection
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
@@ -346,7 +346,7 @@ private fun UneditedPreviewImage(
     modifier: Modifier
 ) {
     val context = LocalContext.current
-    val (decodeWidth, decodeHeight) = remember { ImageProcessingUtils.getWallpaperCanvasSize(context) }
+    val (decodeWidth, decodeHeight) = remember { Bitmaps.getWallpaperCanvasSize(context) }
     val framingScale = remember(framing) { framing?.let(::CropRuleContentScale) }
     val framingAlignment = remember(framing) {
         framing?.let { rule ->

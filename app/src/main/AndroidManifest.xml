@@ -61,7 +61,7 @@
         </activity>
 
         <service
-            android:name=".service.WallpaperService"
+            android:name=".service.RotationService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse"

@@ -110,7 +110,7 @@ class RotationScheduler @Inject constructor(
 
             // Launched into the owning scope as the rotation writes the very timestamp this collector watches.
             // Awaiting keeps the retry below; cancelling the await abandons the result, never the rotation.
-            // Only WallpaperService.onDestroy can cancel that.
+            // Only RotationService.onDestroy can cancel that.
             when (val outcome = scope.async { rotationCoordinator.rotateOnce(TAG) }.await()) {
                 // The timestamp write re-emits the active collection, cancelling this and re-arming with the new anchor
                 RotationOutcome.ROTATED, RotationOutcome.HANDED_OFF -> return

@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Restarts [WallpaperService] after boot (only if start-on-boot is enabled) or an app update
+ * Restarts [RotationService] after boot (only if start-on-boot is enabled) or an app update
  * (a package replace kills the process without `onDestroy`). Both gate on
  * [AppDataStore.isServiceDesired], the persisted intent that, unlike `service_running`, survives
  * an ungraceful kill.
@@ -52,7 +52,7 @@ class ServiceRestartReceiver : BroadcastReceiver() {
     private fun startServiceSafely(context: Context, action: String) {
         Log.i(tag, "Service was active. Restarting after $action...")
         try {
-            context.startForegroundService(Intent(context, WallpaperService::class.java))
+            context.startForegroundService(Intent(context, RotationService::class.java))
         } catch (e: ForegroundServiceStartNotAllowedException) {
             // Defensive only: not expected on a stock platform.
             Log.w(tag, "System refused the background foreground-service start after $action.", e)

@@ -104,12 +104,12 @@ class WallpaperTileService : TileService() {
                 // The lifecycle authority decides whether the wish is legal and shows Loading at once,
                 // self-healing if the service never arrives.
                 if (serviceLifecycle.onIntent(ServiceIntent.StartRequested) is LifecycleVerdict.Accepted) {
-                    startForegroundService(Intent(this, WallpaperService::class.java))
+                    startForegroundService(Intent(this, RotationService::class.java))
                 }
             }
             is ServiceState.Running, is ServiceState.Paused, is ServiceState.PausedDnd -> {
-                val intent = Intent(this, WallpaperService::class.java).apply {
-                    action = WallpaperService.ACTION_STOP_SERVICE
+                val intent = Intent(this, RotationService::class.java).apply {
+                    action = RotationService.ACTION_STOP_SERVICE
                 }
                 startService(intent)
             }

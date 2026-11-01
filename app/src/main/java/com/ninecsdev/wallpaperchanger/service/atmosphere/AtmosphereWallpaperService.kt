@@ -13,7 +13,7 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.Surface
 import com.ninecsdev.wallpaperchanger.BuildConfig
-import com.ninecsdev.wallpaperchanger.logic.render.ImageProcessingUtils
+import com.ninecsdev.wallpaperchanger.util.Bitmaps
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereSource
 import java.util.concurrent.Executors
@@ -236,7 +236,7 @@ class AtmosphereWallpaperService : GLWallpaperService() {
         /** Sized from the surface when known, from the display otherwise. */
         private fun loadFallbackSource() {
             val frame = surfaceHolder?.surfaceFrame
-            val (screenWidth, screenHeight) = ImageProcessingUtils.getWallpaperCanvasSize(this@AtmosphereWallpaperService)
+            val (screenWidth, screenHeight) = Bitmaps.getWallpaperCanvasSize(this@AtmosphereWallpaperService)
             val width = frame?.width()?.takeIf { it > 0 } ?: screenWidth
             val height = frame?.height()?.takeIf { it > 0 } ?: screenHeight
 

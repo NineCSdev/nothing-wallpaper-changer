@@ -7,7 +7,7 @@ import android.util.Log
 import androidx.core.net.toUri
 import androidx.core.graphics.scale
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
-import com.ninecsdev.wallpaperchanger.logic.render.ImageProcessingUtils
+import com.ninecsdev.wallpaperchanger.util.Bitmaps
 import com.ninecsdev.wallpaperchanger.util.mapConcurrently
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +47,7 @@ class ImageInternalizer @Inject constructor(
             val internalDir = File(appContext.filesDir, INTERNAL_FOLDER)
             if (!internalDir.exists()) internalDir.mkdirs()
 
-            val (screenW, screenH) = ImageProcessingUtils.getWallpaperCanvasSize(appContext)
+            val (screenW, screenH) = Bitmaps.getWallpaperCanvasSize(appContext)
 
             // Read from the datastore: going through the repository would be a circular dependency
             val qualityHigh = appDataStore.getCompressionQualityHigh()
@@ -77,13 +77,13 @@ class ImageInternalizer @Inject constructor(
             val fileName = "img_${UUID.randomUUID()}.webp"
             val outputFile = File(internalDir, fileName)
 
-            val sampled = ImageProcessingUtils.decodeSampledBitmap(appContext, uri, screenW, screenH) ?: return null
+            val sampled = Bitmaps.decodeSampledBitmap(appContext, uri, screenW, screenH) ?: return null
 
             val processedBitmap = resizeToFitScreen(sampled, screenW, screenH)
 
-            ImageProcessingUtils.compressToFile(processedBitmap, outputFile, quality = quality)
+            Bitmaps.compressToFile(processedBitmap, outputFile, quality = quality)
 
-            ImageProcessingUtils.recycleSafely(sampled, processedBitmap)
+            Bitmaps.recycleSafely(sampled, processedBitmap)
 
             Uri.fromFile(outputFile)
         } catch (e: Exception) {

@@ -25,7 +25,7 @@ import kotlin.time.Duration.Companion.milliseconds
  */
 @AndroidEntryPoint
 class ScreenStateReceiver(
-    /** The owning [WallpaperService]'s scope, so coroutines are canceled with the service. */
+    /** The owning [RotationService]'s scope, so coroutines are canceled with the service. */
     private val serviceScope: CoroutineScope
 ) : BroadcastReceiver() {
 

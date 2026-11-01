@@ -13,14 +13,14 @@ import android.util.Log
 import androidx.core.graphics.createBitmap
 import androidx.core.net.toUri
 import com.ninecsdev.wallpaperchanger.logic.render.CropPlacement
-import com.ninecsdev.wallpaperchanger.logic.render.ImageProcessingUtils
+import com.ninecsdev.wallpaperchanger.util.Bitmaps
 import com.ninecsdev.wallpaperchanger.logic.render.ParallaxZoom
 import com.ninecsdev.wallpaperchanger.logic.render.computeEditTransform
 import com.ninecsdev.wallpaperchanger.util.writeAtomically
 import kotlinx.coroutines.CancellationException
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
-import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereRender
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.RenderedAtmosphere
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.SeedExtractor
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereSource
@@ -146,7 +146,7 @@ class BufferManager @Inject constructor(
     ): BufferPreparationResult {
         val render = renderAtmosphere(wallpaper, cropRule) ?: return BufferPreparationResult.Failure(definitive = false)
         try {
-            val imageBytes = ImageProcessingUtils.compressToBytes(render.bitmap, quality = COMPRESSION_QUALITY)
+            val imageBytes = Bitmaps.compressToBytes(render.bitmap, quality = COMPRESSION_QUALITY)
             // Cleared before writing, never after: a crash between must leave nothing prepared
             // (handled) rather than the previous mode's image
             discardStaticBuffer()
@@ -214,9 +214,9 @@ class BufferManager @Inject constructor(
 
     /**
      * The caller owns the bitmap and must recycle it. The palette cannot be derived from the returned
-     * pixels (see [AtmosphereRender]).
+     * pixels (see [RenderedAtmosphere]).
      */
-    suspend fun renderForAtmosphere(wallpaper: WallpaperImage, cropRule: CropRule): AtmosphereRender? {
+    suspend fun renderForAtmosphere(wallpaper: WallpaperImage, cropRule: CropRule): RenderedAtmosphere? {
         return try {
             renderAtmosphere(wallpaper, cropRule)
         } catch (e: CancellationException) {
@@ -237,11 +237,11 @@ class BufferManager @Inject constructor(
     private suspend fun renderAtmosphere(
         wallpaper: WallpaperImage,
         cropRule: CropRule
-    ): AtmosphereRender? {
+    ): RenderedAtmosphere? {
         val screenBitmap = renderScreenFitted(wallpaper, cropRule) ?: return null
         val framing = framing(WallpaperMode.ATMOSPHERE)
         val seeds = seedExtractor.extract(screenBitmap)
-        return AtmosphereRender(
+        return RenderedAtmosphere(
             bitmap = frameAndRecycle(screenBitmap, framing),
             seeds = anchorsWithin(seeds, framing)
         )
@@ -305,14 +305,14 @@ class BufferManager @Inject constructor(
     }
 
     private fun getTargetSize(): TargetSize {
-        val (width, height) = ImageProcessingUtils.getWallpaperCanvasSize(appContext)
+        val (width, height) = Bitmaps.getWallpaperCanvasSize(appContext)
         return TargetSize(width, height)
     }
 
     private fun decodeSourceBitmap(sourceUri: Uri, targetSize: TargetSize, oversample: Int = 1): Bitmap? {
         val reqW = targetSize.width * oversample
         val reqH = targetSize.height * oversample
-        return ImageProcessingUtils.decodeSampledBitmap(appContext, sourceUri, reqW, reqH)
+        return Bitmaps.decodeSampledBitmap(appContext, sourceUri, reqW, reqH)
     }
 
     /** Padded results are deliberately larger than the screen so the platform's crop has something to eat. */
@@ -336,7 +336,7 @@ class BufferManager @Inject constructor(
             source,
             Rect(insetX, insetY, width - insetX, height - insetY),
             RectF(0f, 0f, width.toFloat(), height.toFloat()),
-            ImageProcessingUtils.createRenderPaint()
+            Bitmaps.createRenderPaint()
         )
         return cropped
     }
@@ -367,7 +367,7 @@ class BufferManager @Inject constructor(
             postScale(transform.scale, transform.scale)
             postTranslate(transform.drawX, transform.drawY)
         }
-        canvas.drawBitmap(source, matrix, ImageProcessingUtils.createRenderPaint())
+        canvas.drawBitmap(source, matrix, Bitmaps.createRenderPaint())
 
         return output
     }
@@ -375,7 +375,7 @@ class BufferManager @Inject constructor(
     private fun renderScreenBitmap(source: Bitmap, targetSize: TargetSize, rule: CropRule): Bitmap {
         val placement = calculateBitmapPlacement(source.width, source.height, targetSize, rule)
 
-        return ImageProcessingUtils.renderScaledBitmap(
+        return Bitmaps.renderScaledBitmap(
             source,
             targetSize.width,
             targetSize.height,
@@ -405,7 +405,7 @@ class BufferManager @Inject constructor(
         val bufferFile = getBufferFile()
         // Written aside and swapped in: the rotation consumer may open this file at any moment.
         writeAtomically(File(appContext.cacheDir, TEMP_FILENAME), bufferFile) { temp ->
-            ImageProcessingUtils.compressToFile(bitmap, temp, quality = COMPRESSION_QUALITY)
+            Bitmaps.compressToFile(bitmap, temp, quality = COMPRESSION_QUALITY)
         }
         Log.d(TAG, "Buffer ready: ${bufferFile.length() / 1024} KB | Rule: $cropRule")
     }
@@ -424,7 +424,7 @@ class BufferManager @Inject constructor(
 
         val padded = createBitmap(paddedW, paddedH, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(padded)
-        val paint = ImageProcessingUtils.createRenderPaint()
+        val paint = Bitmaps.createRenderPaint()
         var success = false
 
         try {

@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
-import com.ninecsdev.wallpaperchanger.logic.render.ImageProcessingUtils
+import com.ninecsdev.wallpaperchanger.util.Bitmaps
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereSource
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.VertexInfo
@@ -95,10 +95,10 @@ class AtmosphereDelivery @Inject constructor(
      * pre-render before the picker). Never a rotation, so never advances the magazine.
      * The caller keeps ownership of `render.bitmap`; [wallpaperId] is the membership it came from.
      */
-    suspend fun deliverRender(render: AtmosphereRender, wallpaperId: Long): Boolean = withContext(Dispatchers.IO) {
+    suspend fun deliverRender(render: RenderedAtmosphere, wallpaperId: Long): Boolean = withContext(Dispatchers.IO) {
         try {
             inFlight.set(null)
-            publish(render.seeds, ImageProcessingUtils.compressToBytes(render.bitmap), fromRotation = false)
+            publish(render.seeds, Bitmaps.compressToBytes(render.bitmap), fromRotation = false)
                 .also { published ->
                     if (published) wallpaperRecordStore.setLiveAtmosphereWallpaperId(wallpaperId)
                 }

@@ -26,12 +26,12 @@ import javax.inject.Singleton
  * guarded by a single [Mutex] so a screen-off refill and a reactive reload cannot interleave.
  */
 @Singleton
-class RotationEngine @Inject constructor(
+class Magazine @Inject constructor(
     private val repository: WallpaperRepository,
     private val bufferManager: BufferManager
 ) {
     private companion object {
-        const val TAG = "RotationEngine"
+        const val TAG = "Magazine"
     }
 
     private val mutex = Mutex()

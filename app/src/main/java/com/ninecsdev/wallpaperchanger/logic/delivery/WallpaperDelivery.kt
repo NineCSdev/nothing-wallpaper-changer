@@ -22,7 +22,7 @@ import javax.inject.Singleton
  * advance the rotation. [DEFERRED]: shown later or held, do NOT advance until the delivery channel
  * confirms. [ALREADY_LIVE]: that image is already on screen; advancing would burn the image being prepared.
  */
-enum class WallpaperApplyOutcome { SHOWN, DEFERRED, ALREADY_LIVE, FAILED }
+enum class DeliveryOutcome { SHOWN, DEFERRED, ALREADY_LIVE, FAILED }
 
 /**
  * Mode-aware router. In effective atmosphere mode it must never call setBitmap/setStream: that would
@@ -30,7 +30,7 @@ enum class WallpaperApplyOutcome { SHOWN, DEFERRED, ALREADY_LIVE, FAILED }
  * ATMOSPHERE desire with the engine unset still takes the static path.
  */
 @Singleton
-class WallpaperApplier @Inject constructor(
+class WallpaperDelivery @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
     private val appDataStore: AppDataStore,
     private val wallpaperRecordStore: WallpaperRecordStore,
@@ -40,7 +40,7 @@ class WallpaperApplier @Inject constructor(
     private val atmosphereDelivery: AtmosphereDelivery
 ) {
     private companion object {
-        const val TAG = "WallpaperApplier"
+        const val TAG = "WallpaperDelivery"
     }
 
     /**
@@ -109,7 +109,7 @@ class WallpaperApplier @Inject constructor(
     // TODO tests: see vault note tests/Atmosphere Delivery Tests.md
     suspend fun applyBufferWallpaper(
         rotatingCollectionId: Long? = null
-    ): WallpaperApplyOutcome = withContext(Dispatchers.IO) {
+    ): DeliveryOutcome = withContext(Dispatchers.IO) {
         if (wallpaperModeResolver.effectiveMode() == WallpaperMode.ATMOSPHERE) {
             // Keyed on ids rather than on timing: an unknown buffer id (null, written while a refill
             // is in flight) never matches, so this can never decide to sit out forever.
@@ -117,16 +117,16 @@ class WallpaperApplier @Inject constructor(
             val bufferedId = record.bufferedWallpaperId
             if (bufferedId != null && bufferedId == record.liveAtmosphereWallpaperId) {
                 Log.i(TAG, "Buffered image $bufferedId is already live; not delivering or advancing.")
-                return@withContext WallpaperApplyOutcome.ALREADY_LIVE
+                return@withContext DeliveryOutcome.ALREADY_LIVE
             }
 
             // A copy plus a reload broadcast, never setStream (that would replace the live wallpaper).
             // Shown later or held, hence DEFERRED
             val delivered = atmosphereDelivery.deliverPrepared(rotatingCollectionId)
             return@withContext if (delivered) {
-                WallpaperApplyOutcome.DEFERRED
+                DeliveryOutcome.DEFERRED
             } else {
-                WallpaperApplyOutcome.FAILED
+                DeliveryOutcome.FAILED
             }
         }
 
@@ -134,7 +134,7 @@ class WallpaperApplier @Inject constructor(
         val destination = appDataStore.getWallpaperDestination()
         try {
             val bufferedId = wallpaperRecordStore.snapshot().bufferedWallpaperId
-            val prepared = bufferManager.openPrepared() ?: return@withContext WallpaperApplyOutcome.FAILED
+            val prepared = bufferManager.openPrepared() ?: return@withContext DeliveryOutcome.FAILED
 
             // The platform write and our record of it are one step
             withContext(NonCancellable) {
@@ -151,10 +151,10 @@ class WallpaperApplier @Inject constructor(
             }
 
             Log.i(TAG, "Wallpaper applied successfully from the prepared image to $destination.")
-            WallpaperApplyOutcome.SHOWN
+            DeliveryOutcome.SHOWN
         } catch (e: Exception) {
             Log.e(TAG, "Failed to stream the prepared image to $destination", e)
-            WallpaperApplyOutcome.FAILED
+            DeliveryOutcome.FAILED
         }
     }
 

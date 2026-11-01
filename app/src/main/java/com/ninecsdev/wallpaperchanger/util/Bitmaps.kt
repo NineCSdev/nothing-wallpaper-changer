@@ -1,4 +1,4 @@
-package com.ninecsdev.wallpaperchanger.logic.render
+package com.ninecsdev.wallpaperchanger.util
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -15,9 +15,9 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 
-object ImageProcessingUtils {
+object Bitmaps {
 
-    private const val TAG = "ImageProcessingUtils"
+    private const val TAG = "Bitmaps"
 
     /** The pixel size a prepared wallpaper has to be. Assumes a display whose natural orientation is portrait. */
     fun getWallpaperCanvasSize(context: Context): Pair<Int, Int> {

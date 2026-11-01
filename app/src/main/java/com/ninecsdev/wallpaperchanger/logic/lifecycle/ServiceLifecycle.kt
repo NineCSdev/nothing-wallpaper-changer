@@ -14,7 +14,7 @@ import com.ninecsdev.wallpaperchanger.model.LifecycleVerdict
 import com.ninecsdev.wallpaperchanger.model.ServiceIntent
 import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
-import com.ninecsdev.wallpaperchanger.service.WallpaperService
+import com.ninecsdev.wallpaperchanger.service.RotationService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -181,8 +181,8 @@ class ServiceLifecycle @Inject constructor(
         if (!lifecycleTracker.isAlive.value) return
         try {
             appContext.startService(
-                Intent(appContext, WallpaperService::class.java).apply {
-                    action = WallpaperService.ACTION_STOP_SERVICE
+                Intent(appContext, RotationService::class.java).apply {
+                    action = RotationService.ACTION_STOP_SERVICE
                 }
             )
         } catch (e: Exception) {

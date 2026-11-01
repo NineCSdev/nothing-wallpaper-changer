@@ -14,9 +14,9 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.lifecycle.ServiceLifecycle
 import com.ninecsdev.wallpaperchanger.logic.lifecycle.ServiceLifecycleTracker
-import com.ninecsdev.wallpaperchanger.logic.delivery.WallpaperApplier
+import com.ninecsdev.wallpaperchanger.logic.delivery.WallpaperDelivery
 import com.ninecsdev.wallpaperchanger.logic.rotation.RotationCoordinator
-import com.ninecsdev.wallpaperchanger.logic.rotation.RotationEngine
+import com.ninecsdev.wallpaperchanger.logic.rotation.Magazine
 import com.ninecsdev.wallpaperchanger.logic.rotation.RotationOutcome
 import com.ninecsdev.wallpaperchanger.logic.rotation.RotationScheduler
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.protocol.AtmosphereProtocol
@@ -41,13 +41,13 @@ import javax.inject.Inject
 
 /** Foreground service that keeps the rotation triggers ([ScreenStateReceiver], the scheduler) and the notification alive. */
 @AndroidEntryPoint
-class WallpaperService : Service() {
+class RotationService : Service() {
 
-    private val tag = "WallpaperService"
+    private val tag = "RotationService"
     @Inject lateinit var notificationHelper: NotificationHelper
     @Inject lateinit var repository: WallpaperRepository
-    @Inject lateinit var rotationEngine: RotationEngine
-    @Inject lateinit var wallpaperApplier: WallpaperApplier
+    @Inject lateinit var magazine: Magazine
+    @Inject lateinit var wallpaperDelivery: WallpaperDelivery
     @Inject lateinit var lifecycleTracker: ServiceLifecycleTracker
     @Inject lateinit var serviceLifecycle: ServiceLifecycle
     @Inject lateinit var appDataStore: AppDataStore
@@ -142,7 +142,7 @@ class WallpaperService : Service() {
             }
 
             // Blocks until the first buffer is prepared, so Running is only reported once a wallpaper is ready to apply.
-            rotationEngine.start(serviceScope)
+            magazine.start(serviceScope)
 
             startNotificationCollector()
 
@@ -184,7 +184,7 @@ class WallpaperService : Service() {
     private suspend fun revertToDefaultIfRequested() {
         withContext(NonCancellable) {
             if (appDataStore.shouldRevertToDefault()) {
-                wallpaperApplier.applyDefaultWallpaper(useCollectionOverride = true)
+                wallpaperDelivery.applyDefaultWallpaper(useCollectionOverride = true)
             }
         }
     }
@@ -199,7 +199,7 @@ class WallpaperService : Service() {
 
         // Cancel the scope first so the engine's collector stops before its state is cleared.
         serviceScope.cancel()
-        rotationEngine.clearMagazine()
+        magazine.clearMagazine()
         stopForeground(STOP_FOREGROUND_REMOVE)
 
         serviceLifecycle.onIntent(ServiceIntent.TeardownFinished)
@@ -224,8 +224,8 @@ class WallpaperService : Service() {
     private fun startSwitchCollector() {
         switchJob?.cancel()
         switchJob = serviceScope.launch(Dispatchers.IO) {
-            var previous = rotationEngine.loadedCollectionId.value
-            rotationEngine.loadedCollectionId.collect { loaded ->
+            var previous = magazine.loadedCollectionId.value
+            magazine.loadedCollectionId.collect { loaded ->
                 val switched = loaded != null && loaded != previous
                 previous = loaded
                 if (!switched) return@collect

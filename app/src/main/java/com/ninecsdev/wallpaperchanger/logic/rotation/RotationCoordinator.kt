@@ -5,8 +5,8 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereDelivery
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
-import com.ninecsdev.wallpaperchanger.logic.delivery.WallpaperApplier
-import com.ninecsdev.wallpaperchanger.logic.delivery.WallpaperApplyOutcome
+import com.ninecsdev.wallpaperchanger.logic.delivery.DeliveryOutcome
+import com.ninecsdev.wallpaperchanger.logic.delivery.WallpaperDelivery
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.policyOr
@@ -39,8 +39,8 @@ enum class RotationOutcome {
 @Singleton
 class RotationCoordinator @Inject constructor(
     private val repository: WallpaperRepository,
-    private val rotationEngine: RotationEngine,
-    private val wallpaperApplier: WallpaperApplier,
+    private val magazine: Magazine,
+    private val wallpaperDelivery: WallpaperDelivery,
     private val appDataStore: AppDataStore,
     private val atmosphereDelivery: AtmosphereDelivery,
     private val wallpaperModeResolver: WallpaperModeResolver
@@ -117,8 +117,8 @@ class RotationCoordinator @Inject constructor(
         }
 
         // Pinned to the active collection as a switch re-anchors the gate to "due now"
-        val applied = rotationEngine.withBufferFor(activeCollection.id) {
-            wallpaperApplier.applyBufferWallpaper(activeCollection.id)
+        val applied = magazine.withBufferFor(activeCollection.id) {
+            wallpaperDelivery.applyBufferWallpaper(activeCollection.id)
         }
         if (applied == null) {
             Log.w(TAG, "$logTag: nothing prepared for collection ${activeCollection.id} yet. Skipping.")
@@ -126,20 +126,20 @@ class RotationCoordinator @Inject constructor(
         }
 
         return when (applied) {
-            WallpaperApplyOutcome.SHOWN -> {
+            DeliveryOutcome.SHOWN -> {
                 repository.markWallpaperChanged(activeCollection.id)
                 onApplied()
-                rotationEngine.refillDiskBuffer()
+                magazine.refillDiskBuffer()
                 RotationOutcome.ROTATED
             }
 
-            WallpaperApplyOutcome.DEFERRED -> {
+            DeliveryOutcome.DEFERRED -> {
                 onApplied()
                 RotationOutcome.HANDED_OFF
             }
 
             // Nothing was delivered, so nothing to advance and nothing to refill.
-            WallpaperApplyOutcome.ALREADY_LIVE, WallpaperApplyOutcome.FAILED-> RotationOutcome.NOT_DONE
+            DeliveryOutcome.ALREADY_LIVE, DeliveryOutcome.FAILED-> RotationOutcome.NOT_DONE
         }
     }
 
@@ -158,18 +158,18 @@ class RotationCoordinator @Inject constructor(
             return RotationOutcome.NOT_DONE
         }
 
-        val applied = rotationEngine.withBufferFor(activeCollection.id) {
-            if (!atmosphere) wallpaperApplier.applyBufferWallpaper(activeCollection.id)
-            else if (atmosphereDelivery.deliverPreparedNow()) WallpaperApplyOutcome.SHOWN
-            else WallpaperApplyOutcome.FAILED
+        val applied = magazine.withBufferFor(activeCollection.id) {
+            if (!atmosphere) wallpaperDelivery.applyBufferWallpaper(activeCollection.id)
+            else if (atmosphereDelivery.deliverPreparedNow()) DeliveryOutcome.SHOWN
+            else DeliveryOutcome.FAILED
         }
-        if (applied != WallpaperApplyOutcome.SHOWN) {
+        if (applied != DeliveryOutcome.SHOWN) {
             Log.w(TAG, "$SWITCH_TAG: nothing shown for collection ${activeCollection.id} ($applied); the next trigger will.")
             return RotationOutcome.NOT_DONE
         }
 
         repository.markWallpaperChanged(activeCollection.id)
-        rotationEngine.refillDiskBuffer()
+        magazine.refillDiskBuffer()
         return RotationOutcome.ROTATED
     }
 
@@ -190,6 +190,6 @@ class RotationCoordinator @Inject constructor(
         repository.markWallpaperChanged(deliveredId)
 
         val active = repository.getActiveCollectionOnce()
-        if (active?.id == deliveredId) rotationEngine.refillDiskBuffer()
+        if (active?.id == deliveredId) magazine.refillDiskBuffer()
     }
 }

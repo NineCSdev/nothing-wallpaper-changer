@@ -6,7 +6,7 @@ import android.util.Log
 import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.local.WallpaperRecordStore
-import com.ninecsdev.wallpaperchanger.logic.rotation.RotationEngine
+import com.ninecsdev.wallpaperchanger.logic.rotation.Magazine
 import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +41,7 @@ class AtmosphereTransition @Inject constructor(
     private val atmosphereExit: AtmosphereExit,
     private val sourceProvisioner: AtmosphereSourceProvisioner,
     private val atmosphereDelivery: AtmosphereDelivery,
-    private val rotationEngine: RotationEngine
+    private val magazine: Magazine
 ) {
     private companion object {
         const val TAG = "AtmosphereTransition"
@@ -83,7 +83,7 @@ class AtmosphereTransition @Inject constructor(
 
         // Non-cancellable: it is the second half of the mode write above, and abandoning it leaves
         // the next rotation applying an atmosphere-framed wallpaper in static
-        withContext(NonCancellable) { rotationEngine.refillDiskBuffer() }
+        withContext(NonCancellable) { magazine.refillDiskBuffer() }
 
         val stillLive = modeResolver.isAtmosphereEngineActive()
         _liveness.value = stillLive
@@ -118,7 +118,7 @@ class AtmosphereTransition @Inject constructor(
         }
 
         if (wasLive == false && appDataStore.getWallpaperMode() == WallpaperMode.ATMOSPHERE) {
-            rotationEngine.refillDiskBuffer()
+            magazine.refillDiskBuffer()
         }
     }
 

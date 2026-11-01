@@ -18,9 +18,9 @@ import androidx.compose.ui.semantics.semantics
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Scale
-import com.ninecsdev.wallpaperchanger.logic.render.ImageProcessingUtils
-import com.ninecsdev.wallpaperchanger.logic.render.computeCanvasEditTransform
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.util.Bitmaps
+import com.ninecsdev.wallpaperchanger.logic.render.computeCanvasEditTransform
 import kotlin.math.roundToInt
 
 /**
@@ -41,7 +41,7 @@ internal fun EditableWallpaperImage(
     val edit = requireNotNull(wallpaper.editParams) { "EditableWallpaperImage requires editParams; non-edited images render with a plain AsyncImage" }
 
     val context = LocalContext.current
-    val (screenW, screenH) = remember { ImageProcessingUtils.getWallpaperCanvasSize(context) }
+    val (screenW, screenH) = remember { Bitmaps.getWallpaperCanvasSize(context) }
     val model = remember(wallpaper.uriString, wallpaper.isAvailable, edit.zoom, decodeFraction, memoryCacheKey, placeholderMemoryCacheKey, fromGridThumbnail) {
         val frameScale = decodeFraction * edit.zoom
         val targetW = (screenW * frameScale).roundToInt().coerceIn(1, screenW)

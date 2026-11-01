@@ -10,7 +10,7 @@ import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.logic.lifecycle.ServiceLifecycle
 import com.ninecsdev.wallpaperchanger.data.source.ImageInternalizer
-import com.ninecsdev.wallpaperchanger.logic.delivery.WallpaperApplier
+import com.ninecsdev.wallpaperchanger.logic.delivery.WallpaperDelivery
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereEntry
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereTransition
 import com.ninecsdev.wallpaperchanger.model.ServiceState
@@ -41,7 +41,7 @@ class MainViewModel @Inject constructor(
     serviceLifecycle: ServiceLifecycle,
     private val appDataStore: AppDataStore,
     private val imageInternalizer: ImageInternalizer,
-    private val wallpaperApplier: WallpaperApplier,
+    private val wallpaperDelivery: WallpaperDelivery,
     private val wallpaperSources: WallpaperSources,
     private val atmosphereTransition: AtmosphereTransition,
     startupMaintenance: StartupMaintenance
@@ -214,7 +214,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             isApplyingDefault.value = true
             try {
-                if (!wallpaperApplier.applyDefaultWallpaper()) {
+                if (!wallpaperDelivery.applyDefaultWallpaper()) {
                     Log.e(TAG, "Applying the default wallpaper on request failed")
                 }
             } finally {

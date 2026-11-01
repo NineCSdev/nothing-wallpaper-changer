@@ -17,7 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import com.ninecsdev.wallpaperchanger.logic.lifecycle.ServiceLifecycle
 import com.ninecsdev.wallpaperchanger.model.LifecycleVerdict
 import com.ninecsdev.wallpaperchanger.model.ServiceIntent
-import com.ninecsdev.wallpaperchanger.service.WallpaperService
+import com.ninecsdev.wallpaperchanger.service.RotationService
 import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionViewModel
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.MainViewModel
 import com.ninecsdev.wallpaperchanger.ui.navigation.AppNavigation
@@ -103,8 +103,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun stopWallpaperService() {
-        val intent = Intent(this, WallpaperService::class.java).apply {
-            action = WallpaperService.ACTION_STOP_SERVICE
+        val intent = Intent(this, RotationService::class.java).apply {
+            action = RotationService.ACTION_STOP_SERVICE
         }
         startService(intent)
     }
@@ -112,7 +112,7 @@ class MainActivity : ComponentActivity() {
     private fun startWallpaperServiceNow() {
         // Same wish the tile expresses, so both surfaces show the tap the same way.
         if (serviceLifecycle.onIntent(ServiceIntent.StartRequested) is LifecycleVerdict.Accepted) {
-            startForegroundService(Intent(this, WallpaperService::class.java))
+            startForegroundService(Intent(this, RotationService::class.java))
         }
     }
 }

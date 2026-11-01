@@ -12,7 +12,7 @@ class ServiceLifecycleTracker @Inject constructor() {
 
     private val _isAlive = MutableStateFlow(false)
 
-    /** Between `WallpaperService.onCreate` and `onDestroy`. */
+    /** Between `RotationService.onCreate` and `onDestroy`. */
     val isAlive: StateFlow<Boolean> = _isAlive.asStateFlow()
 
     fun markAlive() {

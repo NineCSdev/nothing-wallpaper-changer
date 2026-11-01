@@ -6,7 +6,7 @@ import android.graphics.ImageDecoder
 import android.util.Log
 import androidx.core.graphics.scale
 import androidx.core.net.toUri
-import com.ninecsdev.wallpaperchanger.logic.render.ImageProcessingUtils
+import com.ninecsdev.wallpaperchanger.util.Bitmaps
 import com.ninecsdev.wallpaperchanger.model.enums.SourceType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -91,7 +91,7 @@ class GridThumbnailCache @Inject constructor(
             try {
                 // JPEG decodes faster than WebP; WebP only to keep transparency
                 val format = if (bitmap.hasAlpha()) Bitmap.CompressFormat.WEBP_LOSSY else Bitmap.CompressFormat.JPEG
-                ImageProcessingUtils.compressToFile(bitmap, temp, format, QUALITY)
+                Bitmaps.compressToFile(bitmap, temp, format, QUALITY)
                 if (!temp.renameTo(target)) return null
                 // Only once the new one is in place, so a failed write leaves the old one to fall back on
                 finished(folder).filter { it != target }.forEach { it.delete() }
