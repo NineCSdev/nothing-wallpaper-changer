@@ -1,4 +1,4 @@
-    package com.ninecsdev.wallpaperchanger.ui.components
+package com.ninecsdev.wallpaperchanger.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +22,7 @@ import com.ninecsdev.wallpaperchanger.model.WallpaperImage
 import com.ninecsdev.wallpaperchanger.util.Bitmaps
 import com.ninecsdev.wallpaperchanger.logic.render.computeCanvasEditTransform
 import kotlin.math.roundToInt
+import com.ninecsdev.wallpaperchanger.ui.thumbnails.GridThumbnail
 
 /**
  * Draws a wallpaper as it will appear on the device. The Coil request is sized from [decodeFraction] x screen,

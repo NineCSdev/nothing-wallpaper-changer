@@ -17,7 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.ninecsdev.wallpaperchanger.R
-import com.ninecsdev.wallpaperchanger.ui.components.overlay.ConfirmationOverlay
+import com.ninecsdev.wallpaperchanger.ui.designsystem.ConfirmationOverlay
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 
 /** Android 14+ also asks for `READ_MEDIA_VISUAL_USER_SELECTED` so a "select photos" choice lands as a proper partial grant. */

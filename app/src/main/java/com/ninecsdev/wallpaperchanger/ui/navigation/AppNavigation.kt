@@ -15,8 +15,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.ninecsdev.wallpaperchanger.ui.setupscreen.SetupRoute
-import com.ninecsdev.wallpaperchanger.ui.setupscreen.SetupViewModel
+import com.ninecsdev.wallpaperchanger.ui.setup.SetupRoute
+import com.ninecsdev.wallpaperchanger.ui.setup.SetupViewModel
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -29,14 +29,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.ninecsdev.wallpaperchanger.ui.ServiceCommand
-import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.CollectionImageRoute
-import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionListRoute
-import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionViewModel
-import com.ninecsdev.wallpaperchanger.ui.mainscreen.MainRoute
-import com.ninecsdev.wallpaperchanger.ui.mainscreen.MainViewModel
-import com.ninecsdev.wallpaperchanger.ui.backupscreen.BackupRoute
-import com.ninecsdev.wallpaperchanger.ui.settingsscreen.SettingsRoute
-import com.ninecsdev.wallpaperchanger.ui.walleditscreen.WallpaperEditRoute
+import com.ninecsdev.wallpaperchanger.ui.collectionimages.CollectionImageRoute
+import com.ninecsdev.wallpaperchanger.ui.collectionlist.CollectionListRoute
+import com.ninecsdev.wallpaperchanger.ui.collectionlist.CollectionListViewModel
+import com.ninecsdev.wallpaperchanger.ui.main.MainRoute
+import com.ninecsdev.wallpaperchanger.ui.main.MainViewModel
+import com.ninecsdev.wallpaperchanger.ui.backup.BackupRoute
+import com.ninecsdev.wallpaperchanger.ui.settings.SettingsRoute
+import com.ninecsdev.wallpaperchanger.ui.wallpaperedit.WallpaperEditRoute
 
 @Composable
 fun AppNavigation(
@@ -48,7 +48,7 @@ fun AppNavigation(
     onLaunchDefaultWallpaperPicker: () -> Unit,
     modifier: Modifier = Modifier,
     mainViewModel: MainViewModel = hiltViewModel(),
-    collectionViewModel: CollectionViewModel = hiltViewModel(),
+    collectionListViewModel: CollectionListViewModel = hiltViewModel(),
     setupViewModel: SetupViewModel = hiltViewModel()
 ) {
     val popBack: () -> Unit = {
@@ -60,7 +60,7 @@ fun AppNavigation(
     // Collected out here rather than inside the destination: the collection that asks for a start
     // may finish saving after the user has already navigated on, and the request is still theirs
     LaunchedEffect(Unit) {
-        collectionViewModel.serviceCommands.collect { command ->
+        collectionListViewModel.serviceCommands.collect { command ->
             when (command) {
                 ServiceCommand.Start -> onStartClick()
                 ServiceCommand.Stop -> onStopService()
@@ -70,7 +70,7 @@ fun AppNavigation(
 
     // Creating the setup's collection returns to Main, where an Atmosphere choice is carried out
     LaunchedEffect(Unit) {
-        collectionViewModel.setupCollectionCreated.collect {
+        collectionListViewModel.setupCollectionCreated.collect {
             navController.popBackStack(Route.MAIN, inclusive = false)
             mainViewModel.onSetupCollectionCreated()
         }
@@ -105,7 +105,7 @@ fun AppNavigation(
                 onLeave = leaveSetup,
                 onAddWallpapers = {
                     leaveSetup()
-                    collectionViewModel.requestCreateOnArrival(fromSetup = true)
+                    collectionListViewModel.requestCreateOnArrival(fromSetup = true)
                     navController.navigate(Route.COLLECTIONS)
                 },
                 onRestoreBackup = { navController.navigate(Route.BACKUP) }
@@ -132,7 +132,7 @@ fun AppNavigation(
                     viewModel = mainViewModel,
                     onOpenCollections = { navController.navigate(Route.COLLECTIONS) },
                     onCreateCollection = {
-                        collectionViewModel.requestCreateOnArrival()
+                        collectionListViewModel.requestCreateOnArrival()
                         navController.navigate(Route.COLLECTIONS)
                     },
                     onOpenSettings = { navController.navigate(Route.SETTINGS) },
@@ -161,7 +161,7 @@ fun AppNavigation(
                     )
             ) {
                 CollectionListRoute(
-                    viewModel = collectionViewModel,
+                    viewModel = collectionListViewModel,
                     onBack = popBack,
                     onViewImages = { id ->
                         navController.navigate(Route.collectionImages(id))

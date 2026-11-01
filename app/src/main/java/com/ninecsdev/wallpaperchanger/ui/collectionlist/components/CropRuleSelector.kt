@@ -1,0 +1,54 @@
+package com.ninecsdev.wallpaperchanger.ui.collectionlist.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.ninecsdev.wallpaperchanger.model.enums.CropRule
+import com.ninecsdev.wallpaperchanger.ui.components.cropRuleIconRes
+import com.ninecsdev.wallpaperchanger.ui.designsystem.NothingSegmentedRow
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
+
+@Composable
+internal fun CropRuleSelector(
+    selectedRule: CropRule,
+    onRuleSelected: (CropRule) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    NothingSegmentedRow(
+        options = CropRule.entries,
+        selected = selectedRule,
+        onSelect = onRuleSelected,
+        modifier = modifier
+    ) { rule, isSelected ->
+        Icon(
+            painter = painterResource(cropRuleIconRes(rule)),
+            contentDescription = rule.name,
+            tint = if (isSelected) NothingBlack else NothingWhite,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Preview(name = "Crop Rule Selector")
+@Composable
+fun CropRuleSelectorPreview() {
+    WallpaperChangerTheme {
+        Box(modifier = Modifier
+            .background(NothingBlack)
+            .padding(16.dp)) {
+            CropRuleSelector(
+                selectedRule = CropRule.CENTER,
+                onRuleSelected = {}
+            )
+        }
+    }
+}

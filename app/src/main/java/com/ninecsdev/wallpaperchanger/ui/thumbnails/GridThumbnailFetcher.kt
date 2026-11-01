@@ -1,0 +1,53 @@
+package com.ninecsdev.wallpaperchanger.ui.thumbnails
+
+import coil3.ImageLoader
+import coil3.decode.DataSource
+import coil3.decode.ImageSource
+import coil3.fetch.FetchResult
+import coil3.fetch.Fetcher
+import coil3.fetch.SourceFetchResult
+import coil3.request.Options
+import coil3.size.Scale
+import coil3.size.pxOrElse
+import com.ninecsdev.wallpaperchanger.data.source.GridThumbnailCache
+import com.ninecsdev.wallpaperchanger.data.source.ThumbnailBox
+import com.ninecsdev.wallpaperchanger.model.enums.SourceType
+import okio.Path.Companion.toOkioPath
+import java.io.IOException
+
+/** Coil model for a small image of a file (a grid tile, edited or not, or a collection card slot): its [GridThumbnailCache] entry instead of its original. */
+data class GridThumbnail(val fileId: Long, val uriString: String, val sourceType: SourceType, val isAvailable: Boolean)
+
+class GridThumbnailFetcher(
+    private val data: GridThumbnail,
+    private val options: Options,
+    private val cache: GridThumbnailCache
+) : Fetcher {
+
+    override suspend fun fetch(): FetchResult {
+        val width = options.size.width.pxOrElse { 0 }
+        val height = options.size.height.pxOrElse { 0 }
+        // An unsized axis takes the other's size, and an unsized request a third of a phone's width
+        val box = ThumbnailBox(
+            width = width.takeIf { it > 0 } ?: height.takeIf { it > 0 } ?: FALLBACK_SIDE,
+            height = height.takeIf { it > 0 } ?: width.takeIf { it > 0 } ?: FALLBACK_SIDE,
+            fill = options.scale == Scale.FILL
+        )
+        val file = cache.fileFor(data.fileId, data.uriString, data.sourceType, data.isAvailable, box)
+            ?: throw IOException("No thumbnail for ${data.uriString}")
+        return SourceFetchResult(
+            source = ImageSource(file.toOkioPath(), options.fileSystem),
+            mimeType = null, // JPEG or WebP, sniffed by the decoder
+            dataSource = DataSource.DISK
+        )
+    }
+
+    class Factory(private val cache: GridThumbnailCache) : Fetcher.Factory<GridThumbnail> {
+        override fun create(data: GridThumbnail, options: Options, imageLoader: ImageLoader): Fetcher =
+            GridThumbnailFetcher(data, options, cache)
+    }
+
+    private companion object {
+        const val FALLBACK_SIDE = 360
+    }
+}

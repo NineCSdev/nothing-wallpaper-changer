@@ -1,0 +1,27 @@
+package com.ninecsdev.wallpaperchanger.ui.settings
+
+import com.ninecsdev.wallpaperchanger.model.RotationPolicy
+import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
+
+/** ViewModel-owned intents only; navigation and activity-level callbacks stay as parameters on the screen and route. */
+// TODO tests: see vault note tests/screen-actions-routes.md
+interface SettingsActions {
+    fun setScreenOffDelay(delayMs: Long)
+    fun setStartOnBoot(enabled: Boolean)
+    fun setRotationPolicy(policy: RotationPolicy)
+    fun setBatterySaverPolicy(policy: BatterySaverPolicy)
+    fun setSkipOnDnd(skip: Boolean)
+    fun setWallpaperDestination(destination: WallpaperDestination)
+    fun setWallpaperMode(mode: WallpaperMode)
+    fun setWallpaperZoomFix(zoomFix: WallpaperZoomFix)
+    fun setCompressionQualityHigh(quality: Int)
+    fun setCompressionQualityLow(quality: Int)
+    fun setKeepLocalCopies(enabled: Boolean)
+    fun clearCache()
+    fun setAppLanguage(tag: String)
+    fun refreshMediaAccess()
+    fun refreshAtmosphereEngineActive()
+}

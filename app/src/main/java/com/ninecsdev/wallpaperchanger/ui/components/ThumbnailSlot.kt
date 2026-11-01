@@ -20,6 +20,7 @@ import com.ninecsdev.wallpaperchanger.data.local.PreviewFile
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingGray
 import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
+import com.ninecsdev.wallpaperchanger.ui.thumbnails.GridThumbnail
 
 /** Its memory-cache key is its own, not the grid tile's. */
 @Composable

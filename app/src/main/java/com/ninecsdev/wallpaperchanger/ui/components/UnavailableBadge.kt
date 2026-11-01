@@ -12,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.ui.designsystem.StatusBadge
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingRed
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite

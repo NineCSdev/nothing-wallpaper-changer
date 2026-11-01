@@ -1,0 +1,90 @@
+package com.ninecsdev.wallpaperchanger.ui.backup
+
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.data.backup.BackupFormat
+import com.ninecsdev.wallpaperchanger.ui.components.CreateDocumentInDownloads
+import com.ninecsdev.wallpaperchanger.ui.components.OpenDocumentInDownloads
+import com.ninecsdev.wallpaperchanger.ui.components.PICTURES_URI
+import com.ninecsdev.wallpaperchanger.ui.components.mediaAccessPermissions
+import java.time.LocalDate
+
+/**
+ * The pickers live here because each answers a question this screen is asking; the wizard's saved
+ * state carries the answer across any recreation they cause.
+ */
+@Composable
+fun BackupRoute(
+    onBack: () -> Unit,
+    onStartService: () -> Unit
+) {
+    val viewModel: BackupViewModel = hiltViewModel()
+    val importViewModel: BackupImportViewModel = hiltViewModel()
+    val exportState by viewModel.exportState.collectAsStateWithLifecycle()
+    val portable by viewModel.portable.collectAsStateWithLifecycle()
+    val importState by importViewModel.uiState.collectAsStateWithLifecycle()
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        CreateDocumentInDownloads(BackupFormat.MIME_TYPE)
+    ) { target -> target?.let { viewModel.export(it) } }
+
+    val exportFileName = stringResource(
+        R.string.backup_export_default_name,
+        LocalDate.now().toString()
+    ) + ".${BackupFormat.EXTENSION}"
+
+    val archiveLauncher = rememberLauncherForActivityResult(
+        OpenDocumentInDownloads()
+    ) { uri -> uri?.let { importViewModel.onArchivePicked(it.toString()) } }
+
+    // If denied the archive's references simply cannot be verified, and they restore unavailable
+    val mediaAccessLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { importViewModel.onMediaAccessSettled() }
+
+    val folderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        // Cancelling the picker is not an answer; the prompt stays up.
+        uri?.let { importViewModel.onFolderPicked(it.toString()) }
+    }
+
+    LaunchedEffect(importState.needsMediaAccess) {
+        if (importState.needsMediaAccess) mediaAccessLauncher.launch(mediaAccessPermissions())
+    }
+
+    // Backing out of the wizard closes the wizard; backing out of the screen leaves the screen
+    val back: () -> Unit = {
+        if (importState.step != null) importViewModel.onDismissed() else onBack()
+    }
+
+    // A restore in flight has no way back
+    BackHandler(enabled = importState.step is BackupImportStep.Working) { }
+
+    BackupScreen(
+        exportState = exportState,
+        portable = portable,
+        importState = importState,
+        actions = viewModel,
+        importActions = importViewModel,
+        onBack = back,
+        onExport = { exportLauncher.launch(exportFileName) },
+        // The extension is ours, so no provider will filter on a type for it
+        onChooseArchive = { archiveLauncher.launch(arrayOf("*/*")) },
+        onPickFolder = { folderLauncher.launch(PICTURES_URI) },
+        onStartService = onStartService,
+        // A finished restore so it hands the user back to the app
+        onFinishImport = {
+            importViewModel.onDismissed()
+            onBack()
+        }
+    )
+}

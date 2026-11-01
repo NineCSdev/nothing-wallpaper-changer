@@ -1,0 +1,302 @@
+package com.ninecsdev.wallpaperchanger.ui.settings
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.ninecsdev.wallpaperchanger.R
+import com.ninecsdev.wallpaperchanger.logic.DeviceStorage
+import com.ninecsdev.wallpaperchanger.data.source.StorageUsage
+import com.ninecsdev.wallpaperchanger.model.RotationPolicy
+import com.ninecsdev.wallpaperchanger.model.enums.BatterySaverPolicy
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperDestination
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperZoomFix
+import com.ninecsdev.wallpaperchanger.ui.designsystem.SettingsToggleRow
+import com.ninecsdev.wallpaperchanger.ui.designsystem.NothingSnackbarHost
+import com.ninecsdev.wallpaperchanger.ui.settings.components.AboutSection
+import com.ninecsdev.wallpaperchanger.ui.settings.components.AppVersionFooter
+import com.ninecsdev.wallpaperchanger.ui.settings.components.AtmosphereModeSection
+import com.ninecsdev.wallpaperchanger.ui.settings.components.BackupRow
+import com.ninecsdev.wallpaperchanger.ui.settings.components.LanguageSelector
+import com.ninecsdev.wallpaperchanger.ui.settings.components.LocalCopiesRow
+import com.ninecsdev.wallpaperchanger.ui.settings.components.QualitySlider
+import com.ninecsdev.wallpaperchanger.ui.settings.components.RotationPolicySection
+import com.ninecsdev.wallpaperchanger.ui.settings.components.ScreenOffDelayField
+import com.ninecsdev.wallpaperchanger.ui.settings.components.SettingsPanel
+import com.ninecsdev.wallpaperchanger.ui.settings.components.SettingsPanelGroup
+import com.ninecsdev.wallpaperchanger.ui.settings.components.SettingsSegmentedSelector
+import com.ninecsdev.wallpaperchanger.ui.settings.components.StorageUsageRow
+import com.ninecsdev.wallpaperchanger.ui.settings.components.WallpaperZoomFixSelector
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
+import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    uiState: SettingsUiState,
+    actions: SettingsActions,
+    snackbarHostState: SnackbarHostState,
+    onBackClick: () -> Unit,
+    onRequestMediaAccess: () -> Unit,
+    onSetAtmosphere: () -> Unit,
+    onOpenBackup: () -> Unit,
+    onSaveDiagnostics: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = stringResource(R.string.settings_title),
+                        style = NothingType.titleCaps
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back),
+                            tint = NothingWhite
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = NothingBlack,
+                    titleContentColor = NothingWhite
+                )
+            )
+        },
+        snackbarHost = { NothingSnackbarHost(snackbarHostState) },
+        containerColor = NothingBlack
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Column(
+                modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                SettingsPanel(label = stringResource(R.string.settings_section_service)) {
+                    RotationPolicySection(
+                        policy = uiState.rotationPolicy,
+                        onPolicyChange = actions::setRotationPolicy
+                    )
+
+                    ScreenOffDelayField(
+                        currentDelayMs = uiState.screenOffDelayMs,
+                        onDelayChange = actions::setScreenOffDelay
+                    )
+
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_autostart_title),
+                        subtitle = stringResource(R.string.settings_autostart_subtitle),
+                        checked = uiState.startOnBoot,
+                        onCheckedChange = actions::setStartOnBoot,
+                        infoDialogTitle = stringResource(R.string.settings_autostart_dialog_title),
+                        infoDialogBody = stringResource(R.string.settings_autostart_dialog_body)
+                    )
+
+                    SettingsSegmentedSelector(
+                        title = stringResource(R.string.settings_battery_saver_title),
+                        subtitle = stringResource(R.string.settings_battery_saver_subtitle),
+                        options = BatterySaverPolicy.entries,
+                        selected = uiState.batterySaverPolicy,
+                        onOptionChange = actions::setBatterySaverPolicy,
+                        optionLabel = { policy ->
+                            when (policy) {
+                                BatterySaverPolicy.STOP -> stringResource(R.string.settings_battery_stop)
+                                BatterySaverPolicy.PAUSE -> stringResource(R.string.settings_battery_pause)
+                                BatterySaverPolicy.IGNORE -> stringResource(R.string.settings_battery_ignore)
+                            }
+                        },
+                        infoDialogTitle = stringResource(R.string.settings_battery_saver_dialog_title),
+                        infoDialogBody = stringResource(R.string.settings_battery_saver_dialog_body)
+                    )
+
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_dnd_title),
+                        subtitle = stringResource(R.string.settings_dnd_subtitle),
+                        checked = uiState.skipOnDnd,
+                        onCheckedChange = actions::setSkipOnDnd,
+                        infoDialogTitle = stringResource(R.string.settings_dnd_dialog_title),
+                        infoDialogBody = stringResource(R.string.settings_dnd_dialog_body)
+                    )
+                }
+
+                SettingsPanel(label = stringResource(R.string.settings_section_appearance)) {
+                    AtmosphereModeSection(
+                        selectedMode = uiState.wallpaperMode,
+                        engineActive = uiState.atmosphereEngineActive,
+                        hasSource = uiState.hasAtmosphereSource,
+                        onModeChange = actions::setWallpaperMode,
+                        onSetAtmosphere = onSetAtmosphere
+                    )
+
+                    SettingsSegmentedSelector(
+                        title = stringResource(R.string.settings_destination_title),
+                        subtitle = stringResource(
+                            if (uiState.isDestinationEnabled) R.string.settings_destination_subtitle
+                            else R.string.settings_destination_subtitle_atmosphere
+                        ),
+                        options = WallpaperDestination.entries,
+                        selected = uiState.wallpaperDestination,
+                        onOptionChange = actions::setWallpaperDestination,
+                        optionLabel = { destination ->
+                            when (destination) {
+                                WallpaperDestination.LOCK -> stringResource(R.string.settings_destination_lock)
+                                WallpaperDestination.HOME -> stringResource(R.string.settings_destination_home)
+                                WallpaperDestination.BOTH -> stringResource(R.string.settings_destination_both)
+                            }
+                        },
+                        infoDialogTitle = stringResource(R.string.settings_destination_dialog_title),
+                        infoDialogBody = stringResource(R.string.settings_destination_dialog_body),
+                        // Destination only governs static delivery; greyed while atmosphere is desired.
+                        enabled = uiState.isDestinationEnabled
+                    )
+
+                    WallpaperZoomFixSelector(
+                        selected = uiState.wallpaperZoomFix,
+                        onZoomFixChange = actions::setWallpaperZoomFix
+                    )
+                }
+
+                SettingsPanel(label = stringResource(R.string.settings_section_storage)) {
+                    LocalCopiesRow(
+                        checked = uiState.effectiveKeepLocalCopies,
+                        hasMediaAccess = uiState.hasMediaAccess,
+                        hasPartialMediaAccess = uiState.hasPartialMediaAccess,
+                        onCheckedChange = actions::setKeepLocalCopies,
+                        onRequestMediaAccess = onRequestMediaAccess
+                    )
+
+                    StorageUsageRow(
+                        storage = uiState.storage,
+                        isClearing = uiState.isClearingCache,
+                        onClearCache = actions::clearCache
+                    )
+
+                    SettingsPanelGroup(label = stringResource(R.string.settings_section_quality)) {
+                        QualitySlider(
+                            label = stringResource(R.string.settings_quality_high_label),
+                            subtitle = stringResource(R.string.settings_quality_high_subtitle),
+                            value = uiState.compressionQualityHigh,
+                            onValueChange = actions::setCompressionQualityHigh,
+                            infoDialogTitle = stringResource(R.string.settings_quality_high_dialog_title),
+                            infoDialogBody = stringResource(R.string.settings_quality_high_dialog_body)
+                        )
+
+                        QualitySlider(
+                            label = stringResource(R.string.settings_quality_low_label),
+                            subtitle = stringResource(R.string.settings_quality_low_subtitle),
+                            value = uiState.compressionQualityLow,
+                            onValueChange = actions::setCompressionQualityLow,
+                            infoDialogTitle = stringResource(R.string.settings_quality_low_dialog_title),
+                            infoDialogBody = stringResource(R.string.settings_quality_low_dialog_body)
+                        )
+                    }
+                }
+
+                SettingsPanel(label = stringResource(R.string.settings_section_app)) {
+                    LanguageSelector(
+                        languages = uiState.availableLanguages,
+                        selectedTag = uiState.selectedLanguageTag,
+                        onLanguageSelected = actions::setAppLanguage
+                    )
+
+                    BackupRow(
+                        exportState = uiState.backupExport,
+                        onOpenBackup = onOpenBackup
+                    )
+                }
+
+                SettingsPanel(label = stringResource(R.string.settings_section_about)) {
+                    AboutSection(onSaveDiagnostics = onSaveDiagnostics)
+                }
+            }
+
+            AppVersionFooter(
+                version = uiState.appVersion,
+                modifier = Modifier.padding(top = 16.dp, bottom = 10.dp)
+            )
+        }
+    }
+}
+
+@Preview(showSystemUi = true, name = "Settings", backgroundColor = 0xFF000000, device = "spec:width=411dp,height=1500dp,dpi=420")
+@Composable
+fun SettingsScreenPreview() {
+    WallpaperChangerTheme {
+        SettingsScreen(
+            uiState = SettingsUiState(
+                screenOffDelayMs = 250,
+                rotationPolicy = RotationPolicy.PerLock,
+                startOnBoot = true,
+                batterySaverPolicy = BatterySaverPolicy.PAUSE,
+                skipOnDnd = false,
+                wallpaperZoomFix = WallpaperZoomFix.BLURRED,
+                compressionQualityHigh = 95,
+                compressionQualityLow = 80,
+                availableLanguages = listOf(
+                    LanguageOption("", "System default", null),
+                    LanguageOption("en", "English", "English"),
+                    LanguageOption("es", "Español", "Spanish")
+                ),
+                selectedLanguageTag = "",
+                appVersion = "0.4.0-beta",
+                storage = StorageBreakdown(
+                    localCopies = StorageUsage(totalBytes = 148_897_792, fileCount = 87),
+                    cacheBytes = 31_457_280,
+                    device = DeviceStorage(totalBytes = 256_000_000_000, freeBytes = 129_800_000_000)
+                )
+            ),
+            actions = PreviewSettingsActions,
+            snackbarHostState = SnackbarHostState(),
+            onBackClick = {},
+            onRequestMediaAccess = {},
+            onSetAtmosphere = {},
+            onOpenBackup = {},
+            onSaveDiagnostics = {}
+        )
+    }
+}
+
+private object PreviewSettingsActions : SettingsActions {
+    override fun setScreenOffDelay(delayMs: Long) {}
+    override fun setRotationPolicy(policy: RotationPolicy) {}
+    override fun setStartOnBoot(enabled: Boolean) {}
+    override fun setBatterySaverPolicy(policy: BatterySaverPolicy) {}
+    override fun setSkipOnDnd(skip: Boolean) {}
+    override fun setWallpaperDestination(destination: WallpaperDestination) {}
+    override fun setWallpaperMode(mode: WallpaperMode) {}
+    override fun setWallpaperZoomFix(zoomFix: WallpaperZoomFix) {}
+    override fun setCompressionQualityHigh(quality: Int) {}
+    override fun setCompressionQualityLow(quality: Int) {}
+    override fun setKeepLocalCopies(enabled: Boolean) {}
+    override fun clearCache() {}
+    override fun setAppLanguage(tag: String) {}
+    override fun refreshMediaAccess() {}
+    override fun refreshAtmosphereEngineActive() {}
+}

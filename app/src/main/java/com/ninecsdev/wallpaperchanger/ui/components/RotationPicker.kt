@@ -57,6 +57,8 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingType
 import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import com.ninecsdev.wallpaperchanger.ui.theme.SmallCornerRadius
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
+import com.ninecsdev.wallpaperchanger.ui.designsystem.NothingButton
+import com.ninecsdev.wallpaperchanger.ui.designsystem.NothingSegmentedRow
 
 // List <-> custom editor slide; the size spec is the longest because the sheet re-anchors while it resolves.
 private const val SLIDE_MILLIS = 350

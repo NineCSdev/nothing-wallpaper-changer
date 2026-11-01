@@ -7,8 +7,8 @@ import coil3.SingletonImageLoader
 import coil3.imageDecoderEnabled
 import com.ninecsdev.wallpaperchanger.data.source.GridThumbnailCache
 import com.ninecsdev.wallpaperchanger.service.TilePublisher
-import com.ninecsdev.wallpaperchanger.ui.collectionimagescreen.CollectionGridWarmer
-import com.ninecsdev.wallpaperchanger.ui.components.GridThumbnailFetcher
+import com.ninecsdev.wallpaperchanger.ui.thumbnails.CollectionGridWarmer
+import com.ninecsdev.wallpaperchanger.ui.thumbnails.GridThumbnailFetcher
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 

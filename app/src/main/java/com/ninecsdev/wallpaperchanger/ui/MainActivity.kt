@@ -18,8 +18,9 @@ import com.ninecsdev.wallpaperchanger.logic.lifecycle.ServiceLifecycle
 import com.ninecsdev.wallpaperchanger.model.LifecycleVerdict
 import com.ninecsdev.wallpaperchanger.model.ServiceIntent
 import com.ninecsdev.wallpaperchanger.service.RotationService
-import com.ninecsdev.wallpaperchanger.ui.collectionscreen.CollectionViewModel
-import com.ninecsdev.wallpaperchanger.ui.mainscreen.MainViewModel
+import com.ninecsdev.wallpaperchanger.ui.collectionlist.CollectionListViewModel
+import com.ninecsdev.wallpaperchanger.ui.components.PICTURES_URI
+import com.ninecsdev.wallpaperchanger.ui.main.MainViewModel
 import com.ninecsdev.wallpaperchanger.ui.navigation.AppNavigation
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -33,7 +34,7 @@ class MainActivity : ComponentActivity() {
     // ViewModels are kept here so the activity-result launchers can call
     // ViewModel methods when the system returns a result.
     private val mainViewModel: MainViewModel by viewModels()
-    private val collectionViewModel: CollectionViewModel by viewModels()
+    private val collectionListViewModel: CollectionListViewModel by viewModels()
 
 
     private val notificationLauncher = registerForActivityResult(
@@ -47,8 +48,8 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         uri?.let {
-            collectionViewModel.setPendingFolderUri(it)
-            collectionViewModel.toggleCreateModal(true)
+            collectionListViewModel.setPendingFolderUri(it)
+            collectionListViewModel.toggleCreateModal(true)
         }
     }
 
@@ -56,8 +57,8 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.PickMultipleVisualMedia()
     ) { uris ->
         if (uris.isNotEmpty()) {
-            collectionViewModel.setPendingPhotos(uris)
-            collectionViewModel.toggleCreateModal(true)
+            collectionListViewModel.setPendingPhotos(uris)
+            collectionListViewModel.toggleCreateModal(true)
         }
     }
 
