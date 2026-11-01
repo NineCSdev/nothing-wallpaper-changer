@@ -463,7 +463,7 @@
     <string name="settings_atmosphere_no_source_hint">Add images to a collection or set a default wallpaper first.</string>
     <string name="settings_atmosphere_exit_failed_snackbar">Couldn\'t leave: no wallpaper to replace it</string>
     <string name="settings_atmosphere_exit_cleared_snackbar">Left atmosphere. Your wallpaper was reset as you don\'t have one to replace it.</string>
-    <string name="settings_atmosphere_lock_removed_snackbar">Your separate lock screen wallpaper was removed so Atmosphere can use both screens.</string>
+    <string name="atmosphere_lock_removed_snackbar">Your separate lock screen wallpaper was removed so Atmosphere can use both screens.</string>
 
     <!-- Backup archive (export / import) -->
     <string name="backup_screen_title">BACKUP</string>
@@ -580,5 +580,30 @@
     <string name="backup_import_failed_unexpected">The restore could not be completed. Nothing was changed.</string>
     <string name="backup_import_nothing_changed">Your collections were not touched.</string>
     <string name="collections_empty_restore">RESTORE FROM BACKUP</string>
+
+    <!-- First-open setup -->
+    <string name="setup_overline_welcome">WELCOME</string>
+    <string name="setup_action_skip">SKIP</string>
+    <string name="setup_welcome_title">Your photos, a new wallpaper on your schedule</string>
+    <string name="setup_welcome_caption">Pick your photos once and the app keeps rotating them, as often as you like.</string>
+    <string name="setup_action_get_started">GET STARTED</string>
+    <string name="setup_action_restore">RESTORE FROM BACKUP</string>
+    <!-- %1$d = current step, %2$d = number of steps -->
+    <string name="setup_step_counter">STEP %1$d OF %2$d</string>
+    <string name="setup_look_title">Turn on Atmosphere?</string>
+    <string name="setup_look_caption">Atmosphere recreates the Nothing OS effect: a sharp photo on the lock screen that melts into drifting colors when you unlock.</string>
+    <string name="setup_look_off_caption">Off: a plain photo on screen</string>
+    <string name="setup_look_on_caption">On: uses both screens</string>
+    <string name="setup_rotation_title">How often?</string>
+    <string name="setup_rotation_caption">How often your wallpaper changes. A collection can also have its own.</string>
+    <string name="setup_destination_title">Which screens?</string>
+    <string name="setup_destination_caption">The screen you leave out keeps the wallpaper it has now.</string>
+    <string name="setup_destination_lock_caption">Lock screen only</string>
+    <string name="setup_destination_home_caption">Home screen only</string>
+    <string name="setup_destination_both_caption">Lock and home screens</string>
+    <string name="setup_hint_later">You can change this later in Settings</string>
+    <string name="setup_hint_last">Next: create your first collection</string>
+    <string name="setup_action_next">NEXT</string>
+    <string name="setup_action_add_wallpapers">ADD WALLPAPERS</string>
 
 </resources>

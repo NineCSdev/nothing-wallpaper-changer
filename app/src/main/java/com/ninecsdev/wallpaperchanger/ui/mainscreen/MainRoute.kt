@@ -3,7 +3,11 @@ package com.ninecsdev.wallpaperchanger.ui.mainscreen
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import com.ninecsdev.wallpaperchanger.ui.rememberAtmosphereEntry
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,7 +28,20 @@ fun MainRoute(
     onEditWallpaper: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isAtmosphereEntryDue by viewModel.isAtmosphereEntryDue.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    val enterAtmosphere = rememberAtmosphereEntry(
+        stage = viewModel::enterAtmosphere,
+        snackbarHostState = snackbarHostState
+    )
+
+    LaunchedEffect(isAtmosphereEntryDue) {
+        if (!isAtmosphereEntryDue) return@LaunchedEffect
+        viewModel.consumeAtmosphereEntry()
+        enterAtmosphere()
+    }
 
     // Re-grant request for the media-access banner; the result (either way) re-snapshots the
     // permission, and a grant re-runs the availability sweep so references self-heal.
@@ -43,6 +60,7 @@ fun MainRoute(
 
     MainScreen(
         uiState = loadedUiState,
+        snackbarHostState = snackbarHostState,
         onStartClick = onStartService,
         onStopClick = onStopService,
         onSelectCollectionClick = { viewModel.setPickerSheetOpen(true) },

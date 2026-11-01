@@ -11,7 +11,11 @@ import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
 import com.ninecsdev.wallpaperchanger.logic.ServiceLifecycle
 import com.ninecsdev.wallpaperchanger.logic.ImageInternalizer
 import com.ninecsdev.wallpaperchanger.logic.WallpaperApplier
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereEntry
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereTransition
+import com.ninecsdev.wallpaperchanger.model.ServiceState
 import com.ninecsdev.wallpaperchanger.model.WallpaperImage
+import com.ninecsdev.wallpaperchanger.model.enums.WallpaperMode
 import com.ninecsdev.wallpaperchanger.model.pinnedFirst
 import com.ninecsdev.wallpaperchanger.ui.components.asPreviewStates
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -39,6 +43,7 @@ class MainViewModel @Inject constructor(
     private val imageInternalizer: ImageInternalizer,
     private val wallpaperApplier: WallpaperApplier,
     private val wallpaperSources: WallpaperSources,
+    private val atmosphereTransition: AtmosphereTransition,
     startupMaintenance: StartupMaintenance
 ) : ViewModel() {
 
@@ -142,6 +147,27 @@ class MainViewModel @Inject constructor(
         started = SharingStarted.Eagerly,
         initialValue = null
     )
+
+    private val atmosphereEntryArmed = MutableStateFlow(false)
+
+    /** Armed by a setup that chose Atmosphere; due once the first collection's start has gone through. */
+    val isAtmosphereEntryDue: StateFlow<Boolean> = combine(
+        atmosphereEntryArmed,
+        serviceLifecycle.serviceState
+    ) { armed, state -> armed && state is ServiceState.Running }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun onSetupCollectionCreated() {
+        viewModelScope.launch {
+            if (appDataStore.getWallpaperMode() == WallpaperMode.ATMOSPHERE) atmosphereEntryArmed.value = true
+        }
+    }
+
+    fun consumeAtmosphereEntry() {
+        atmosphereEntryArmed.value = false
+    }
+
+    suspend fun enterAtmosphere(): AtmosphereEntry = atmosphereTransition.enterAtmosphere()
 
     fun setActiveCollection(collectionId: Long) {
         viewModelScope.launch {

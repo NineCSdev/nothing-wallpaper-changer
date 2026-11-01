@@ -12,6 +12,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.background
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ninecsdev.wallpaperchanger.ui.setupscreen.SetupRoute
+import com.ninecsdev.wallpaperchanger.ui.setupscreen.SetupViewModel
+import com.ninecsdev.wallpaperchanger.ui.theme.NothingBlack
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
@@ -42,7 +48,8 @@ fun AppNavigation(
     onLaunchDefaultWallpaperPicker: () -> Unit,
     modifier: Modifier = Modifier,
     mainViewModel: MainViewModel = hiltViewModel(),
-    collectionViewModel: CollectionViewModel = hiltViewModel()
+    collectionViewModel: CollectionViewModel = hiltViewModel(),
+    setupViewModel: SetupViewModel = hiltViewModel()
 ) {
     val popBack: () -> Unit = {
         if (navController.previousBackStackEntry != null) {
@@ -61,9 +68,24 @@ fun AppNavigation(
         }
     }
 
+    // Creating the setup's collection returns to Main, where an Atmosphere choice is carried out
+    LaunchedEffect(Unit) {
+        collectionViewModel.setupCollectionCreated.collect {
+            navController.popBackStack(Route.MAIN, inclusive = false)
+            mainViewModel.onSetupCollectionCreated()
+        }
+    }
+
+    // Black until the gate is read, so Main never flashes before the setup
+    val showsSetup by setupViewModel.showsSetup.collectAsStateWithLifecycle()
+    val startsWithSetup = showsSetup ?: run {
+        Box(modifier = modifier.background(NothingBlack))
+        return
+    }
+
     NavHost(
         navController = navController,
-        startDestination = Route.MAIN,
+        startDestination = if (startsWithSetup) Route.SETUP else Route.MAIN,
         enterTransition = { NavigationTransitions.enterDefault },
         exitTransition = { NavigationTransitions.exitDefault },
         popEnterTransition = { NavigationTransitions.enterDefault },
@@ -72,6 +94,24 @@ fun AppNavigation(
         predictivePopExitTransition = { NavigationTransitions.predictivePopExit(initialState.destination.route) },
         modifier = modifier
     ) {
+        composable(route = Route.SETUP) {
+            val leaveSetup = {
+                navController.navigate(Route.MAIN) {
+                    popUpTo(Route.SETUP) { inclusive = true }
+                }
+            }
+            SetupRoute(
+                viewModel = setupViewModel,
+                onLeave = leaveSetup,
+                onAddWallpapers = {
+                    leaveSetup()
+                    collectionViewModel.requestCreateOnArrival(fromSetup = true)
+                    navController.navigate(Route.COLLECTIONS)
+                },
+                onRestoreBackup = { navController.navigate(Route.BACKUP) }
+            )
+        }
+
         composable(
             route = Route.MAIN,
             enterTransition = { NavigationTransitions.enterMain_Collections },
@@ -229,6 +269,7 @@ private object NavigationTransitions {
 }
 
 object Route {
+    const val SETUP = "setup"
     const val MAIN = "main"
     const val COLLECTIONS = "collections"
     const val COLLECTION_IMAGES = "collection_images/{collectionId}"

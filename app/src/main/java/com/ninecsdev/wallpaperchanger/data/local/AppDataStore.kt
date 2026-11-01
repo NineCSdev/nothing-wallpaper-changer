@@ -38,6 +38,7 @@ private val KEY_WALLPAPER_MODE = stringPreferencesKey("wallpaper_mode")
 private val KEY_KEEP_LOCAL_COPIES = booleanPreferencesKey("keep_local_copies")
 private val KEY_ROTATION_POLICY = stringPreferencesKey("rotation_policy")
 private val KEY_SKIP_ON_DND = booleanPreferencesKey("skip_on_dnd")
+private val KEY_SETUP_SEEN = booleanPreferencesKey("setup_seen")
 
 /** The user's settings: what they chose, as distinct from the [WallpaperRecordStore]'s record of what happened. */
 @Singleton
@@ -171,6 +172,9 @@ class AppDataStore @Inject constructor(
     suspend fun getSkipOnDnd(): Boolean =
         skipOnDndFlow().first()
 
+    suspend fun isSetupSeen(): Boolean =
+        settingFlow(KEY_SETUP_SEEN, false).first()
+
     // TODO: remove with the backfill in v0.4.1, along with KEY_DEFAULT_WALLPAPER_URI
     suspend fun clearLegacyDefaultWallpaperUri() =
         setOrClear(KEY_DEFAULT_WALLPAPER_URI, null)
@@ -216,4 +220,7 @@ class AppDataStore @Inject constructor(
 
     suspend fun setRotationPolicy(policy: RotationPolicy) =
         set(KEY_ROTATION_POLICY, policy.encode())
+
+    suspend fun setSetupSeen() =
+        set(KEY_SETUP_SEEN, true)
 }

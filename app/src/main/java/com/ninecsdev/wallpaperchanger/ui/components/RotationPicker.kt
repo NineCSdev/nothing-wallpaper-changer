@@ -123,13 +123,14 @@ private fun intervalAmountCaps(minutes: Int): String {
 }
 
 /**
- * Shell-less so the global setting and the per-collection override cannot offer different choices.
- * `SET` in the custom editor is the single commit point.
+ * Shell-less so the global setting, the per-collection override and the first-open setup cannot
+ * offer different choices. `SET` in the custom editor is the single commit point. A null [title]
+ * leaves the list untitled, for hosts that title it themselves.
  */
 // TODO tests: see vault note tests/Rotation Cadence Picker Tests.md
 @Composable
 internal fun RotationPickerContent(
-    title: String,
+    title: String?,
     policy: RotationPolicy,
     onPolicyChange: (RotationPolicy) -> Unit,
     onDone: () -> Unit,
@@ -156,12 +157,15 @@ internal fun RotationPickerContent(
     ) { editing ->
         // Reads `editing`, never `isEditingCustom`: the outgoing frame has to keep drawing the body it is sliding away with.
         Column(modifier = Modifier.fillMaxWidth()) {
-            PickerTitle(
-                title = if (editing) stringResource(R.string.rotation_custom_title) else title,
-                onBack = if (editing) ({ isEditingCustom = false }) else null
-            )
+            val shownTitle = if (editing) stringResource(R.string.rotation_custom_title) else title
+            if (shownTitle != null) {
+                PickerTitle(
+                    title = shownTitle,
+                    onBack = if (editing) ({ isEditingCustom = false }) else null
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             if (editing) {
                 CustomIntervalEditor(

@@ -18,6 +18,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import com.ninecsdev.wallpaperchanger.ui.theme.WallpaperChangerTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -28,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.model.ServiceState
+import com.ninecsdev.wallpaperchanger.ui.components.overlay.NothingSnackbarHost
 import com.ninecsdev.wallpaperchanger.ui.components.safeClick
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.components.ActiveCollectionPickerSheet
 import com.ninecsdev.wallpaperchanger.ui.mainscreen.components.DefaultWallpaperCard
@@ -41,6 +43,7 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 @Composable
 fun MainScreen(
     uiState: MainUiState,
+    snackbarHostState: SnackbarHostState,
     onStartClick: () -> Unit,
     onStopClick: () -> Unit,
     onSelectCollectionClick: () -> Unit,
@@ -57,6 +60,8 @@ fun MainScreen(
 ) {
     Scaffold(
         containerColor = NothingBlack,
+        // Lifted over the START / STOP button
+        snackbarHost = { NothingSnackbarHost(snackbarHostState, Modifier.padding(bottom = 56.dp)) }
     ) { padding ->
         Box(
             modifier = Modifier
@@ -172,6 +177,7 @@ fun MainScreenRunningPreview() {
     WallpaperChangerTheme {
         CompositionLocalProvider(LocalContentColor provides NothingWhite) {
             MainScreen(
+                snackbarHostState = SnackbarHostState(),
                 uiState = MainUiState(
                     serviceState = ServiceState.Running,
                     revertToDefaultOnStop = true
@@ -200,6 +206,7 @@ fun MainScreenEmptyPreview() {
     WallpaperChangerTheme {
         CompositionLocalProvider(LocalContentColor provides NothingWhite) {
             MainScreen(
+                snackbarHostState = SnackbarHostState(),
                 uiState = MainUiState(
                     serviceState = ServiceState.DisabledNoCollection,
                     activeCollection = null,

@@ -1,9 +1,5 @@
 package com.ninecsdev.wallpaperchanger.ui.settingsscreen
 
-import android.app.WallpaperManager
-import android.content.ComponentName
-import android.content.Intent
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.SnackbarHostState
@@ -20,6 +16,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.ninecsdev.wallpaperchanger.R
 import com.ninecsdev.wallpaperchanger.logic.DiagnosticReport
 import com.ninecsdev.wallpaperchanger.ui.CreateDocumentInDownloads
+import com.ninecsdev.wallpaperchanger.ui.rememberAtmosphereEntry
 import com.ninecsdev.wallpaperchanger.ui.components.hasPartialMediaAccess
 import com.ninecsdev.wallpaperchanger.ui.components.mediaAccessPermissions
 import com.ninecsdev.wallpaperchanger.ui.components.openAppSettings
@@ -28,7 +25,6 @@ import com.ninecsdev.wallpaperchanger.ui.theme.NothingWhite
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.ninecsdev.wallpaperchanger.service.atmosphere.AtmosphereWallpaperService
 import kotlinx.coroutines.launch
 
 @Composable
@@ -57,7 +53,6 @@ fun SettingsRoute(
     val snackbarHostState = remember { SnackbarHostState() }
     val exitClearedMessage = stringResource(R.string.settings_atmosphere_exit_cleared_snackbar)
     val exitFailedMessage = stringResource(R.string.settings_atmosphere_exit_failed_snackbar)
-    val lockRemovedMessage = stringResource(R.string.settings_atmosphere_lock_removed_snackbar)
     val diagnosticsFailedMessage = stringResource(R.string.settings_diagnostics_failed_snackbar)
 
     LaunchedEffect(Unit) {
@@ -66,11 +61,15 @@ fun SettingsRoute(
                 when (notice) {
                     AtmosphereNotice.EXIT_CLEARED -> exitClearedMessage
                     AtmosphereNotice.EXIT_FAILED -> exitFailedMessage
-                    AtmosphereNotice.LOCK_WALLPAPER_REMOVED -> lockRemovedMessage
                 }
             )
         }
     }
+
+    val enterAtmosphere = rememberAtmosphereEntry(
+        stage = viewModel::enterAtmosphere,
+        snackbarHostState = snackbarHostState
+    )
 
     val diagnosticsLauncher = rememberLauncherForActivityResult(
         CreateDocumentInDownloads(DiagnosticReport.MIME_TYPE)
@@ -117,23 +116,7 @@ fun SettingsRoute(
             if (context.hasPartialMediaAccess()) showPartialPrompt = true
             else mediaAccessLauncher.launch(mediaAccessPermissions())
         },
-        onSetAtmosphere = {
-            scope.launch {
-                if (viewModel.enterAtmosphere()) {
-                    val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).putExtra(
-                        WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
-                        ComponentName(context, AtmosphereWallpaperService::class.java)
-                    )
-                    try {
-                        context.startActivity(intent)
-                    } catch (e: Exception) {
-                        Log.e("SettingsRoute", "No live-wallpaper picker available", e)
-                    }
-                } else {
-                    Log.w("SettingsRoute", "No atmosphere source could be prepared")
-                }
-            }
-        },
+        onSetAtmosphere = enterAtmosphere,
         onOpenBackup = onOpenBackup,
         onSaveDiagnostics = { diagnosticsLauncher.launch(DiagnosticReport.suggestedFileName()) }
     )

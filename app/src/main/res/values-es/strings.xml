@@ -464,7 +464,7 @@
     <string name="settings_atmosphere_no_source_hint">Añade imágenes a una colección o pon un fondo predeterminado.</string>
     <string name="settings_atmosphere_exit_failed_snackbar">No se pudo salir: no hay fondo de reemplazo</string>
     <string name="settings_atmosphere_exit_cleared_snackbar">Saliste de Atmosphere. Tu fondo se restableció al no tener ningún fondo que poner.</string>
-    <string name="settings_atmosphere_lock_removed_snackbar">Se quitó tu fondo de pantalla de bloqueo para que Atmosphere pueda usar ambas pantallas.</string>
+    <string name="atmosphere_lock_removed_snackbar">Se quitó tu fondo de pantalla de bloqueo para que Atmosphere pueda usar ambas pantallas.</string>
 
     <!-- Copia de seguridad (exportar / restaurar) -->
     <string name="backup_screen_title">COPIA DE SEGURIDAD</string>
@@ -569,5 +569,30 @@
     <string name="backup_import_failed_unexpected">No se pudo completar la restauración. No se cambió nada.</string>
     <string name="backup_import_nothing_changed">Tus colecciones no se tocaron.</string>
     <string name="collections_empty_restore">RESTAURAR DESDE COPIA</string>
+
+    <!-- First-open setup -->
+    <string name="setup_overline_welcome">BIENVENIDA</string>
+    <string name="setup_action_skip">OMITIR</string>
+    <string name="setup_welcome_title">Tus fotos, un fondo nuevo cuando tú quieras</string>
+    <string name="setup_welcome_caption">Elige tus fotos una vez y la app las irá rotando, tan a menudo como quieras.</string>
+    <string name="setup_action_get_started">EMPEZAR</string>
+    <string name="setup_action_restore">RESTAURAR DESDE COPIA</string>
+    <!-- %1$d = paso actual, %2$d = número de pasos -->
+    <string name="setup_step_counter">PASO %1$d DE %2$d</string>
+    <string name="setup_look_title">¿Activar Atmosphere?</string>
+    <string name="setup_look_caption">Atmosphere recrea el efecto de Nothing OS: una foto nítida en la pantalla de bloqueo que se funde en colores flotantes al desbloquear.</string>
+    <string name="setup_look_off_caption">Desactivado: una foto tal cual en pantalla</string>
+    <string name="setup_look_on_caption">Activado: usa ambas pantallas</string>
+    <string name="setup_rotation_title">¿Cada cuánto?</string>
+    <string name="setup_rotation_caption">Cada cuánto cambia tu fondo de pantalla. Una colección también puede tener el suyo.</string>
+    <string name="setup_destination_title">¿En qué pantallas?</string>
+    <string name="setup_destination_caption">La pantalla que dejes fuera conserva el fondo que tiene ahora.</string>
+    <string name="setup_destination_lock_caption">Solo la pantalla de bloqueo</string>
+    <string name="setup_destination_home_caption">Solo la pantalla de inicio</string>
+    <string name="setup_destination_both_caption">Bloqueo e inicio</string>
+    <string name="setup_hint_later">Puedes cambiarlo luego en Ajustes</string>
+    <string name="setup_hint_last">Siguiente: crea tu primera colección</string>
+    <string name="setup_action_next">SIGUIENTE</string>
+    <string name="setup_action_add_wallpapers">AÑADIR FONDOS</string>
 
 </resources>

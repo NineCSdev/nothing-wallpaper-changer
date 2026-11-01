@@ -11,6 +11,7 @@ import com.ninecsdev.wallpaperchanger.data.WallpaperRepository
 import com.ninecsdev.wallpaperchanger.data.backup.BackupExporter
 import com.ninecsdev.wallpaperchanger.data.local.AppDataStore
 import com.ninecsdev.wallpaperchanger.data.source.WallpaperSources
+import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereEntry
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereExitOutcome
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.AtmosphereTransition
 import com.ninecsdev.wallpaperchanger.logic.atmosphere.WallpaperModeResolver
@@ -111,9 +112,6 @@ class SettingsViewModel @Inject constructor(
     )
 
     val notices: SharedFlow<AtmosphereNotice> = _notices.asSharedFlow()
-
-    // Held back because entry hands off to the system picker; raised on return instead.
-    private var lockRemovalPending = false
 
     private val atmosphereFlow = combine(
         appDataStore.wallpaperModeFlow(),
@@ -291,22 +289,10 @@ class SettingsViewModel @Inject constructor(
 
     /** The engine has no liveness callback, so the Route calls this on every start. */
     override fun refreshAtmosphereEngineActive() {
-        viewModelScope.launch {
-            atmosphereTransition.reconcile()
-            if (lockRemovalPending) {
-                lockRemovalPending = false
-                // Raised whether or not they went through with it as the wallpaper is gone either way.
-                _notices.tryEmit(AtmosphereNotice.LOCK_WALLPAPER_REMOVED)
-            }
-        }
+        viewModelScope.launch { atmosphereTransition.reconcile() }
     }
 
-    /** Stages the atmosphere source; returns whether the live-wallpaper picker has one. */
-    suspend fun enterAtmosphere(): Boolean {
-        val entry = atmosphereTransition.enterAtmosphere()
-        if (entry.lockWallpaperRemoved) lockRemovalPending = true
-        return entry.sourceReady
-    }
+    suspend fun enterAtmosphere(): AtmosphereEntry = atmosphereTransition.enterAtmosphere()
 
     /** Returns whether the report reached [target]. */
     suspend fun saveDiagnostics(target: Uri): Boolean = diagnosticReport.write(target)

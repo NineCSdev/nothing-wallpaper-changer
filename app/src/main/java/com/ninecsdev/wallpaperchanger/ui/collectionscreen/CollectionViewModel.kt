@@ -62,6 +62,7 @@ class CollectionViewModel @Inject constructor(
 
     private var activateOnCreate = false
     private var createOnArrival = false
+    private var createdFromSetup = false
 
     private val _sortOrder = MutableStateFlow(CollectionSortOrder.LAST_USED)
 
@@ -78,8 +79,11 @@ class CollectionViewModel @Inject constructor(
     // something is listening again, so it waits rather than being dropped.
     // TODO tests: see vault note tests/One-Shot Event Delivery Tests
     private val _serviceCommands = Channel<ServiceCommand>(Channel.BUFFERED)
-
     val serviceCommands: Flow<ServiceCommand> = _serviceCommands.receiveAsFlow()
+
+    // Buffered for the same reason: the user who asked for it is still owed the way back to Main
+    private val _setupCollectionCreated = Channel<Unit>(Channel.BUFFERED)
+    val setupCollectionCreated: Flow<Unit> = _setupCollectionCreated.receiveAsFlow()
 
     private val _screenState = MutableStateFlow(ScreenModalState())
 
@@ -202,8 +206,10 @@ class CollectionViewModel @Inject constructor(
     }
 
     private fun onCollectionCreated(shouldStartService: Boolean) {
+        val fromSetup = createdFromSetup
         toggleCreateModal(false)
         if (shouldStartService) _serviceCommands.trySend(ServiceCommand.Start)
+        if (fromSetup) _setupCollectionCreated.trySend(Unit)
     }
 
     fun deleteEditingCollection() {
@@ -279,8 +285,9 @@ class CollectionViewModel @Inject constructor(
         _sortOrder.value = order
     }
 
-    fun requestCreateOnArrival() {
+    fun requestCreateOnArrival(fromSetup: Boolean = false) {
         createOnArrival = true
+        createdFromSetup = fromSetup
     }
 
     fun takeCreateOnArrival(): Boolean = createOnArrival.also { createOnArrival = false }
@@ -295,6 +302,7 @@ class CollectionViewModel @Inject constructor(
         if (!show) {
             pendingFolderUri = null
             activateOnCreate = false
+            createdFromSetup = false
         }
         _screenState.update {
             if (show) it.copy(isShowingCreateModal = true, createError = false)
