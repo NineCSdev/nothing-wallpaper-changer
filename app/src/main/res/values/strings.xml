@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name" translatable="false">WallpaperChanger</string>
+    <string name="app_name" translatable="false">NWall</string>
 
     <!-- Service status strings for notifications-->
     <string name="status_running">Service is RUNNING</string>
@@ -439,7 +439,6 @@
     <string name="tile_subtitle_power_save">Power Save</string>
     <string name="tile_subtitle_paused_dnd">Paused (DND)</string>
     <string name="tile_subtitle_paused">Paused (Battery)</string>
-    <string name="tile_dialog_title">Wallpaper Changer</string>
     <string name="tile_no_collection_message">No collection active. Please set one up in the app.</string>
     <string name="tile_dialog_open_app">Open App</string>
     <string name="tile_dialog_cancel">Cancel</string>

@@ -4,3 +4,4 @@
 *.aab
 output-metadata.json
 app/release/
+/release/mapping.txt

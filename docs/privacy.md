@@ -1,15 +1,15 @@
-# Privacy Policy — Wallpaper Changer
+# Privacy Policy — NWall
 
 **Effective date:** 10 September 2026
-**Last updated:** 10 September 2026
-**Application:** Wallpaper Changer (`com.ninecsdev.wallpaperchanger`)
+**Last updated:** 4 November 2026
+**Application:** NWall, formerly Wallpaper Changer (`com.ninecsdev.wallpaperchanger`)
 **Developer:** NineCSdev
 
 ---
 
 ## The short version
 
-Wallpaper Changer does not collect, transmit, sell or share any personal data. It has no internet
+NWall does not collect, transmit, sell or share any personal data. It has no internet
 access at all (the `INTERNET` permission is not declared so the app is technically incapable of
 sending anything anywhere). There are no analytics, no crash reporting, no advertising and no
 third-party SDKs that contact a server. There is no account to create and no way to sign in.

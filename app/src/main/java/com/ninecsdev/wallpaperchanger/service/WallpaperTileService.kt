@@ -148,7 +148,7 @@ class WallpaperTileService : TileService() {
     private fun showTileMessage(message: String) {
         showDialog(
             AlertDialog.Builder(this)
-            .setTitle(getString(R.string.tile_dialog_title))
+            .setTitle(getString(R.string.app_name))
             .setMessage(message)
             .setPositiveButton(getString(R.string.tile_dialog_open_app)) { _, _ ->
                 val intent = Intent(this, MainActivity::class.java)

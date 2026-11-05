@@ -440,7 +440,6 @@
     <string name="tile_subtitle_power_save">Ahorro de batería</string>
     <string name="tile_subtitle_paused_dnd">Pausado (No molestar)</string>
     <string name="tile_subtitle_paused">Pausado (Batería)</string>
-    <string name="tile_dialog_title">Wallpaper Changer</string>
     <string name="tile_no_collection_message">No hay colección activa. Configura una en la app.</string>
     <string name="tile_dialog_open_app">Abrir App</string>
     <string name="tile_dialog_cancel">Cancelar</string>

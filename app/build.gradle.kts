@@ -32,7 +32,7 @@ if (!canSignRelease && gradle.startParameter.taskNames.any { it.contains("releas
 val verMajor = 0
 val verMinor = 4
 val verPatch = 1
-val verBuild = 0
+val verBuild = 2
 
 plugins {
     alias(libs.plugins.android.application)
@@ -85,7 +85,7 @@ android {
             versionNameSuffix= "-debug"
             applicationIdSuffix= ".debug"
 
-            manifestPlaceholders["appLabel"] = "Wallpaper (Dev)"
+            manifestPlaceholders["appLabel"] = "NWall (Dev)"
         }
     }
 
