@@ -38,7 +38,7 @@ class DiagnosticReport @Inject constructor(
         private const val TAG = "DiagnosticReport"
         const val MIME_TYPE = "text/plain"
 
-        fun suggestedFileName(): String = "nwc-diagnostics-${ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))}.txt"
+        fun suggestedFileName(): String = "nwall-diagnostics-${ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))}.txt"
     }
 
     /** Returns false if the report could not be written, after removing the empty document the picker created. */
@@ -79,7 +79,7 @@ class DiagnosticReport @Inject constructor(
         }
 
         return buildString {
-            appendLine("Nothing Wallpaper Changer diagnostics")
+            appendLine("NWall diagnostics")
             appendLine("Generated: ${now.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)}")
             appendLine("App: ${packageInfo.versionName} (${packageInfo.longVersionCode})")
             appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}")

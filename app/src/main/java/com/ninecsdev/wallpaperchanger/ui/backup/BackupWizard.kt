@@ -244,7 +244,7 @@ private val PreviewManifest = BackupManifest(
 
 internal val PreviewImportPlan = BackupImportPlan(
     manifest = PreviewManifest,
-    archiveName = "NWC-backup-2026-09-12.nwcbak",
+    archiveName = "NWall-backup-2026-09-12.nwcbak",
     collections = 4,
     images = 312,
     folders = emptyList()

@@ -431,7 +431,7 @@
     <string name="edit_discard_cancel">SEGUIR</string>
 
     <!-- Quick settings tile -->
-    <string name="tile_label">Cambiador</string>
+    <string name="tile_label">Rotación</string>
     <string name="tile_subtitle_active">Activo</string>
     <string name="tile_subtitle_initializing">Inicializando…</string>
     <string name="tile_subtitle_stopping">Parando…</string>

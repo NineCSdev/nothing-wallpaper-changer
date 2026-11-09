@@ -1,12 +1,12 @@
 <div align="center">
   <img src="app/src/main/ic_launcher-playstore.png" width="300" alt="App Icon"/>
 
-  <h1>Wallpaper Changer for Nothing OS</h1>
+  <h1>NWall: Wallpaper Changer for Nothing OS</h1>
 
   <p align="center">
-    <img src="https://img.shields.io/badge/Status-v0.4.0--beta-blue.svg" alt="Status">
+    <img src="https://img.shields.io/badge/Status-v0.4.1--beta-blue.svg" alt="Status">
     <img src="https://img.shields.io/badge/Android-13%2B-green.svg" alt="Android 13+">
-    <img src="https://img.shields.io/badge/Kotlin-2.3-purple.svg" alt="Kotlin">
+    <img src="https://img.shields.io/badge/Kotlin-2.4-purple.svg" alt="Kotlin">
     <img src="https://img.shields.io/badge/Jetpack%20Compose-Material%203-teal.svg" alt="Compose">
   </p>
 
@@ -18,38 +18,9 @@
   </p>
 </div>
 
----
-
-<a id="closed-beta"></a>
-
-## 📣 The app is on Google Play (as a closed beta), and it needs testers
-
-> **This is the single most useful thing you can do for this project.** Google requires a personal
-> developer account to run a closed test with a minimum number of opted-in testers, for a sustained
-> period, before the app is allowed a public Play Store listing. That requirement is the *only* thing
-> between this app and a normal Play listing.
->
-> **Already have the app installed from an APK? [Export a backup first](#coming-from-apk)**
->
-> ### **[👉 Join the closed beta group](https://groups.google.com/g/wallpaper-changer-testers)**
->
-> **Tap the link, join the group and follow the instructions there.** Nothing is reported back to me, and 
-> the app still has zero internet permissions [privacy policy](docs/privacy.md). 
-> Leave any time from the same link.
->
-> Sideloading stays fully supported, APK is on the [Releases page](https://github.com/NineCSdev/nothing-wallpaper-changer/releases).
-
-<a id="coming-from-apk"></a>
-
-### ⚠️ Already running the app from an APK? Export a backup first.
-
-**Play cannot update an app you installed from an APK here (you can become a tester without installing via Play Store join the group for more info).** These APKs are signed with my key, Play signs its deliveries with Google's. So moving to Play means uninstalling first. Because of this this release ships backup and restore, so follow these steps:
-
-1. **[Update to v0.4.0](https://github.com/NineCSdev/nothing-wallpaper-changer/releases)**.
-2. **Export:** Settings → **BACKUP** → **EXPORT BACKUP**. Save the `.nwcbak` file anywhere outside the app (Downloads).
-3. **[Join the closed beta group](https://groups.google.com/g/wallpaper-changer-testers)** and follow the instructions there.
-
-**Keep the backup file until you have checked the restore.** And if you would rather not move at all, nothing forces you to.
+<p align="center">
+  <a href="https://play.google.com/store/apps/details?id=com.ninecsdev.wallpaperchanger&referrer=utm_source%3Dgithub"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="80"></a>
+</p>
 
 ---
 
@@ -67,32 +38,36 @@ There weren't many solutions on the Play Store and the ones I found were either 
 
 - **Instant Wallpaper Swap:** Each wallpaper is pre-processed and ready to go before you lock your phone, resulting in no lag and no loading screens. *(Achieved via a disk-buffered pipeline: downsample → crop → WebP.)*
 - **Atmosphere Effect:** A reimplementation of Nothing's Atmosphere effect. Your wallpaper sits sharp on the lock screen and, the moment you unlock, it dissolves into a slow, drifting arrangement of colour blobs taken from that photo's own palette, and becomes your home screen wallpaper.
+- **Guided Setup:** The first time you open the app, a short setup asks the three things that matter (Atmosphere or not, how often to rotate, which screens) and takes you straight to creating your first collection. You can skip it, or restore a backup from its first screen.
 - **Wallpaper Collections:** Organize wallpapers in two ways:
     - **Folder-based:** Point the app at a folder on your device and it picks up all the images inside, with re-sync on demand. In-app deleting an image makes it not sync until it is restored.
     - **Manual:** Hand-pick individual photos. By default they're referenced where they already live, so they cost no extra storage. Flip **Keep local copies** in Settings if you'd rather have in-app copies.
-- **Per-Image Wallpaper Editor:** Crop, zoom, and position individual wallpapers with pinch-to-zoom, precision sliders you can also type exact values into, undo, and a fit-to-height control. Edits are applied on the fly to not use extra storage.
-- **Rotation Cadence:** Rotate on every lock, on predefined intervals, on a custom interval (5 minutes to 30 days), or once per day. Set it globally in Settings and customize it per collection.
+- **Per-Image Wallpaper Editor:** Crop, zoom, and position individual wallpapers with pinch-to-zoom, precision sliders you can also type exact values into, step-by-step undo, and a fit-to-height control. Edits are applied on the fly to not use extra storage.
+- **Rotation Cadence:** Rotate on every lock, on predefined intervals, on a custom interval (5 minutes to 30 days), or once per day. Set it globally in Settings and customize it per collection. Switching collections changes the wallpaper right away.
 - **Default Wallpaper Fallback:** Pick a fallback image that's automatically restored when the service stops. It's editable, can be applied on demand, and any collection can nominate one of its own wallpapers to override it.
 - **Wallpaper Zoom Fix:** Counteracts the auto-zoom some phones (especially Nothing OS) apply to screen wallpapers. Choose between blurred-edge or sharp-edge padding modes, or turn it off. Applied to both rotating and default wallpapers.
 - **Backup & Restore:** Save the whole app to a single `.nwcbak` file: every collection, every image's framing, etc. Restoring shows you what is in the file and changes nothing until you confirm.
 - **Privacy First:** No internet permissions. Your images never leave your device.
 
 <details>
-<summary><b>Everything else it does</b> (15 more)</summary>
+<summary><b>Everything else it does</b> (18 more)</summary>
 
 - **Configurable Wallpaper Destination:** Apply the rotation to the lock screen, the home screen, or both.
 - **Favourites:** Heart any wallpaper to add it to a built-in Favourites collection.
 - **Pinned Collections:** Pin the collections you use most so they sort to the top. Tap a collection to browse its wallpapers, long-press for pin, set-active, and edit actions.
-- **Copy & Move Between Collections:** Move or copy wallpapers across collections edits included, no re-picking.
-- **Collection Image Gallery:** Browse all wallpapers in a collection with a 3-column grid and multi-select for batch operations. The full-screen preview is now a proper gallery viewer.
+- **Copy & Move Between Collections:** Move or copy wallpapers across collections edits included, no re-picking. Both pickers can also create a new collection on the spot.
+- **Collection Image Gallery:** Browse all wallpapers in a collection with a 3-column grid and multi-select for batch operations. Thumbnails are cached at the size they are shown.
+- **Filter a Collection:** Show only available or unavailable images, edited or not, favourites or not, local copies or references, and in folder collections what came from the folder or was added by you. Filters combine and are a way to organize your view that don't change which images are shown.
+- **Full-Screen Gallery Viewer:** Pinch, pan, double-tap and swipe between wallpapers. Pull up on a photo to see its details (file, resolution, framing, where it comes from), and toggle a view that frames unedited photos by the collection's crop rule.
 - **Smart Shuffle:** Every image is shown exactly once before the collection reshuffles in order to never getting any individual wallpaper too often.
 - **Flexible Cropping:** Choose how images fit your screen per collection: center, left-aligned, right-aligned, or fit-to-screen.
-- **Settings Screen:** Customize exactly how you want the app to behave, with tons of settings to tweak.
+- **Settings Screen:** Customize exactly how you want the app to behave, with tons of settings to tweak, plus a storage bar showing what the app uses and a button to clear its cache.
 - **Quick Settings Tile:** Start, stop, or check status right from the notification shade letting you control it while doing something else.
 - **Survives Reboots:** If the service was running before a restart, it picks right back up.
 - **Battery Aware:** Choose what happens during Battery Saver: stop the service, pause and auto-resume, or keep running.
 - **Do Not Disturb Aware:** Optionally pause rotation while your phone is in DnD. It resumes on its own when DnD ends.
 - **Language Selection:** Switch the app's language from Settings. English and Spanish are fully supported today.
+- **Diagnostic Logs:** Settings → ABOUT → **SAVE DIAGNOSTIC LOGS** writes a report of the app's state and its own last 5-minutes logs to a file you choose, ready to attach to a bug report.
 - **Self-Healing, Never Destructive:** Failed images are retried. An image whose source has genuinely gone away is **marked unavailable and badged**, and it comes back on its own if the source returns. You can also re-link a broken image to a new source by tapping it, keeping every collection membership and edit intact.
 
 </details>
@@ -115,19 +90,22 @@ No. The app never wakes your phone. On the default "every lock" rotation it simp
 <details>
 <summary><b>How much storage does it use?</b></summary>
 
-Almost none by default. As of v0.3.3 the app tries **reference** your images where they already are instead of copying them:
+Almost none by default. The app tries to **reference** your images where they already are instead of copying them:
 
 - **Folder collections:** None. The app reads the images straight out of the folder you pointed it at.
 - **Manual collections:** None by default. Picked photos are stored as references to your gallery.
 - **The same photo in several collections** is stored once and shared, so copying wallpapers between collections is free.
-- **If you turn on "Keep local copies"** in Settings, newly added photos are copied into the app's private storage as compressed WebP files at screen resolution. Expect roughly **0.2–1 MB per image**. Settings shows a live readout of how much space those copies use. The toggle only affects photos added *after* you flip it.
-- A single **buffer file** (~1 MB) is kept ready for the next wallpaper. With Atmosphere effect that buffer is a slightly larger container holding the image plus its extracted palette. That's it.
+- **If you turn on "Keep local copies"** in Settings, newly added photos are copied into the app's private storage as compressed WebP files at screen resolution. Expect roughly **0.2–1 MB per image**. The toggle only affects photos added *after* you flip it.
+- A single **buffer file** (~1 MB) is kept ready for the next wallpaper. With Atmosphere effect that buffer is a slightly larger container holding the image plus its extracted palette.
+- **Small grid thumbnails** are cached so collections open fast. They live in the app's cache, so Android can reclaim them.
+
+Settings shows a storage bar with how much of it is local copies and how much is cache and there is a **CLEAR CACHE** button to clear the cache.
 </details>
 
 <details>
 <summary><b>Can I back the app up, or move it to a new phone?</b></summary>
 
-Yes. Settings → **BACKUP** writes one `.nwcbak` file holding every collection, every image's framing, the images you removed from folder collections, your default wallpapers and all your settings. You choose where it goes, so it survives uninstalling the app. Two kinds:
+Yes. Settings → **BACKUP** writes one `.nwcbak` file holding every collection, every image's framing, the images you removed from folder collections, your default wallpapers and all your settings. It is saved to Downloads by default, so it survives uninstalling the app. Two kinds:
 - **The default** keeps your *Keep local copies* behaviour, restores perfectly **on the same phone**.
 - **Include every image** copies the photos themselves into the file as well. It is what you want for **a different phone**.
 
@@ -191,9 +169,8 @@ Some phones (especially Nothing OS) automatically zoom/crop the wallpaper for a 
 > **Already have the app installed from an APK? [Export a backup first](#coming-from-apk).** Play
 > cannot update a sideloaded install.
 
-1.  **[Join the closed beta group](https://groups.google.com/g/wallpaper-changer-testers)** and follow the instructions there.
-2.  Install from the Play Store.
-3.  Updates then arrive automatically. See [the section at the top](#closed-beta) for why the tester count matters.
+1.  **[Install NWall from Google Play](https://play.google.com/store/apps/details?id=com.ninecsdev.wallpaperchanger&referrer=utm_source%3Dgithub).**
+2.  Updates then arrive automatically.
 
 ### From the APK
 
@@ -203,8 +180,20 @@ Some phones (especially Nothing OS) automatically zoom/crop the wallpaper for a 
 
 ### Either way
 
-4.  **Grant Permissions:** Allow "Notifications" (required to keep the service alive in the background), and photo access if you want your picks referenced rather than copied.
-5.  **Create a collection:** Open the app and create a collection either by selecting a folder or individual photos.
+4.  **Follow the setup:** The first open walks you through Atmosphere, rotation and destination, then creating your first collection from a folder or individual photos.
+5.  **Grant Permissions:** Allow "Notifications" (required to keep the service alive in the background), and photo access if you want your picks referenced rather than copied.
+
+<a id="coming-from-apk"></a>
+
+### Moving from an APK to Play
+
+**Play cannot update an app you installed from an APK here.** These APKs are signed with my key, Play signs its deliveries with Google's, so moving to Play means uninstalling first, and an uninstall takes your collections, your framing and your settings with it.
+
+1. **[Update to the latest APK](https://github.com/NineCSdev/nothing-wallpaper-changer/releases)**
+2. **Export:** Settings → **BACKUP** → **EXPORT BACKUP**. The `.nwcbak` file is saved to Downloads by default.
+3. **Uninstall, install from Play**, then Settings → **BACKUP** → **RESTORE BACKUP** and pick your file.
+
+Folder-based collections will ask you to point at the folder again. Everything else comes back as it was. **Keep the backup file until you have checked the restore.** And if you would rather stay on APKs, nothing forces you to move.
 
 ### Build from Source
 ```bash
@@ -224,14 +213,14 @@ A `release` build needs a signing key, supplied either as a gitignored `keystore
 
 The app uses a **single-activity Jetpack Compose UI**, **Hilt** for dependency injection, **Room** for collections and images, a **WallpaperRepository** for collection/rotation coordination, a **ServiceLifecycle** authority for service state, a **foreground service** that rotates wallpapers, and a separate **live wallpaper service** for the Atmosphere effect.
 
-The current implementation uses Hilt-injected app-level dependencies, plain `@HiltViewModel` ViewModels, lifecycle-aware Compose state collection, and Preferences DataStore for lightweight app flags. Navigation is handled by Navigation Compose with six routes: main dashboard, collections, collection image gallery, wallpaper editor, settings, and backup. The current architecture is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The current implementation uses Hilt-injected app-level dependencies, plain `@HiltViewModel` ViewModels, lifecycle-aware Compose state collection, and Preferences DataStore for lightweight app flags. Navigation is handled by Navigation Compose with seven routes: first-open setup, main dashboard, collections, collection image gallery, wallpaper editor, settings, and backup. The current architecture is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ### How It Works
 
-1. **User creates a collection** (folder or manual) → images are stored in Room.
+1. **User creates a collection** (folder or manual), from the first-open setup or the collections screen → images are stored in Room.
 2. **User browses and edits wallpapers** → the collection image gallery shows all images in a grid; tapping opens a full-screen gallery viewer; the per-image editor lets you crop and position with gestures, sliders, or typed values.
-3. **User presses Start** → `WallpaperService` starts as a foreground service, loads & shuffles the active collection into an in-memory magazine, and pre-processes the first wallpaper into a disk buffer. Edited images are preferred over originals.
-4. **A rotation comes due** → either on screen-off (`ScreenStateReceiver`) or when a time-based cadence elapses while the screen is on (`RotationScheduler`). Both call one `RotationCoordinator`, which checks the collection's cadence, applies the prepared wallpaper, and prepares the next.
+3. **User presses Start** → `RotationService` starts as a foreground service, loads & shuffles the active collection into an in-memory magazine, and pre-renders the first wallpaper into a disk buffer. Edited images are preferred over originals.
+4. **A rotation comes due** → either on screen-off (`ScreenStateReceiver`) or when a time-based cadence elapses while the screen is on (`RotationScheduler`). Both call one `RotationCoordinator`, which checks the collection's cadence, delivers the prepared wallpaper, and prepares the next. Switching the active collection applies its first image straight away, outside the cadence.
 5. **Delivery forks on the wallpaper mode** →
    - **Static:** the buffer is streamed to `WallpaperManager.setStream()` on whichever surface(s) the destination setting targets.
    - **Atmosphere:** the buffer plus its extracted palette is handed to the live wallpaper engine, which holds it until the screen is genuinely dark, then swaps it in and reports back.
@@ -245,10 +234,10 @@ The current implementation uses Hilt-injected app-level dependencies, plain `@Hi
 
 | Category      | Library / API                       |
 |---------------|-------------------------------------|
-| Language      | Kotlin 2.3 (JVM 17)                 |
+| Language      | Kotlin 2.4 (JVM 17)                 |
 | UI            | Jetpack Compose + Material 3        |
 | Graphics      | OpenGL ES 2.0 (GLSL)                |
-| Image loading | Coil 2.7                            |
+| Image loading | Coil 3                              |
 | Database      | Room 2.8 (KSP)                      |
 | Preferences   | Jetpack Preferences DataStore       |
 | DI            | Hilt                                |
@@ -282,17 +271,15 @@ This is my first native Android project, built while actively learning about bac
 
 ## Status
 
-**v0.4.0-beta** is the Atmosphere release, and the largest feature the app has ever shipped. It is also the first version to go up to Google Play, as the [closed beta](#closed-beta) described at the top.
+**v0.4.1-beta** is the first public Play Store release, and the first one under the name **NWall**. After the closed beta, this version is about making the app ready for people who have never seen it and multiple quality-of-life improvements.
 
-**A second way to deliver your wallpapers.** Alongside the static swap, the app can now render your photo as a live wallpaper that morphs on unlock into a drifting field of colour built from that photo's own palette. Rotation runs underneath it.
+**A first-open setup.** A new install opens on a short welcome and guides new users and throught the main features of the app. It is fully skippable for returning users and anybody that prefer exploring it themselves.
 
-**Rotation became a setting.** It can now be set globally (applying to every collection) and can happen on every lock, a custom interval (5 minutes to 30 days), or once a day. It is still customizable per collection and can be also pause during Do Not Disturb.
+**A gallery you can search through.** Filter a collection by availability, edits, favourites, storage or origin; pull up on any photo in the full-screen viewer to see its details; and preview how a collection's crop rule frames an unedited photo.
 
-**The default wallpaper is now editable.** It's editable in the normal editor, applyable on demand, and any collection can set one of its own images to override it when the service stops.
+**A better editor and Settings.** Undo now steps back one change at a time, typed values are finer, and Settings is a set of grouped panels with an improved STORAGE section and new ABOUT section.
 
-**Backup and restore.** The whole app writes to one file you keep wherever you like: collections, framing, removed images, default wallpapers and settings. It is what makes moving to the Play build, or to a new phone, survivable.
-
-**Plus a UI pass:** the full-screen preview rebuilt as a gallery viewer with pinch, pan, double-tap and swipe; typed zoom and offset fields in the editor; Settings regrouped into four sections.
+**Plus a long list of fixes:** switching collections now changes the wallpaper immediately, rotation can no longer stop for good after a service restart, EXIF-rotated photos are no longer applied sideways, the quick settings tile stays in step with the service, and the full-screen preview's animations were cleaned up.
 
 ---
 

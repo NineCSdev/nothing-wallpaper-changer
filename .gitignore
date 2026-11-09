@@ -20,3 +20,4 @@ keystore
 /AGENTS.md
 keystore.properties
 /tools/*
+/.claude/*

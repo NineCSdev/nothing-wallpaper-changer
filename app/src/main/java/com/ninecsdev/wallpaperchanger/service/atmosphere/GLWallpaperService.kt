@@ -3,7 +3,7 @@ package com.ninecsdev.wallpaperchanger.service.atmosphere
 /*
  * Adapted from NOSAtmosphereEffect by Saad Ullah Khan
  * https://github.com/saad-khan-rind/NOSAtmosphereEffect (MIT License)
- * Substantially modified for Nothing Wallpaper Changer — see THIRD-PARTY-NOTICES.md.
+ * Substantially modified for NWall (see THIRD-PARTY-NOTICES.md)
  */
 
 import android.content.Context

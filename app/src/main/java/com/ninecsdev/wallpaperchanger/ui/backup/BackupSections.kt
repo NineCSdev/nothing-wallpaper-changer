@@ -252,7 +252,7 @@ private fun BackupExportInterruptedPreview() {
         ) {
             BackupExportSection(
                 portable = false,
-                exportState = BackupExportState.Interrupted("NWC-backup-2026-09-13.nwcbak"),
+                exportState = BackupExportState.Interrupted("NWall-backup-2026-09-13.nwcbak"),
                 onPortableChange = {},
                 onExport = {},
                 onCancel = {},

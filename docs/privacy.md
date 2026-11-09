@@ -1,7 +1,7 @@
 # Privacy Policy — NWall
 
 **Effective date:** 10 September 2026
-**Last updated:** 4 November 2026
+**Last updated:** 5 November 2026
 **Application:** NWall, formerly Wallpaper Changer (`com.ninecsdev.wallpaperchanger`)
 **Developer:** NineCSdev
 
@@ -42,8 +42,23 @@ All of it is inside the app's own private storage on your device:
 | The permission Android gives the app to keep reading a folder you picked                            | So a folder collection can be re-synced later without re-picking it |
 | Optional local copies of images, when "Keep local copies" is enabled                               | So your wallpapers survive the originals being moved or deleted |
 | A pre-rendered copy of the next wallpaper, and the source for the atmosphere effect                | So the wallpaper can change instantly when the screen turns off |
+| Small thumbnails of the images in your collections, in the app's cache                             | So collections open quickly; Android or **CLEAR CACHE** in Settings can delete them at any time |
 
 No part of this is transmitted anywhere by the app. Uninstalling the app deletes all of it.
+
+## Files you save yourself
+
+Two features write a file **outside** the app's private storage, and only when you ask, to a place
+you pick in the Android file picker:
+
+- **A backup** (Settings → BACKUP → EXPORT BACKUP): your collections, settings, per-image framing and
+  the references to your images, plus, if you choose *Include every image*, the images themselves.
+- **A diagnostic report** (Settings → ABOUT → SAVE DIAGNOSTIC LOGS): the app's version, your device
+  model and Android version, the app's settings and service state, counts of the images in the
+  active collection, and the app's own recent system log lines, which can include image file names.
+
+The app never sends either file anywhere. What happens to them afterwards (keeping them, attaching a
+report to a bug report, deleting them) is up to you, and uninstalling the app does not delete them.
 
 ## Permissions, and what each is for
 

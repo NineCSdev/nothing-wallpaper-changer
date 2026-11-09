@@ -430,7 +430,7 @@
     <string name="edit_discard_cancel">CONTINUE</string>
 
     <!-- Quick settings tile -->
-    <string name="tile_label">Changer</string>
+    <string name="tile_label">Rotation</string>
     <string name="tile_subtitle_active">Active</string>
     <string name="tile_subtitle_initializing">Initializing…</string>
     <string name="tile_subtitle_stopping">Stopping…</string>
@@ -517,7 +517,7 @@
     <!-- %1$s = the half-written archive\'s file name, so the user knows which one to delete -->
     <string name="backup_export_interrupted_file">Unusable file: %1$s</string>
     <!-- %1$s = today\'s date, e.g. "2026-09-12" -->
-    <string name="backup_export_default_name" translatable="false">NWC-backup-%1$s</string>
+    <string name="backup_export_default_name" translatable="false">NWall-backup-%1$s</string>
 
     <string name="backup_import_title">RESTORE BACKUP</string>
     <string name="backup_import_subtitle">Replace everything in the app with a backup file</string>
