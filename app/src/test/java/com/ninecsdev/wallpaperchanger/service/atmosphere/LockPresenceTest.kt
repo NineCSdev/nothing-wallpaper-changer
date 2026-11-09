@@ -100,7 +100,7 @@ class LockPresenceTest {
 
     @Test
     fun `unlock with no command still morphs`() {
-        // Same event, different call site: the USER_PRESENT backstop reaches Unlocked too.
+        // Same event, different call site: the keyguard poll reaches Unlocked too.
         val decisions = run(
             LockEvent.Created(keyguardLocked = true) to 0L,
             LockEvent.BecameVisible(keyguardLocked = true) to 10L,

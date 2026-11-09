@@ -34,6 +34,8 @@ class AtmosphereWallpaperService : GLWallpaperService() {
         /** Sent to the engine when the keyguard begins to disappear; the morph starts on it. */
         private const val COMMAND_KEYGUARD_GOING_AWAY = "android.wallpaper.keyguardgoingaway"
 
+        private const val KEYGUARD_POLL_MS = 50L
+
         /** Refresh rate the morph votes its surface to for its duration; 0 disables the vote. */
         private const val PIN_MORPH_FRAME_RATE_HZ = 120f
 
@@ -95,17 +97,38 @@ class AtmosphereWallpaperService : GLWallpaperService() {
         // visibility callback arrives a beat later, and on a fast off/on a delivery can land in that gap.
         private fun isPanelDark(): Boolean = !isVisible && !powerManager.isInteractive
 
+        /**
+         * For platforms that withhold the going-away command from third-party wallpapers. Reports
+         * once the keyguard is gone, which is too late to match the command but early enough to
+         * land with the home screen. Inert after the command.
+         */
+        private val keyguardPoll = object : Runnable {
+            override fun run() {
+                if (keyguardManager.isKeyguardLocked) handler.postDelayed(this, KEYGUARD_POLL_MS)
+                else dispatch(LockEvent.Unlocked)
+            }
+        }
+
+        /** Only an engine on screen needs it: one revealed later morphs from [LockEvent.BecameVisible]. */
+        private fun startKeyguardPoll() {
+            handler.removeCallbacks(keyguardPoll)
+            if (isVisible && powerManager.isInteractive) handler.post(keyguardPoll)
+        }
+
         private val systemReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 when (intent?.action) {
-                    Intent.ACTION_SCREEN_OFF -> dispatch(LockEvent.ScreenOff)
+                    Intent.ACTION_SCREEN_OFF -> {
+                        handler.removeCallbacks(keyguardPoll)
+                        dispatch(LockEvent.ScreenOff)
+                    }
 
                     // A fast toggle cannot skip this. Visibility takes ~190 ms to drop after the panel
                     // goes off, so a quicker toggle leaves the effect up behind the keyguard.
-                    Intent.ACTION_SCREEN_ON -> dispatch(LockEvent.ScreenOn(keyguardManager.isKeyguardLocked))
-
-                    // Backstop for COMMAND_KEYGUARD_GOING_AWAY; the morph then starts a beat late.
-                    Intent.ACTION_USER_PRESENT -> dispatch(LockEvent.Unlocked)
+                    Intent.ACTION_SCREEN_ON -> {
+                        dispatch(LockEvent.ScreenOn(keyguardManager.isKeyguardLocked))
+                        startKeyguardPoll()
+                    }
 
                     AtmosphereProtocol.ACTION_RELOAD -> reloadSource(intent.getBooleanExtra(AtmosphereProtocol.EXTRA_FROM_ROTATION, false))
                 }
@@ -131,12 +154,11 @@ class AtmosphereWallpaperService : GLWallpaperService() {
                 if (!isPreview) {
                     addAction(Intent.ACTION_SCREEN_OFF)
                     addAction(Intent.ACTION_SCREEN_ON)
-                    addAction(Intent.ACTION_USER_PRESENT)
                 }
                 addAction(AtmosphereProtocol.ACTION_RELOAD)
             }
-            // Not exported: the reload action is ours; the screen actions are protected system
-            // broadcasts and reach a not-exported receiver regardless.
+            // Not exported: the reload action is ours, and the system server's screen broadcasts
+            // reach a not-exported receiver regardless.
             registerReceiver(systemReceiver, filter, RECEIVER_NOT_EXPORTED)
 
             if (BuildConfig.DEBUG) {
@@ -168,7 +190,10 @@ class AtmosphereWallpaperService : GLWallpaperService() {
         override fun onVisibilityChanged(visible: Boolean) {
             // Before super, which draws one last frame before parking the GL thread: that frame
             // should be the settled state, not a half-finished morph.
-            if (!visible) dispatch(LockEvent.BecameInvisible)
+            if (!visible) {
+                handler.removeCallbacks(keyguardPoll)
+                dispatch(LockEvent.BecameInvisible)
+            }
 
             super.onVisibilityChanged(visible)
 
@@ -181,11 +206,13 @@ class AtmosphereWallpaperService : GLWallpaperService() {
 
             // After super, so the surface is live by the time a morph is asked for.
             dispatch(LockEvent.BecameVisible(keyguardManager.isKeyguardLocked))
+            startKeyguardPoll()
         }
 
         override fun onDestroy() {
             pinMorphFrameRate(false)
             destroyed = true
+            handler.removeCallbacks(keyguardPoll)
             dispatch(LockEvent.Destroyed)
             runCatching { unregisterReceiver(systemReceiver) }
             if (BuildConfig.DEBUG) runCatching { unregisterReceiver(seekReceiver) }
